@@ -53,7 +53,7 @@ from verticalidades.distribucion.views_htmx import (
     domicilio_modal as dist_domicilio_modal, eliminar_domicilio as dist_eliminar_domicilio,
     domicilio_dias as dist_domicilio_dias,
 )
-from verticalidades.distribucion.views import (AsignacionStockView, CarteraIndexView,
+from verticalidades.distribucion.views import (DistribucionIndexView, AsignacionStockView, CarteraIndexView,
                                 CobranzaRepartoView, ConsolidadoView, EntregaView,
                                 FacturacionLoteView, FaltantesIndexView, HojaDeRutaView,
                                 CobranzaVendedorView, CorrelativosDistribucionView,
@@ -317,6 +317,8 @@ urlpatterns = [
     path('configuracion/mediospago/crear/', mediopago_modal, name='config_mediopago_add'),
     path('configuracion/mediospago/<int:id>/editar/', mediopago_modal, name='config_mediopago_edit'),
     path('configuracion/mediospago/<int:id>/eliminar/', eliminar_mediopago, name='config_mediopago_delete'),
+
+    path('distribucion/', DistribucionIndexView.as_view(), name='distribucion_index'),
 
     # Distribución: toma de pedidos desde el celular del vendedor (Plan 074, fase 2)
     path('distribucion/movil/', movil_pedido, name='distribucion_movil_pedido'),

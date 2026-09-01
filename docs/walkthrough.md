@@ -1,6 +1,38 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
 ## Cristian - PC CASA - 31/08/2026
+**Objetivo:** Completar y ordenar las tarjetas (cards) del Dashboard de Distribución omitiendo la sección Maestros.
+**Archivos creados o modificados:**
+- `verticalidades/distribucion/templates/distribucion/index.html` [MODIFY]
+
+**Detalle Técnico:** 
+- Se agregaron las tarjetas faltantes (`distribucion_movil_pedido`, `distribucion_cobranza_vendedor`, `distribucion_saldos`, `distribucion_reporte_devoluciones`, `distribucion_correlativos`).
+- Se reordenó toda la grilla de tarjetas del `index.html` para que coincida 1:1 con la estructura lógica y orden del menú lateral (sidebar).
+- Se excluyeron deliberadamente los accesos a "Maestros" (`Configuración`) del dashboard, dejándolos disponibles únicamente a través del menú lateral, manteniendo el panel principal enfocado en la operatoria pura y control.
+
+**Estado actual y siguientes pasos sugeridos:**
+- El dashboard de Distribución ahora refleja fielmente el menú de operaciones, control y gestión. Todo está en producción.
+
+
+## Cristian - PC CASA - 31/08/2026
+**Objetivo:** Crear layout y tarjetas del dashboard de Distribución (base.html y sidebar).
+**Archivos creados o modificados:**
+- `verticalidades/distribucion/views.py` [MODIFY]
+- `config/urls.py` [MODIFY]
+- `verticalidades/distribucion/templates/distribucion/index.html` [NEW]
+- `verticalidades/distribucion/templates/distribucion/hooks/menu_sidebar_bottom.html` [MODIFY]
+
+**Detalle Técnico:** 
+- Se implementó la vista `DistribucionIndexView` basada en `TemplateView` y protegida con `LoginRequiredMixin`.
+- Se registró la ruta `/distribucion/` en `config/urls.py` asociada al nombre `distribucion_index`.
+- Se creó el template `index.html` para Distribución, unificando en formato de tarjetas dinámicas todas las operativas (Tomar Pedido, Facturación Masiva, Faltantes, Repartos, Rendiciones y Cartera). Se empleó la paleta de colores requerida y consistencia visual (`text-amber-600` / `border-amber-500`, etc.) heredando de `base.html`.
+- Se actualizó el hook `menu_sidebar_bottom.html` integrando la lógica activa de Alpine.js (`window.location.pathname.startsWith('/distribucion/')`) y Jinja (`request.resolver_match.url_name`). Al hacer clic en Distribución o navegar a cualquiera de sus submódulos, el ítem en la barra lateral queda desplegado y coloreado visualmente en ambar (`text-amber-400 font-bold`).
+
+**Estado actual y siguientes pasos sugeridos:**
+- Módulo Distribución cuenta ahora con su propio dashboard y menú lateral inteligente que preserva el estado activo de la interfaz. Validar comportamiento al navegar por las cards.
+
+
+## Cristian - PC CASA - 31/08/2026
 **Objetivo:** Auto-descubrimiento 100% dinámico de Verticalidades en el Tipo de Actividad de Empresas.
 **Archivos creados o modificados:**
 - `empresas/models.py`

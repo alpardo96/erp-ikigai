@@ -40,6 +40,10 @@ from .services.cobranza_fifo import registrar as registrar_cobranza
 from .services.saldos_clientes import listado as listado_saldos
 from .services.reporte_devoluciones import reporte as reporte_devoluciones
 
+from django.views.generic import TemplateView
+
+class DistribucionIndexView(LoginRequiredMixin, TemplateView):
+    template_name = 'distribucion/index.html'
 
 class DistribucionRequiredMixin(LoginRequiredMixin):
     """Corta el acceso si la empresa activa no es una distribuidora."""
