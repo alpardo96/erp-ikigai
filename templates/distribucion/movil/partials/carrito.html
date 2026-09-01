@@ -1,0 +1,86 @@
+{% load formato_tags %}
+{% if error %}
+<div class="mb-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm font-bold text-red-700">
+    {{ error }}
+</div>
+{% endif %}
+
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            Artículos del pedido
+        </span>
+        {% if items %}
+        <button type="button"
+                hx-post="{% url 'distribucion_movil_descartar' %}"
+                hx-target="#movil-carrito"
+                hx-confirm="¿Descartar el pedido completo?"
+                class="text-[10px] font-bold text-red-600 uppercase tracking-widest">
+            Descartar
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="divide-y divide-slate-100">
+        {% for item in items %}
+        <div class="px-3 py-2.5 flex items-center gap-3">
+            <div class="min-w-0 flex-1">
+                <div class="text-sm font-bold text-slate-900 leading-tight">{{ item.detalle }}</div>
+                <div class="text-[11px] text-slate-500 font-mono">
+                    {% comment %}
+                    En distribución el código es `producto.id`; se muestra junto al del
+                    sistema anterior para que el vendedor se familiarice con el nuevo.
+                    {% endcomment %}
+                    {{ item.codigo_erp }}{% if item.codigo_anterior %} | {{ item.codigo_anterior }}{% endif %}
+                    · {{ item.cantidad|formato_ar:0 }} × $ {{ item.precio_unitario|formato_ar }}
+                </div>
+                {% if item.disponible is not None and item.cantidad > item.disponible %}
+                <div class="text-[11px] font-bold text-amber-700 mt-0.5">
+                    Sólo hay {{ item.disponible|formato_ar:0 }} disponibles — sujeto a disponibilidad
+                </div>
+                {% endif %}
+            </div>
+            <div class="text-sm font-black text-slate-900 shrink-0">$ {{ item.total|formato_ar }}</div>
+            <button type="button"
+                    hx-post="{% url 'distribucion_movil_item_remove' item.index %}"
+                    hx-target="#movil-carrito"
+                    class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 text-red-600 active:bg-red-100">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        {% empty %}
+        <div class="px-3 py-8 text-center text-xs text-slate-400 italic">
+            Todavía no cargaste artículos.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if items %}
+<!-- Pie fijo: el total y el botón de confirmar siempre al alcance del pulgar -->
+<form hx-post="{% url 'distribucion_movil_confirmar' %}"
+      hx-target="#movil-carrito"
+      class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] px-3 py-2.5">
+    {% csrf_token %}
+    <div class="max-w-2xl mx-auto space-y-2">
+        <div class="flex items-center gap-2">
+            <select name="condic_destino"
+                    class="h-10 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
+                <option value="1">Factura</option>
+                <option value="2">PRE</option>
+            </select>
+            <input type="date" name="fecha_entrega"
+                   class="h-10 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
+                   title="Fecha de entrega">
+            <div class="ml-auto text-right">
+                <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</div>
+                <div class="text-xl font-black text-slate-900 leading-none">$ {{ totales.total|formato_ar }}</div>
+            </div>
+        </div>
+        <button type="submit"
+                class="w-full h-12 bg-emerald-600 text-white rounded-lg font-black text-sm uppercase tracking-wide active:scale-95 transition-transform">
+            Confirmar pedido ({{ totales.cantidad_items }} art.)
+        </button>
+    </div>
+</form>
+{% endif %}

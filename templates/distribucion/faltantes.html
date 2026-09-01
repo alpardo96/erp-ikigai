@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Faltantes y Asignación | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Faltantes de Stock</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Productos cuyo stock no alcanza para cubrir todos los pedidos tomados y todavía sin facturar.
+            </p>
+        </div>
+        <div class="text-right">
+            <div class="text-2xl font-black {% if total_faltantes %}text-red-600{% else %}text-emerald-600{% endif %}">
+                {{ total_faltantes }}
+            </div>
+            <div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Artículos en déficit</div>
+        </div>
+    </div>
+
+    {% if not puede_asignar %}
+    <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800">
+        Podés consultar el reporte, pero no tenés permiso para repartir el stock escaso.
+    </div>
+    {% endif %}
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Código</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Artículo</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Stock</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pedido</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Déficit</th>
+                        <th class="relative py-3 pl-3 pr-6 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="faltantes-rows"
+                       class="divide-y divide-gray-100 bg-white"
+                       hx-get="{% url 'distribucion_faltantes' %}"
+                       hx-trigger="reloadFaltantes from:body">
+                    {% include 'distribucion/partials/faltantes_filas.html' %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="text-[11px] text-slate-400 italic">
+        La sugerencia de reparto es por <strong>orden de llegada del pedido</strong>: el que pidió primero se sirve
+        primero, y el faltante lo absorben los últimos. Cada ajuste queda registrado con quién lo hizo y cuándo.
+    </p>
+</div>
+{% endblock %}

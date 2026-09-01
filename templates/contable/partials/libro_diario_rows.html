@@ -1,0 +1,82 @@
+{% if not ejecutado %}
+<tbody id="diario-rows" class="bg-white">
+    <tr>
+        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+            <svg class="mx-auto h-12 w-12 text-indigo-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+            </svg>
+            <p class="font-medium text-base text-gray-900">Seleccione los parámetros de consulta y presione "Filtrar"</p>
+            <p class="text-xs text-gray-400 mt-1">Defina el rango de fechas, ID de asiento o condición para generar el Libro Diario.</p>
+        </td>
+    </tr>
+</tbody>
+{% else %}
+{% for asiento in asientos %}
+<tbody {% if forloop.first %}id="diario-rows"{% endif %} x-data="{ expanded: false }" class="bg-white divide-y divide-gray-100 border-b border-gray-100">
+    <tr class="hover:bg-indigo-50/40 transition-colors group cursor-pointer"
+        @click="expanded = !expanded; if(expanded && !$refs.detalle.innerHTML.includes('table')) htmx.ajax('GET', '{% url 'detalle_asiento' asiento.asiento_id %}', {target: $refs.detalle, swap: 'innerHTML'})">
+        
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400 w-10">
+            <svg class="w-5 h-5 transition-transform duration-200" :class="expanded ? 'rotate-90 text-indigo-600 font-bold' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold font-mono text-indigo-900">
+            {{ asiento.asiento_id }}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+            {{ asiento.fecha|date:"d/m/Y" }}
+        </td>
+        <td class="px-6 py-4 text-sm text-gray-800 font-medium">
+            {{ asiento.concepto }}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono font-bold text-gray-900">
+            $ {{ asiento.monto|floatformat:2 }}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
+            {% if asiento.anulado %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                Anulado
+            </span>
+            {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                Activo
+            </span>
+            {% endif %}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            {% if not asiento.anulado %}
+            <button @click.stop 
+                    hx-post="{% url 'anular_asiento' asiento.asiento_id %}"
+                    hx-confirm="¿Está seguro de anular el asiento {{ asiento.asiento_id }}? Esta acción es irreversible."
+                    class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors font-semibold" title="Anular Asiento">
+                Anular
+            </button>
+            {% endif %}
+        </td>
+    </tr>
+
+    <!-- Fila expansible para mostrar el detalle de las líneas del asiento (cble_asiento_mov) -->
+    <tr x-show="expanded" x-cloak>
+        <td colspan="7" class="p-0 border-b border-gray-200 bg-slate-50">
+            <div x-ref="detalle" class="p-4 border-l-4 border-indigo-500">
+                <div class="text-center text-sm text-gray-500 py-4">
+                    <svg class="animate-spin h-5 w-5 mx-auto text-indigo-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Cargando movimientos de cble_asiento_mov...</span>
+                </div>
+            </div>
+        </td>
+    </tr>
+</tbody>
+{% empty %}
+<tbody id="diario-rows" class="bg-white">
+    <tr>
+        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+            <p class="font-medium text-base text-gray-700">No se encontraron asientos contables.</p>
+            <p class="text-xs text-gray-400 mt-1">Ajuste los filtros de fecha, ID o condición e intente nuevamente.</p>
+        </td>
+    </tr>
+</tbody>
+{% endfor %}
+{% endif %}

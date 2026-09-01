@@ -1,0 +1,210 @@
+{% load formato_tags %}
+<!--
+  Reimpresión de la Orden de Pago con TODO lo vinculado (Plan 035 §6):
+  comprobantes aplicados, medios de pago desglosados y certificados de retención.
+  Se renderiza con xhtml2pdf, que soporta un subconjunto de CSS: por eso el maquetado usa
+  tablas y estilos simples en lugar de flex/grid.
+-->
+<html>
+<head>
+<style>
+    @page { size: A4; margin: 1.5cm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 9pt; color: #1e293b; }
+    h1 { font-size: 15pt; margin: 0 0 2px 0; }
+    .cab { width: 100%; border-bottom: 2px solid #1e293b; padding-bottom: 6px; margin-bottom: 10px; }
+    .empresa { font-size: 11pt; font-weight: bold; }
+    .chico { font-size: 8pt; color: #64748b; }
+    .bloque { margin-bottom: 12px; }
+    .titulo { font-size: 9pt; font-weight: bold; text-transform: uppercase;
+              background-color: #f1f5f9; padding: 4px 6px; margin-bottom: 4px; }
+    table.datos { width: 100%; border-collapse: collapse; }
+    table.datos th { background-color: #f8fafc; font-size: 8pt; text-transform: uppercase;
+                     color: #64748b; padding: 4px; border-bottom: 1px solid #cbd5e1; text-align: left; }
+    table.datos td { padding: 4px; border-bottom: 1px solid #e2e8f0; }
+    .der { text-align: right; }
+    .cen { text-align: center; }
+    .total { font-weight: bold; font-size: 11pt; }
+    .anulado { color: #dc2626; font-weight: bold; font-size: 13pt; border: 2px solid #dc2626;
+               padding: 4px 8px; }
+</style>
+</head>
+<body>
+
+<table class="cab">
+    <tr>
+        <td>
+            <div class="empresa">{{ op.empresa.nombre }}</div>
+            <div class="chico">CUIT {{ op.empresa.cuit }}</div>
+            <div class="chico">{{ op.sucursal.nombre }}</div>
+        </td>
+        <td class="der">
+            <h1>ORDEN DE PAGO</h1>
+            <div><b>N° {{ op.punto|stringformat:"04d" }}-{{ op.numero|stringformat:"08d" }}</b></div>
+            <div class="chico">Fecha: {{ op.fecha|date:"d/m/Y" }}</div>
+            <div class="chico">
+                {% if op.condic == 1 %}Real (Fiscal){% else %}Presupuestado (No Fiscal){% endif %}
+            </div>
+            {% if op.anulado %}<div class="anulado">ANULADA</div>{% endif %}
+        </td>
+    </tr>
+</table>
+
+<div class="bloque">
+    <div class="titulo">Beneficiario</div>
+    <table class="datos">
+        <tr>
+            <td style="width:70%"><b>{{ op.proveedor.razon_social }}</b></td>
+            <td>CUIT: {{ op.proveedor.cuit|default:"—" }}</td>
+        </tr>
+        {% if op.observaciones %}
+        <tr><td colspan="2" class="chico">Observaciones: {{ op.observaciones }}</td></tr>
+        {% endif %}
+    </table>
+</div>
+
+{% if aplicaciones %}
+<div class="bloque">
+    <div class="titulo">Comprobantes cancelados</div>
+    <table class="datos">
+        <thead>
+            <tr><th>Fecha</th><th>Comprobante</th><th class="der">Total</th><th class="der">Importe aplicado</th></tr>
+        </thead>
+        <tbody>
+            {% for ap in aplicaciones %}
+            <tr>
+                <td>{{ ap.compra.fecha|date:"d/m/Y" }}</td>
+                <td>{{ ap.compra.tipo.detalle|default:"Comprobante" }}
+                    {{ ap.compra.punto|stringformat:"04d" }}-{{ ap.compra.numero|stringformat:"08d" }}</td>
+                <td class="der">$ {{ ap.compra.total|formato_ar }}</td>
+                <td class="der"><b>$ {{ ap.importe_pesos|formato_ar }}</b></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if imputaciones %}
+<div class="bloque">
+    <div class="titulo">Imputación contable</div>
+    <table class="datos">
+        <thead><tr><th>Cuenta</th><th>Leyenda</th><th class="der">Importe</th></tr></thead>
+        <tbody>
+            {% for imp in imputaciones %}
+            <tr>
+                <td>{{ imp.cuenta_contable.jerarquia }} - {{ imp.cuenta_contable.cuenta }}</td>
+                <td>{{ imp.leyenda|default:"" }}</td>
+                <td class="der">$ {{ imp.importe|formato_ar }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="bloque">
+    <div class="titulo">Medios de pago entregados</div>
+    <table class="datos">
+        <thead><tr><th>Medio</th><th>Detalle</th><th class="der">Importe</th></tr></thead>
+        <tbody>
+            {% for d in detalles %}
+            <tr>
+                <td>{{ d.medio_pago.nombre }}</td>
+                <td class="chico">
+                    {% if d.importe_moneda_extranjera %}
+                        U$D {{ d.importe_moneda_extranjera|formato_ar }} @ {{ d.cotizacion|formato_ar }}
+                    {% endif %}
+                </td>
+                <td class="der">$ {{ d.importe|formato_ar }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="2" class="der total">TOTAL</td>
+                <td class="der total">$ {{ op.total|formato_ar }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+{% if transacciones %}
+<div class="bloque">
+    <div class="titulo">Valores bancarios emitidos</div>
+    <table class="datos">
+        <thead><tr><th>Tipo</th><th>Cuenta bancaria</th><th>Número</th><th>Vencimiento</th><th class="der">Importe</th></tr></thead>
+        <tbody>
+            {% for t in transacciones %}
+            <tr>
+                <td>{{ t.get_tipo_transaccion_display }}</td>
+                <td>{{ t.cuenta_bancaria.banco }} {{ t.cuenta_bancaria.cta_numero }}</td>
+                <td>{{ t.numero_operacion|default:"—" }}</td>
+                <td>{{ t.fecha_vencimiento|date:"d/m/Y"|default:"—" }}</td>
+                <td class="der">$ {{ t.importe|formato_ar }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if valores_entregados %}
+<div class="bloque">
+    <div class="titulo">Cheques de terceros entregados</div>
+    <table class="datos">
+        <thead><tr><th>Banco</th><th>Número</th><th>Vencimiento</th><th>Firmante</th><th class="der">Importe</th></tr></thead>
+        <tbody>
+            {% for v in valores_entregados %}
+            <tr>
+                <td>{{ v.banco.nombre }}</td>
+                <td>{{ v.numero_cheque }}</td>
+                <td>{{ v.fecha_vencimiento|date:"d/m/Y" }}</td>
+                <td>{{ v.nombre_firmante|default:"—" }}</td>
+                <td class="der">$ {{ v.importe|formato_ar }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% if retenciones %}
+<div class="bloque">
+    <div class="titulo">Certificados de retención practicados</div>
+    <table class="datos">
+        <thead>
+            <tr><th>Impuesto</th><th>Régimen</th><th>Certificado</th><th>Fecha</th>
+                <th class="der">Base</th><th class="der">Alíc.</th><th class="der">Retenido</th></tr>
+        </thead>
+        <tbody>
+            {% for r in retenciones %}
+            <tr>
+                <td>{{ r.get_impuesto_display }}</td>
+                <td class="cen">{{ r.regimen|default:"—" }}</td>
+                <td>{{ r.nro_certificado|default:"—" }}</td>
+                <td>{{ r.fecha|date:"d/m/Y" }}</td>
+                <td class="der">$ {{ r.base|formato_ar }}</td>
+                <td class="der">{{ r.alicuota|formato_ar }}%</td>
+                <td class="der"><b>$ {{ r.importe|formato_ar }}</b></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="chico" style="margin-top:4px">
+        Retención practicada en carácter de agente de retención. Conserve este comprobante.
+    </div>
+</div>
+{% endif %}
+
+<table style="width:100%; margin-top:30px">
+    <tr>
+        <td class="cen chico" style="width:45%; border-top:1px solid #94a3b8; padding-top:4px">Firma y aclaración - Emisor</td>
+        <td style="width:10%"></td>
+        <td class="cen chico" style="width:45%; border-top:1px solid #94a3b8; padding-top:4px">Recibí conforme - Beneficiario</td>
+    </tr>
+</table>
+
+<div class="chico" style="margin-top:12px">
+    Asiento contable N° {{ op.asiento_id|default:"—" }} · Impreso el {{ fecha_impresion|date:"d/m/Y H:i" }}
+</div>
+
+</body>
+</html>

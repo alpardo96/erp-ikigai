@@ -1,0 +1,70 @@
+<div id="modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[60] flex items-center justify-center fade-in backdrop-blur-sm">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-xl mx-4 overflow-hidden transform scale-in border-t-4 border-blue-600">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">Carga de Series / CUIM</h3>
+                <p class="text-xs text-gray-500 font-medium mt-1">Producto: {{ item.detalle }}</p>
+            </div>
+            <button onclick="document.getElementById('modal-backdrop').remove()" class="text-gray-400 hover:text-red-500 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <form hx-post="{% url 'compras_item_series_save' index %}" 
+              hx-target="#items-tabla-container"
+              hx-on::after-request="if(event.detail.successful) document.getElementById('modal-backdrop').remove()">
+            
+            <div class="px-6 py-4 max-h-[60vh] overflow-y-auto">
+                <div class="mb-4 text-sm text-gray-600 font-medium">
+                    Debe ingresar las series para las <strong>{{ cantidad|length }}</strong> unidades adquiridas.
+                </div>
+                
+                <table class="w-full text-left border-collapse bg-white">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700 text-[10px] uppercase tracking-wider">
+                            <th class="px-3 py-2 border-b border-gray-200 w-12 text-center">Nº</th>
+                            <th class="px-3 py-2 border-b border-gray-200">Serie / Motor / Dominio</th>
+                            <th class="px-3 py-2 border-b border-gray-200">CUIM / Chasis (Opcional)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for i in cantidad %}
+                        <tr class="hover:bg-blue-50 transition-colors text-xs">
+                            <td class="px-3 py-2 text-center font-bold text-gray-400">{{ forloop.counter }}</td>
+                            <td class="px-3 py-2">
+                                <input type="text" name="serie_{{ forloop.counter0 }}" 
+                                       value="{% for s in series %}{% if forloop.counter0 == i %}{{ s.serie }}{% endif %}{% endfor %}"
+                                       class="w-full bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none uppercase font-bold text-blue-700 placeholder-gray-300"
+                                       placeholder="Nro Serie..." required autocomplete="off">
+                            </td>
+                            <td class="px-3 py-2">
+                                <input type="text" name="cuim_{{ forloop.counter0 }}" 
+                                       value="{% for s in series %}{% if forloop.counter0 == i %}{{ s.cuim }}{% endif %}{% endfor %}"
+                                       class="w-full bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none uppercase text-gray-600 placeholder-gray-300"
+                                       placeholder="CUIM..." autocomplete="off">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end space-x-3">
+                <button type="button" onclick="document.getElementById('modal-backdrop').remove()"
+                        class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-bold text-sm transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 font-bold text-sm transition-colors flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Confirmar Series
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

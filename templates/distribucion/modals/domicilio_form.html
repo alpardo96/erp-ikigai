@@ -1,0 +1,105 @@
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl transform transition-all overflow-hidden border border-gray-100 my-auto" id="modal-content">
+
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+            <div>
+                <h3 class="text-xl font-bold text-gray-900">
+                    {% if domicilio %}Editar Domicilio de Entrega{% else %}Nuevo Domicilio de Entrega{% endif %}
+                </h3>
+                <p class="text-xs text-gray-400 mt-1">{{ cliente.razon_social }}</p>
+            </div>
+            <button type="button"
+                    class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"
+                    onclick="document.getElementById('modal-container').innerHTML = ''">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form hx-post="{% if domicilio %}{% url 'distribucion_domicilio_edit' domicilio.id %}{% else %}{% url 'distribucion_domicilio_add' cliente.codigo_id %}{% endif %}"
+              hx-target="#modal-container" hx-swap="innerHTML">
+            <div class="px-8 py-8 space-y-6">
+                {% if form.non_field_errors %}
+                    <div class="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{{ form.non_field_errors.0 }}</div>
+                {% endif %}
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre del Punto</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.nombre.errors.0 }}</p>{% endif %}
+                        <p class="mt-1 text-[10px] text-gray-400 italic">Con lo que el repartidor lo identifica.</p>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Domicilio de Entrega</label>
+                        {{ form.domicilio }}
+                        {% if form.domicilio.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.domicilio.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Localidad</label>
+                        {{ form.localidad }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">C. Postal</label>
+                        {{ form.codigo_postal }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Zona de Reparto</label>
+                        {{ form.zona }}
+                        <p class="mt-1 text-[10px] text-gray-400 italic">Define en qué reparto entra.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">A quién buscar</label>
+                        {{ form.contacto }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
+                        {{ form.telefono }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Horario de Recepción</label>
+                        {{ form.horario_recepcion }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Indicaciones de Entrega</label>
+                    {{ form.observaciones_entrega }}
+                    <p class="mt-1 text-[10px] text-gray-400 italic">Lo que el repartidor necesita saber para descargar sin llamar por teléfono.</p>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <label class="flex items-center cursor-pointer">
+                        {{ form.es_principal }}
+                        <span class="ml-2 text-sm font-semibold text-gray-700">Principal</span>
+                    </label>
+                    <label class="flex items-center cursor-pointer">
+                        {{ form.activo }}
+                        <span class="ml-2 text-sm font-semibold text-gray-700">Activo</span>
+                    </label>
+                </div>
+                <p class="text-[10px] text-gray-400 italic">
+                    El principal es el que se propone al tomar el pedido, pero es responsabilidad del vendedor
+                    verificar que cada pedido salga con el domicilio correcto.
+                </p>
+            </div>
+
+            <div class="bg-gray-50 px-8 py-5 flex justify-end space-x-3">
+                <button type="button"
+                        class="px-6 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+                        onclick="document.getElementById('modal-container').innerHTML = ''">
+                    Cancelar
+                </button>
+                <button type="submit"
+                        class="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-transform active:scale-95">
+                    Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

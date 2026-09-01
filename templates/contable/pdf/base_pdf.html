@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Reporte Contable{% endblock %}</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 0.8cm;
+                margin-left: 1.5cm;
+                margin-right: 1.5cm;
+                height: 1cm;
+                text-align: right;
+            }
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 8.5pt;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            border-bottom: 2px solid #4f46e5;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 16pt;
+            color: #0f172a;
+            font-weight: bold;
+        }
+        .header h2 {
+            margin: 4px 0 0 0;
+            font-size: 12pt;
+            color: #4f46e5;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 4px 0 0 0;
+            font-size: 8.5pt;
+            color: #64748b;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #4f46e5;
+            color: #ffffff;
+            font-weight: bold;
+            text-align: left;
+            padding: 6px 8px;
+            font-size: 8.5pt;
+            border: 1px solid #4f46e5;
+        }
+        td {
+            padding: 5px 8px;
+            font-size: 8.5pt;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .italic { font-style: italic; }
+        .text-gray { color: #64748b; }
+    </style>
+</head>
+<body>
+    <div id="footerContent" style="font-size: 8pt; color: #64748b;">
+        Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+    <div class="header">
+        <h1>{{ empresa.nombre|upper }}{% if ejercicio_limpio %} - {{ ejercicio_limpio }}{% endif %}</h1>
+        <h2>{% block report_name %}Reporte{% endblock %}</h2>
+        <p>
+            {% if fecha_desde and fecha_hasta %}Desde {{ fecha_desde|date:"d/m/Y" }} hasta {{ fecha_hasta|date:"d/m/Y" }} | {% elif fecha_desde %}Desde {{ fecha_desde|date:"d/m/Y" }} | {% elif fecha_hasta %}Hasta {{ fecha_hasta|date:"d/m/Y" }} | {% endif %}
+            Emisión: {{ fecha_emision|date:"d/m/Y H:i" }}
+        </p>
+        {% block extra_header %}{% endblock %}
+    </div>
+
+    <div class="content">
+        {% block content %}
+        {% endblock %}
+    </div>
+
+</body>
+</html>

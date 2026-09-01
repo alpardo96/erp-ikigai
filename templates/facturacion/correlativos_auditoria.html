@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Auditoría de Correlativos{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto w-full px-4 py-2 space-y-4">
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Auditoría de Correlativos</h1>
+        <a href="{% url 'compras_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </a>
+    </div>
+    <p class="text-[12px] text-slate-500 italic">Continuidad de la numeración de OC, Informes de Recepción y Remitos Internos por punto. Los anulados conservan su número (no generan hueco).</p>
+
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+        <table class="w-full text-left text-[12px]">
+            <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-2">Tipo</th>
+                    <th class="px-4 py-2 text-center">Punto</th>
+                    <th class="px-4 py-2 text-center">Docs</th>
+                    <th class="px-4 py-2 text-center">Rango</th>
+                    <th class="px-4 py-2 text-center">Contador</th>
+                    <th class="px-4 py-2">Observaciones</th>
+                    <th class="px-4 py-2 text-center">Estado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for f in filas %}
+                <tr class="{% if not f.ok %}bg-red-50{% endif %}">
+                    <td class="px-4 py-2 font-bold text-slate-700">{{ f.tipo_label }}</td>
+                    <td class="px-4 py-2 text-center">{{ f.punto|stringformat:"04d" }}</td>
+                    <td class="px-4 py-2 text-center font-black">{{ f.cantidad }}</td>
+                    <td class="px-4 py-2 text-center text-slate-500">{{ f.minimo }} … {{ f.maximo }}</td>
+                    <td class="px-4 py-2 text-center text-slate-500">{{ f.contador|default:"—" }}</td>
+                    <td class="px-4 py-2 text-[11px]">
+                        {% if f.faltantes %}<span class="text-red-600 font-bold">Faltantes: {{ f.faltantes|join:", " }}</span>{% endif %}
+                        {% if f.duplicados %}<span class="text-red-600 font-bold"> · Duplicados: {{ f.duplicados|join:", " }}</span>{% endif %}
+                        {% if f.minimo != 1 %}<span class="text-red-600 font-bold"> · No arranca en 1</span>{% endif %}
+                        {% if f.ok %}<span class="text-green-600">Serie continua</span>{% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        {% if f.ok %}<span class="text-[9px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase">OK</span>
+                        {% else %}<span class="text-[9px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase">Revisar</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay documentos prenumerados para auditar.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

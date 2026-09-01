@@ -1,0 +1,4 @@
+<option value="">Seleccione una entidad para ver deuda</option>
+{% for e in entidades %}
+<option value="{{ e.pk }}">{{ e.razon_social }} ({{ e.cuit }})</option>
+{% endfor %}

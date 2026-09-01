@@ -1,0 +1,95 @@
+<!-- 
+    MODAL DE SUCURSAL
+    Gestiona los puntos de venta vinculados a una empresa.
+    Posicionamiento: ABSOLUTO (dentro del frame de contenido).
+-->
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg transform transition-all overflow-hidden border border-gray-100 my-auto" id="modal-content">
+
+        <!-- Cabecera del Modal -->
+        <div
+            class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+            <h3 class="text-xl font-bold text-gray-900">
+                {% if is_new %}Añadir Nueva Sucursal{% else %}Editar Sucursal: {{ sucursal.nombre }}{% endif %}
+            </h3>
+            <button type="button"
+                class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"
+                onclick="document.getElementById('modal-container').innerHTML = ''">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Formulario HTMX: Dispara 'reloadSucursales' al terminar con éxito -->
+        <form
+            hx-post="{% if is_new %}{% url 'config_sucursal_add' %}{% else %}{% url 'config_sucursal_edit' sucursal.id %}{% endif %}"
+            hx-target="#modal-container" hx-swap="innerHTML"
+            class="px-8 py-8 space-y-6">
+            {% csrf_token %}
+
+            <div class="grid grid-cols-1 gap-6">
+                <!-- Vínculo con la Empresa Madre -->
+                <div>
+                    <label for="{{ form.empresa.id_for_label }}">Empresa Operadora</label>
+                    {{ form.empresa }}
+                    {% if form.empresa.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.empresa.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Identificación del Punto de Venta -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label for="{{ form.nombre.id_for_label }}">Nombre / Punto de Venta</label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                            <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.nombre.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.punto.id_for_label }}">Punto (N°)</label>
+                        {{ form.punto }}
+                        <p class="text-[11px] text-slate-400 font-medium italic mt-1">Numera OC, recepciones y remitos internos.</p>
+                        {% if form.punto.errors %}
+                            <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.punto.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Datos Locales -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.direccion.id_for_label }}">Dirección Física</label>
+                        {{ form.direccion }}
+                        {% if form.direccion.errors %}
+                            <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.direccion.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.telefono.id_for_label }}">Teléfono Interno</label>
+                        {{ form.telefono }}
+                        {% if form.telefono.errors %}
+                            <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.telefono.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="pt-6 border-t border-gray-100 flex justify-end space-x-3">
+                <button type="button"
+                    class="px-6 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                    onclick="document.getElementById('modal-container').innerHTML = ''">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-200 transition-transform active:scale-95">
+                    {% if is_new %}Crear Sucursal{% else %}Actualizar Sucursal{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

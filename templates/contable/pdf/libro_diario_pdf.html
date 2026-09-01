@@ -1,0 +1,79 @@
+{% extends 'contable/pdf/base_pdf.html' %}
+
+{% block title %}Libro Diario PDF{% endblock %}
+{% block report_name %}LIBRO DIARIO{% endblock %}
+
+{% block content %}
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 10px;">
+    <thead>
+        <tr>
+            <th width="12%" align="left">Fecha</th>
+            <th width="10%" align="center">Asiento</th>
+            <th width="48%" align="left">Concepto / Cuenta Imputable</th>
+            <th width="15%" align="right">Debe ($)</th>
+            <th width="15%" align="right">Haber ($)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for asiento in asientos %}
+        <!-- Encabezado del Asiento -->
+        <tr style="background-color: #e0e7ff; color: #1e1b4b;">
+            <td width="12%" align="left" style="padding: 6px 8px; font-weight: bold; border-top: 1px solid #c7d2fe; border-bottom: 1px solid #c7d2fe;">
+                {{ asiento.fecha|date:"d/m/Y" }}
+            </td>
+            <td width="10%" align="center" style="padding: 6px 8px; font-weight: bold; border-top: 1px solid #c7d2fe; border-bottom: 1px solid #c7d2fe;">
+                #{{ asiento.asiento_id }}
+            </td>
+            <td width="48%" align="left" style="padding: 6px 8px; font-weight: bold; border-top: 1px solid #c7d2fe; border-bottom: 1px solid #c7d2fe;">
+                {{ asiento.concepto }}
+                {% if asiento.cli_pro %} <span style="font-weight: normal; color: #4338ca;">({{ asiento.cli_pro.razon_social }})</span>{% endif %}
+                {% if asiento.anulado %} <span style="color: #dc2626; font-weight: bold;">[ANULADO]</span>{% endif %}
+            </td>
+            <td width="15%" align="right" style="border-top: 1px solid #c7d2fe; border-bottom: 1px solid #c7d2fe;"></td>
+            <td width="15%" align="right" style="border-top: 1px solid #c7d2fe; border-bottom: 1px solid #c7d2fe;"></td>
+        </tr>
+
+        <!-- Líneas del Asiento (cble_asiento_mov) -->
+        {% for linea in asiento.lineas.all %}
+        <tr>
+            <td width="12%"></td>
+            <td width="10%"></td>
+            <td width="48%" align="left" style="padding-left: {% if linea.haber > 0 %}25px{% else %}10px{% endif %}; color: #1f2937;">
+                <span style="font-family: monospace; font-size: 8pt; color: #6b7280;">{{ linea.cuenta.jerarquia }}</span>
+                &nbsp;<strong>{{ linea.cuenta.cuenta }}</strong>
+                {% if linea.leyenda %}<span style="color: #6b7280; font-size: 8pt;"> - {{ linea.leyenda }}</span>{% endif %}
+            </td>
+            <td width="15%" align="right" style="font-family: monospace; font-size: 8.5pt;">
+                {% if linea.debe > 0 %}$ {{ linea.debe|floatformat:2 }}{% else %}-{% endif %}
+            </td>
+            <td width="15%" align="right" style="font-family: monospace; font-size: 8.5pt;">
+                {% if linea.haber > 0 %}$ {{ linea.haber|floatformat:2 }}{% else %}-{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+
+        <!-- Totales del Asiento -->
+        <tr style="background-color: #f8fafc; font-weight: bold; border-top: 1px dashed #cbd5e1; border-bottom: 2px solid #94a3b8;">
+            <td width="12%"></td>
+            <td width="10%"></td>
+            <td width="48%" align="right" style="font-style: italic; color: #475569; padding-right: 10px;">
+                TOTAL ASIENTO #{{ asiento.asiento_id }}:
+            </td>
+            <td width="15%" align="right" style="font-family: monospace; color: #0f172a;">
+                $ {{ asiento.monto|floatformat:2 }}
+            </td>
+            <td width="15%" align="right" style="font-family: monospace; color: #0f172a;">
+                $ {{ asiento.monto|floatformat:2 }}
+            </td>
+        </tr>
+        <tr><td colspan="5" style="height: 10px; border: none;"></td></tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" align="center" style="padding: 20px; color: #6b7280;">
+                No se encontraron asientos contables en el período o rango seleccionado.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

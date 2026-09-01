@@ -1,0 +1,223 @@
+<!-- 
+    MODAL DE EMPRESA
+    Posicionamiento: ABSOLUTO (se superpone solo al área de contenido central).
+    Gestiona la cabecera de la jerarquía organizacional del sistema.
+-->
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl transform transition-all overflow-hidden border border-gray-100 my-auto" id="modal-content">
+        
+        <!-- Cabecera del Modal con Estilo Corporativo -->
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+            <h3 class="text-xl font-bold text-gray-900">
+                {% if is_new %}Añadir Nueva Empresa{% else %}Editar Empresa: {{ empresa.nombre }}{% endif %}
+            </h3>
+            <button type="button" 
+                    class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"
+                    onclick="document.getElementById('modal-container').innerHTML = ''">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Formulario: Soporta carga de archivos para el logo -->
+        <form hx-post="{% if is_new %}{% url 'config_empresa_add' %}{% else %}{% url 'config_empresa_edit' empresa.id %}{% endif %}" 
+              hx-encoding="multipart/form-data"
+              hx-target="#modal-container" hx-swap="innerHTML"
+              class="px-8 py-6 space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="col-span-1 md:col-span-2">
+                    <label for="{{ form.nombre.id_for_label }}">Razón Social</label>
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.nombre.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.cuit.id_for_label }}">CUIT</label>
+                    {{ form.cuit }}
+                    {% if form.cuit.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.cuit.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="{{ form.correo.id_for_label }}">Correo Electrónico</label>
+                    {{ form.correo }}
+                    {% if form.correo.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.correo.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.telefono.id_for_label }}">Teléfono(s)</label>
+                    {{ form.telefono }}
+                    {% if form.telefono.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.telefono.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.condicion_iva.id_for_label }}">Condición frente al IVA</label>
+                    {{ form.condicion_iva }}
+                    {% if form.condicion_iva.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.condicion_iva.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.fecha_inicio_actividades.id_for_label }}">Inicio de Actividades</label>
+                    {{ form.fecha_inicio_actividades }}
+                    {% if form.fecha_inicio_actividades.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.fecha_inicio_actividades.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="col-span-1 md:col-span-2">
+                    <label for="{{ form.direccion.id_for_label }}">Dirección Central</label>
+                    {{ form.direccion }}
+                    {% if form.direccion.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.direccion.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="col-span-1 md:col-span-2">
+                    <label for="{{ form.tipo_actividad.id_for_label }}">Tipo de Actividad / Operatoria Especial</label>
+                    {{ form.tipo_actividad }}
+                    <p class="mt-1 text-[11px] text-slate-400 font-medium italic">Define módulos y comportamientos especiales (ej. carga obligatoria de CUIM en Armerías).</p>
+                    {% if form.tipo_actividad.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.tipo_actividad.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="col-span-1 md:col-span-2 p-5 bg-slate-50 rounded-[1.5rem] border border-dashed border-slate-200 group hover:border-indigo-300 transition-colors">
+                    <label class="text-indigo-900">Logo Corporativo</label>
+                    <div class="mt-1">
+                        {{ form.logo }}
+                    </div>
+                    <p class="mt-2 text-[11px] text-slate-400 font-medium italic">Formatos recomendados: PNG o SVG con fondo transparente.</p>
+                    {% if form.logo.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.logo.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Modalidad operativa -->
+                <div class="col-span-1 md:col-span-2 pt-4 border-t border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-800 mb-3">Modalidad Operativa</h4>
+                    <label class="flex items-start gap-3 text-sm text-slate-700 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors">
+                        {{ form.usa_orden_compra }}
+                        <span>
+                            <span class="font-semibold">Usa Órdenes de Compra</span>
+                            <span class="block text-[11px] text-slate-400 font-medium italic">El circuito de compras inicia por una Orden de Compra prenumerada.</span>
+                        </span>
+                    </label>
+                    {% if form.usa_orden_compra.errors %}
+                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.usa_orden_compra.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Ingresos Brutos -->
+                <div class="col-span-1 md:col-span-2 pt-4 border-t border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-800 mb-3">Ingresos Brutos</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                        <div>
+                            <label for="{{ form.condicion_iibb.id_for_label }}" class="block text-[12px] font-semibold text-gray-600 mb-1">Condición</label>
+                            {{ form.condicion_iibb }}
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-[12px] font-semibold text-gray-600 mb-1">Jurisdicciones inscriptas
+                                <span class="text-[11px] font-normal text-slate-400 italic">— se usan para filtrar al cargar percepciones</span>
+                            </label>
+                            <div class="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 grid grid-cols-2 gap-x-3 gap-y-1 bg-slate-50">
+                                {% for cb in form.jurisdicciones_iibb %}
+                                <label class="flex items-center gap-2 text-[12px] text-slate-700 hover:bg-white rounded px-1 py-0.5 cursor-pointer">
+                                    {{ cb.tag }}<span class="truncate">{{ cb.choice_label }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración ARCA (Facturación Electrónica WSFEv1) -->
+                <div class="col-span-1 md:col-span-2 pt-4 border-t border-gray-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-bold text-gray-800">Facturación Electrónica ARCA (WSFEv1)</h4>
+                        <div class="flex items-center gap-2">
+                            {% if form.instance.crt_afip %}
+                                {% with est=form.instance.estado_vencimiento_crt %}
+                                    {% if est.es_vencido %}
+                                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-800 uppercase tracking-wider animate-pulse">🔴 Vencido el {{ form.instance.vencimiento_crt_afip|date:"d/m/Y" }}</span>
+                                    {% elif est.es_advertencia %}
+                                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 uppercase tracking-wider">⚠️ Vence en {{ est.dias }} día(s)</span>
+                                    {% elif est.tiene_certificado %}
+                                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 uppercase tracking-wider">🟢 Vigente hasta {{ form.instance.vencimiento_crt_afip|date:"d/m/Y" }}</span>
+                                    {% endif %}
+                                {% endwith %}
+                            {% else %}
+                                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 uppercase tracking-wider">Sin Certificado</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100 space-y-4">
+                        <!-- Renglón 1: Entorno ARCA y Fecha de Vencimiento (.crt) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                            <div>
+                                <label for="{{ form.entorno_afip.id_for_label }}" class="block text-[12px] font-semibold text-emerald-950 mb-1">Entorno ARCA</label>
+                                {{ form.entorno_afip }}
+                            </div>
+                            <div>
+                                <label for="{{ form.vencimiento_crt_afip.id_for_label }}" class="block text-[12px] font-semibold text-emerald-950 mb-1">Vencimiento Certificado (.crt)</label>
+                                {{ form.vencimiento_crt_afip }}
+                                <p class="mt-1 text-[11px] text-emerald-700/80 font-medium italic">Se autodetecta automáticamente al subir el certificado (.crt).</p>
+                                {% if form.vencimiento_crt_afip.errors %}
+                                    <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.vencimiento_crt_afip.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Renglón 2: Certificado (.crt) y Clave Privada (.key) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start pt-3 border-t border-emerald-100/70">
+                            <div>
+                                <label for="{{ form.crt_afip.id_for_label }}" class="block text-[12px] font-semibold text-emerald-950 mb-1">Certificado ARCA (.crt)</label>
+                                <div class="mt-1">
+                                    {{ form.crt_afip }}
+                                </div>
+                                {% if form.instance.crt_afip %}
+                                <p class="mt-1.5 text-[11px] text-emerald-800 font-semibold truncate flex items-center gap-1" title="{{ form.instance.crt_afip.name }}">
+                                    <span>📁</span> <span class="truncate">{{ form.instance.crt_afip.name }}</span>
+                                </p>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label for="{{ form.key_afip.id_for_label }}" class="block text-[12px] font-semibold text-emerald-950 mb-1">Clave Privada ARCA (.key)</label>
+                                <div class="mt-1">
+                                    {{ form.key_afip }}
+                                </div>
+                                {% if form.instance.key_afip %}
+                                <p class="mt-1.5 text-[11px] text-emerald-800 font-semibold truncate flex items-center gap-1" title="{{ form.instance.key_afip.name }}">
+                                    <span>🔑</span> <span class="truncate">{{ form.instance.key_afip.name }}</span>
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-gray-100 flex justify-end space-x-3">
+                <button type="button" 
+                        class="px-6 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                        onclick="document.getElementById('modal-container').innerHTML = ''">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-200 transition-transform active:scale-95">
+                    {% if is_new %}Guardar Empresa{% else %}Actualizar Datos{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

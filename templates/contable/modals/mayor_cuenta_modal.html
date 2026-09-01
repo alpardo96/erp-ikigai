@@ -1,0 +1,180 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-xl w-11/12 max-w-7xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up">
+        
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Mayor General de Cuenta</h3>
+                    <p class="text-xs text-slate-500 font-medium">[{{ cuenta.jerarquia }}] {{ cuenta.cuenta }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Selector de Columnas Modal -->
+                <div class="relative" x-data="{ open: false }">
+                    <button @click="open = !open" type="button"
+                        class="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-md transition-colors font-semibold text-xs flex items-center gap-1 cursor-pointer">
+                        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <span>Columnas</span>
+                    </button>
+                    <div x-show="open" @click.outside="open = false" 
+                         class="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-3 max-h-72 overflow-y-auto"
+                         style="display: none;">
+                        <p class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 border-b border-slate-100 pb-1">Columnas a Mostrar</p>
+                        <div class="flex flex-col gap-1">
+                            {% for col in catalogo_columnas %}
+                            <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1 rounded cursor-pointer">
+                                <input type="checkbox" form="form-mayor-modal" name="columnas" value="{{ col.clave }}"
+                                       {% if col.clave in columnas_seleccionadas or not columnas_seleccionadas and col.default %}checked{% endif %}
+                                       class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                <span>{{ col.nombre }}</span>
+                                <span class="text-[10px] text-slate-400 ml-auto">({{ col.origen }})</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="exportarCsvMayorModal()"
+                   class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-200" title="Exportar a CSV">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    CSV
+                </button>
+                <button onclick="exportarExcelMayorModal()"
+                   class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors border border-emerald-200" title="Exportar a Excel">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Excel
+                </button>
+                <button onclick="exportarPdfMayorModal()"
+                   class="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-md transition-colors border border-rose-200 mr-2" title="Exportar a PDF">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    PDF
+                </button>
+                <button onclick="document.getElementById('modal-container').innerHTML=''" 
+                        class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors" title="Cerrar">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Panel de Filtros / Parámetros -->
+        <div class="bg-slate-100/70 border-b border-slate-200 p-4">
+            <form id="form-mayor-modal" hx-get="{% url 'libro_mayor_rows' %}" hx-target="#modal-mayor-tbody" hx-swap="innerHTML" class="flex flex-col gap-3">
+                <input type="hidden" name="cuenta_id" value="{{ cuenta.id }}">
+                
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                    <!-- Fecha Desde -->
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-tighter">Fecha Desde</label>
+                        <input type="date" name="fecha_desde" value="{{ fecha_desde }}"
+                               class="w-full h-9 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
+                    </div>
+                    
+                    <!-- Fecha Hasta -->
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-tighter">Fecha Hasta</label>
+                        <input type="date" name="fecha_hasta" value="{{ fecha_hasta }}"
+                               class="w-full h-9 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
+                    </div>
+
+                    <!-- Sucursal -->
+                    <div class="md:col-span-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-tighter">Sucursal</label>
+                        <select name="sucursal_id" class="w-full h-9 px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 outline-none cursor-pointer">
+                            <option value="">Todas</option>
+                            {% for suc in sucursales %}
+                            <option value="{{ suc.id }}" {% if sucursal_id|stringformat:'s' == suc.id|stringformat:'s' %}selected{% endif %}>{{ suc.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Botón Generar -->
+                    <div class="md:col-span-3 flex justify-end">
+                        <button type="submit"
+                                class="w-full h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg text-xs uppercase tracking-wider shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>Generar Reporte</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fila 2: Condición -->
+                <div class="flex items-center gap-3 pt-2 border-t border-slate-200/60">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Condición:</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        {% for c in condic_opciones %}
+                        <label class="flex items-center gap-1 text-xs text-slate-700 cursor-pointer bg-white px-2 py-1 rounded border border-slate-200">
+                            <input type="checkbox" name="condic" value="{{ c.valor }}"
+                                   {% if c.valor|stringformat:'s' in condics_seleccionados or not condics_seleccionados and c.valor in '1,2,5' %}checked{% endif %}
+                                   class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <span>{{ c.nombre }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Body / Grilla -->
+        <div class="p-6 overflow-y-auto overflow-x-auto max-h-[calc(90vh-220px)] bg-slate-50 flex-1">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden min-w-full inline-block align-middle">
+                <table class="min-w-full text-left border-collapse">
+                    <thead id="modal-mayor-thead">
+                        <tr class="bg-slate-100 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-bold">
+                            <th class="p-3 pl-4 sticky top-0 z-20 bg-slate-100 text-center whitespace-nowrap">ID Asiento</th>
+                            <th class="p-3 sticky top-0 z-20 bg-slate-100 text-center whitespace-nowrap">Fecha</th>
+                            <th class="p-3 sticky top-0 z-20 bg-slate-100 text-left whitespace-nowrap">Concepto</th>
+                            <th class="p-3 sticky top-0 z-20 bg-slate-100 text-right whitespace-nowrap">Debe</th>
+                            <th class="p-3 sticky top-0 z-20 bg-slate-100 text-right whitespace-nowrap">Haber</th>
+                            <th class="p-3 sticky top-0 z-20 bg-slate-100 text-right whitespace-nowrap">Saldo</th>
+                            <th class="p-3 pr-4 sticky top-0 z-20 bg-slate-100 text-center whitespace-nowrap">Condic</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-mayor-tbody">
+                        <tr>
+                            <td colspan="10" class="p-8 text-center text-slate-500">
+                                <svg class="w-10 h-10 mx-auto mb-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <p class="font-bold text-slate-700 text-sm">Verifique los parámetros de consulta y presione "Generar Reporte"</p>
+                                <p class="text-xs text-slate-400 mt-1">Ajuste el rango de fechas, sucursal, columnas o condiciones según su necesidad.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+function getFiltrosMayorModalURL() {
+    let form = document.getElementById('form-mayor-modal');
+    let formData = new FormData(form);
+    let params = new URLSearchParams();
+    
+    for (let [key, val] of formData.entries()) {
+        if (val) {
+            params.append(key, val);
+        }
+    }
+    return params.toString();
+}
+
+function exportarExcelMayorModal() {
+    let params = getFiltrosMayorModalURL();
+    if (params) window.location.href = "{% url 'exportar_mayor_excel' %}?" + params;
+}
+
+function exportarCsvMayorModal() {
+    let params = getFiltrosMayorModalURL();
+    if (params) window.location.href = "{% url 'exportar_mayor_csv' %}?" + params;
+}
+
+function exportarPdfMayorModal() {
+    let params = getFiltrosMayorModalURL();
+    if (params) window.location.href = "{% url 'exportar_mayor_pdf' %}?" + params;
+}
+</script>

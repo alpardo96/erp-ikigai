@@ -1,0 +1,27 @@
+{% load l10n %}
+<tr class="hover:bg-blue-50 transition-colors {% if ri.estado == 3 %}opacity-50 bg-slate-50{% endif %}">
+    <td class="px-4 py-2 font-bold text-slate-600">{{ ri.fecha|date:"d/m/Y" }}</td>
+    <td class="px-4 py-2 font-black text-slate-800">{{ ri.punto|stringformat:"04d" }}-{{ ri.numero|stringformat:"08d" }}</td>
+    <td class="px-4 py-2 text-slate-700">{{ ri.sucursal_origen.nombre }}</td>
+    <td class="px-4 py-2 text-slate-700">{{ ri.sucursal_destino.nombre }}</td>
+    <td class="px-4 py-2 text-center text-[10px] font-bold uppercase text-slate-500">{{ ri.get_tipo_display }}</td>
+    <td class="px-4 py-2 text-center">
+        {% if ri.estado == 0 %}<span class="text-[9px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">Emitido</span>
+        {% elif ri.estado == 1 %}<span class="text-[9px] font-black bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full uppercase">Rec. Parcial</span>
+        {% elif ri.estado == 2 %}<span class="text-[9px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase">Recepcionado</span>
+        {% else %}<span class="text-[9px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase">Anulado</span>{% endif %}
+    </td>
+    <td class="px-4 py-2 text-center whitespace-nowrap">
+        <a href="{% url 'remito_interno_imprimir' ri.ri_id %}" target="_blank" class="text-slate-400 hover:text-blue-600 transition-colors inline-block align-middle" title="Imprimir">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        </a>
+        {% if ri.estado == 0 %}
+        <button type="button" hx-post="{% url 'remito_interno_baja' ri.ri_id %}"
+                hx-confirm="¿Anular el Remito Interno {{ ri.punto|stringformat:'04d' }}-{{ ri.numero|stringformat:'08d' }}? Revierte el stock en tránsito. El número se conserva."
+                hx-target="closest tr" hx-swap="outerHTML"
+                class="text-red-400 hover:text-red-600 transition-colors align-middle ml-2" title="Anular">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+        </button>
+        {% endif %}
+    </td>
+</tr>

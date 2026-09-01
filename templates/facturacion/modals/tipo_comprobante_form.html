@@ -1,0 +1,48 @@
+<div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-[110] backdrop-blur-sm"></div>
+<div class="fixed inset-0 flex items-center justify-center z-[120] p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden italic">
+        <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+            <h3 class="text-base font-black uppercase tracking-tight">Nuevo Tipo de Comprobante</h3>
+            <button type="button" onclick="document.getElementById('modal-container').innerHTML=''" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form hx-post="{% url 'tipo_comprobante_add' %}" hx-target="#modal-container" hx-swap="innerHTML" class="p-6 space-y-4">
+            {% csrf_token %}
+            {% if error %}<p class="text-red-600 text-xs font-bold">{{ error }}</p>{% endif %}
+
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[11px] font-black text-slate-500 uppercase mb-1">Código</label>
+                    <input type="text" name="codigo" value="{{ codigo }}" maxlength="3" required autofocus
+                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-black text-slate-900 outline-none focus:border-blue-500 uppercase text-center">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-[11px] font-black text-slate-500 uppercase mb-1">Signo</label>
+                    <select name="signo"
+                        class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-900 outline-none focus:border-blue-500">
+                        <option value="1" {% if signo == '1' %}selected{% endif %}>(+) Suma — Factura / Débito</option>
+                        <option value="-1" {% if signo == '-1' %}selected{% endif %}>(−) Resta — Nota de Crédito</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-black text-slate-500 uppercase mb-1">Descripción</label>
+                <input type="text" name="detalle" value="{{ detalle|default:'' }}" required
+                    placeholder="Ej: FACTURA C RECIBIDA"
+                    class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-bold text-slate-900 outline-none focus:border-blue-500 uppercase">
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="document.getElementById('modal-container').innerHTML=''"
+                    class="px-4 py-2 text-slate-500 font-bold text-sm hover:text-slate-700">Cancelar</button>
+                <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-500 text-white font-black px-6 py-2 rounded-lg text-[11px] uppercase tracking-widest shadow-lg transition-all">
+                    Guardar y seleccionar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

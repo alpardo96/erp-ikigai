@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Facturación Masiva | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Facturación Masiva</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Pedidos tomados y todavía sin comprobante. La fecha de emisión la pone el sistema.
+            </p>
+        </div>
+        <div class="text-right">
+            <div class="text-2xl font-black text-slate-900">{{ total_pedidos }}</div>
+            <div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">
+                Pedidos · $ {{ total_importe|formato_ar }}
+            </div>
+        </div>
+    </div>
+
+    {% if con_faltantes %}
+    <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center justify-between">
+        <div class="text-xs text-amber-800">
+            <strong>Hay faltantes de stock sin resolver.</strong>
+            Conviene repartir el stock escaso antes de emitir: después del comprobante, corregir cuesta una nota de crédito.
+        </div>
+        <a href="{% url 'distribucion_faltantes' %}"
+           class="shrink-0 ml-4 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700">
+            Ver faltantes
+        </a>
+    </div>
+    {% endif %}
+
+    {% if not puede_facturar %}
+    <div class="rounded-xl bg-slate-100 border border-slate-200 px-4 py-2.5 text-xs text-slate-600">
+        Podés revisar la previsualización, pero no tenés permiso para emitir comprobantes.
+    </div>
+    {% endif %}
+
+    <form hx-post="{% url 'distribucion_facturacion' %}"
+          hx-target="#facturacion-resultado"
+          hx-confirm="Se van a emitir los comprobantes seleccionados. Una vez emitidos, corregirlos requiere una nota de crédito. ¿Continuar?"
+          x-data="{ todos: false }">
+        {% csrf_token %}
+
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="py-3 pl-6 pr-3 text-left">
+                                <input type="checkbox" x-model="todos"
+                                       @change="$el.closest('form').querySelectorAll('[name=pedidos]').forEach(c => c.checked = todos)"
+                                       class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                            </th>
+                            <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pedido</th>
+                            <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                            <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Entregar en</th>
+                            <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Emite</th>
+                            <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
+                            <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo Disp.</th>
+                            <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cobro Mín.</th>
+                            <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condición</th>
+                        </tr>
+                    </thead>
+                    <tbody id="facturacion-rows"
+                           class="divide-y divide-gray-100 bg-white"
+                           hx-get="{% url 'distribucion_facturacion' %}"
+                           hx-trigger="reloadFacturacion from:body">
+                        {% include 'distribucion/partials/facturacion_filas.html' %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if filas and puede_facturar %}
+        <div class="mt-4 flex justify-end">
+            <button type="submit"
+                    class="px-8 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm uppercase tracking-wide hover:bg-emerald-700 shadow-lg transition-transform active:scale-95">
+                Emitir comprobantes seleccionados
+            </button>
+        </div>
+        {% endif %}
+    </form>
+
+    <div id="facturacion-resultado"></div>
+
+    <p class="text-[11px] text-slate-400 italic">
+        <strong>Saldo Disponible</strong> es <code>límite − saldo</code> ya contando esta carga: si queda negativo, ése es el
+        importe mínimo que el repartidor tiene que cobrar para dejar la mercadería. Cuando el cobro mínimo cubre todo el
+        comprobante, la condición es CONTADO.
+    </p>
+</div>
+{% endblock %}

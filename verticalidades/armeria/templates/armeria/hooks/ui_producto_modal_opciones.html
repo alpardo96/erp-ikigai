@@ -1,0 +1,12 @@
+{%if empresa_actual.tipo_actividad == 'ARMERIA'%}
+<label class="flex items-center cursor-pointer">
+    {{ form.creden }}
+    <span class="ml-2 text-sm text-gray-700 font-medium">Requiere Credencial (Armería)</span>
+</label>
+{% endif %}
+{%if empresa_actual.usa_trazabilidad or empresa_actual.tipo_actividad == 'ARMERIA' or empresa_actual.tipo_actividad == 'AUTOMOTOR'%}
+<label class="flex items-center cursor-pointer">
+    {{ form.subprod }}
+    <span class="ml-2 text-sm text-gray-700 font-medium">Es Subproducto (Trazabilidad)</span>
+</label>
+{% endif %}

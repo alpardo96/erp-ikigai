@@ -1,0 +1,195 @@
+<div class="space-y-8" hx-swap="innerHTML show:window:top">
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-900">Panel de Control</h2>
+        <p class="mt-1 text-sm text-gray-500">Selecciona el módulo que deseas configurar.</p>
+    </div>
+
+    <!-- Organización -->
+    <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <span class="bg-indigo-100 text-indigo-700 p-1.5 rounded-lg mr-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                    </path>
+                </svg>
+            </span>
+            Organización
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=empresas" hx-target="#config-content"
+                class="text-left group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Empresas</div>
+                <div class="text-sm text-indigo-600/80 mt-1">Gestión de razones sociales y datos base.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=sucursales"
+                hx-target="#config-content"
+                class="text-left group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Sucursales</div>
+                <div class="text-sm text-indigo-600/80 mt-1">Locales y depósitos físicos.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=puntos_venta"
+                hx-target="#config-content"
+                class="text-left group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Puntos de Venta</div>
+                <div class="text-sm text-indigo-600/80 mt-1">Configuración de emisión fiscal AFIP.</div>
+            </button>
+        </div>
+    </div>
+
+    {% hook_ui 'configuracion_hub' %}
+
+    <!-- Contabilidad -->
+    <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <span class="bg-emerald-100 text-emerald-700 p-1.5 rounded-lg mr-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                    </path>
+                </svg>
+            </span>
+            Contabilidad
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=ejercicios"
+                hx-target="#config-content"
+                class="text-left group bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl hover:bg-emerald-100 transition-all shadow-sm">
+                <div class="text-emerald-700 font-semibold text-lg group-hover:text-emerald-800">Ejercicios Fiscales
+                </div>
+                <div class="text-sm text-emerald-600/80 mt-1">Periodos contables e impositivos.</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Facturación y Productos -->
+    <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <span class="bg-amber-100 text-amber-700 p-1.5 rounded-lg mr-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                </svg>
+            </span>
+            Facturación y Productos
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=marcas" hx-target="#config-content"
+                class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
+                <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Marcas</div>
+                <div class="text-sm text-amber-600/80 mt-1">Gestión de marcas de productos.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=rubros_prod"
+                hx-target="#config-content"
+                class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
+                <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Rubros</div>
+                <div class="text-sm text-amber-600/80 mt-1">Clasificación general de productos.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=familias" hx-target="#config-content"
+                class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
+                <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Familias</div>
+                <div class="text-sm text-amber-600/80 mt-1">Subclasificación detallada de productos.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=jurisdicciones"
+                hx-target="#config-content"
+                class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
+                <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Jurisdicciones</div>
+                <div class="text-sm text-amber-600/80 mt-1">Jurisdicciones impositivas de AFIP.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=comprobantes"
+                hx-target="#config-content"
+                class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
+                <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Comprobantes</div>
+                <div class="text-sm text-amber-600/80 mt-1">Tipos de comprobantes de ARCA.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=compra_trazabilidad"
+                hx-target="#config-content"
+                class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
+                <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Compra Trazabilidad</div>
+                <div class="text-sm text-amber-600/80 mt-1">Configuración y obligatoriedad de campos por serie.</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Tesorería -->
+    <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <span class="bg-blue-100 text-blue-700 p-1.5 rounded-lg mr-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </span>
+            Tesorería
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=mediospago" hx-target="#config-content"
+                class="text-left group bg-blue-50/50 border border-blue-100 p-5 rounded-2xl hover:bg-blue-100 transition-all shadow-sm">
+                <div class="text-blue-700 font-semibold text-lg group-hover:text-blue-800">Medios de Pago</div>
+                <div class="text-sm text-blue-600/80 mt-1">Gestión de medios de cobro y pago.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=cuentasbancarias" hx-target="#config-content"
+                class="text-left group bg-blue-50/50 border border-blue-100 p-5 rounded-2xl hover:bg-blue-100 transition-all shadow-sm">
+                <div class="text-blue-700 font-semibold text-lg group-hover:text-blue-800">Cuentas Bancarias</div>
+                <div class="text-sm text-blue-600/80 mt-1">Gestión de cuentas físicas y CBUs.</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Contabilidad -->
+    <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <span class="bg-indigo-100 text-indigo-700 p-1.5 rounded-lg mr-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+            </span>
+            Contabilidad
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=cuentascontables" hx-target="#config-content"
+                class="text-left group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Plan de Cuentas</div>
+                <div class="text-sm text-indigo-600/80 mt-1">Gestión del árbol de cuentas contables.</div>
+            </button>
+            <button hx-get="{% url 'config_parametros_contables' %}" hx-target="#modal-container"
+                class="text-left group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Parámetros Contables</div>
+                <div class="text-sm text-indigo-600/80 mt-1">Cuentas por defecto para automatización.</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Seguridad y Accesos -->
+    <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <span class="bg-red-100 text-red-700 p-1.5 rounded-lg mr-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                    </path>
+                </svg>
+            </span>
+            Seguridad
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=usuarios" hx-target="#config-content"
+                class="text-left group bg-red-50/50 border border-red-100 p-5 rounded-2xl hover:bg-red-100 transition-all shadow-sm">
+                <div class="text-red-700 font-semibold text-lg group-hover:text-red-800">Usuarios y Permisos</div>
+                <div class="text-sm text-red-600/80 mt-1">Control de acceso y roles al sistema.</div>
+            </button>
+
+            <!-- Ir al Admin de Django directamente como tile también puede ser buena idea -->
+            <a href="/admin/" target="_blank"
+                class="text-left group bg-slate-50 border border-slate-200 p-5 rounded-2xl hover:bg-slate-100 hover:border-slate-300 transition-all shadow-sm block">
+                <div class="text-slate-700 font-semibold text-lg group-hover:text-slate-800 flex items-center">
+                    <svg class="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                    </svg>
+                    Ir al Admin (Django)
+                </div>
+                <div class="text-sm text-slate-500 mt-1">Configuración avanzada de base de datos.</div>
+            </a>
+        </div>
+    </div>
+</div>

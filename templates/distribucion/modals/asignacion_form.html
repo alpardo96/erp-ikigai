@@ -1,0 +1,113 @@
+{% load formato_tags %}
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-8 overflow-y-auto" id="modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl transform transition-all overflow-hidden border border-gray-100 my-auto" id="modal-content">
+
+        <div class="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900">Repartir stock escaso</h3>
+                <p class="text-xs text-gray-500 mt-0.5">
+                    <span class="font-mono font-bold">{{ producto.id }}{% if producto.codigo_anterior %} | {{ producto.codigo_anterior }}{% endif %}</span>
+                    — {{ producto.detalle }}
+                </p>
+            </div>
+            <button type="button"
+                    class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"
+                    onclick="document.getElementById('modal-container').innerHTML = ''">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form hx-post="{% url 'distribucion_asignacion' producto.id %}"
+              hx-target="#modal-container" hx-swap="innerHTML"
+              x-data="{
+                  stock: {{ stock|stringformat:'s'|cut:',' }},
+                  get asignado() {
+                      return Array.from(this.$el.querySelectorAll('[data-cantidad]'))
+                          .reduce((t, i) => t + (parseFloat(i.value.replace(/\./g, '').replace(',', '.')) || 0), 0);
+                  },
+                  get restante() { return this.stock - this.asignado; }
+              }">
+            {% csrf_token %}
+
+            <div class="px-8 py-4 grid grid-cols-3 gap-3 bg-slate-50 border-b border-slate-100">
+                <div class="text-center">
+                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Stock disponible</div>
+                    <div class="text-lg font-black text-slate-800">{{ stock|formato_ar:0 }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total pedido</div>
+                    <div class="text-lg font-black text-slate-800">{{ total_pedido|formato_ar:0 }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sin asignar</div>
+                    <div class="text-lg font-black" :class="restante < 0 ? 'text-red-600' : 'text-emerald-600'"
+                         x-text="restante.toLocaleString('es-AR')"></div>
+                </div>
+            </div>
+
+            <div class="max-h-[45vh] overflow-y-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-white sticky top-0 shadow-sm">
+                        <tr>
+                            <th class="py-2.5 pl-8 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orden</th>
+                            <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pedido</th>
+                            <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                            <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vendedor</th>
+                            <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pidió</th>
+                            <th class="px-3 py-2.5 pr-8 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Asignar</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for fila in filas %}
+                        <tr class="{% if fila.sugerido < fila.cantidad %}bg-amber-50/50{% endif %}">
+                            <td class="py-2.5 pl-8 pr-3 text-xs font-black text-slate-400">{{ forloop.counter }}</td>
+                            <td class="px-3 py-2.5 text-xs">
+                                <div class="font-mono font-bold text-slate-800">{{ fila.pedido.numero_formateado }}</div>
+                                <div class="text-[10px] text-slate-400">{{ fila.hora_carga|date:"d/m H:i" }}</div>
+                            </td>
+                            <td class="px-3 py-2.5 text-xs font-semibold text-slate-700">{{ fila.cliente.razon_social }}</td>
+                            <td class="px-3 py-2.5 text-xs text-slate-500">
+                                {% if fila.vendedor %}{{ fila.vendedor.nombre }}{% else %}—{% endif %}
+                            </td>
+                            <td class="px-3 py-2.5 text-sm text-right font-mono text-slate-700">{{ fila.cantidad|formato_ar:0 }}</td>
+                            <td class="px-3 py-2.5 pr-8 text-right">
+                                <input type="text" data-cantidad
+                                       name="cantidad_{{ fila.item.id }}"
+                                       value="{{ fila.sugerido|formato_ar:0 }}"
+                                       inputmode="decimal"
+                                       {% if not puede_asignar %}disabled{% endif %}
+                                       class="fInputAR w-24 h-8 px-2 text-right bg-white border {% if fila.sugerido < fila.cantidad %}border-amber-300{% else %}border-slate-200{% endif %} rounded text-sm font-bold text-slate-900 outline-none focus:border-indigo-500 disabled:bg-slate-100">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-8 py-3 border-t border-slate-100">
+                <input type="text" name="observacion" maxlength="255"
+                       placeholder="Observación del reparto (opcional): por qué se decidió así"
+                       class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 outline-none focus:border-indigo-500 focus:bg-white">
+            </div>
+
+            <div class="bg-gray-50 px-8 py-4 flex justify-between items-center">
+                <p class="text-[10px] text-gray-400 italic max-w-md">
+                    Sugerido por orden de llegada. Asignar <strong>0</strong> quita el artículo de ese pedido.
+                    Cada cambio queda registrado con tu usuario.
+                </p>
+                <div class="flex space-x-3">
+                    <button type="button"
+                            class="px-6 py-2 text-sm font-medium text-gray-500 hover:text-gray-700"
+                            onclick="document.getElementById('modal-container').innerHTML = ''">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            {% if not puede_asignar %}disabled{% endif %}
+                            class="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-transform active:scale-95 disabled:bg-slate-300 disabled:cursor-not-allowed">
+                        Aplicar reparto
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

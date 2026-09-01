@@ -1,0 +1,26 @@
+<!-- Distribución (Plan 074): peso y unidad de venta alimentan el
+    Consolidado de Artículos; el código anterior es el que el
+    vendedor tiene en la lista de precios impresa. -->
+<div class="sm:col-span-6 border-t border-gray-200 pt-4 mt-2">
+    <p class="text-xs font-bold text-amber-700 uppercase tracking-wide mb-3">Distribución</p>
+    <div class="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
+        <div class="sm:col-span-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.codigo_anterior.label }}</label>
+            {{ form.codigo_anterior }}
+            <p class="mt-1 text-[10px] text-gray-400 italic">El que figura en la lista de precios que llevan los vendedores.</p>
+        </div>
+        <div class="sm:col-span-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.unidad_venta.label }}</label>
+            {{ form.unidad_venta }}
+        </div>
+        <div class="sm:col-span-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.peso_unitario_kg.label }}</label>
+            {{ form.peso_unitario_kg }}
+            <p class="mt-1 text-[10px] text-gray-400 italic">Referido a la unidad de venta elegida. Alimenta la columna Kgs del Consolidado.</p>
+        </div>
+        <div class="sm:col-span-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.unidades_por_bulto.label }}</label>
+            {{ form.unidades_por_bulto }}
+        </div>
+    </div>
+</div>

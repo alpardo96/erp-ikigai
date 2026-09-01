@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Recepciones Internas{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4">
+
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Recepciones Internas</h1>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'recepcion_interna_carga' %}"
+               class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest shadow transition-all">
+                + Nueva Recepción Interna
+            </a>
+            <a href="{% url 'stock_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-wrap items-end gap-3 italic">
+        <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Desde</label>
+            <input type="date" name="desde" value="{{ desde }}" class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+        </div>
+        <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Hasta</label>
+            <input type="date" name="hasta" value="{{ hasta }}" class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+        </div>
+        <button type="submit" class="h-9 px-5 bg-slate-900 hover:bg-slate-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow transition-all">Filtrar</button>
+        <a href="{% url 'recepcion_interna_listado' %}" class="h-9 flex items-center px-4 text-slate-400 hover:text-slate-700 font-black text-[10px] uppercase tracking-widest">Limpiar</a>
+    </form>
+
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <table class="w-full text-left text-[12px]">
+            <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-2">Fecha</th>
+                    <th class="px-4 py-2">N° Recepción</th>
+                    <th class="px-4 py-2">Origen</th>
+                    <th class="px-4 py-2">Proveedor</th>
+                    <th class="px-4 py-2">Sucursal Destino</th>
+                    <th class="px-4 py-2">Rem. Prov.</th>
+                    <th class="px-4 py-2 text-center">Estado</th>
+                    <th class="px-4 py-2 text-center">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for r in recepciones %}
+                    {% include 'facturacion/partials/recepcion_fila.html' with r=r %}
+                {% empty %}
+                <tr><td colspan="8" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay recepciones internas para los filtros seleccionados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

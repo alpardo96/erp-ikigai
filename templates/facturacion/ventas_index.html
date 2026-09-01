@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Ventas | ERP - Gestión Administrativa Contable{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full">
+    <div class="mb-12 text-center">
+        <h1 class="text-3xl font-bold text-gray-900 italic">Módulo de Ventas</h1>
+        <p class="mt-2 text-sm text-gray-500 italic">Facturación, preventas y control de autorizaciones.</p>
+    </div>
+    
+    <div class="flex flex-wrap justify-center gap-8 italic">
+        <!-- Tarjeta de Ventas -->
+        <a href="{% url 'ventas_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-green-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-green-100 rounded-2xl text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Carga de Ventas</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Emisión de facturas A, B, C y remitos. Control de stock en tiempo real y gestión de cobranza multicanal.</p>
+            <div class="flex items-center text-green-600 font-bold text-sm">
+                Iniciar facturación
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        {% hook_ui 'ventas_index_cards' %}
+
+        <!-- Tarjeta Listado de Ventas -->
+        <a href="{% url 'ventas_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Listado de Ventas</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Consultar histórico de facturas fiscales y presupuestos X emitidos, anular comprobantes y emitir Notas de Crédito.</p>
+            <div class="flex items-center text-blue-600 font-bold text-sm">
+                Ver listado
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta Reporte Ventas por Producto -->
+        <a href="{% url 'reporte_ventas_producto' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-emerald-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-emerald-100 rounded-2xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Ventas por Producto</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Reporte detallado de productos vendidos con filtros avanzados, columnas configurables en pantalla y exportaciones CSV y Excel.</p>
+            <div class="flex items-center text-emerald-600 font-bold text-sm">
+                Ver reporte
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta de Facturas Pendientes (Plan 056) -->
+        <a href="{% url 'facturas_pendientes' %}?operacion=V" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-orange-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-orange-100 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Facturas Pendientes</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Estado de cobranza de la cuenta corriente, comprobante por comprobante. Cobradas, pendientes y saldos, con Excel y resumen de cuentas en PDF.</p>
+            <div class="flex items-center text-orange-600 font-bold text-sm">
+                Ver pendientes
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
+        <!-- Tarjeta de Preventas -->
+        <a href="{% url 'preventas_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-purple-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-purple-100 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Preventas</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Carga ágil de borradores de venta para armería o mostrador, con validación de descuentos máximos por rubro.</p>
+            <div class="flex items-center text-purple-600 font-bold text-sm">
+                Generar Preventa
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        {% if user.perfil.permiso_autorizar_descuentos or user.perfil.es_admin_sistema or user.is_staff %}
+        <!-- Tarjeta Bandeja de Autorizaciones -->
+        <a href="{% url 'autorizaciones_index' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-red-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-red-100 rounded-2xl text-red-600 group-hover:bg-red-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Autorizaciones</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Bandeja de preventas y ventas pendientes de aprobación por exceder el descuento máximo permitido.</p>
+            <div class="flex items-center text-red-600 font-bold text-sm">
+                Revisar pendientes
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+        {% endif %}
+        
+        {% else %}
+        <!-- Tarjeta Actualizador de Tarifas -->
+        <a href="{% url 'estudio_actualizar_tarifas' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-teal-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-teal-100 rounded-2xl text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Actualizar Tarifas</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Gestión masiva de honorarios y asignación de cuentas por cliente.</p>
+            <div class="flex items-center text-teal-600 font-bold text-sm">
+                Ir a Tarifas
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta Facturacion por Lotes -->
+        <a href="{% url 'estudio_facturacion_lotes' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-indigo-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-indigo-100 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Facturación por Lotes</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Generación masiva de comprobantes electrónicos en base a las tarifas vigentes.</p>
+            <div class="flex items-center text-indigo-600 font-bold text-sm">
+                Generar Lote
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

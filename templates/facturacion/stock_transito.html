@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block title %}Stock en Tránsito{% endblock %}
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4">
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Stock en Tránsito</h1>
+        <a href="{% url 'remito_interno_listado' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </a>
+    </div>
+    <p class="text-[12px] text-slate-500 italic">Mercadería enviada por remito interno y aún no recepcionada por el destino.</p>
+
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+        <table class="w-full text-left text-[12px]">
+            <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-2">Remito</th>
+                    <th class="px-4 py-2">Fecha</th>
+                    <th class="px-4 py-2">Origen</th>
+                    <th class="px-4 py-2">Destino</th>
+                    <th class="px-4 py-2">Producto</th>
+                    <th class="px-4 py-2 text-center">En Tránsito</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for f in filas %}
+                <tr class="hover:bg-amber-50 transition-colors">
+                    <td class="px-4 py-2 font-black text-slate-800">{{ f.remito.punto|stringformat:"04d" }}-{{ f.remito.numero|stringformat:"08d" }}</td>
+                    <td class="px-4 py-2 text-slate-600">{{ f.remito.fecha|date:"d/m/Y" }}</td>
+                    <td class="px-4 py-2 text-slate-700">{{ f.remito.sucursal_origen.nombre }}</td>
+                    <td class="px-4 py-2 text-slate-700">{{ f.remito.sucursal_destino.nombre }}</td>
+                    <td class="px-4 py-2 uppercase text-slate-700">{{ f.producto.detalle }}</td>
+                    <td class="px-4 py-2 text-center font-black text-amber-700 tabular-nums">{{ f.pendiente|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay mercadería en tránsito.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

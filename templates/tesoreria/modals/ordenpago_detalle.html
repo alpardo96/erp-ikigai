@@ -1,0 +1,132 @@
+{% load formato_tags %}
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 py-10 overflow-y-auto">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl border border-gray-100 my-auto">
+
+        <div class="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+            <div>
+                <h3 class="text-lg font-black text-gray-900">
+                    Orden de Pago {{ op.punto|stringformat:"04d" }}-{{ op.numero|stringformat:"08d" }}
+                    {% if op.anulado %}<span class="ml-2 text-red-600 text-xs uppercase">Anulada</span>{% endif %}
+                </h3>
+                <p class="text-xs text-slate-500">{{ op.proveedor.razon_social }} · {{ op.fecha|date:"d/m/Y" }}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="{% url 'ordenpago_pdf' op.pk %}" target="_blank"
+                   class="px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
+                    Reimprimir
+                </a>
+                <button type="button" class="text-gray-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50"
+                        onclick="document.getElementById('modal-container').innerHTML = ''">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="px-8 py-6 space-y-5 text-sm">
+
+            {% if aplicaciones %}
+            <div>
+                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-tighter mb-2">Comprobantes cancelados</h4>
+                <table class="min-w-full text-[12px] border border-slate-200 rounded">
+                    <thead class="bg-slate-50 text-[10px] uppercase text-slate-400">
+                        <tr><th class="px-3 py-1.5 text-left">Comprobante</th><th class="px-3 py-1.5 text-right">Aplicado</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for ap in aplicaciones %}
+                        <tr>
+                            <td class="px-3 py-1.5">{{ ap.compra.tipo.detalle|default:"Comprobante" }}
+                                {{ ap.compra.punto|stringformat:"04d" }}-{{ ap.compra.numero|stringformat:"08d" }}</td>
+                            <td class="px-3 py-1.5 text-right font-bold">$ {{ ap.importe_pesos|formato_ar }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if imputaciones %}
+            <div>
+                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-tighter mb-2">Imputación contable</h4>
+                <table class="min-w-full text-[12px] border border-slate-200 rounded">
+                    <tbody class="divide-y divide-slate-100">
+                        {% for imp in imputaciones %}
+                        <tr>
+                            <td class="px-3 py-1.5">{{ imp.cuenta_contable.jerarquia }} - {{ imp.cuenta_contable.cuenta }}</td>
+                            <td class="px-3 py-1.5 text-slate-500">{{ imp.leyenda|default:"" }}</td>
+                            <td class="px-3 py-1.5 text-right font-bold">$ {{ imp.importe|formato_ar }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <div>
+                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-tighter mb-2">Medios de pago</h4>
+                <table class="min-w-full text-[12px] border border-slate-200 rounded">
+                    <tbody class="divide-y divide-slate-100">
+                        {% for d in detalles %}
+                        <tr>
+                            <td class="px-3 py-1.5">{{ d.medio_pago.nombre }}</td>
+                            <td class="px-3 py-1.5 text-right font-bold">$ {{ d.importe|formato_ar }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="bg-slate-50 font-black">
+                            <td class="px-3 py-1.5">TOTAL</td>
+                            <td class="px-3 py-1.5 text-right">$ {{ op.total|formato_ar }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {% if valores_entregados %}
+            <div>
+                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-tighter mb-2">Cheques de terceros entregados</h4>
+                <table class="min-w-full text-[12px] border border-slate-200 rounded">
+                    <tbody class="divide-y divide-slate-100">
+                        {% for v in valores_entregados %}
+                        <tr>
+                            <td class="px-3 py-1.5">{{ v.banco.nombre }} N° {{ v.numero_cheque }}</td>
+                            <td class="px-3 py-1.5 text-slate-500">Vto. {{ v.fecha_vencimiento|date:"d/m/Y" }}</td>
+                            <td class="px-3 py-1.5 text-right font-bold">$ {{ v.importe|formato_ar }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if retenciones %}
+            <div>
+                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-tighter mb-2">Retenciones practicadas</h4>
+                <table class="min-w-full text-[12px] border border-slate-200 rounded">
+                    <thead class="bg-slate-50 text-[10px] uppercase text-slate-400">
+                        <tr>
+                            <th class="px-3 py-1.5 text-left">Impuesto</th>
+                            <th class="px-3 py-1.5 text-center">Régimen</th>
+                            <th class="px-3 py-1.5 text-left">Certificado</th>
+                            <th class="px-3 py-1.5 text-right">Base</th>
+                            <th class="px-3 py-1.5 text-right">Retenido</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for r in retenciones %}
+                        <tr>
+                            <td class="px-3 py-1.5">{{ r.get_impuesto_display }}</td>
+                            <td class="px-3 py-1.5 text-center">{{ r.regimen|default:"—" }}</td>
+                            <td class="px-3 py-1.5">{{ r.nro_certificado|default:"—" }}</td>
+                            <td class="px-3 py-1.5 text-right">$ {{ r.base|formato_ar }}</td>
+                            <td class="px-3 py-1.5 text-right font-bold">$ {{ r.importe|formato_ar }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <p class="text-[10px] text-slate-400 italic">
+                Asiento contable N° {{ op.asiento_id|default:"—" }}
+            </p>
+        </div>
+    </div>
+</div>

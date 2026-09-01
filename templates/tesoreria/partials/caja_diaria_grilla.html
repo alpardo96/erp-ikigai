@@ -1,0 +1,185 @@
+{% load formato_tags %}
+
+<div class="grid grid-cols-12 gap-5">
+
+    <!-- Listado de cajas -->
+    <div class="col-span-12 xl:col-span-2">
+        <div class="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
+            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wide">Cajas</h3>
+            </div>
+            <div class="max-h-[560px] overflow-y-auto divide-y divide-gray-100">
+                {% for item in cajas %}
+                    <button type="button" data-sesion-id="{{ item.id }}"
+                            class="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-indigo-50 transition-colors
+                                   {% if item.id == sesion.id %}bg-indigo-600 text-white hover:bg-indigo-600{% endif %}">
+                        <span class="font-bold">{{ item.numero|default:item.id }}</span>
+                        <span class="{% if item.id == sesion.id %}text-indigo-100{% else %}text-gray-500{% endif %}">
+                            {% if item.fecha_operativa %}{{ item.fecha_operativa|date:"d/m/Y" }}{% else %}abierta{% endif %}
+                        </span>
+                    </button>
+                {% empty %}
+                    <p class="px-4 py-6 text-sm text-gray-400 text-center">Sin cajas</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Grilla de movimientos -->
+    <div class="col-span-12 xl:col-span-10 flex flex-col gap-5">
+        <div class="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
+            <div class="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between flex-wrap gap-3">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-sm font-bold text-gray-800">
+                        Caja N° {{ sesion.numero|default:sesion.id }}
+                    </h3>
+                    {% if sesion.estado == 'A' %}
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">ACTIVA</span>
+                    {% else %}
+                        <span class="px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">
+                            CERRADA {{ sesion.fecha_operativa|date:"d/m/Y" }}
+                        </span>
+                    {% endif %}
+                    <span class="text-xs text-gray-500">{{ sesion.caja.sucursal.nombre }}</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'caja_diaria_excel' %}?sesion_id={{ sesion.id }}&sucursal_id={{ sucursal_id }}&condic={{ condic }}"
+                       class="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                        Excel
+                    </a>
+                    <a href="{% url 'caja_diaria_pdf' %}?sesion_id={{ sesion.id }}&sucursal_id={{ sucursal_id }}&condic={{ condic }}"
+                       class="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
+                        Imprimir
+                    </a>
+                    {% if sesion.estado == 'A' %}
+                        <form method="post" action="{% url 'caja_diaria_cerrar' %}"
+                              onsubmit="return confirm('¿Cerrar la caja N° {{ sesion.numero|default:sesion.id }}? Se congelan los saldos y se abre la caja siguiente.');">
+                            {% csrf_token %}
+                            <input type="hidden" name="sesion_id" value="{{ sesion.id }}">
+                            <button type="submit"
+                                    class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700">
+                                Cerrar Caja
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs">
+                    <thead class="bg-slate-800 text-white">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-semibold">Asiento</th>
+                            <th class="px-3 py-2 text-left font-semibold">Fecha</th>
+                            <th class="px-3 py-2 text-left font-semibold">Cód.</th>
+                            <th class="px-3 py-2 text-left font-semibold">Razón</th>
+                            <th class="px-3 py-2 text-left font-semibold">Cta.</th>
+                            <th class="px-3 py-2 text-left font-semibold">Concepto Contable</th>
+                            <th class="px-3 py-2 text-left font-semibold">Descripción</th>
+                            <th class="px-3 py-2 text-right font-semibold">Efectivo</th>
+                            <th class="px-3 py-2 text-right font-semibold">Dólares</th>
+                            <th class="px-3 py-2 text-right font-semibold">Banco</th>
+                            <th class="px-3 py-2 text-right font-semibold">Valores</th>
+                            <th class="px-3 py-2 text-right font-semibold">Tarjetas</th>
+                            <th class="px-3 py-2 text-right font-semibold">Total</th>
+                            <th class="px-3 py-2 text-right font-semibold">Saldo</th>
+                            <th class="px-3 py-2 text-center font-semibold">Cd</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for mov in movimientos %}
+                            <tr class="hover:bg-indigo-50/50">
+                                <td class="px-3 py-1.5 text-gray-500">{{ mov.asiento_id|default:"—" }}</td>
+                                <td class="px-3 py-1.5 whitespace-nowrap">{{ mov.fecha|date:"d/m/Y" }}</td>
+                                <td class="px-3 py-1.5 text-gray-500">{{ mov.codigo }}</td>
+                                <td class="px-3 py-1.5 font-medium text-gray-800">{{ mov.razon }}</td>
+                                <td class="px-3 py-1.5 text-gray-500">{{ mov.jerarquia }}</td>
+                                <td class="px-3 py-1.5 text-gray-700">{{ mov.cuenta }}</td>
+                                <td class="px-3 py-1.5 text-gray-500">{{ mov.descripcion|truncatechars:44 }}</td>
+                                <td class="px-3 py-1.5 text-right {% if mov.efectivo < 0 %}text-red-600{% endif %}">{{ mov.efectivo|formato_ar }}</td>
+                                <td class="px-3 py-1.5 text-right {% if mov.dolares < 0 %}text-red-600{% endif %}">{{ mov.dolares|formato_ar }}</td>
+                                <td class="px-3 py-1.5 text-right {% if mov.banco < 0 %}text-red-600{% endif %}">{{ mov.banco|formato_ar }}</td>
+                                <td class="px-3 py-1.5 text-right {% if mov.valores < 0 %}text-red-600{% endif %}">{{ mov.valores|formato_ar }}</td>
+                                <td class="px-3 py-1.5 text-right {% if mov.tarjetas < 0 %}text-red-600{% endif %}">{{ mov.tarjetas|formato_ar }}</td>
+                                <td class="px-3 py-1.5 text-right font-bold {% if mov.total < 0 %}text-red-600{% else %}text-gray-900{% endif %}">{{ mov.total|formato_ar }}</td>
+                                <td class="px-3 py-1.5 text-right font-semibold text-gray-700">{{ mov.saldo|formato_ar }}</td>
+                                <td class="px-3 py-1.5 text-center text-gray-400">{{ mov.condic }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="15" class="px-4 py-10 text-center text-sm text-gray-400">
+                                    Esta caja todavía no tiene movimientos registrados.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Panel de saldos -->
+        <div class="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-xs">
+                    <thead class="bg-slate-800 text-white">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-semibold w-48"></th>
+                            <th class="px-4 py-2 text-right font-semibold">Efectivo</th>
+                            <th class="px-4 py-2 text-right font-semibold">Dólares</th>
+                            <th class="px-4 py-2 text-right font-semibold">Valores</th>
+                            <th class="px-4 py-2 text-right font-semibold">Banco</th>
+                            <th class="px-4 py-2 text-right font-semibold">Tarjetas</th>
+                            <th class="px-4 py-2 text-right font-semibold">Otros</th>
+                            <th class="px-4 py-2 text-right font-semibold">Ingresos</th>
+                            <th class="px-4 py-2 text-right font-semibold">Egresos</th>
+                            <th class="px-4 py-2 text-right font-semibold bg-slate-900">Neto</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <tr>
+                            <td class="px-4 py-2 font-bold text-gray-700">Saldos Iniciales</td>
+                            <td class="px-4 py-2 text-right">{{ saldos.inicial.efectivo|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right">{{ saldos.inicial.dolares|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right">{{ saldos.inicial.valores|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right font-bold bg-slate-50">{{ saldos.inicial.neto|formato_ar }}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2 font-bold text-gray-700">Movimientos</td>
+                            <td class="px-4 py-2 text-right {% if saldos.movimiento.efectivo < 0 %}text-red-600{% endif %}">{{ saldos.movimiento.efectivo|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right {% if saldos.movimiento.dolares < 0 %}text-red-600{% endif %}">{{ saldos.movimiento.dolares|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right {% if saldos.movimiento.valores < 0 %}text-red-600{% endif %}">{{ saldos.movimiento.valores|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right {% if saldos.movimiento.banco < 0 %}text-red-600{% endif %}">{{ saldos.movimiento.banco|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right {% if saldos.movimiento.tarjetas < 0 %}text-red-600{% endif %}">{{ saldos.movimiento.tarjetas|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right {% if saldos.movimiento.otros < 0 %}text-red-600{% endif %}">{{ saldos.movimiento.otros|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right text-emerald-700">{{ saldos.movimiento.ingresos|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right text-red-600">{{ saldos.movimiento.egresos|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right font-bold bg-slate-50 {% if saldos.movimiento.neto < 0 %}text-red-600{% endif %}">{{ saldos.movimiento.neto|formato_ar }}</td>
+                        </tr>
+                        <tr class="bg-indigo-50/40">
+                            <td class="px-4 py-2 font-bold text-gray-900">Saldos Finales</td>
+                            <td class="px-4 py-2 text-right font-bold">{{ saldos.final.efectivo|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right font-bold">{{ saldos.final.dolares|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right font-bold">{{ saldos.final.valores|formato_ar }}</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right font-black text-base bg-indigo-600 text-white">{{ saldos.final.neto|formato_ar }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="px-4 py-2 text-[11px] text-gray-500 bg-gray-50 border-t border-gray-100">
+                El saldo disponible es <strong>Efectivo + Dólares + Valores</strong>. Banco, Tarjetas y Otros
+                informan el movimiento neto del día pero no integran el saldo de la caja.
+            </p>
+        </div>
+    </div>
+</div>

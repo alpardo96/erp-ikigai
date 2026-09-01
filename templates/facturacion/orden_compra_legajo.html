@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block title %}Legajo OC {{ oc.punto|stringformat:"04d" }}-{{ oc.numero|stringformat:"08d" }}{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto w-full px-4 py-2 space-y-4">
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+            Legajo — Orden de Compra {{ oc.punto|stringformat:"04d" }}-{{ oc.numero|stringformat:"08d" }}
+        </h1>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'oc_imprimir' oc.oc_id %}" target="_blank" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-black px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest shadow">Imprimir OC</a>
+            <a href="{% url 'oc_listado' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Cabecera -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 grid grid-cols-4 gap-4 italic text-[12px]">
+        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Proveedor</span>{{ oc.proveedor.razon_social }}</div>
+        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Fecha</span>{{ oc.fecha|date:"d/m/Y" }}</div>
+        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Estado</span>{{ oc.get_estado_display }}</div>
+        <div><span class="block text-[10px] font-black text-slate-400 uppercase">Avance</span>R: {{ oc.get_estado_recepcion_display }} · F: {{ oc.get_estado_facturacion_display }}</div>
+    </div>
+
+    <!-- Líneas -->
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+        <div class="bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5">Líneas de la OC</div>
+        <table class="w-full text-left text-[12px]">
+            <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
+                <tr>
+                    <th class="px-3 py-2">Producto</th>
+                    <th class="px-3 py-2 text-center">Pedida</th>
+                    <th class="px-3 py-2 text-center">Original</th>
+                    <th class="px-3 py-2 text-center">Recibida</th>
+                    <th class="px-3 py-2 text-center">Facturada</th>
+                    <th class="px-3 py-2 text-center">Pend. Recep.</th>
+                    <th class="px-3 py-2 text-center">Pend. Fact.</th>
+                    <th class="px-3 py-2 text-center">Dif.</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for li in items %}
+                <tr class="hover:bg-blue-50">
+                    <td class="px-3 py-2 uppercase text-slate-700">{{ li.producto.detalle }}</td>
+                    <td class="px-3 py-2 text-center font-bold">{{ li.cantidad|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-center text-slate-400">{{ li.cantidad_original|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-center">{{ li.cantidad_recibida|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-center">{{ li.cantidad_facturada|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-center font-black {% if li.pendiente_recepcion > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ li.pendiente_recepcion|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-center font-black {% if li.pendiente_facturacion > 0 %}text-amber-600{% else %}text-green-600{% endif %}">{{ li.pendiente_facturacion|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-center">{% if li.marcado_diferencia %}<span class="text-[9px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase">Sí</span>{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+        <!-- Recepciones -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+            <div class="bg-teal-700 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5">Recepciones vinculadas</div>
+            <table class="w-full text-left text-[12px]">
+                <thead class="bg-slate-100 text-slate-600 text-[10px] uppercase"><tr><th class="px-3 py-2">N°</th><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Origen</th><th class="px-3 py-2 text-center"></th></tr></thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for r in recepciones %}
+                    <tr class="{% if r.estado == 1 %}opacity-50{% endif %}">
+                        <td class="px-3 py-2 font-black">{{ r.punto|stringformat:"04d" }}-{{ r.numero|stringformat:"08d" }}</td>
+                        <td class="px-3 py-2 text-slate-600">{{ r.fecha|date:"d/m/Y" }}</td>
+                        <td class="px-3 py-2 text-[10px] uppercase text-slate-500">{{ r.get_origen_display }}</td>
+                        <td class="px-3 py-2 text-center"><a href="{% url 'recepcion_imprimir' r.recepcion_id %}" target="_blank" class="text-slate-400 hover:text-blue-600 text-[11px] font-bold">PDF</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-3 py-6 text-center text-gray-400 italic">Sin recepciones.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Facturas -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            <div class="bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5">Facturas vinculadas</div>
+            <table class="w-full text-left text-[12px]">
+                <thead class="bg-slate-100 text-slate-600 text-[10px] uppercase"><tr><th class="px-3 py-2">Comprobante</th><th class="px-3 py-2 text-center">Imputado</th><th class="px-3 py-2 text-center">Acción</th></tr></thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for f in facturas %}
+                    <tr>
+                        <td class="px-3 py-2 font-black">{{ f.compra.tipo.codigo }} {{ f.compra.punto|stringformat:"04d" }}-{{ f.compra.numero|stringformat:"08d" }}</td>
+                        <td class="px-3 py-2 text-center">{{ f.imputado|floatformat:2 }}</td>
+                        <td class="px-3 py-2 text-center">
+                            <form method="post" action="{% url 'factura_desafectar_oc' oc.oc_id f.compra.compras_id %}"
+                                  onsubmit="return confirm('¿Desafectar la factura de esta OC? Reabre el pendiente de facturación. La factura NO se borra.');">
+                                {% csrf_token %}
+                                <button type="submit" class="text-[10px] font-black text-red-500 hover:text-red-700 uppercase">Desafectar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="px-3 py-6 text-center text-gray-400 italic">Sin facturas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

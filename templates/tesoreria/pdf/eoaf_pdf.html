@@ -1,0 +1,78 @@
+{% load formato_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page { size: A4 landscape; margin: 1.2cm 1cm; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; color: #111; }
+        .titulo { font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 2px; }
+        .subtitulo { font-size: 8pt; text-align: center; color: #555; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background-color: #1e3a8a; color: #fff; padding: 3px 4px; font-size: 7pt; text-align: right; }
+        th.izq { text-align: left; }
+        td { padding: 2px 4px; text-align: right; border-bottom: 0.5px solid #e2e8f0; }
+        td.izq { text-align: left; }
+        /* Sumarizadoras en azul y negrita, como en el reporte del sistema legado. */
+        .sumariza td { background-color: #eff6ff; color: #1d4ed8; font-weight: bold; }
+        .total td { border-top: 1px solid #1e3a8a; border-bottom: 1px solid #1e3a8a; font-weight: bold; background-color: #e0e7ff; }
+        .pie { margin-top: 8px; font-size: 6.5pt; color: #666; text-align: right; }
+        .nota { margin-top: 6px; font-size: 6.5pt; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="titulo">{{ titulo }}</div>
+<div class="subtitulo">Emisión: {{ fecha_emision|date:"d/m/Y H:i" }}</div>
+
+<table>
+    <thead>
+        <tr>
+            <th class="izq">Código</th>
+            <th class="izq">Jerarquía</th>
+            <th class="izq">Detalle</th>
+            <th>Ingresos Fondos</th>
+            <th>Egresos Fondos</th>
+            <th>Flujo Neto</th>
+            {% for clave, rotulo in medios %}<th>{{ rotulo }}</th>{% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for fila in filas %}
+            <tr {% if not fila.imputable %}class="sumariza"{% endif %}>
+                <td class="izq">{{ fila.codigo|default:"" }}</td>
+                <td class="izq">{{ fila.jerarquia }}</td>
+                <td class="izq">{{ fila.detalle }}</td>
+                <td>{{ fila.ingresos|formato_ar }}</td>
+                <td>{{ fila.egresos|formato_ar }}</td>
+                <td>{{ fila.neto|formato_ar }}</td>
+                {% for valor in fila.medios_lista %}<td>{{ valor|formato_ar }}</td>{% endfor %}
+            </tr>
+        {% empty %}
+            <tr><td class="izq" colspan="12">No hubo movimientos de fondos en el período.</td></tr>
+        {% endfor %}
+    </tbody>
+    {% if filas %}
+        <tfoot>
+            <tr class="total">
+                <td class="izq" colspan="3">TOTALES</td>
+                <td>{{ totales.ingresos|formato_ar }}</td>
+                <td>{{ totales.egresos|formato_ar }}</td>
+                <td>{{ totales.neto|formato_ar }}</td>
+                {% for valor in totales.medios_lista %}<td>{{ valor|formato_ar }}</td>{% endfor %}
+            </tr>
+        </tfoot>
+    {% endif %}
+</table>
+
+<div class="nota">
+    Las filas en azul son cuentas sumarizadoras y acumulan a sus imputables; los totales suman
+    sólo las imputables. Los traslados entre cajas y bancos propios no se listan: no son origen
+    ni aplicación de fondos. El Flujo Neto total coincide con la variación de las
+    disponibilidades del período.
+</div>
+
+<div class="pie">ERP Ikigai — Estado de Origen y Aplicación de Fondos</div>
+
+</body>
+</html>

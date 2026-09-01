@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Trazabilidad de Subproductos | Stock{% endblock %}
+
+{% block content %}
+<div class="h-full flex flex-col pt-3 gap-3 w-full px-3 sm:px-4 lg:px-6">
+
+    <!-- Cabecera Inline Fina -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Trazabilidad de Subproductos</h1>
+            <p class="mt-2 text-sm text-gray-500">Consulta histórica por Número de Serie / CUIM</p>
+        </div>
+    </div>
+
+    <!-- Buscador y Filtros (Fila Única Ultra-Compacta con Flexbox Proporcional) -->
+    <form id="form-filtros-trazabilidad" 
+          hx-get="{% url 'subproducto_trazabilidad_listado' %}" 
+          hx-target="#trazabilidad-rows" 
+          class="bg-white p-2.5 px-3.5 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap lg:flex-nowrap items-end gap-2.5">
+        
+        <!-- Cliente / Proveedor (Ampliación Proporcional flex-1) -->
+        <div class="relative flex-1 min-w-[180px]" x-data="{ open: false }">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Cliente / Proveedor</label>
+            <input type="text" name="clipro" id="clipro_input" placeholder="Buscar CliPro..." autocomplete="off"
+                   hx-get="{% url 'typeahead_clientes' %}" hx-trigger="keyup changed delay:300ms, search"
+                   hx-target="#clipro_suggestions" hx-vals='js:{q: document.getElementById("clipro_input").value, solo_trazabilidad: "1"}'
+                   @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                   class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs focus:ring-indigo-500 focus:border-indigo-500">
+            <div x-show="open" id="clipro_suggestions" class="absolute z-50 left-0 top-full mt-1 w-full md:w-[350px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto" style="display: none;"></div>
+        </div>
+        
+        <!-- Producto (Detalle) (Ampliación Proporcional flex-1) -->
+        <div class="relative flex-1 min-w-[180px]" x-data="{ open: false }">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Producto (Detalle)</label>
+            <input type="text" name="producto" id="producto_input" placeholder="Buscar Producto..." autocomplete="off"
+                   hx-get="{% url 'typeahead_productos_venta' %}" hx-trigger="keyup changed delay:300ms, search"
+                   hx-target="#producto_suggestions" hx-vals='js:{q: document.getElementById("producto_input").value, solo_trazabilidad: "1"}'
+                   @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                   class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs focus:ring-indigo-500 focus:border-indigo-500">
+            <div x-show="open" id="producto_suggestions" class="absolute z-50 right-0 top-full mt-1 w-full md:w-[350px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto" style="display: none;"></div>
+        </div>
+
+        <!-- Nro. Serie / Identificador (Ancho Compacto Reducido w-32) -->
+        <div class="relative w-32 flex-shrink-0">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Nro. Serie</label>
+            <input type="text" name="serie" id="serie_input" placeholder="Serie..." autocomplete="off"
+                   hx-get="{% url 'subproducto_trazabilidad_listado' %}"
+                   hx-trigger="keyup[this.value.length >= 3 || this.value.length == 0] changed delay:250ms, search"
+                   hx-target="#trazabilidad-rows"
+                   hx-include="#form-filtros-trazabilidad"
+                   class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs font-mono font-semibold focus:ring-indigo-500 focus:border-indigo-500 uppercase">
+        </div>
+        
+        <!-- CUIM (Ancho Compacto Reducido w-28) -->
+        <div class="relative w-28 flex-shrink-0">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">CUIM</label>
+            <input type="text" name="cuim" id="cuim_input" placeholder="CUIM..." autocomplete="off"
+                   hx-get="{% url 'subproducto_trazabilidad_listado' %}"
+                   hx-trigger="keyup[this.value.length >= 3 || this.value.length == 0] changed delay:250ms, search"
+                   hx-target="#trazabilidad-rows"
+                   hx-include="#form-filtros-trazabilidad"
+                   class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs font-mono focus:ring-indigo-500 focus:border-indigo-500 uppercase">
+        </div>
+
+        <!-- Sucursal (Ancho Compacto Reducido w-36) -->
+        <div class="relative w-36 flex-shrink-0">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Sucursal</label>
+            <select name="sucursal" 
+                    hx-get="{% url 'subproducto_trazabilidad_listado' %}" 
+                    hx-target="#trazabilidad-rows" 
+                    hx-include="#form-filtros-trazabilidad"
+                    class="w-full border-gray-300 rounded-lg px-2 py-1 h-8 text-xs bg-white font-semibold focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Todas</option>
+                {% for suc in sucursales %}
+                <option value="{{ suc.id }}">{{ suc.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Estado / Situación (Ancho Compacto Reducido w-36) -->
+        <div class="relative w-36 flex-shrink-0">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Estado Actual</label>
+            <select name="situacion" 
+                    hx-get="{% url 'subproducto_trazabilidad_listado' %}" 
+                    hx-target="#trazabilidad-rows" 
+                    hx-include="#form-filtros-trazabilidad"
+                    class="w-full border-gray-300 rounded-lg px-2 py-1 h-8 text-xs bg-white font-semibold focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Todos</option>
+                <option value="DEPOSITO">En Depósito</option>
+                <option value="VENDIDA">Vendida</option>
+            </select>
+        </div>
+
+        <!-- Botón Limpiar (Ancho Mínimo Compacto w-20) -->
+        <div class="relative w-20 flex-shrink-0 flex items-end">
+            <button type="button" 
+                    onclick="document.getElementById('form-filtros-trazabilidad').reset(); htmx.trigger('#form-filtros-trazabilidad', 'submit');" 
+                    title="Restablecer Filtros"
+                    class="w-full h-8 px-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors border border-gray-300 text-xs flex items-center justify-center">
+                <svg class="h-3.5 w-3.5 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Limpiar
+            </button>
+        </div>
+    </form>
+
+    <script>
+        // Event listeners para los typeaheads
+        window.addEventListener('clienteVentaSeleccionado', (e) => {
+            document.getElementById('clipro_input').value = e.detail.razon_social;
+            document.getElementById('clipro_input').dispatchEvent(new Event('click')); 
+            htmx.trigger('#form-filtros-trazabilidad', 'submit');
+        });
+
+        window.addEventListener('productoVentaEncontrado', (e) => {
+            document.getElementById('producto_input').value = e.detail.detalle;
+            document.getElementById('producto_input').dispatchEvent(new Event('click'));
+            htmx.trigger('#form-filtros-trazabilidad', 'submit');
+        });
+
+        function seleccionarSerieVenta(id, detalle, serie, pr_vta1, iva, cuim, situacion) {
+            document.getElementById('serie_input').value = serie;
+            if (cuim) document.getElementById('cuim_input').value = cuim;
+            document.getElementById('producto_input').value = detalle;
+            htmx.trigger('#form-filtros-trazabilidad', 'submit');
+        }
+
+
+    </script>
+
+    <!-- Tabla de Trazabilidad (Contenedor de Máxima Altura) -->
+    <div class="flex-1 overflow-hidden bg-white shadow-sm border border-gray-200 rounded-2xl mb-4 flex flex-col">
+        <div class="overflow-x-auto flex-1">
+            <table class="min-w-full divide-y divide-gray-200" id="tabla-trazabilidad">
+                <thead class="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                        <th class="py-2.5 pl-4 pr-2 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Producto</th>
+                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Serie</th>
+                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">CUIM</th>
+                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Sucursal</th>
+                        <th class="px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Estado Actual</th>
+                        <th class="px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Últ. Movimiento</th>
+                        <th class="relative py-2.5 pl-2 pr-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="trazabilidad-rows" class="bg-white divide-y divide-gray-100" hx-trigger="load" hx-get="{% url 'subproducto_trazabilidad_listado' %}">
+                    <tr><td colspan="6" class="text-center p-6 text-gray-500 text-sm">Cargando subproductos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

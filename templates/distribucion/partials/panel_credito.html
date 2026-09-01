@@ -1,0 +1,43 @@
+{% load formato_tags %}
+{% comment %}
+Panel de crédito del cliente (Plan 074 §7.1).
+Los tres números con los que el vendedor decide la venta. Es información para vender,
+no un bloqueo: el control vinculante ocurre al facturar.
+{% endcomment %}
+<div class="rounded-xl border {% if credito.excedido %}border-red-200 bg-red-50{% elif credito.solo_contado %}border-amber-200 bg-amber-50{% else %}border-emerald-200 bg-emerald-50{% endif %} px-3 py-2">
+    <div class="flex items-center justify-between gap-4">
+        <div class="text-center">
+            <div class="text-[9px] uppercase tracking-widest font-bold text-slate-400">Límite</div>
+            <div class="text-sm font-bold text-slate-700">$ {{ credito.limite|formato_ar }}</div>
+        </div>
+        <div class="text-center">
+            <div class="text-[9px] uppercase tracking-widest font-bold text-slate-400">Saldo</div>
+            <div class="text-sm font-bold text-slate-700">$ {{ credito.saldo|formato_ar }}</div>
+        </div>
+        {% if credito.pedidos_pendientes %}
+        <div class="text-center">
+            <div class="text-[9px] uppercase tracking-widest font-bold text-slate-400">Pedidos s/facturar</div>
+            <div class="text-sm font-bold text-slate-500">$ {{ credito.pedidos_pendientes|formato_ar }}</div>
+        </div>
+        {% endif %}
+        <div class="text-center">
+            <div class="text-[9px] uppercase tracking-widest font-bold {% if credito.excedido %}text-red-500{% else %}text-emerald-600{% endif %}">Disponible</div>
+            <div class="text-base font-black {% if credito.excedido %}text-red-600{% else %}text-emerald-700{% endif %}">
+                $ {{ credito.disponible|formato_ar }}
+            </div>
+        </div>
+    </div>
+
+    {% if credito.bloqueado %}
+        <div class="mt-2 text-[11px] font-bold text-red-700 flex items-center">
+            <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            CLIENTE BLOQUEADO PARA CRÉDITO — sólo contado
+        </div>
+    {% elif credito.solo_contado %}
+        <div class="mt-2 text-[11px] font-bold text-amber-700">Sin límite de crédito asignado — sólo contado</div>
+    {% elif credito.excedido %}
+        <div class="mt-2 text-[11px] font-bold text-red-700">
+            Excedido en $ {{ credito.cobro_minimo|formato_ar }}. El repartidor deberá cobrar al menos ese importe para dejar la mercadería.
+        </div>
+    {% endif %}
+</div>

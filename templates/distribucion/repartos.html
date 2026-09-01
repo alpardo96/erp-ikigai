@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Repartos | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Repartos</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                El reparto se arma con comprobantes ya emitidos: el repartidor sale con la mercadería y el comprobante juntos.
+            </p>
+        </div>
+        {% if pendientes %}
+        <div class="text-right">
+            <div class="text-2xl font-black text-amber-600">{{ pendientes }}</div>
+            <div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Comprobantes sin reparto</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <form method="post" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-end gap-3">
+        {% csrf_token %}
+        <div class="w-52">
+            <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Vehículo</label>
+            <select name="vehiculo" class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500">
+                <option value="">— Sin asignar —</option>
+                {% for v in vehiculos %}<option value="{{ v.id }}">{{ v.patente }} · {{ v.descripcion }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="w-44">
+            <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Zona</label>
+            <select name="zona" class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500">
+                <option value="">Todas</option>
+                {% for z in zonas %}<option value="{{ z.id }}">{{ z.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="w-64">
+            <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Repartidores</label>
+            <select name="responsables" multiple size="3"
+                    class="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500">
+                {% for r in repartidores %}<option value="{{ r.id }}">{{ r.nombre }}</option>{% endfor %}
+            </select>
+            <p class="text-[9px] text-slate-400 mt-0.5">Se pueden elegir varios (Ctrl + clic).</p>
+        </div>
+        <div class="flex-1 min-w-[180px]">
+            <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Observaciones</label>
+            <input type="text" name="observaciones" class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded text-sm outline-none focus:border-indigo-500">
+        </div>
+        <button type="submit" class="h-9 px-6 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700">
+            Nuevo Reparto
+        </button>
+    </form>
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">N°</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Repartidores</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vehículo</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Zona</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Paradas</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                    <th class="relative py-3 pl-3 pr-6 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for r in repartos %}
+                <tr class="hover:bg-slate-50">
+                    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-black text-slate-900">{{ r.numero }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-slate-600">{{ r.fecha|date:"d/m/Y" }}</td>
+                    <td class="px-3 py-3 text-sm text-slate-700 font-semibold">{{ r.responsables_display }}</td>
+                    <td class="px-3 py-3 text-xs text-slate-500">{% if r.vehiculo %}{{ r.vehiculo.patente }}{% else %}—{% endif %}</td>
+                    <td class="px-3 py-3 text-xs text-slate-500">{% if r.zona %}{{ r.zona.nombre }}{% else %}—{% endif %}</td>
+                    <td class="px-3 py-3 text-sm text-center font-bold text-slate-700">{{ r.paradas.count }}</td>
+                    <td class="px-3 py-3 text-center">
+                        {% if r.estado == 0 %}<span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">ARMADO</span>
+                        {% elif r.estado == 1 %}<span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">CERRADO</span>
+                        {% elif r.estado == 2 %}<span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">RENDIDO</span>
+                        {% else %}<span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-black bg-red-100 text-red-800">ANULADO</span>{% endif %}
+                    </td>
+                    <td class="relative whitespace-nowrap py-3 pl-3 pr-6 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="{% url 'distribucion_reparto_detalle' r.id %}"
+                               class="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100">Abrir</a>
+                            {% if r.paradas.count %}
+                            <a href="{% url 'distribucion_hoja_de_ruta' r.id %}" target="_blank"
+                               class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">Hoja de Ruta</a>
+                            <a href="{% url 'distribucion_consolidado' r.id %}" target="_blank"
+                               class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">Consolidado</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="px-6 py-10 text-center text-gray-500 text-sm italic">Todavía no hay repartos.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

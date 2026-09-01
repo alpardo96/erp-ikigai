@@ -1,0 +1,115 @@
+{% load formato_tags %}
+
+{% comment %}
+Drill-down por cuenta. Es el formulario `sum_sal_fciero_mov` del sistema VFP: los movimientos
+de fondos de una cuenta, con saldo corrido y el filtro Todos/Efectivo/Banco/Valores.
+{% endcomment %}
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50"
+     x-data="{ abierto: true }" x-show="abierto"
+     @keydown.escape.window="$el.remove()">
+
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-[1400px] max-h-[92vh] flex flex-col"
+         @click.outside="$el.parentElement.remove()">
+
+        <!-- Cabecera -->
+        <div class="px-6 py-4 border-b border-gray-200 flex items-start justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900">
+                    {{ cuenta.jerarquia }} — {{ cuenta.cuenta }}
+                </h3>
+                <p class="mt-0.5 text-sm text-gray-500">
+                    Movimientos de fondos entre el {{ desde|date:"d/m/Y" }} y el {{ hasta|date:"d/m/Y" }}
+                </p>
+            </div>
+            <button type="button" onclick="this.closest('.fixed').remove()"
+                    class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Filtro por medio (el `opgMoneda` del legado) -->
+        <div class="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-5 flex-wrap">
+            <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Medio</span>
+            {% for clave, rotulo in filtros_medio %}
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="medio" value="{{ clave }}" {% if medio == clave %}checked{% endif %}
+                           hx-get="{% url 'eoaf_cuenta_modal' cuenta.id %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}&generado=1{% for c in condics %}&condic={{ c }}{% endfor %}&medio={{ clave }}"
+                           hx-target="#eoaf-modal"
+                           class="border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <span class="text-sm text-gray-700">{{ rotulo }}</span>
+                </label>
+            {% endfor %}
+        </div>
+
+        <!-- Grilla -->
+        <div class="flex-1 overflow-auto">
+            <table class="min-w-full text-xs">
+                <thead class="bg-blue-700 text-white sticky top-0">
+                    <tr>
+                        <th class="px-3 py-2 text-left font-semibold">Asiento</th>
+                        <th class="px-3 py-2 text-left font-semibold">Fecha</th>
+                        <th class="px-3 py-2 text-left font-semibold">Cód.</th>
+                        <th class="px-3 py-2 text-left font-semibold">Cliente / Proveedor</th>
+                        <th class="px-3 py-2 text-left font-semibold">Concepto</th>
+                        <th class="px-3 py-2 text-right font-semibold">Ingresos</th>
+                        <th class="px-3 py-2 text-right font-semibold">Egresos</th>
+                        {% for clave, rotulo in medios %}
+                            <th class="px-3 py-2 text-right font-semibold">{{ rotulo }}</th>
+                        {% endfor %}
+                        <th class="px-3 py-2 text-right font-semibold">Saldo</th>
+                        <th class="px-3 py-2 text-center font-semibold">Cd</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for fila in filas %}
+                        <tr class="hover:bg-indigo-50/50">
+                            <td class="px-3 py-1.5 text-gray-500">{{ fila.asiento_id }}</td>
+                            <td class="px-3 py-1.5 whitespace-nowrap">{{ fila.fecha|date:"d/m/Y" }}</td>
+                            <td class="px-3 py-1.5 text-gray-500">{{ fila.codigo }}</td>
+                            <td class="px-3 py-1.5 font-medium text-gray-800">{{ fila.razon }}</td>
+                            <td class="px-3 py-1.5 text-gray-500">{{ fila.descripcion|truncatechars:60 }}</td>
+                            <td class="px-3 py-1.5 text-right">{{ fila.ingresos|formato_ar }}</td>
+                            <td class="px-3 py-1.5 text-right">{{ fila.egresos|formato_ar }}</td>
+                            {% for valor in fila.medios_lista %}
+                                <td class="px-3 py-1.5 text-right {% if valor < 0 %}text-red-600{% endif %}">{{ valor|formato_ar }}</td>
+                            {% endfor %}
+                            <td class="px-3 py-1.5 text-right font-semibold {% if fila.saldo < 0 %}text-red-600{% else %}text-gray-700{% endif %}">{{ fila.saldo|formato_ar }}</td>
+                            <td class="px-3 py-1.5 text-center text-gray-400">{{ fila.condic }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="16" class="px-4 py-10 text-center text-sm text-gray-400">
+                                Esta cuenta no tuvo movimientos de fondos en el período
+                                {% if medio %}con el medio seleccionado{% endif %}.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                {% if filas %}
+                    <tfoot class="bg-blue-700 text-white font-bold sticky bottom-0">
+                        <tr>
+                            <td class="px-3 py-2" colspan="5">TOTALES</td>
+                            <td class="px-3 py-2 text-right">{{ totales.ingresos|formato_ar }}</td>
+                            <td class="px-3 py-2 text-right">{{ totales.egresos|formato_ar }}</td>
+                            {% for valor in totales.medios_lista %}
+                                <td class="px-3 py-2 text-right">{{ valor|formato_ar }}</td>
+                            {% endfor %}
+                            <td class="px-3 py-2 text-right">{{ totales.neto|formato_ar }}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                {% endif %}
+            </table>
+        </div>
+
+        <div class="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+            <p class="text-xs text-gray-400">
+                Los importes de esta cuenta suman exactamente su fila en la grilla del reporte.
+            </p>
+            <button type="button" onclick="this.closest('.fixed').remove()"
+                    class="px-4 py-2 border border-gray-300 rounded-xl bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>

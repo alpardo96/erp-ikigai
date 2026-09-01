@@ -1,0 +1,16 @@
+{% for c in clientes %}
+<button type="button"
+        hx-post="{% url 'distribucion_movil_elegir_cliente' c.codigo_id %}"
+        hx-target="#movil-cabecera"
+        class="w-full text-left px-3 py-3 border-b border-slate-100 last:border-0 hover:bg-indigo-50 active:bg-indigo-100 transition-colors">
+    <div class="text-sm font-bold text-slate-900 leading-tight">
+        <span class="text-slate-400 font-mono text-xs">{{ c.codigo_id }}</span>
+        {{ c.razon_social }}
+    </div>
+    {% if c.domicilio %}<div class="text-[11px] text-slate-500">{{ c.domicilio }}</div>{% endif %}
+</button>
+{% empty %}
+<div class="px-3 py-4 text-xs text-slate-400 italic text-center">
+    Sin resultados en tu cartera.
+</div>
+{% endfor %}

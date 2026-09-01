@@ -1,0 +1,47 @@
+{% for p in productos %}
+<tr class="hover:bg-blue-50 border-b border-gray-100 transition-colors group">
+    <td class="px-6 py-4 font-mono text-xs text-blue-600 font-bold">{{ p.id }}</td>
+    <td class="px-6 py-4 text-sm text-gray-700">{{ p.cod_prov|default:"-" }}</td>
+    <td class="px-6 py-4 text-sm text-gray-700">{{ p.cod_fab|default:"-" }}</td>
+    <td class="px-6 py-4 text-sm text-gray-900 font-medium">{{ p.detalle }}</td>
+    <td class="px-6 py-4 text-right">
+        <button class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                onclick="seleccionarProducto('{{ p.id }}', '{{ p.detalle|escapejs }}', '{{ p.precio_neto|default:0 }}')">
+            Seleccionar
+        </button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="p-12 text-center text-gray-400 italic">No se encontraron productos con ese criterio.</td>
+</tr>
+{% endfor %}
+
+<script>
+    function seleccionarProducto(id, detalle, precio) {
+        // Esta función llena los campos rápidos del formulario principal
+        const idInput = document.getElementById('quick_producto_id');
+        const detalleDisplay = document.getElementById('quick_producto_detalle');
+        const precioInput = document.getElementById('quick_precio');
+        const cantInput = document.getElementById('quick_cantidad');
+
+        if (idInput) idInput.value = id;
+        if (detalleDisplay) detalleDisplay.innerText = detalle;
+        
+        // Si el precio es 0 o nulo, dejar vacío para mostrar placeholder gris
+        if (precioInput) {
+            precioInput.value = (parseFloat(precio) === 0) ? '' : precio;
+        }
+
+        // Cerrar modal
+        document.getElementById('modal-container').innerHTML = '';
+        
+        // Si no hay precio, ir directo a precio. Si hay precio, ir a cantidad.
+        if (precioInput && precioInput.value === '') {
+            precioInput.focus();
+        } else if (cantInput) {
+            cantInput.focus();
+            cantInput.select();
+        }
+    }
+</script>

@@ -1,0 +1,18 @@
+<div class="divide-y divide-slate-100 bg-white">
+    {% for c in cuentas %}
+    <button type="button"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-indigo-50 transition-colors"
+            onmousedown="event.preventDefault(); window.dispatchEvent(new CustomEvent('cuentaSeleccionada', { detail: { id: '{{ c.pk }}', jerarquia: '{{ c.jerarquia|escapejs }}', cuenta: '{{ c.cuenta|escapejs }}', target: '{{ target }}' }, bubbles: true }))"
+            onclick="window.dispatchEvent(new CustomEvent('cuentaSeleccionada', { detail: { id: '{{ c.pk }}', jerarquia: '{{ c.jerarquia|escapejs }}', cuenta: '{{ c.cuenta|escapejs }}', target: '{{ target }}' }, bubbles: true }))">
+        <span class="min-w-0">
+            <span class="block text-xs font-bold uppercase text-slate-800">{{ c.jerarquia }}</span>
+            <span class="block text-[10px] font-semibold text-slate-500">{{ c.cuenta }}</span>
+        </span>
+    </button>
+    {% empty %}
+    <div class="px-6 py-8 text-center bg-white">
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest">No se encontraron cuentas.</p>
+        <p class="text-[10px] text-slate-400 mt-1">Intente con otro nombre o jerarquía.</p>
+    </div>
+    {% endfor %}
+</div>

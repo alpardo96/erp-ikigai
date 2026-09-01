@@ -1,0 +1,19 @@
+{% if empresa_actual.usa_trazabilidad or empresa_actual.tipo_actividad == 'ARMERIA' or empresa_actual.tipo_actividad == 'AUTOMOTOR' %}
+<!-- Tarjeta de Compra Trazabilidad -->
+<a href="{% url 'compras_trazabilidad_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-amber-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <svg class="w-24 h-24 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+    </div>
+    <div class="flex items-center mb-6">
+        <div class="p-4 bg-amber-100 rounded-2xl text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+        </div>
+        <h3 class="ml-4 text-2xl font-bold text-gray-900">Compra Trazabilidad</h3>
+    </div>
+    <p class="text-gray-500 text-sm leading-relaxed mb-6">Carga de compras con registro individual de Nro. de Serie, Situación, Estado y CUIM para cada unidad.</p>
+    <div class="flex items-center text-amber-600 font-bold text-sm">
+        Cargar con Trazabilidad
+        <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+    </div>
+</a>
+{% endif %}

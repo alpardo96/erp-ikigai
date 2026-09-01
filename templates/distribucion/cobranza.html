@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Cobranza Reparto {{ reparto.numero }} | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-start border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+                Cobranza — Reparto {{ reparto.numero }}
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Cargá lo que trajo el repartidor por medio de pago. La imputación a comprobantes la hace el sistema.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'distribucion_rendicion' reparto.id %}"
+               class="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900">Rendición</a>
+            <a href="{% url 'distribucion_reparto_detalle' reparto.id %}"
+               class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">Volver</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cobro mínimo esperado</div>
+            <div class="text-lg font-black text-slate-800">$ {{ resumen.esperado|formato_ar }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cobrado</div>
+            <div class="text-lg font-black text-emerald-700">$ {{ resumen.cobrado|formato_ar }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Efectivo en caja</div>
+            <div class="text-lg font-black text-slate-800">$ {{ resumen.efectivo_cobrado|formato_ar }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Devuelto (NC)</div>
+            <div class="text-lg font-black text-amber-700">$ {{ resumen.total_notas_credito|formato_ar }}</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+        {% comment %}
+        Izquierda: las paradas del reparto, para elegir a quién se le cobra. El repartidor
+        vuelve con la hoja de ruta marcada y busca al cliente por nombre.
+        {% endcomment %}
+        <div class="lg:col-span-4 overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Paradas</h2>
+            </div>
+            <div class="divide-y divide-slate-100 max-h-[32rem] overflow-y-auto">
+                {% for p in paradas %}
+                <a href="?parada={{ p.id }}"
+                   class="block px-4 py-2.5 hover:bg-indigo-50 {% if parada and parada.id == p.id %}bg-indigo-50 border-l-4 border-indigo-500{% endif %}">
+                    <div class="text-sm font-bold text-slate-800">{{ p.cliente.razon_social }}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">
+{% if p.venta_id %}{{ p.venta.tipo.detalle }}
+                        {{ p.venta.punto|stringformat:"04d" }}-{{ p.venta.numero|stringformat:"08d" }}
+                        · $ {{ p.venta.total|formato_ar }}
+                        {% if p.cobro_minimo %}<span class="text-red-600 font-bold"> · mín. $ {{ p.cobro_minimo|formato_ar }}</span>{% endif %}
+                        {% else %}SÓLO COBRANZA · saldo $ {{ p.saldo_anterior|formato_ar }}{% endif %}
+                    </div>
+                </a>
+                {% empty %}
+                <p class="px-4 py-8 text-center text-xs text-slate-400 italic">El reparto no tiene paradas.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 space-y-4">
+            {% if not cliente %}
+            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm px-6 py-12 text-center">
+                <p class="text-sm text-slate-400 italic">Elegí una parada para cargar su cobranza.</p>
+            </div>
+            {% else %}
+
+            <div class="rounded-2xl bg-white border border-gray-100 shadow-sm px-5 py-4">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div class="text-sm font-black text-slate-900">{{ cliente.razon_social }}</div>
+                        <div class="text-[11px] text-slate-500">Límite $ {{ cliente.limite|formato_ar }}</div>
+                    </div>
+                    <div class="text-right text-[11px]">
+                        <div class="text-slate-500">Saldo operativo (1+2):
+                            <span class="font-black text-slate-800">$ {{ saldo_operativo|formato_ar }}</span></div>
+                        <div class="text-slate-400">Saldo fiscal (1):
+                            <span class="font-bold">$ {{ saldo_fiscal|formato_ar }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="parada" value="{{ parada.id }}">
+
+                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+                    <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                        <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Lo que trajo el repartidor</h2>
+                    </div>
+                    <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Efectivo</label>
+                            <input type="text" name="valor_efe" value="{{ valores_efe|default:'' }}"
+                                   class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Transferencia</label>
+                            <input type="text" name="valor_tra"
+                                   class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cheque</label>
+                            <input type="text" name="valor_chq"
+                                   class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tarjeta</label>
+                            <input type="text" name="valor_tar"
+                                   class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+                    <div class="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cobrador</label>
+                            <select name="cobrador"
+                                    class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                                <option value="">— Sin especificar —</option>
+                                {% for c in cobradores %}
+                                <option value="{{ c.id }}">{{ c.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Observaciones</label>
+                            <input type="text" name="observaciones"
+                                   class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+                    <div class="px-4 pb-4 flex justify-end gap-2">
+                        <button type="submit" name="accion" value="previsualizar"
+                                class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
+                            Previsualizar imputación
+                        </button>
+                        <button type="submit" name="accion" value="registrar"
+                                class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                            Registrar cobranza
+                        </button>
+                    </div>
+                </div>
+
+                {% if plan %}
+                <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-indigo-200 bg-white">
+                    <div class="px-4 py-2.5 bg-indigo-50 border-b border-indigo-200">
+                        <h2 class="text-xs font-black text-indigo-800 uppercase tracking-tight">
+                            Así va a quedar imputado
+                        </h2>
+                    </div>
+                    <div class="px-4 py-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs border-b border-slate-100">
+                        <div><span class="text-slate-400">Trazable:</span>
+                             <span class="font-black">$ {{ plan.trazable|formato_ar }}</span></div>
+                        <div><span class="text-slate-400">Efectivo:</span>
+                             <span class="font-black">$ {{ plan.efectivo|formato_ar }}</span></div>
+                        <div><span class="text-slate-400">A PRE (condic 2):</span>
+                             <span class="font-black">$ {{ plan.aplicado_presupuestado|formato_ar }}</span></div>
+                        <div><span class="text-slate-400">Excedente (anticipo):</span>
+                             <span class="font-black text-amber-700">$ {{ plan.excedente|formato_ar }}</span></div>
+                    </div>
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-white">
+                            <tr>
+                                <th class="py-2 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comprobante</th>
+                                <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                                <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condic</th>
+                                <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Se imputa</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for a in plan.aplicaciones.2 %}
+                            <tr class="bg-amber-50/40">
+                                <td class="py-2 pl-6 pr-3 text-xs font-mono font-bold text-slate-700">
+                                    {{ a.venta.tipo.detalle }}
+                                    {{ a.venta.punto|stringformat:"04d" }}-{{ a.venta.numero|stringformat:"08d" }}
+                                </td>
+                                <td class="px-3 py-2 text-xs text-slate-500">{{ a.venta.fecha|date:"d/m/Y" }}</td>
+                                <td class="px-3 py-2 text-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">PRESUPUESTADO</span>
+                                </td>
+                                <td class="px-3 py-2 text-sm text-right font-mono font-black">$ {{ a.importe|formato_ar }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% for a in plan.aplicaciones.1 %}
+                            <tr>
+                                <td class="py-2 pl-6 pr-3 text-xs font-mono font-bold text-slate-700">
+                                    {{ a.venta.tipo.detalle }}
+                                    {{ a.venta.punto|stringformat:"04d" }}-{{ a.venta.numero|stringformat:"08d" }}
+                                </td>
+                                <td class="px-3 py-2 text-xs text-slate-500">{{ a.venta.fecha|date:"d/m/Y" }}</td>
+                                <td class="px-3 py-2 text-center">
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">REAL</span>
+                                </td>
+                                <td class="px-3 py-2 text-sm text-right font-mono font-black">$ {{ a.importe|formato_ar }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <p class="px-4 py-2.5 text-[11px] text-slate-500 italic border-t border-slate-100">
+                        El efectivo cancela primero los PRE más viejos, porque es la única plata que puede pagar lo que
+                        no está documentado. Lo que deja rastro en un banco va siempre contra comprobantes fiscales.
+                    </p>
+                </div>
+                {% endif %}
+            </form>
+
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+                <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                    <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Comprobantes abiertos del cliente</h2>
+                </div>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-white">
+                        <tr>
+                            <th class="py-2 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comprobante</th>
+                            <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                            <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condic</th>
+                            <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
+                            <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for v in comprobantes %}
+                        <tr>
+                            <td class="py-2 pl-6 pr-3 text-xs font-mono text-slate-700">
+                                {{ v.tipo.detalle }} {{ v.punto|stringformat:"04d" }}-{{ v.numero|stringformat:"08d" }}
+                            </td>
+                            <td class="px-3 py-2 text-xs text-slate-500">{{ v.fecha|date:"d/m/Y" }}</td>
+                            <td class="px-3 py-2 text-center">
+                                {% if v.condic == 2 %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800"
+                                      title="Sólo se puede cancelar con efectivo">SÓLO EFECTIVO</span>
+                                {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">REAL</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 py-2 text-sm text-right font-mono text-slate-500">$ {{ v.total|formato_ar }}</td>
+                            <td class="px-3 py-2 text-sm text-right font-mono font-black">$ {{ v.saldo|formato_ar }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-xs text-slate-400 italic">
+                            El cliente no tiene comprobantes con saldo.
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

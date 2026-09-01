@@ -1,0 +1,661 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Actualización de Tarifas{% endblock %}
+
+{% block content %}
+<div class="h-full flex flex-col p-2 space-y-2" x-data="tarifasGrid()">
+    
+    <!-- Modal de Edición -->
+    <div x-show="tarifaEditando !== null" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="tarifaEditando !== null" x-transition.opacity @click="cerrarModal()" class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" aria-hidden="true"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div x-show="tarifaEditando !== null" x-transition class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-200">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-bold text-slate-800 border-b pb-2" id="modal-title">
+                                Editar Registro de Tarifa
+                            </h3>
+                            <div class="mt-4 space-y-4" x-if="tarifaEditando">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 uppercase">Cliente</label>
+                                    <input x-show="!isNew" type="text" readonly class="mt-1 block w-full border-gray-300 rounded shadow-sm bg-gray-50 text-sm py-1.5 font-bold text-gray-700" x-model="tarifaEditando.razon_social">
+                                    <select x-show="isNew" x-model="tarifaEditando.cliente_obj_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                        <option value="">-- Seleccionar Cliente --</option>
+                                        {% for c in clientes %}
+                                        <option value="{{ c.id }}">{{ c.codigo_id }} - {{ c.razon_social }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 uppercase">Servicio / Producto</label>
+                                    <select x-model="tarifaEditando.producto_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                        {% for p in productos %}
+                                        <option value="{{ p.id }}">{{ p.detalle }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 uppercase">Cuenta Contable Imputación (Opcional)</label>
+                                    <select x-model="tarifaEditando.cuenta_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                        <option value="">-- Por Defecto (Cuenta de Rubro) --</option>
+                                        {% for c in cuentas %}
+                                        <option value="{{ c.id }}">{{ c.jerarquia }} - {{ c.cuenta }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <p class="mt-1 text-[10px] text-gray-500">Si se deja vacío, la facturación se imputará a la cuenta definida en el Rubro del producto.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t">
+                    <button @click="guardarModal()" type="button" class="w-full inline-flex justify-center rounded border border-transparent shadow-sm px-4 py-1.5 bg-blue-600 text-base font-bold text-white hover:bg-blue-700 sm:ml-3 sm:w-auto sm:text-sm">
+                        Confirmar
+                    </button>
+                    <button @click="cerrarModal()" type="button" class="mt-3 w-full inline-flex justify-center rounded border border-gray-300 shadow-sm px-4 py-1.5 bg-white text-base font-bold text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header (Compacto) -->
+    <div class="flex justify-between items-center bg-white px-4 py-2 shadow-sm rounded-lg border border-gray-200">
+        <h1 class="text-lg font-bold text-gray-800">Actualización de Tarifas</h1>
+        <div class="flex items-center gap-2">
+            <button @click="exportToCSV()" class="inline-flex items-center justify-center h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-sm transition">
+                <svg class="w-3.5 h-3.5 mr-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <span>CSV</span>
+            </button>
+            
+            <label class="inline-flex items-center justify-center h-8 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-bold shadow-sm transition cursor-pointer m-0">
+                <svg class="w-3.5 h-3.5 mr-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span>Cargar</span>
+                <input type="file" accept=".csv" class="hidden" @change="importFromCSV($event)">
+            </label>
+            
+            <button @click="abrirModalNuevo()" class="inline-flex items-center justify-center h-8 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-bold shadow-sm transition">
+                <svg class="w-3.5 h-3.5 mr-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>Nuevo</span>
+            </button>
+
+            <button @click="saveData()" class="inline-flex items-center justify-center h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold shadow transition">
+                <svg class="w-4 h-4 mr-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>Grabar</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="bg-white p-3 shadow-sm rounded-lg border border-gray-200 mb-3 flex flex-col gap-3 relative z-20">
+        <!-- Primera Fila: Búsquedas -->
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Búsqueda Cliente -->
+            <div class="relative flex-grow max-w-sm">
+                <div class="flex relative items-center">
+                    <input type="text" x-model="busqueda" @focus="mostrarSugerencias = true" placeholder="🔍 Buscar cliente por código o razón social..." class="pl-3 pr-8 rounded border-gray-300 text-xs py-1.5 focus:ring-blue-500 focus:border-blue-500 w-full shadow-sm font-semibold">
+                    <!-- Botón Limpiar Búsqueda -->
+                    <button x-show="busqueda.length > 0" @click="busqueda = ''" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <!-- Sugerencias Dropdown -->
+                <div x-show="mostrarSugerencias && busqueda.length > 0 && sugerencias.length > 0" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-xl max-h-60 overflow-y-auto">
+                    <template x-for="sug in sugerencias" :key="sug.id">
+                        <div @click="seleccionarCliente(sug)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0">
+                            <div class="font-bold text-gray-800 text-xs" x-text="sug.razon_social"></div>
+                            <div class="text-[10px] text-gray-500 font-mono" x-text="'Cód: ' + sug.cliente_id"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Búsqueda de Producto -->
+            <div class="relative w-64">
+                <div class="flex relative items-center">
+                    <input type="text" x-model="busquedaProducto" placeholder="🔍 Buscar por producto..." class="pl-3 pr-8 rounded border-gray-300 text-xs py-1.5 focus:ring-blue-500 focus:border-blue-500 w-full shadow-sm font-semibold">
+                    <button x-show="busquedaProducto.length > 0" @click="busquedaProducto = ''" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-red-500">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Segunda Fila: Acciones y Filtros -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <!-- Ajuste Global (Tarjeta ampliada) -->
+            <div class="flex items-center gap-3 bg-blue-50 px-4 h-10 rounded-lg border-2 border-blue-300 shadow-md">
+                <span class="text-base font-extrabold text-blue-900 tracking-wide uppercase whitespace-nowrap">Ajuste:</span>
+                <input type="number" x-model="ajusteGlobal" @focus="$event.target.select()" @click="$event.target.select()" class="h-8 text-center rounded-md border-2 border-blue-400 py-1 px-2 text-base font-extrabold text-blue-950 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white shadow-inner" style="width: 85px; min-width: 85px; max-width: 85px;" placeholder="0">
+                <span class="text-base font-extrabold text-blue-900">%</span>
+                <button @click="aplicarAjuste()" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-1.5 rounded-md text-xs font-extrabold shadow hover:shadow-md transition uppercase tracking-wider ml-1 whitespace-nowrap">
+                    APLICAR A SELECCIONADOS
+                </button>
+            </div>
+
+            <!-- Filtros Rápidos (Tarjeta ampliada y alineada) -->
+            <div class="flex items-center gap-4 bg-gray-50 px-4 h-10 rounded-lg border-2 border-gray-300 shadow-md select-none">
+                <span class="font-extrabold text-gray-800 uppercase tracking-wider text-sm">Ver:</span>
+                <label class="flex items-center gap-1.5 cursor-pointer hover:text-blue-600">
+                    <input type="radio" value="todos" x-model="filtroVista" class="text-blue-600 focus:ring-blue-600 h-4 w-4 m-0 border-gray-400 cursor-pointer" style="position: relative; top: 1px;">
+                    <span class="text-sm font-bold text-gray-700">Todos</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer hover:text-blue-600">
+                    <input type="radio" value="activos" x-model="filtroVista" class="text-blue-600 focus:ring-blue-600 h-4 w-4 m-0 border-gray-400 cursor-pointer" style="position: relative; top: 1px;">
+                    <span class="text-sm font-bold text-gray-700">Activos</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer hover:text-blue-600">
+                    <input type="radio" value="inactivos" x-model="filtroVista" class="text-blue-600 focus:ring-blue-600 h-4 w-4 m-0 border-gray-400 cursor-pointer" style="position: relative; top: 1px;">
+                    <span class="text-sm font-bold text-gray-700">No Activos</span>
+                </label>
+                <div class="h-6 w-0.5 bg-gray-300 mx-1"></div>
+                <label class="flex items-center gap-1.5 cursor-pointer hover:text-blue-600">
+                    <input type="radio" value="ajustados" x-model="filtroVista" class="text-blue-600 focus:ring-blue-600 h-4 w-4 m-0 border-gray-400 cursor-pointer" style="position: relative; top: 1px;">
+                    <span class="text-sm font-bold text-gray-700">Ajustados</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de Datos -->
+    <div class="flex-grow bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden flex flex-col">
+        <div class="overflow-y-auto flex-grow relative">
+            <table class="min-w-full divide-y divide-gray-300 relative">
+                <thead class="bg-slate-800 text-white sticky top-0 z-10 shadow">
+                    <tr>
+                        <th scope="col" class="py-1.5 px-3 w-8 text-center bg-slate-900 border-r border-slate-700">
+                            <input type="checkbox" title="Seleccionar Todos" class="rounded text-blue-600 focus:ring-blue-500 border-slate-500 bg-slate-800 cursor-pointer" @click="toggleAll($event)">
+                        </th>
+                        <th scope="col" class="py-1.5 px-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-300">Estado</th>
+                        <th scope="col" class="py-1.5 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-300">Código</th>
+                        <th scope="col" class="py-1.5 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-300">Cliente</th>
+                        <th scope="col" class="py-1.5 px-3 text-right text-[10px] font-bold uppercase tracking-wider text-slate-300 border-l border-slate-700">Tarifa F ant.</th>
+                        <th scope="col" class="py-1.5 px-3 text-right text-[10px] font-bold uppercase tracking-wider text-slate-300">Tarifa P ant.</th>
+                        <th scope="col" class="py-1.5 px-3 text-right text-[10px] font-bold uppercase tracking-wider text-slate-300 border-l border-slate-700">Var. F %</th>
+                        <th scope="col" style="min-width: 125px;" class="py-1.5 px-3 w-32 text-right text-[10px] font-bold uppercase tracking-wider text-white bg-blue-900">Tarifa F Nva</th>
+                        <th scope="col" class="py-1.5 px-3 text-right text-[10px] font-bold uppercase tracking-wider text-slate-300 border-l border-slate-700">Var. P %</th>
+                        <th scope="col" style="min-width: 125px;" class="py-1.5 px-3 w-32 text-right text-[10px] font-bold uppercase tracking-wider text-white bg-blue-900">Tarifa P Nva</th>
+                        <th scope="col" class="py-1.5 px-3 text-right text-[10px] font-bold uppercase tracking-wider text-emerald-300 border-l border-slate-700">Costo c/IVA (F)</th>
+                        <th scope="col" class="py-1.5 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-300 border-l border-slate-700" style="min-width: 200px;">Producto</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-100">
+                    <template x-for="item in itemsFiltrados" :key="item.id">
+                        <tr class="hover:bg-blue-50 transition group" :class="{'bg-yellow-50/30': (item.tarifa_f_nueva != item.tarifa_f_ant || item.tarifa_p_nueva != item.tarifa_p_ant || item.activo != item.activo_ant || item.producto_id != item.producto_id_ant || item.cuenta_id != item.cuenta_id_ant), 'opacity-60': !item.activo}">
+                            <!-- Checkbox -->
+                            <td class="py-1 px-3 text-center border-r border-gray-100 bg-gray-50 group-hover:bg-blue-100/50">
+                                <input type="checkbox" x-model="item.selected" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer">
+                            </td>
+                            <!-- Botón Activo/Inactivo -->
+                            <td class="py-1 px-2 text-center">
+                                <button @click="item.activo = !item.activo" 
+                                    class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors border"
+                                    :class="item.activo ? 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200' : 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200'">
+                                    <span x-text="item.activo ? 'Activo' : 'No Activo'"></span>
+                                </button>
+                            </td>
+                            <!-- Datos -->
+                            <td class="py-1 px-3 text-xs text-gray-500 font-mono" x-text="item.cliente_id"></td>
+                            <td class="py-1 px-3 text-xs text-gray-900 font-bold uppercase truncate max-w-xs" x-text="item.razon_social"></td>
+                            <!-- Valores Anteriores -->
+                            <td class="py-1 px-3 text-[11px] text-gray-400 text-right font-mono border-l border-gray-100" x-text="formatAR(item.tarifa_f_ant)"></td>
+                            <td class="py-1 px-3 text-[11px] text-gray-400 text-right font-mono" x-text="formatAR(item.tarifa_p_ant)"></td>
+                            
+                            <!-- F -->
+                            <td class="py-1 px-3 text-xs text-right font-mono border-l border-gray-100" 
+                                :class="{'text-emerald-600 font-bold bg-emerald-50/50': varPorc(item.tarifa_f_nueva, item.tarifa_f_ant) > 0, 'text-gray-300': varPorc(item.tarifa_f_nueva, item.tarifa_f_ant) == 0}"
+                                x-text="formatAR(varPorc(item.tarifa_f_nueva, item.tarifa_f_ant)) + '%'">
+                            </td>
+                            <td class="py-1 px-1">
+                                <input type="number" step="0.01" style="min-width: 125px;" class="w-full text-right rounded border-gray-200 py-1 text-[11px] font-mono font-bold focus:ring-blue-500 focus:border-blue-500 bg-blue-50/30 hide-spinners" 
+                                    :class="!item.activo ? 'text-gray-400' : 'text-blue-900'"
+                                    x-model.number="item.tarifa_f_nueva" @focus="$event.target.select()">
+                            </td>
+
+                            <!-- P -->
+                            <td class="py-1 px-3 text-xs text-right font-mono border-l border-gray-100" 
+                                :class="{'text-emerald-600 font-bold bg-emerald-50/50': varPorc(item.tarifa_p_nueva, item.tarifa_p_ant) > 0, 'text-gray-300': varPorc(item.tarifa_p_nueva, item.tarifa_p_ant) == 0}"
+                                x-text="formatAR(varPorc(item.tarifa_p_nueva, item.tarifa_p_ant)) + '%'">
+                            </td>
+                            <td class="py-1 px-1">
+                                <input type="number" step="0.01" style="min-width: 125px;" class="w-full text-right rounded border-gray-200 py-1 text-[11px] font-mono font-bold focus:ring-blue-500 focus:border-blue-500 bg-blue-50/30 hide-spinners" 
+                                    :class="!item.activo ? 'text-gray-400' : 'text-blue-900'"
+                                    x-model.number="item.tarifa_p_nueva" @focus="$event.target.select()">
+                            </td>
+
+                            <!-- Info IVA -->
+                            <td class="py-1 px-3 text-xs text-right font-mono text-emerald-700 font-bold border-l border-gray-100" 
+                                x-text="formatAR(item.tarifa_f_nueva * (1 + (item.alic_iva/100)))">
+                            </td>
+
+                            <!-- Producto (Al final) -->
+                            <td class="py-1 px-3 text-[11px] text-gray-700 font-medium border-l border-gray-100 cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors" style="min-width: 220px;" @click="abrirModal(item)" title="Click para editar Producto / Cuenta Contable">
+                                <span x-text="item.producto_detalle"></span>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="itemsFiltrados.length === 0 && !isLoading">
+                        <td colspan="12" class="py-8 text-center text-gray-500 text-sm">No se encontraron clientes que coincidan con la búsqueda.</td>
+                    </tr>
+                    <tr x-show="isLoading">
+                        <td colspan="12" class="py-8 text-center text-blue-600 text-sm font-bold">Cargando tarifas...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Totales (Pie Fijo) -->
+        <div class="bg-slate-50 border-t border-gray-200 p-2 shadow-inner">
+            <div class="flex flex-wrap items-center justify-between font-mono text-xs gap-4">
+                <div class="font-black text-slate-500 uppercase tracking-widest pl-2">Totales Activos:</div>
+                
+                <div class="flex-grow flex justify-end items-center space-x-6">
+                    
+                    <div class="flex space-x-6 text-slate-500">
+                        <div class="text-right">
+                            <span class="block text-[9px] uppercase font-bold text-slate-400">Ant. Fiscal</span>
+                            <span class="text-sm" x-text="formatAR(totales.ant_f)"></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-[9px] uppercase font-bold text-slate-400">Ant. Proyectado</span>
+                            <span class="text-sm" x-text="formatAR(totales.ant_p)"></span>
+                        </div>
+                    </div>
+
+                    <div class="text-right text-indigo-800 bg-indigo-50 px-3 py-1 rounded border border-indigo-200 shadow-sm">
+                        <span class="block text-[9px] uppercase font-bold text-indigo-500">Recaudación Ant.</span>
+                        <span class="text-base" x-text="formatAR(totales.total_anterior)"></span>
+                    </div>
+
+                    <div class="flex space-x-6 text-blue-900 font-bold items-center pl-2 border-l border-gray-300">
+                        <div class="text-right">
+                            <span class="block text-[9px] uppercase font-bold text-blue-600">Nuevas Fiscal</span>
+                            <span class="text-sm" x-text="formatAR(totales.nueva_f)"></span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-[9px] uppercase font-bold text-blue-600">Nuevas Proyectado</span>
+                            <span class="text-sm" x-text="formatAR(totales.nueva_p)"></span>
+                        </div>
+                    </div>
+
+                    <div class="text-right text-emerald-800 bg-emerald-100 px-3 py-1 rounded border border-emerald-200 shadow-sm ml-2">
+                        <span class="block text-[9px] uppercase font-bold text-emerald-600">Recaudación Total</span>
+                        <span class="text-base" x-text="formatAR(totales.total_general)"></span>
+                    </div>
+
+                    <div class="text-right text-amber-900 bg-amber-100 px-3 py-1 rounded border border-amber-300 shadow-sm ml-2">
+                        <span class="block text-[9px] uppercase font-bold text-amber-700">Variación Neta</span>
+                        <span class="text-base font-black" x-text="formatAR(totales.variacion_neta) + '%'"></span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function tarifasGrid() {
+    return {
+        items: [],
+        busqueda: '',
+        busquedaProducto: '',
+        mostrarSugerencias: false,
+        filtroVista: 'activos', // Por defecto mostrar activos
+        ajusteGlobal: '',
+        isLoading: false,
+        tarifaEditando: null,
+        isNew: false,
+
+        init() {
+            this.cargarDatos();
+        },
+
+        async cargarDatos() {
+            this.isLoading = true;
+            try {
+                const response = await fetch('{% url "estudio_api_tarifas" %}');
+                if(response.ok) {
+                    const data = await response.json();
+                    this.items = data.map(i => ({...i, selected: false}));
+                } else {
+                    alert('Error cargando las tarifas.');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+            this.isLoading = false;
+        },
+
+        // Modal Lógica
+        abrirModal(item) {
+            this.isNew = false;
+            // Hacemos copia para poder editar en borrador
+            this.tarifaEditando = { ...item };
+        },
+        abrirModalNuevo() {
+            this.isNew = true;
+            this.tarifaEditando = {
+                id: 'new_' + Date.now(),
+                cliente_obj_id: '',
+                razon_social: '',
+                cliente_id: '',
+                producto_id: '',
+                producto_detalle: '',
+                cuenta_id: '',
+                tarifa_f_ant: 0,
+                tarifa_p_ant: 0,
+                tarifa_f_nueva: 0,
+                tarifa_p_nueva: 0,
+                alic_iva: 21,
+                activo: true,
+                activo_ant: true,
+                selected: false
+            };
+        },
+        guardarModal() {
+            if (!this.tarifaEditando) return;
+            
+            if (this.isNew) {
+                if(!this.tarifaEditando.cliente_obj_id || !this.tarifaEditando.producto_id) {
+                    alert('Debe seleccionar el Cliente y el Producto/Servicio.');
+                    return;
+                }
+                const cliSelect = document.querySelector(`select[x-model="tarifaEditando.cliente_obj_id"]`);
+                if (cliSelect && cliSelect.options[cliSelect.selectedIndex]) {
+                    const txt = cliSelect.options[cliSelect.selectedIndex].text;
+                    const parts = txt.split(' - ');
+                    this.tarifaEditando.cliente_id = parts[0];
+                    this.tarifaEditando.razon_social = parts[1];
+                }
+                const prodSelect = document.querySelector(`select[x-model="tarifaEditando.producto_id"]`);
+                if (prodSelect && prodSelect.options[prodSelect.selectedIndex]) {
+                    this.tarifaEditando.producto_detalle = prodSelect.options[prodSelect.selectedIndex].text;
+                }
+                this.items.push({...this.tarifaEditando});
+            } else {
+                const idx = this.items.findIndex(i => i.id === this.tarifaEditando.id);
+                if (idx !== -1) {
+                    // Obtener texto del select Producto para actualizar UI
+                    const prodSelect = document.querySelector(`select[x-model="tarifaEditando.producto_id"]`);
+                    if (prodSelect && prodSelect.options[prodSelect.selectedIndex]) {
+                        this.tarifaEditando.producto_detalle = prodSelect.options[prodSelect.selectedIndex].text;
+                    }
+                    
+                    this.items[idx].producto_id = this.tarifaEditando.producto_id ? parseInt(this.tarifaEditando.producto_id) : null;
+                    this.items[idx].cuenta_id = this.tarifaEditando.cuenta_id ? parseInt(this.tarifaEditando.cuenta_id) : null;
+                    this.items[idx].producto_detalle = this.tarifaEditando.producto_detalle;
+                }
+            }
+            this.cerrarModal();
+        },
+        cerrarModal() {
+            this.tarifaEditando = null;
+            this.isNew = false;
+        },
+
+        // TYPEAHEAD - Sugerencias
+        get sugerencias() {
+            if (this.busqueda.trim() === '') return [];
+            const q = this.busqueda.toLowerCase();
+            return this.items.filter(i => 
+                i.razon_social.toLowerCase().includes(q) || 
+                String(i.cliente_id).includes(q)
+            ).slice(0, 10);
+        },
+
+        seleccionarCliente(sug) {
+            this.busqueda = sug.razon_social;
+            this.mostrarSugerencias = false;
+        },
+
+        toggleAll(e) {
+            const val = e.target.checked;
+            this.itemsFiltrados.forEach(i => i.selected = val);
+        },
+
+        varPorc(nueva, antigua) {
+            if (!antigua || antigua == 0) return 0;
+            if (!nueva || nueva == 0) return -100;
+            return ((nueva / antigua) - 1) * 100;
+        },
+
+        formatAR(val) {
+            if (val === null || val === undefined || isNaN(val)) return '0,00';
+            const num = Number(val);
+            if (typeof formatearImporte === 'function') {
+                return formatearImporte(num);
+            }
+            return num.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        },
+        
+        parseNumber(valStr) {
+            if (!valStr) return 0;
+            let s = String(valStr).trim();
+            const lastComma = s.lastIndexOf(',');
+            const lastDot = s.lastIndexOf('.');
+            
+            if (lastComma > lastDot) {
+                // ES/AR format: 1.000,50
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else if (lastDot > lastComma && lastComma !== -1) {
+                // EN format: 1,000.50
+                s = s.replace(/,/g, '');
+            } else if (lastComma !== -1 && lastDot === -1) {
+                // Solo coma: 1000,50
+                s = s.replace(',', '.');
+            }
+            
+            const num = parseFloat(s);
+            return isNaN(num) ? 0 : num;
+        },
+
+        get itemsFiltrados() {
+            let res = this.items;
+            
+            if (this.busqueda.trim() !== '') {
+                const q = this.busqueda.toLowerCase();
+                res = res.filter(i => 
+                    i.razon_social.toLowerCase().includes(q) || 
+                    String(i.cliente_id).includes(q)
+                );
+            }
+
+            if (this.busquedaProducto.trim() !== '') {
+                const qProd = this.busquedaProducto.toLowerCase();
+                res = res.filter(i => 
+                    i.producto_detalle && i.producto_detalle.toLowerCase().includes(qProd)
+                );
+            }
+
+            if (this.filtroVista === 'activos') {
+                res = res.filter(i => i.activo);
+            } else if (this.filtroVista === 'inactivos') {
+                res = res.filter(i => !i.activo);
+            } else if (this.filtroVista === 'ajustados') {
+                res = res.filter(i => 
+                    i.tarifa_f_nueva != i.tarifa_f_ant || 
+                    i.tarifa_p_nueva != i.tarifa_p_ant || 
+                    i.activo != i.activo_ant || 
+                    i.producto_id != i.producto_id_ant || 
+                    i.cuenta_id != i.cuenta_id_ant
+                );
+            }
+
+            return res;
+        },
+
+        get totales() {
+            let ant_f = 0, ant_p = 0, nueva_f = 0, nueva_p = 0;
+            // Los totales generalmente tienen sentido calcularlos solo para los clientes ACTIVOS visibles
+            this.itemsFiltrados.filter(i => i.activo).forEach(i => {
+                ant_f += Number(i.tarifa_f_ant);
+                ant_p += Number(i.tarifa_p_ant);
+                nueva_f += Number(i.tarifa_f_nueva);
+                nueva_p += Number(i.tarifa_p_nueva);
+            });
+            const total_anterior = ant_f + ant_p;
+            const total_general = nueva_f + nueva_p;
+            let variacion_neta = 0;
+            if (total_anterior > 0) {
+                variacion_neta = ((total_general / total_anterior) - 1) * 100;
+            }
+
+            return {
+                ant_f, ant_p, 
+                nueva_f, nueva_p,
+                total_anterior,
+                total_general,
+                variacion_neta
+            };
+        },
+
+        aplicarAjuste() {
+            if (this.ajusteGlobal === '' || this.ajusteGlobal === null || this.ajusteGlobal === undefined) {
+                alert("Ingrese un porcentaje de ajuste.");
+                return;
+            }
+            if(!confirm(`¿Aplicar ajuste del ${this.ajusteGlobal}% a los registros seleccionados en pantalla?`)) return;
+            
+            const factor = 1 + (Number(this.ajusteGlobal) / 100);
+            let modificados = 0;
+            
+            this.itemsFiltrados.forEach(i => {
+                if(i.selected && i.activo) { 
+                    if(i.tarifa_f_ant > 0) i.tarifa_f_nueva = parseFloat((i.tarifa_f_ant * factor).toFixed(2));
+                    if(i.tarifa_p_ant > 0) i.tarifa_p_nueva = parseFloat((i.tarifa_p_ant * factor).toFixed(2));
+                    modificados++;
+                }
+            });
+            
+            if(modificados === 0) {
+                alert("No hay registros seleccionados (y activos) para aplicar el ajuste.");
+            }
+        },
+
+        async saveData() {
+            // Recopilar los que han cambiado o son nuevos
+            const modificados = this.items.filter(i => 
+                (String(i.id).startsWith('new_')) ||
+                i.tarifa_f_nueva != i.tarifa_f_ant || 
+                i.tarifa_p_nueva != i.tarifa_p_ant || 
+                i.activo != i.activo_ant || 
+                i.producto_id != i.producto_id_ant || 
+                i.cuenta_id != i.cuenta_id_ant
+            );
+            
+            if (modificados.length === 0) {
+                alert("No hay cambios para guardar.");
+                return;
+            }
+
+            const enCero = modificados.filter(i => i.activo && i.tarifa_f_nueva == 0 && i.tarifa_p_nueva == 0);
+            if (enCero.length > 0) {
+                if (confirm(`Atención: Hay ${enCero.length} tarifas configuradas en cero pero que permanecen en estado "Activo". ¿Desea que el sistema las marque como "Inactivas" antes de grabar? (Click en Aceptar para Desactivarlas, Cancelar para dejarlas Activas en cero)`)) {
+                    enCero.forEach(i => i.activo = false);
+                }
+            }
+
+            try {
+                const response = await fetch('{% url "estudio_guardar_tarifas" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(modificados)
+                });
+                
+                const result = await response.json();
+                if(response.ok) {
+                    alert('Tarifas guardadas exitosamente.');
+                    this.cargarDatos(); // Refresh base data
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (e) {
+                alert('Error de conexión.');
+                console.error(e);
+            }
+        },
+
+        // ─── CSV EXPORT / IMPORT ───
+        
+        exportToCSV() {
+            if(this.items.length === 0) return;
+            let csv = "ID;Codigo;Razon Social;Tarifa F;Tarifa P;Tarifa F Nueva;Tarifa P Nueva;Alic IVA;Activo\n";
+            this.items.forEach(i => {
+                csv += `${i.id};${i.cliente_id};"${i.razon_social}";${i.tarifa_f_ant};${i.tarifa_p_ant};${i.tarifa_f_nueva};${i.tarifa_p_nueva};${i.alic_iva};${i.activo ? 'SI':'NO'}\n`;
+            });
+
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], {type: "text/csv;charset=utf-8"});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "actualizacion_tarifas_estudio.csv";
+            a.click();
+            window.URL.revokeObjectURL(url);
+        },
+
+        importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                const lines = text.split('\n');
+                let matches = 0;
+                
+                for(let i=1; i < lines.length; i++) {
+                    const row = lines[i].trim();
+                    if(!row) continue;
+                    
+                    const cols = row.split(';'); 
+                    if(cols.length >= 7) {
+                        const rec_id = parseInt(cols[0]);
+                        const tf_nueva = this.parseNumber(cols[5]);
+                        const tp_nueva = this.parseNumber(cols[6]);
+                        
+                        const matchedItem = this.items.find(item => item.id === rec_id);
+                        if (matchedItem) {
+                            matchedItem.tarifa_f_nueva = tf_nueva;
+                            matchedItem.tarifa_p_nueva = tp_nueva;
+                            
+                            if(cols.length > 8) {
+                                matchedItem.activo = (cols[8].trim().toUpperCase() === 'SI');
+                            }
+                            matches++;
+                        }
+                    }
+                }
+                alert(`Captura finalizada. Se actualizaron en pantalla ${matches} registros.`);
+                event.target.value = ''; // Reset input
+            };
+            reader.readAsText(file);
+        }
+    }
+}
+document.addEventListener('alpine:init', () => {
+            Alpine.data('tarifasGrid', tarifasGrid);
+        });
+    </script>
+
+    <style>
+        /* Ocultar botones de subir/bajar del input number para que no roben espacio horizontal */
+        .hide-spinners::-webkit-outer-spin-button,
+        .hide-spinners::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .hide-spinners {
+            -moz-appearance: textfield;
+            min-width: 125px;
+            font-size: 0.875rem;
+        }
+    </style>
+{% endblock %}

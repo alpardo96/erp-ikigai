@@ -1,0 +1,26 @@
+<div class="divide-y divide-slate-100 bg-white">
+    {% for p in productos %}
+    <button type="button"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-blue-50 transition-colors"
+            onclick="document.body.dispatchEvent(new CustomEvent('productoVentaEncontrado', { bubbles: true, detail: { id: '{{ p.id }}', detalle: '{{ p.detalle|escapejs }}', precio_sugerido: '{{ p.precio_mostrar|floatformat:2|default:0 }}', requiere_credencial: {% if p.creden %}true{% else %}false{% endif %} } }))">
+        <span class="min-w-0">
+            <span class="block truncate text-xs font-bold uppercase text-slate-800">{{ p.detalle }}</span>
+            <span class="block text-[10px] font-semibold text-slate-500">COD: {{ p.cod_prov|default:p.id }} {% if p.cod_fab %}| FAB: {{ p.cod_fab }}{% endif %}</span>
+        </span>
+        {% if not simple %}
+        <span class="shrink-0 text-right">
+            <span class="block text-[10px] font-black {% if p.stock_local > 0 %}text-green-600{% else %}text-red-500{% endif %}">{{ p.stock_local|floatformat:0 }} UND.</span>
+            <span class="block text-[10px] font-bold text-blue-600">{% if moneda_venta == 'DOL' %}USD{% else %}${% endif %} {{ p.precio_mostrar|floatformat:2 }}</span>
+        </span>
+        {% endif %}
+    </button>
+    {% empty %}
+    <div class="px-6 py-8 text-center bg-white">
+        <svg class="w-9 h-9 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest">No se encontraron productos.</p>
+        <p class="text-[10px] text-slate-400 mt-1">Intente con otro código o descripción.</p>
+    </div>
+    {% endfor %}
+</div>

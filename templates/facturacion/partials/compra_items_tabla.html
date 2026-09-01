@@ -1,0 +1,113 @@
+{% load l10n %}
+<div class="overflow-hidden border border-gray-200 rounded shadow-sm italic">
+    <table class="w-full text-left border-collapse bg-white">
+        <thead>
+            <tr class="bg-gray-900 text-white text-[10px] uppercase tracking-wider">
+                <th class="px-3 py-2 border-r border-gray-700">Cód</th>
+                <th class="px-3 py-2 border-r border-gray-700 w-1/4">Descripción</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Cant</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-right">Cto Adq</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-right text-amber-300">Cto Rep</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Desc%</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-right">IVA %</th>
+                <th class="px-3 py-2 text-right">Total Línea</th>
+                <th class="px-3 py-2 text-center columna-accion-item"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 italic">
+            {% for item in items %}
+            <tr class="hover:bg-blue-50 transition-colors text-[11px] item-row" data-iva="{{ item.iva|unlocalize }}">
+                <td class="px-3 py-2 font-bold text-blue-700">{{ item.codigo }}</td>
+                <td class="px-3 py-2 font-medium text-gray-900 uppercase">
+                    {{ item.detalle }}
+                    {% if item.subprod %}
+                        <div class="mt-1">
+                            <button hx-get="{% url 'compras_item_series_modal' item.index %}"
+                                    hx-target="#modal-container"
+                                    class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold hover:bg-blue-200"
+                                    type="button">
+                                Series ({{ item.series|length }}/{{ item.cantidad|floatformat:0 }})
+                            </button>
+                        </div>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-2 text-center font-bold">{{ item.cantidad|floatformat:1 }}</td>
+                <td class="px-3 py-2 text-right font-medium text-slate-600">$ {{ item.cto_adq|default:item.precio|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right font-bold text-amber-700">$ {{ item.cto_rep|default:item.precio|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center {% if item.descuento > 0 %}text-green-600 font-bold{% else %}text-gray-300{% endif %}">
+                    {{ item.descuento|default:0|floatformat:2 }}%
+                </td>
+                <td class="px-3 py-2 text-right text-gray-500">{{ item.iva|floatformat:1 }}%</td>
+                <td class="px-3 py-2 text-right font-black text-gray-900">
+                    <input type="text" name="total_linea" value="{{ item.total|floatformat:2 }}"
+                           readonly tabindex="-1"
+                           class="w-28 bg-transparent text-right outline-none fInputAR font-black {% if item.total == 0 %}text-slate-300{% else %}text-gray-900{% endif %}">
+                </td>
+                <td class="px-3 py-2 text-center columna-accion-item">
+                    <button hx-post="{% url 'compras_item_remove' item.index %}"
+                            hx-target="#items-tabla-container"
+                            class="text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay productos cargados en esta factura.</td>
+            </tr>
+            {% endfor %}
+
+            {% if items|length < 10 %}
+                {% with ""|center:10 as range %}
+                {% for i in range %}
+                    {% if forloop.counter > items|length %}
+                    <tr class="h-10">
+                        <td class="px-3 py-2 border-r border-gray-50"></td>
+                        <td class="px-3 py-2 border-r border-gray-50"></td>
+                        <td class="px-3 py-2 border-r border-gray-50"></td>
+                        <td class="px-3 py-2 border-r border-gray-50"></td>
+                        <td class="px-3 py-2 border-r border-gray-50"></td>
+                        <td class="px-3 py-2 border-r border-gray-50"></td>
+                        <td class="px-3 py-2 border-r border-gray-50"></td>
+                        <td class="px-3 py-2"></td>
+                        <td class="px-3 py-2 text-center"></td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+                {% endwith %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    (function() {
+        // Sumar el neto para la liquidación inferior usando valores puros
+        let netoTotal = 0;
+        let ivasPorAlicuota = {};
+        {% for item in items %}
+            (function() {
+                let t = {{ item.total|unlocalize }};
+                let a = {{ item.iva|unlocalize }};
+                netoTotal += t;
+                if (a > 0) {
+                    let i = t * (a / 100);
+                    let key = parseFloat(a).toFixed(1).replace('.0', '') + '%';
+                    if (!ivasPorAlicuota[key]) ivasPorAlicuota[key] = 0;
+                    ivasPorAlicuota[key] += i;
+                }
+            })();
+        {% endfor %}
+
+        // La grilla alimenta el SUBTOTAL (antes del descuento global); el Neto Gravado se deriva.
+        const idSubtotal = document.getElementById('id_subtotal');
+        if (idSubtotal) {
+            idSubtotal.value = netoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+            // Disparamos el evento para recalcular Neto Gravado y el total.
+            idSubtotal.dispatchEvent(new Event('input'));
+        }
+        if (typeof actualizarInsigniasIva === 'function') {
+            actualizarInsigniasIva(ivasPorAlicuota);
+        }
+    })();
+</script>

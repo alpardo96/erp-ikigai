@@ -1,0 +1,619 @@
+{% load static vertical_tags %}
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ERP - Gestión Administrativa Contable{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'media/favi_logo.png' %}">
+    <!-- Tailwind CSS -->
+    <link href="{% static 'css/output.css' %}?v={{ css_version }}" rel="stylesheet">
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Formato numérico es-AR uniforme (miles/decimales) para todo el sistema -->
+    <script src="{% static 'js/formato_ar.js' %}?v={{ css_version }}"></script>
+    <!-- Alpine.js Persistencia-->
+    <script defer src="https://unpkg.com/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
+    <!-- Alpine.js Anchor-->
+    <script defer src="https://unpkg.com/@alpinejs/anchor@3.x.x/dist/cdn.min.js"></script>
+    <!-- Alpine.js (Core, MUST be loaded after plugins) -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- QRious – generación de QR en canvas (se cachea en el browser, no ocupa memoria servidor) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-gray-50 text-gray-900 font-sans h-screen flex flex-col"
+    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+    x-data="{ sidebarOpen: $persist(true) }">
+
+    <!-- Header / Navbar -->
+    <nav class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shadow-sm z-30">
+        <div class="flex items-center space-x-4">
+            <button @click="sidebarOpen = !sidebarOpen" class="p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-indigo-600 focus:outline-none transition-colors" title="Ocultar/Mostrar Menú">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+            <img src="{% static 'media/favi_logo.png' %}" alt="Logo" class="h-10 w-auto">
+            <span class="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent hidden sm:block">
+                ERP - Gestión Administrativa Contable
+            </span>
+        </div>
+
+        <div class="flex items-center space-x-6">
+            <!-- Context Badge -->
+            {% if sucursal_actual %}
+            <div class="flex items-center bg-indigo-50 border border-indigo-100 px-4 py-1 rounded-full shadow-sm">
+                <!-- Empresa | Sucursal -->
+                <div class="flex items-center px-2">
+                    <div class="w-2 h-2 bg-indigo-500 rounded-full animate-pulse mr-2"></div>
+                    <span class="text-[13px] font-bold text-indigo-700">
+                        {{ empresa_actual.nombre }} <span class="text-indigo-300 mx-1">|</span> {{sucursal_actual.nombre }}
+                    </span>
+                </div>
+
+                <!-- Ejercicio Selector -->
+                {% if ejercicio_actual %}
+                <form action="{% url 'cambiar_ejercicio' %}" method="post"
+                    class="flex items-center pl-4 pr-1 border-l border-indigo-200 ml-1">
+                    {% csrf_token %}
+                    <span class="text-[13px] font-bold text-indigo-700 mr-1 uppercase tracking-tight">Ejercicio:</span>
+                    <div class="relative flex items-center group">
+                        <select name="ejercicio_id" onchange="this.form.submit()"
+                            class="bg-transparent text-[13px] font-bold text-indigo-900 border-none focus:ring-0 cursor-pointer py-0 pl-1 pr-7 appearance-none hover:text-indigo-600 transition-colors">
+                            {% for ej in ejercicios_disponibles %}
+                            <option value="{{ ej.id }}" {% if ej.id == ejercicio_actual.id %}selected{% endif %}>
+                                {{ ej.cierre|date:"Y" }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div
+                            class="pointer-events-none absolute inset-y-0 right-1 flex items-center text-indigo-400 group-hover:text-indigo-600">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                                    d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <span class="text-[11px] text-red-400 font-bold px-2 italic">Sin Ejercicio</span>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- User Menu -->
+            <div class="flex items-center space-x-4">
+                <span class="text-sm text-gray-500">Hola, <strong>{{ user.username }}</strong></span>
+                {% if user.is_staff or user.perfil.es_admin_sistema or user.perfil.permiso_cotizaciones_editar %}
+                <button type="button" 
+                    hx-get="{% url 'config_cotizaciones' %}" 
+                    hx-target="#modal-container"
+                    class="p-2 text-emerald-500 hover:text-emerald-700 transition-colors" title="Cotizaciones">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </button>
+                {% endif %}
+                
+                {% if user.is_staff or user.perfil.es_admin_sistema %}
+                <a href="{% url 'configuracion_index' %}"
+                    class="p-2 text-gray-400 hover:text-indigo-600 transition-colors" title="Configuración">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </a>
+                {% endif %}
+                <form action="{% url 'logout' %}" method="post" class="inline" hx-boost="false">
+                    {% csrf_token %}
+                    <button type="submit" class="p-2 text-gray-400 hover:text-red-600 transition-colors" title="Salir">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                            </path>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Banner Global de Alerta Vencimiento Certificado ARCA -->
+    {% if alerta_certificado_afip %}
+    <div class="z-40 {% if alerta_certificado_afip.nivel == 'danger' %}bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white{% else %}bg-gradient-to-r from-amber-400 via-amber-500 to-orange-400 text-slate-950{% endif %} px-6 py-3 shadow-md border-b flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 rounded-full {% if alerta_certificado_afip.nivel == 'danger' %}bg-red-800/60 text-white animate-bounce{% else %}bg-amber-600/30 text-amber-950{% endif %}">
+                <svg class="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs uppercase font-extrabold tracking-wider opacity-90">
+                    {% if alerta_certificado_afip.es_vencido %}🚨 ALERTA CRÍTICA: CERTIFICADO AFIP/ARCA VENCIDO{% else %}⚠️ ADVERTENCIA: CERTIFICADO AFIP/ARCA PRÓXIMO A VENCER{% endif %}
+                </p>
+                <p class="text-sm font-bold mt-0.5">
+                    {{ alerta_certificado_afip.mensaje }}
+                </p>
+            </div>
+        </div>
+        {% if user.is_staff or user.perfil.es_admin_sistema %}
+        <a href="{% url 'configuracion_index' %}" class="px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm {% if alerta_certificado_afip.nivel == 'danger' %}bg-white text-red-700 hover:bg-red-50{% else %}bg-slate-900 text-white hover:bg-slate-800{% endif %} shrink-0">
+            ⚙️ Configurar Certificados
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex overflow-hidden">
+        {% if sucursal_actual and not hide_sidebar %}
+        <!-- Sidebar -->
+        <aside x-show="sidebarOpen" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="-translate-x-full opacity-0" x-transition:enter-end="translate-x-0 opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-x-0 opacity-100" x-transition:leave-end="-translate-x-full opacity-0" class="w-64 bg-gray-900 text-gray-300 flex-shrink-0 flex flex-col shadow-xl overflow-y-auto scrollbar-fina">
+            <div class="p-6">
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Menú Principal</p>
+            </div>
+            <nav class="flex-1 px-3 space-y-1">
+                <a href="{% url 'home' %}"
+                    class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                    <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                        </path>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="{% url 'clientes_index' %}"
+                    class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                    <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                    Clientes y Proveedores
+                </a>
+                <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/stock/') || ['/compras/recepciones/', '/compras/remitos-internos/', '/compras/recepcion-interna/'].some(p => window.location.pathname.startsWith(p)) }">
+                    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                        <a href="{% url 'stock_index' %}" class="flex items-center flex-1">
+                            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                            </svg>
+                            Stock y Almacenes
+                        </a>
+                        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+                        <a href="{% url 'producto_listado' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'producto_listado' %}text-indigo-500 font-bold{% endif %}">
+                            Mantenimiento de Productos
+                        </a>
+                        {% hook_menu 'stock' %}
+                        {% if empresa_actual.usa_orden_compra %}
+                        <a href="{% url 'recepcion_listado' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'recepcion_listado' %}text-indigo-500 font-bold{% endif %}">
+                            Recepción de Mercadería
+                        </a>
+                        <a href="{% url 'remito_interno_listado' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'remito_interno_listado' %}text-indigo-500 font-bold{% endif %}">
+                            Remitos Internos
+                        </a>
+                        <a href="{% url 'recepcion_interna_listado' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'recepcion_interna_listado' or request.resolver_match.url_name == 'recepcion_interna_carga' %}text-indigo-500 font-bold{% endif %}">
+                            Recepción Interna
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="space-y-1" x-data="{ open: (window.location.pathname.startsWith('/compras/') && !['/compras/recepciones/', '/compras/remitos-internos/', '/compras/recepcion-interna/'].some(p => window.location.pathname.startsWith(p))) || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'C') }">
+                    <div
+                        class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                        <a href="{% url 'compras_index' %}" class="flex items-center flex-1">
+                            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z">
+                                </path>
+                            </svg>
+                            Compras
+                        </a>
+                        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+                        {% if user.perfil.permiso_facturacion_compras or user.perfil.es_admin_sistema or user.is_staff %}
+                            {% if empresa_actual.usa_orden_compra %}
+                            <a href="{% url 'oc_listado' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'oc_listado' %}text-indigo-500 font-bold{% endif %}">
+                                Órdenes de Compra
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'compras_carga' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_carga' %}text-indigo-500 font-bold{% endif %}">
+                                Carga de Compras
+                            </a>
+                            {% hook_menu 'compras' %}
+                            <a href="{% url 'compras_carga_automatica' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_carga_automatica' %}text-indigo-500 font-bold{% endif %}">
+                                Carga de Compras Automatica
+                            </a>
+                            <a href="{% url 'compras_carga_ia' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_carga_ia' %}text-indigo-500 font-bold{% endif %}">
+                                Carga de Compra IA
+                            </a>
+                        {% endif %}
+                        
+                        {% if user.perfil.permiso_facturacion_lista_compras or user.perfil.es_admin_sistema or user.is_staff %}
+                            <a href="{% url 'compras_listado' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_listado' %}text-indigo-500 font-bold{% endif %}">
+                                Listado de Compras
+                            </a>
+                            {# Misma pantalla que en Ventas; entra con la operación ya elegida. #}
+                            <a href="{% url 'facturas_pendientes' %}?operacion=C"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'facturas_pendientes' and request.GET.operacion == 'C' %}text-indigo-500 font-bold{% endif %}">
+                                Facturas Pendientes
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/ventas/') || window.location.pathname.startsWith('/estudio/') || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'V') }">
+                    <div
+                        class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                        <a href="{% url 'ventas_index' %}" class="flex items-center flex-1">
+                            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                </path>
+                            </svg>
+                            Ventas
+                        </a>
+                        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+                        {% if user.perfil.permiso_facturacion_carga_ventas or user.perfil.es_admin_sistema or user.is_staff %}
+                            <a href="{% url 'ventas_carga' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ventas_carga' %}text-green-400 font-bold{% endif %}">
+                                Carga de Ventas
+                            </a>
+                            {% hook_menu 'ventas' %}
+                            {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
+                            <a href="{% url 'preventas_carga' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'preventas_carga' %}text-green-400 font-bold{% endif %}">
+                                Carga de PreVentas
+                            </a>
+                            {% endif %}
+                        {% endif %}
+                        
+                        {% if user.perfil.permiso_facturacion_lista_ventas or user.perfil.es_admin_sistema or user.is_staff %}
+                            <a href="{% url 'ventas_listado' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ventas_listado' %}text-green-400 font-bold{% endif %}">
+                                Listado de Ventas
+                            </a>
+                            <a href="{% url 'reporte_ventas_producto' %}"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'reporte_ventas_producto' %}text-green-400 font-bold{% endif %}">
+                                Ventas por Producto
+                            </a>
+                            <a href="{% url 'facturas_pendientes' %}?operacion=V"
+                                class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'facturas_pendientes' and request.GET.operacion == 'V' %}text-green-400 font-bold{% endif %}">
+                                Facturas Pendientes
+                            </a>
+                        {% endif %}
+
+                        {% if user.perfil.permiso_autorizar_descuentos or user.perfil.permiso_facturacion_autorizaciones or user.perfil.es_admin_sistema or user.is_staff %}
+                        {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
+                        <a href="{% url 'autorizaciones_index' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors flex justify-between items-center pr-4 {% if request.resolver_match.url_name == 'autorizaciones_index' %}text-green-400 font-bold{% endif %}">
+                            <span>Lista de Autorizaciones</span>
+                        </a>
+                        {% endif %}
+                        {% endif %}
+
+
+                    </div>
+                </div>
+
+                {% hook_menu 'sidebar_bottom' %}
+
+                <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/tesoreria/') }">
+                    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                        <a href="{% url 'tesoreria_index' %}" class="flex items-center flex-1">
+                            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Tesorería
+                        </a>
+                        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+                        {% comment %}
+                        El cajero opera todo desde su Caja Mostrador (Plan 077 §G): cobra con
+                        el recibo que sale de esa pantalla y rinde al cerrarla. Esconder el
+                        link no alcanza como permiso —las vistas también lo bloquean—, pero
+                        mostrarle opciones que no puede usar sería peor.
+                        {% endcomment %}
+                        {% if not user.perfil.es_cajero_mostrador %}
+                        <a href="{% url 'recibo_carga' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'recibo_carga' %}text-indigo-500 font-bold{% endif %}">
+                            Emitir Recibo
+                        </a>
+                        <a href="{% url 'ordenpago_carga' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ordenpago_carga' %}text-red-400 font-bold{% endif %}">
+                            Emitir Orden Pago
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'caja_mostrador_index' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'caja_mostrador_index' %}text-green-600 font-bold{% endif %}">
+                            Caja Mostrador
+                        </a>
+                        {% if not user.perfil.es_cajero_mostrador %}
+                        <a href="{% url 'caja_diaria_index' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'caja_diaria_index' %}text-green-600 font-bold{% endif %}">
+                            Caja Diaria
+                        </a>
+                        <a href="{% url 'eoaf_index' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'eoaf_index' %}text-indigo-300 font-bold{% endif %}">
+                            Origen y Aplicacion de Fondos
+                        </a>
+                        <a href="{% url 'rendiciones_recepcion' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'rendiciones_recepcion' %}text-indigo-300 font-bold{% endif %}">
+                            Recepcion de Rendiciones
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/contable/') }">
+                    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                        <a href="{% url 'contable_index' %}" class="flex items-center flex-1">
+                            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25">
+                                </path>
+                            </svg>
+                            Contable
+                        </a>
+                        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+                        <a href="{% url 'contable_libro_diario' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'contable_libro_diario' %}text-indigo-500 font-bold{% endif %}">
+                            Libro Diario
+                        </a>
+                        <a href="{% url 'contable_libro_mayor' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'contable_libro_mayor' %}text-indigo-500 font-bold{% endif %}">
+                            Libro Mayor
+                        </a>
+                        <a href="{% url 'contable_balance' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'contable_balance' %}text-indigo-500 font-bold{% endif %}">
+                            Balance de Sumas y Saldos
+                        </a>
+                        <a href="{% url 'contable_saldos_mensuales' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'contable_saldos_mensuales' %}text-indigo-500 font-bold{% endif %}">
+                            Saldos Mensuales
+                        </a>
+                    </div>
+                </div>
+                <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/impuestos/') }">
+                    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+                        <a href="{% url 'impuestos:impuestos_index' %}" class="flex items-center flex-1">
+                            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 14l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                            </svg>
+                            Impuestos
+                        </a>
+                        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+                            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+                        <a href="{% url 'impuestos:cierre_periodo_iva' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'cierre_periodo_iva' %}text-purple-400 font-bold{% endif %}">
+                            Cierre Periodo IVA
+                        </a>
+                        <a href="{% url 'impuestos:libro_iva_ventas' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'libro_iva_ventas' %}text-blue-400 font-bold{% endif %}">
+                            Libro IVA Ventas - Portal IVA
+                        </a>
+                        <a href="{% url 'impuestos:libro_iva_compras' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'libro_iva_compras' %}text-indigo-400 font-bold{% endif %}">
+                            Libro IVA Compras - Portal IVA
+                        </a>
+                        <a href="{% url 'impuestos:mis_comprobantes_arca' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'mis_comprobantes_arca' %}text-emerald-400 font-bold{% endif %}">
+                            Captura Mis Comprobantes ARCA
+                        </a>
+                        <a href="{% url 'impuestos:sicore_ganancias' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'sicore_ganancias' %}text-amber-400 font-bold{% endif %}">
+                            SICORE - Retencion Impuesto a las Ganancias
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            <div class="p-6 border-t border-gray-800">
+                <a href="{% url 'seleccion_empresa' %}"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors text-center block">
+                    Cambiar Sucursal
+                </a>
+            </div>
+        </aside>
+        {% endif %}
+
+        <main class="flex-1 overflow-auto bg-slate-50 p-8 relative">
+            <!-- Mensajes del Sistema -->
+            {% if messages %}
+            <div class="fixed top-20 right-8 z-[110] space-y-4 w-96 animate-in slide-in-from-right duration-300">
+                {% for message in messages %}
+                <div
+                    class="p-4 rounded-xl shadow-2xl border-l-4 flex items-start gap-3 {% if message.tags == 'success' %}bg-green-50 border-green-500 text-green-800{% else %}bg-red-50 border-red-500 text-red-800{% endif %}">
+                    {% if message.tags == 'success' %}
+                    <svg class="w-5 h-5 text-green-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {% else %}
+                    <svg class="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {% endif %}
+                    <div>
+                        <p class="text-sm font-bold uppercase tracking-wider mb-1">{{ message.tags|upper }}</p>
+                        <p class="text-xs opacity-90">{{ message }}</p>
+                    </div>
+                    <button onclick="this.parentElement.remove()"
+                        class="ml-auto text-current opacity-50 hover:opacity-100">&times;</button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Contenedor Universal para Modales -->
+    <div id="modal-container" class="relative z-[100]"></div>
+    <div id="modal-container-2" class="relative z-[110]"></div>
+
+    <script>
+        // Escucha el evento global 'cerrarModal' y limpia el contenedor
+        document.body.addEventListener('cerrarModal', function () {
+            const mc2 = document.getElementById('modal-container-2');
+            if (mc2 && mc2.innerHTML.trim() !== '') {
+                mc2.innerHTML = '';
+            } else {
+                const mc1 = document.getElementById('modal-container');
+                if (mc1) mc1.innerHTML = '';
+            }
+        });
+
+        // Emular VFP "GO TOP": Scroll automático al inicio cuando se recargan las tablas
+        document.body.addEventListener('reloadCuentas', function () {
+            setTimeout(() => {
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            }, 100);
+        });
+
+        // Cierre al hacer clic fuera del modal (si existe backdrop)
+        document.addEventListener('click', function (event) {
+            if (event.target.id === 'modal-backdrop') {
+                const mc2 = document.getElementById('modal-container-2');
+                if (mc2 && mc2.contains(event.target)) {
+                    mc2.innerHTML = '';
+                } else {
+                    const mc1 = document.getElementById('modal-container');
+                    if (mc1) mc1.innerHTML = '';
+                }
+            }
+        });
+
+        // Log de eventos para depuración en vivo (opcional, ayuda a ver qué dispara qué)
+        document.body.addEventListener('htmx:afterOnLoad', function (evt) {
+            if (evt.detail.xhr.getResponseHeader('HX-Trigger')) {
+                console.log('HTMX Trigger detectado:', evt.detail.xhr.getResponseHeader('HX-Trigger'));
+            }
+        });
+
+        /* --- LÓGICA VFP (Visual FoxPro): ENTER = TAB --- */
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const target = e.target;
+                
+                // No interceptar si el usuario está en un textarea, botón o enlace
+                if (target.tagName === 'BUTTON' || target.tagName === 'A' || target.tagName === 'TEXTAREA' || target.type === 'submit') {
+                    return;
+                }
+
+                // Si estamos dentro de un formulario, saltar al siguiente elemento
+                const form = target.closest('form');
+                if (form) {
+                    e.preventDefault(); // Evitar envío prematuro
+                    const focusables = Array.from(form.querySelectorAll(
+                        'input:not([type="hidden"]):not([disabled]):not([readonly]), ' +
+                        'select:not([disabled]):not([readonly]), ' +
+                        'textarea:not([disabled]):not([readonly]), ' +
+                        'button:not([disabled])'
+                    ));
+                    
+                    const index = focusables.indexOf(target);
+                    if (index > -1 && index < focusables.length - 1) {
+                        focusables[index + 1].focus();
+                    }
+                }
+            }
+        });
+
+        /* --- VALIDACIÓN EXIGIBLE: DESHABILITAR BOTÓN GUARDAR --- */
+        function checkFormValidity(form) {
+            const submitBtns = form.querySelectorAll('button[type="submit"]');
+            if (submitBtns.length === 0) return;
+            
+            const isValid = form.checkValidity();
+            submitBtns.forEach(btn => {
+                if (isValid) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btn.title = "";
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    btn.title = "Complete todos los campos obligatorios para continuar.";
+                }
+            });
+        }
+
+        function attachFormValidation(rootElement) {
+            const forms = rootElement.tagName === 'FORM' ? [rootElement] : rootElement.querySelectorAll('form');
+            forms.forEach(form => {
+                checkFormValidity(form); // Chequeo inicial
+                form.addEventListener('input', () => checkFormValidity(form));
+                form.addEventListener('change', () => checkFormValidity(form));
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => attachFormValidation(document));
+        document.addEventListener('htmx:afterSettle', (e) => attachFormValidation(e.target));
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

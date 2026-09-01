@@ -1,0 +1,107 @@
+{% load l10n %}
+<div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-[110] backdrop-blur-sm"></div>
+<div class="fixed inset-0 flex items-center justify-center z-[120] p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden italic">
+        <!-- Header -->
+        <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+            <h3 class="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-.5 9a2 2 0 002 2h11a2 2 0 002-2L19 7M6 7h13"></path></svg>
+                Revisión de Precios de Venta
+            </h3>
+            <button type="button" onclick="document.getElementById('modal-container').innerHTML=''" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Barra de acciones -->
+        <div class="px-6 py-3 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
+            <span class="text-[11px] font-bold text-amber-700 uppercase tracking-tight">Ajustá o redondeá los nuevos precios antes de guardar</span>
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold text-amber-700 uppercase">Múltiplo:</span>
+                <input type="number" id="input_mult_redondeo" value="100" class="w-16 h-8 px-2 text-right font-black border border-amber-300 rounded-lg outline-none focus:border-amber-500 bg-white shadow-inner">
+                <button type="button" onclick="redondearPreciosRev(parseFloat(document.getElementById('input_mult_redondeo').value) || 1)"
+                        class="bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-sm transition-all">
+                    Redondear
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="flex-1 overflow-auto">
+            <table class="w-full text-left text-[12px]">
+                <thead class="sticky top-0 bg-slate-100 text-slate-500 uppercase text-[10px] font-black z-10">
+                    <tr>
+                        <th class="px-4 py-2">Producto</th>
+                        <th class="px-4 py-2 text-right">Pº Actual</th>
+                        <th class="px-4 py-2 text-right">Pº Nuevo</th>
+                        <th class="px-4 py-2 text-center">Variación</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for item in items %}
+                    <tr data-pid="{{ item.producto_id }}" data-actual="{{ item.precio_vta_actual|default:0|unlocalize }}">
+                        <td class="px-4 py-2 font-bold text-slate-800 uppercase">{{ item.codigo }} · {{ item.detalle }}</td>
+                        <td class="px-4 py-2 text-right text-slate-400 font-medium">$ {{ item.precio_vta_actual|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-2 text-right">
+                            <input type="number" step="0.01" id="precio_rev_{{ item.producto_id }}"
+                                   value="{{ item.precio_vta_nuevo|default:0|unlocalize }}"
+                                   oninput="recalcVarRev(this)"
+                                   class="w-32 h-9 px-2 text-right font-black border border-slate-300 rounded-lg outline-none focus:border-blue-500 bg-blue-50">
+                        </td>
+                        <td class="px-4 py-2 text-center font-black" id="var_rev_{{ item.producto_id }}">—</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-6 py-10 text-center text-gray-400 italic">No hay productos para revisar.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+            <button type="button" onclick="document.getElementById('modal-container').innerHTML=''"
+                    class="px-4 py-2 text-slate-500 font-bold text-sm hover:text-slate-700">Cancelar</button>
+            <button type="button" onclick="confirmarPreciosYGuardar()"
+                    class="bg-blue-600 hover:bg-blue-500 text-white font-black px-6 py-2 rounded-lg text-[11px] uppercase tracking-widest shadow-lg transition-all transform active:scale-95">
+                Confirmar y Guardar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function recalcVarRev(input) {
+        const tr = input.closest('tr');
+        const actual = parseFloat(tr.dataset.actual) || 0;
+        const nuevo = parseFloat(input.value) || 0;
+        const cell = document.getElementById('var_rev_' + tr.dataset.pid);
+        if (actual > 0) {
+            const v = (nuevo / actual - 1) * 100;
+            cell.textContent = (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+            cell.className = 'px-4 py-2 text-center font-black ' + (v >= 0 ? 'text-green-600' : 'text-red-600');
+        } else {
+            cell.textContent = 'NUEVO';
+            cell.className = 'px-4 py-2 text-center font-black text-blue-600';
+        }
+    }
+    function redondearPreciosRev(mult) {
+        document.querySelectorAll('[id^="precio_rev_"]').forEach(inp => {
+            const v = parseFloat(inp.value) || 0;
+            inp.value = (Math.round(v / mult) * mult).toFixed(2);
+            recalcVarRev(inp);
+        });
+    }
+    function confirmarPreciosYGuardar() {
+        const form = document.getElementById('compra-form');
+        document.querySelectorAll('[id^="precio_rev_"]').forEach(inp => {
+            const pid = inp.id.replace('precio_rev_', '');
+            let h = form.querySelector('input[name="precio_nuevo_' + pid + '"]');
+            if (!h) { h = document.createElement('input'); h.type = 'hidden'; h.name = 'precio_nuevo_' + pid; form.appendChild(h); }
+            h.value = inp.value;
+        });
+        document.getElementById('modal-container').innerHTML = '';
+        if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+    }
+    // Inicializar las variaciones al abrir
+    document.querySelectorAll('[id^="precio_rev_"]').forEach(recalcVarRev);
+</script>

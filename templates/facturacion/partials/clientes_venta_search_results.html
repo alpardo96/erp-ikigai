@@ -1,0 +1,31 @@
+{% for c in clientes %}
+<tr class="bg-white hover:bg-blue-50 transition-colors group cursor-pointer"
+    onclick="document.body.dispatchEvent(new CustomEvent('clienteVentaSeleccionado', { detail: { id: '{{ c.pk }}', razon_social: '{{ c.razon_social|escapejs }}', cuit: '{{ c.cuit|default:""|escapejs }}', cta_res: '{{ c.cta_res|default:0 }}', condicion_iva: '{{ c.condicion_iva|escapejs }}', usa_orden_compra: '{% if c.usa_orden_compra %}true{% else %}false{% endif %}', clasificacion: '{{ c.clasificacion|escapejs }}' } }))">
+    <td class="px-3 py-2 border-b border-slate-100">
+        <span class="text-[10px] font-black text-slate-400">#{{ c.pk }}</span>
+    </td>
+    <td class="px-3 py-2 border-b border-slate-100">
+        <span class="text-xs font-bold text-slate-800 uppercase">{{ c.razon_social }}</span>
+    </td>
+    <td class="px-3 py-2 border-b border-slate-100">
+        <span class="text-[10px] font-bold text-slate-500">{{ c.cuit|default:"-" }}</span>
+    </td>
+    <td class="px-3 py-2 border-b border-slate-100 text-right">
+        <span class="text-[10px] font-bold text-indigo-600">$ {{ c.saldo_pendiente|default:c.saldo|floatformat:2 }}</span>
+    </td>
+    <td class="px-3 py-2 border-b border-slate-100 text-right">
+        <button type="button" 
+                class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-black text-[9px] uppercase shadow-sm transition-all group-hover:scale-105">
+            SEL
+        </button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="px-6 py-10 text-center bg-white rounded-b-lg">
+        <svg class="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest">No se encontraron clientes.</p>
+        <p class="text-[10px] text-slate-400 mt-1">Intente con otro nombre o CUIT.</p>
+    </td>
+</tr>
+{% endfor %}

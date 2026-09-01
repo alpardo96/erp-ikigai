@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Tomar Pedido | Distribución{% endblock %}
+
+{% block content %}
+{% comment %}
+Pantalla mobile-first (Plan 074 §7.1). Todo el ancho, objetivos táctiles grandes y el
+crédito del cliente siempre a la vista, que es con lo que el vendedor decide.
+{% endcomment %}
+<div class="max-w-2xl mx-auto w-full px-3 py-3 space-y-3 pb-32">
+
+    <div class="flex items-center justify-between">
+        <h1 class="text-lg font-black text-slate-900 tracking-tighter uppercase italic">Tomar Pedido</h1>
+        <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full uppercase tracking-widest">
+            {{ user.username }}
+        </span>
+    </div>
+
+    <!-- CLIENTE -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3" x-data="{ abierto: false }">
+        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Cliente</label>
+        <div class="relative">
+            <input type="text" name="q" autocomplete="off"
+                   placeholder="Código o nombre del cliente..."
+                   class="w-full h-12 px-3 bg-slate-50 border border-slate-200 rounded-lg text-base font-bold text-slate-900 outline-none focus:border-indigo-500 focus:bg-white"
+                   hx-get="{% url 'distribucion_movil_clientes' %}"
+                   hx-trigger="keyup changed delay:300ms, search, focus"
+                   hx-target="#movil-clientes"
+                   @focus="abierto = true" @click.outside="abierto = false">
+            <div x-show="abierto" id="movil-clientes"
+                 class="absolute z-40 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-72 overflow-y-auto"
+                 style="display: none;"></div>
+        </div>
+
+        <div id="movil-cabecera" class="mt-3">
+            {% include 'distribucion/movil/partials/cabecera.html' %}
+        </div>
+    </div>
+
+    <!-- CARGA RÁPIDA POR CÓDIGO -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3" x-data="{ abierto: false }">
+        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Cargar artículo</label>
+        <form hx-post="{% url 'distribucion_movil_item_add' %}"
+              hx-target="#movil-carrito"
+              hx-on::after-request="this.reset(); this.querySelector('[name=codigo]').focus();"
+              class="flex gap-2">
+            {% csrf_token %}
+            <input type="text" name="codigo" inputmode="numeric" autocomplete="off"
+                   placeholder="Código"
+                   class="w-28 h-12 px-3 bg-slate-50 border border-slate-200 rounded-lg text-base font-black text-slate-900 outline-none focus:border-indigo-500 focus:bg-white">
+            <input type="text" name="cantidad" inputmode="decimal" value="1"
+                   class="w-20 h-12 px-3 bg-slate-50 border border-slate-200 rounded-lg text-base font-black text-center text-slate-900 outline-none focus:border-indigo-500 focus:bg-white">
+            <button type="submit"
+                    class="flex-1 h-12 bg-indigo-600 text-white rounded-lg font-black text-sm uppercase tracking-wide active:scale-95 transition-transform">
+                Agregar
+            </button>
+        </form>
+
+        <div class="relative mt-2">
+            <input type="text" name="qprod" autocomplete="off"
+                   placeholder="¿No recordás el código? Buscá por descripción..."
+                   class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:border-indigo-500 focus:bg-white"
+                   hx-get="{% url 'distribucion_movil_productos' %}"
+                   hx-trigger="keyup changed delay:300ms, search"
+                   hx-target="#movil-productos"
+                   @focus="abierto = true" @click.outside="abierto = false">
+            <div x-show="abierto" id="movil-productos"
+                 class="absolute z-40 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-72 overflow-y-auto"
+                 style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- CARRITO -->
+    <div id="movil-carrito">
+        {% include 'distribucion/movil/partials/carrito.html' %}
+    </div>
+</div>
+{% endblock %}

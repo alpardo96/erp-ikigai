@@ -1,0 +1,30 @@
+###### Índices del Módulo de Productos (Optimizados para Multi-Tenant / Empresa)
+
+Para asegurar un alto rendimiento cuando la tabla de productos crezca masivamente, hemos configurado **índices compuestos**. Dado 
+que cada consulta siempre filtra primero por "Empresa", poner `empresa_id` como primer campo del índice acelera brutalmente la 
+consulta.
+
+*Nota: Las tablas de configuración secundarias como Marcas, Rubros y Familias no cuentan con índices compuestos porque su volumen de datos es minúsculo. Para tablas tan pequeñas, la base de datos las procesa de manera instantánea (un escaneo secuencial en memoria RAM es mucho más eficiente que el costo de disco de mantener un índice al guardar datos).*
+
+1. **Tabla: Producto (`productos_producto`)**
+   - `[empresa_id, detalle]`: Para la búsqueda general de productos por nombre (usado constantemente en lupas, reportes y revisión de stock).
+   - `[empresa_id, cod_prov]`: Para la búsqueda exacta y filtrado rápido por código de proveedor.
+   - `[empresa_id, cod_fab]`: Para la búsqueda exacta y filtrado rápido por código de fábrica.
+
+*Nota 2: Los IDs principales (`id`) y los campos con `unique=True` (como la serie en Subproductos) ya tienen sus propios índices primarios automáticos en PostgreSQL.*
+
+##### Índices de la tabla Compras (`facturacion_compra`)
+Como las compras se filtran siempre por empresa y frecuentemente por proveedor o número de comprobante:
+
+1. `[empresa_id, proveedor_id]`: Agiliza reportes de compras por proveedor y estados de cuenta.
+2. `[empresa_id, numero]`: Para búsquedas rápidas de un comprobante específico.
+3. `[empresa_id, fecha]`: Para listados por rango de fechas y reportes mensuales.
+
+##### Índices de la tabla Ventas (`facturacion_venta`)
+Al igual que en compras, la velocidad de búsqueda por cliente y número es crítica:
+
+1. `[empresa_id, numero]`: Para encontrar facturas de venta o remitos por su número rápidamente.
+2. `[empresa_id, cliente_id]`: Para reportes de ventas por cliente y estados de cuenta.
+3. `[empresa_id, fecha]`: Para filtros por fecha, cierres de caja y estadísticas.
+
+*Nota: Estos índices compuestos aseguran que el sistema no se ralentice aunque tengas millones de ventas, siempre que se filtre por la empresa actual.*

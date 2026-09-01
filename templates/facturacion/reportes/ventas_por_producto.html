@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ventas por Producto | ERP ikigai{% endblock %}
+
+{% block content %}
+<div class="flex flex-col pt-6 gap-6 max-w-[96rem] mx-auto w-full px-4 sm:px-6 lg:px-8">
+
+    <!-- Encabezado del Módulo -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Reporte de Ventas por Producto</h1>
+            <p class="mt-1 text-sm text-gray-500">Consulta analítica detallada de ítems vendidos con soporte de exportación en CSV y Excel.</p>
+        </div>
+    </div>
+
+    <!-- Panel de Filtros Completo -->
+    <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200 overflow-visible relative">
+        <form id="filter-form" hx-get="{% url 'reporte_ventas_producto_search' %}" hx-target="#tabla-reporte-container" hx-trigger="submit" onsubmit="actualizarUrlExportacion()">
+            <input type="hidden" name="filtering" value="1">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4 items-end">
+                
+                <!-- Fecha Desde -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Fecha Desde</label>
+                    <input type="date" name="desde" value="{{ filtros.desde }}" class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <!-- Fecha Hasta -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Fecha Hasta</label>
+                    <input type="date" name="hasta" value="{{ filtros.hasta }}" class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <!-- Sucursal -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Sucursal</label>
+                    <select name="sucursal" class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">-- Todas --</option>
+                        {% for s in sucursales %}
+                        <option value="{{ s.id }}" {% if filtros.sucursal_id == s.id|stringformat:"s" %}selected{% endif %}>{{ s.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Cliente -->
+                <div x-data="{ open: false }" @clienteventaseleccionado.window="open = false" class="relative">
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Cliente</label>
+                    <input type="hidden" name="cliente" id="id_cliente" value="{{ filtros.cliente_id }}">
+                    <div class="relative">
+                        <input type="text" id="cliente_nombre_display" name="q_cliente"
+                               class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-gray-400 truncate pr-10"
+                               placeholder="Todos los clientes..."
+                               value="{% if filtros.cliente_id and filtros.cliente_nombre != 'Todos' %}{{ filtros.cliente_nombre }}{% endif %}"
+                               hx-get="{% url 'typeahead_clientes' %}" 
+                               hx-trigger="keyup changed delay:300ms, search, focus" 
+                               hx-target="#cliente_suggestions"
+                               autocomplete="off"
+                               @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                               oninput="if(this.value === '') { document.getElementById('id_cliente').value = ''; }">
+                        <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}"
+                                hx-target="#modal-container"
+                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600 focus:outline-none cursor-pointer"
+                                title="Buscar cliente">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="open" id="cliente_suggestions" 
+                         class="absolute z-50 left-0 top-full mt-1 w-full min-w-[300px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+                         style="display: none;">
+                    </div>
+                </div>
+
+                <!-- Producto -->
+                <div x-data="{ open: false }" @productoventaencontrado.window="open = false" class="relative">
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Producto</label>
+                    <input type="hidden" name="producto" id="id_producto" value="{{ filtros.producto_id }}">
+                    <div class="relative">
+                        <input type="text" id="producto_detalle_display" name="q_producto"
+                               class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-gray-400 truncate"
+                               placeholder="Todos los productos..."
+                               value="{% if filtros.producto_id and filtros.producto_nombre != 'Todos' %}{{ filtros.producto_nombre }}{% endif %}"
+                               hx-get="{% url 'typeahead_productos_venta' %}?simple=1" 
+                               hx-trigger="keyup changed delay:300ms, search, focus" 
+                               hx-target="#producto_suggestions"
+                               autocomplete="off"
+                               @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                               oninput="if(this.value === '') { document.getElementById('id_producto').value = ''; }">
+                    </div>
+                    <div x-show="open" id="producto_suggestions" 
+                         class="absolute z-50 left-0 top-full mt-1 w-full min-w-[300px] bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+                         style="display: none;">
+                    </div>
+                </div>
+
+                <!-- Rubro -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Rubro</label>
+                    <select name="rubro" class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">-- Todos --</option>
+                        {% for r in rubros %}
+                        <option value="{{ r.id }}" {% if filtros.rubro_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.detalle }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Familia -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Familia</label>
+                    <select name="familia" class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">-- Todas --</option>
+                        {% for f in familias %}
+                        <option value="{{ f.id }}" {% if filtros.familia_id == f.id|stringformat:"s" %}selected{% endif %}>{{ f.detalle }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Vendedor -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Vendedor</label>
+                    <select name="vendedor" class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">-- Todos --</option>
+                        {% for v in vendedores %}
+                        <option value="{{ v.id }}" {% if filtros.vendedor_id == v.id|stringformat:"s" %}selected{% endif %}>{{ v.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Fila Inferior: Condición (izquierda) y Botones de Acción (derecha) -->
+            <div class="flex flex-row items-end justify-between gap-4 mt-6 pt-5 border-t border-gray-100 w-full">
+                
+                <!-- Condición (Real / Proyectado) -->
+                <div class="flex flex-col items-start">
+                    <label class="block text-[10px] font-extrabold text-gray-700 uppercase tracking-widest mb-1.5">Condición del Comprobante</label>
+                    <div class="flex items-center gap-2">
+                        <!-- Real Option -->
+                        <label class="cursor-pointer">
+                            <input type="checkbox" name="fiscal" {% if filtros.fiscal %}checked{% endif %} class="peer sr-only">
+                            <span class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl border border-gray-200 bg-white text-gray-500 transition-all select-none hover:bg-gray-50 hover:border-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 peer-checked:shadow-sm">
+                                <span class="w-1.5 h-1.5 rounded-full bg-current opacity-60"></span>
+                                Real
+                            </span>
+                        </label>
+                        <!-- Proyectado Option -->
+                        <label class="cursor-pointer">
+                            <input type="checkbox" name="no_fiscal" {% if filtros.no_fiscal %}checked{% endif %} class="peer sr-only">
+                            <span class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-xl border border-gray-200 bg-white text-gray-500 transition-all select-none hover:bg-gray-50 hover:border-gray-300 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 peer-checked:shadow-sm">
+                                <span class="w-1.5 h-1.5 rounded-full bg-current opacity-60"></span>
+                                Proyectado
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción: Filtrar + Selector de Columnas al lado -->
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="inline-flex items-center px-4 py-2.5 bg-gray-900 text-white font-medium text-sm rounded-xl hover:bg-gray-800 transition-all shadow-sm cursor-pointer">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        Filtrar
+                    </button>
+
+                    <!-- Selector de Columnas al lado del botón Filtrar -->
+                    <div class="relative inline-block text-left" id="column-selector-dropdown-ventaprod">
+                        <button type="button" onclick="toggleColumnMenuVentaProd()"
+                            class="inline-flex items-center px-3.5 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium text-sm shadow-sm whitespace-nowrap cursor-pointer">
+                            <svg class="h-4 w-4 mr-1.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 01-2-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                            </svg>
+                            Columnas
+                        </button>
+                        <div id="column-menu-ventaprod"
+                            class="absolute right-0 z-50 mt-2 w-72 origin-top-right rounded-2xl bg-white shadow-2xl ring-1 ring-black ring-opacity-10 focus:outline-none hidden max-h-[75vh] overflow-y-auto p-4 border border-gray-100">
+                            <div class="flex items-center justify-between mb-3 px-1 pb-2 border-b border-gray-100">
+                                <p class="text-xs font-extrabold text-gray-500 uppercase tracking-widest">Mostrar / Ocultar</p>
+                                <button type="button" onclick="toggleColumnMenuVentaProd()" class="text-gray-400 hover:text-gray-600 text-xs font-bold">Cerrar ✕</button>
+                            </div>
+                            <div class="space-y-1 text-sm" id="column-checkboxes-ventaprod">
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-idvta" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">ID Venta</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-fecha" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Fecha</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-comprobante" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Comprobante</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-cliente" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Cliente</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-cuit" class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">CUIT</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-codprod" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Cód. Prod</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-codprov" class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Cód. Prov</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-producto" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Producto / Detalle</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-cantidad" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Cantidad</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-moneda" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Moneda</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-precio" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Precio Unit.</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-neto" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Neto</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-iva" class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">IVA</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-total" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Total</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-rubro" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Rubro</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-familia" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Familia</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-marca" class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Marca</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-vendedor" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Vendedor</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-sucursal" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Sucursal</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-condic" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Condición (1/2)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+    </div>
+
+    <!-- Contenedor Principal de la Tabla e Indicadores (Refresco por HTMX) -->
+    <div id="tabla-reporte-container" class="flex-1">
+        {% include 'facturacion/reportes/partials/tabla_ventas_producto.html' %}
+    </div>
+
+    <!-- Contenedor para Modales de Búsqueda -->
+    <div id="modal-container"></div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Gestión del Menú Desplegable de Selección de Columnas
+    function toggleColumnMenuVentaProd() {
+        const menu = document.getElementById('column-menu-ventaprod');
+        if (menu) {
+            menu.classList.toggle('hidden');
+        }
+    }
+
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('column-selector-dropdown-ventaprod');
+        const menu = document.getElementById('column-menu-ventaprod');
+        if (dropdown && menu && !dropdown.contains(event.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    // Aplicación de Visibilidad y Persistencia en localStorage
+    function applyColumnVisibilityVentaProd() {
+        const checkboxes = document.querySelectorAll('#column-checkboxes-ventaprod input[type="checkbox"]');
+        const config = JSON.parse(localStorage.getItem('reporteVentasProductoColumns') || '{}');
+        
+        checkboxes.forEach(cb => {
+            const columnClass = cb.getAttribute('data-column');
+            if (config.hasOwnProperty(columnClass)) {
+                cb.checked = config[columnClass];
+            }
+            
+            const elements = document.querySelectorAll('.' + columnClass);
+            elements.forEach(el => {
+                if (cb.checked) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        });
+    }
+
+    document.getElementById('column-checkboxes-ventaprod')?.addEventListener('change', function(e) {
+        if (e.target.tagName === 'INPUT') {
+            const checkboxes = document.querySelectorAll('#column-checkboxes-ventaprod input[type="checkbox"]');
+            const config = {};
+            checkboxes.forEach(cb => {
+                config[cb.getAttribute('data-column')] = cb.checked;
+            });
+            localStorage.setItem('reporteVentasProductoColumns', JSON.stringify(config));
+            applyColumnVisibilityVentaProd();
+        }
+    });
+
+    // Actualiza las URLs de los botones de exportación CSV y Excel con los datos actuales del formulario
+    function actualizarUrlExportacion() {
+        const form = document.getElementById('filter-form');
+        if (!form) return;
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData).toString();
+
+        const btnCsv = document.getElementById('btn-export-csv');
+        const btnExcel = document.getElementById('btn-export-excel');
+
+        if (btnCsv) {
+            btnCsv.href = "{% url 'reporte_ventas_producto_csv' %}?" + params;
+        }
+        if (btnExcel) {
+            btnExcel.href = "{% url 'reporte_ventas_producto_excel' %}?" + params;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        applyColumnVisibilityVentaProd();
+        actualizarUrlExportacion();
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'tabla-reporte-container') {
+            applyColumnVisibilityVentaProd();
+            actualizarUrlExportacion();
+        }
+    });
+
+    document.getElementById('filter-form')?.addEventListener('change', function() {
+        actualizarUrlExportacion();
+    });
+
+    // Eventos de selección para Autocompletado y Modales
+    window.addEventListener('clienteVentaSeleccionado', (e) => {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+
+        const inputId = document.getElementById('id_cliente');
+        const inputDisplay = document.getElementById('cliente_nombre_display');
+        if (inputId) inputId.value = e.detail.id;
+        if (inputDisplay) inputDisplay.value = e.detail.razon_social;
+        actualizarUrlExportacion();
+    });
+
+    window.addEventListener('productoVentaEncontrado', (e) => {
+        const inputId = document.getElementById('id_producto');
+        const inputDisplay = document.getElementById('producto_detalle_display');
+        if (inputId) inputId.value = e.detail.id;
+        if (inputDisplay) inputDisplay.value = e.detail.detalle;
+        actualizarUrlExportacion();
+    });
+</script>
+{% endblock %}

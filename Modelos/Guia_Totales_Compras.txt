@@ -1,0 +1,108 @@
+ GUÍA DE REFERENCIA: TOTALES Y RESUMEN EN CARGA DE COMPRAS
+==========================================================
+
+Este documento detalla dónde se encuentra la lógica de los campos (Neto, IVA, Percepciones, etc.) 
+en la pantalla de Carga de Compras.
+
+1. VISTA Y DISEÑO (HTML / ETIQUETAS)
+------------------------------------
+Archivo: templates\facturacion\compras_carga.html
+Líneas: 221 a 284
+Descripción: Aquí están los labels (<label>) y los inputs (<input>) de:
+- Neto Gravado
+- IVA Facturado
+- Perc. IIBB
+- Perc. IVA
+- Otros Imp.
+- Liquidación (Display azul)
+- Total Comprobante (Bloque negro)
+
+2. LÓGICA DE CÁLCULO EN TIEMPO REAL (JAVASCRIPT)
+------------------------------------------------
+Archivo: templates\facturacion\compras_carga.html
+Función: recalculateFinal()
+Línea: 373
+Descripción: Suma todos los inputs de impuestos y actualiza el "Total Comprobante".
+
+Archivo: templates\facturacion\partials\compra_items_tabla.html
+Script al final: Línea 68
+Descripción: Suma el total de la grilla de productos y actualiza automáticamente 
+el campo "Neto Gravado" del formulario principal.
+
+3. PROCESAMIENTO Y GUARDADO (DJANGO / PYTHON)
+---------------------------------------------
+Archivo: facturacion\views.py
+Clase: ComprasCargaView -> método post()
+Línea: 160
+Descripción: Recibe los datos, los limpia de formato (quita puntos de miles) y los guarda.
+Importante: La lista 'campos_monetarios' en la línea 164 define qué campos se limpian.
+
+4. BASE DE DATOS (MODELOS)
+--------------------------
+Archivo: facturacion\models.py
+Clase: Compra(models.Model)
+Línea: 92
+Descripción: Define la estructura en la DB. Los campos clave son:
+- neto, iva, p_iibb, p_iva, otros, total.
+
+---
+INSTRUCCIONES RÁPIDAS PARA MODIFICAR:
+1. Para cambiar un nombre: Editar el <label> en 'compras_carga.html'.
+2. Para añadir un impuesto:
+   a. Añadir al modelo en 'models.py'.
+   b. Añadir el input en 'compras_carga.html'.
+   c. Añadir el ID al array 'c' en la función 'recalculateFinal()' de 'compras_carga.html'.
+   d. Añadir el nombre al array 'campos_monetarios' en 'views.py'.
+3. Para cálculos porcentuales: Modificar la función 'recalculateFinal()' en 'compras_carga.html'
+   añadiendo la fórmula matemática (ej: netoVal * 0.03).
+   Hacer cálculos automáticos (Porcentuales)
+   Si quieres que, por ejemplo, la Perc. IIBB se calcule sola como el 3% del Neto, debes tocar la función recalculateFinal en el JS de compras_carga.html:
+
+javascript
+   // Ejemplo de lógica para cálculo automático
+   function recalculateFinal() {
+   const netoStr = document.getElementById('id_neto').value;
+   const netoVal = parseAR(netoStr);
+    
+   // Si quisieras que IIBB sea el 3.5% automático:
+   const iibbAuto = netoVal * 0.035;
+   document.getElementById('id_p_iibb').value = fMiles(iibbAuto); // Lo muestra en el input
+    
+   // ... resto de la lógica de suma ...
+}
+
+
+5. Para que se muestre el símbolo '$' o '%' antes de los montos:
+
+En el archivo 'compras_carga.html'. Líneas 220. Verás los bloques de cada input.
+
+A. Para Importes (Símbolo $ a la izquierda)
+
+html
+<div class="space-y-1">
+    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">IVA Facturado</label>
+    <div class="relative flex items-center">
+
+      <!-- Símbolo fijo -->
+        <span class="absolute left-0 text-[11px] font-bold text-slate-400">$</span>
+      <!-- El input ahora tiene un padding-left (pl-3) para no tapar el $ -->
+        <input type="text" name="iva" id="id_iva" oninput="recalculateFinal()"
+            class="w-full h-8 pl-3 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
+            placeholder="0,00">
+    </div>
+</div>
+
+B. Para que se muestre Porcentajes (% a la derecha)
+
+html
+<div class="space-y-1">
+    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">% IIBB</label>
+    <div class="relative flex items-center">
+        <!-- Input base normal -->
+        <input type="text" name="p_iibb" id="id_p_iibb" oninput="recalculateFinal()"
+            class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
+            placeholder="0,00">
+        <!-- Símbolo fijo a la derecha -->
+        <span class="absolute right-0 text-[11px] font-bold text-slate-400 mr-1">%</span>
+    </div>
+</div>

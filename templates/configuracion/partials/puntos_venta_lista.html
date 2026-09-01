@@ -1,0 +1,43 @@
+{% for p in puntos_venta %}
+<tr class="hover:bg-slate-50 transition-colors group">
+    <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-semibold text-gray-900 flex items-center gap-3">
+        <div class="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold shadow-inner">
+            {{ p.sucursal.nombre|slice:":1"|upper }}
+        </div>
+        <div>
+            {{ p.sucursal.nombre }}
+        </div>
+    </td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm font-black text-slate-700">
+        {{ p.numero|stringformat:"05d" }}
+    </td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-center">
+        {% if p.caja_mostrador_default %}
+            <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">Predeterminado</span>
+        {% else %}
+            <span class="inline-flex items-center rounded-md bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 ring-1 ring-inset ring-slate-500/10">-</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-center">
+        {% if p.activo %}
+            <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Activo</span>
+        {% else %}
+            <span class="inline-flex items-center rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">Inactivo</span>
+        {% endif %}
+    </td>
+    <td class="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
+        <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button hx-get="{% url 'config_puntoventa_edit' p.id %}" hx-target="#modal-container" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors">
+                Editar
+            </button>
+            <button hx-post="{% url 'config_puntoventa_delete' p.id %}" hx-confirm="¿Está seguro de eliminar este punto de venta?" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors">
+                Eliminar
+            </button>
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="py-8 text-center text-sm text-gray-500 italic">No se encontraron puntos de venta configurados.</td>
+</tr>
+{% endfor %}

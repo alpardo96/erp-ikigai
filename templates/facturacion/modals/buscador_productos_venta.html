@@ -1,0 +1,48 @@
+<div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-[110] backdrop-blur-sm"></div>
+<div class="fixed inset-0 flex items-center justify-center z-[120] p-4">
+    <div class="bg-white rounded shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden italic">
+        <!-- Header -->
+        <div class="bg-blue-900 text-white px-4 py-2 flex justify-between items-center">
+            <h3 class="text-sm font-bold flex items-center uppercase tracking-tighter">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                Buscador de Productos
+            </h3>
+            <button onclick="document.getElementById('modal-container').innerHTML = ''" class="text-blue-200 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Filters & Table -->
+        <div class="flex-1 overflow-auto">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-white border-b border-gray-200 shadow-sm z-20">
+                    <tr class="text-[9px] uppercase text-gray-400 bg-gray-50 font-black">
+                        <th class="px-2 py-2 w-12">ID</th>
+                        <th class="px-2 py-2 w-full">Detalle</th>
+                        <th class="px-2 py-2 text-center w-12">Mon</th>
+                        <th class="px-2 py-2 text-right w-24">Precio</th>
+                        <th class="px-2 py-2 text-center w-20">Stock</th>
+                        <th class="px-2 py-2 text-right w-12"></th>
+                    </tr>
+                    <tr class="bg-white border-b border-gray-100">
+                        <th class="px-1 py-1">
+                            <input type="text" name="f_id" hx-get="{% url 'ventas_producto_buscar_lista' %}" hx-trigger="keyup changed delay:300ms" hx-target="#productos-venta-search-results" hx-include="closest thead"
+                                   class="w-full h-6 px-1 text-[10px] border border-gray-200 rounded outline-none focus:border-blue-500 font-normal">
+                        </th>
+                        <th class="px-1 py-1">
+                            <input type="text" name="f_det" autofocus hx-get="{% url 'ventas_producto_buscar_lista' %}" hx-trigger="keyup changed delay:300ms" hx-target="#productos-venta-search-results" hx-include="closest thead"
+                                   class="w-full h-6 px-1 text-[10px] border border-gray-200 rounded outline-none focus:border-blue-500 font-normal">
+                        </th>
+                        <th class="px-1 py-1"></th>
+                        <th class="px-1 py-1"></th>
+                        <th class="px-1 py-1"></th>
+                        <th class="px-1 py-1 text-right"></th>
+                    </tr>
+                </thead>
+                <tbody id="productos-venta-search-results" hx-get="{% url 'ventas_producto_buscar_lista' %}" hx-trigger="load" class="text-[10px]">
+                    <tr><td colspan="6" class="p-8 text-center text-gray-400 italic">Cargando catálogo...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

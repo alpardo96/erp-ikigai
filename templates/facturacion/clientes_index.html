@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Clientes y Proveedores | ERP - Gestión Administrativa Contable{% endblock %}
+
+{% block content %}
+<div class="flex flex-col pt-6 gap-6 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Clientes y Proveedores</h1>
+            <p class="mt-2 text-sm text-gray-500">Gestión centralizada de contactos comerciales y entidades.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="exportarExcel()"
+                class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium shadow-sm cursor-pointer">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Exportar Excel
+            </button>
+            <button hx-get="{% url 'cliente_add' %}" hx-target="#modal-container"
+                class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-medium shadow-sm">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nuevo Cliente/Prov
+            </button>
+        </div>
+    </div>
+
+    <!-- Buscador y Filtros -->
+    <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 items-center">
+        <div class="relative flex-1 w-full">
+            <input type="text" name="q" placeholder="Buscar por Razón Social o CUIT..." class="input-icon-left"
+                hx-get="{% url 'cliente_search' %}" hx-trigger="keyup changed delay:500ms" hx-target="#cliente-rows" hx-include="[name='tipo']">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="flex gap-2 w-full md:w-auto">
+            <select name="tipo" hx-get="{% url 'cliente_search' %}" hx-trigger="change" hx-target="#cliente-rows" hx-include="[name='q']"
+                class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-2xl focus:ring-indigo-500 focus:border-indigo-500 block p-3 px-4">
+                <option value="" selected>Todos los Tipos</option>
+                <option value="1">Clientes</option>
+                <option value="2">Proveedores</option>
+            </select>
+
+            <!-- Selector de Columnas -->
+            <div class="relative inline-block text-left" id="column-selector-dropdown">
+                <button type="button" onclick="toggleColumnMenu()"
+                    class="inline-flex items-center px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-all font-medium shadow-sm whitespace-nowrap">
+                    <svg class="h-5 w-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2">
+                        </path>
+                    </svg>
+                    Columnas
+                </button>
+                <div id="column-menu"
+                    class="absolute right-0 z-50 mt-2 w-64 origin-top-right rounded-2xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none hidden max-h-[70vh] overflow-y-auto p-4">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-2">Mostrar/Ocultar</p>
+                    <div class="space-y-1" id="column-checkboxes">
+                        <!-- Generado dinámicamente o estático -->
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-id" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">ID</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-razon" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Razón Social</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-tipodoc" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Tipo Doc</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-cuit" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">CUIT/Doc</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-tipo" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Tipo (Cli/Pro)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-domicilio" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Domicilio</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-cp" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">C. Postal</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-localidad" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Localidad</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-jurisdiccion" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Provincia</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-contacto" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Contacto</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-telefono" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Teléfono</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-correo" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Correo</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-iva" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Cond. IVA</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-iibb" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Ingresos Brutos</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-saldo-ini" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Saldo Inicial</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-saldo" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Saldo Actual</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-limite" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Límite Crédito</span>
+                        </label>
+                        {% hook_ui 'cliente_table_column_toggles' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Clientes -->
+    <div class="bg-white shadow-sm border border-gray-200 rounded-3xl mb-8">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="tabla-clientes">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="col-id py-4 pl-6 pr-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                        <th class="col-razon px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Razón Social</th>
+                        <th class="col-tipodoc px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo Doc</th>
+                        <th class="col-cuit px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">CUIT/Doc</th>
+                        <th class="col-tipo px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipo</th>
+                        {% hook_ui 'cliente_table_headers' %}
+                        <th class="col-domicilio px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Domicilio</th>
+                        <th class="col-cp px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">C. Postal</th>
+                        <th class="col-localidad px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Localidad</th>
+                        <th class="col-jurisdiccion px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Provincia</th>
+                        <th class="col-contacto px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contacto</th>
+                        <th class="col-telefono px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Teléfono</th>
+                        <th class="col-correo px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Correo</th>
+                        <th class="col-iva px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Cond. IVA</th>
+                        <th class="col-iibb px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">IIBB</th>
+                        <th class="col-saldo-ini px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">S. Inicial</th>
+                        <th class="col-saldo px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Saldo</th>
+                        <th class="col-limite px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Límite</th>
+                        <th class="relative py-4 pl-3 pr-6 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cliente-rows" class="bg-white divide-y divide-gray-100" hx-trigger="reloadClientes from:body"
+                    hx-get="{% url 'cliente_search' %}" hx-include="[name='q'], [name='tipo']">
+                    {% include 'facturacion/partials/cliente_table_rows.html' %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function exportarExcel() {
+        const qInput = document.querySelector('input[name="q"]');
+        const tipoSelect = document.querySelector('select[name="tipo"]');
+        
+        const q = qInput ? qInput.value.trim() : '';
+        const tipo = tipoSelect ? tipoSelect.value.trim() : '';
+        
+        const params = new URLSearchParams();
+        if (q) params.append('q', q);
+        if (tipo) params.append('tipo', tipo);
+        
+        const url = "{% url 'clientes_exportar_excel' %}" + (params.toString() ? '?' + params.toString() : '');
+        window.location.href = url;
+    }
+
+    function toggleColumnMenu() {
+        const menu = document.getElementById('column-menu');
+        menu.classList.toggle('hidden');
+    }
+
+    // Cerrar el menú si se hace clic fuera
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('column-selector-dropdown');
+        const menu = document.getElementById('column-menu');
+        if (!dropdown.contains(event.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    function applyColumnVisibility() {
+        const checkboxes = document.querySelectorAll('#column-checkboxes input[type="checkbox"]');
+        const config = JSON.parse(localStorage.getItem('clienteTableColumns') || '{}');
+        
+        checkboxes.forEach(cb => {
+            const columnClass = cb.getAttribute('data-column');
+            // Si hay config guardada, aplicarla al checkbox
+            if (config.hasOwnProperty(columnClass)) {
+                cb.checked = config[columnClass];
+            }
+            
+            // Aplicar visibilidad a los elementos de la tabla
+            const elements = document.querySelectorAll('.' + columnClass);
+            elements.forEach(el => {
+                if (cb.checked) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        });
+    }
+
+    // Guardar preferencia y aplicar
+    document.getElementById('column-checkboxes').addEventListener('change', function(e) {
+        if (e.target.tagName === 'INPUT') {
+            const checkboxes = document.querySelectorAll('#column-checkboxes input[type="checkbox"]');
+            const config = {};
+            checkboxes.forEach(cb => {
+                config[cb.getAttribute('data-column')] = cb.checked;
+            });
+            localStorage.setItem('clienteTableColumns', JSON.stringify(config));
+            applyColumnVisibility();
+        }
+    });
+
+    // Inicializar al cargar
+    document.addEventListener('DOMContentLoaded', applyColumnVisibility);
+
+    // Re-aplicar después de cada carga de HTMX
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'cliente-rows') {
+            applyColumnVisibility();
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

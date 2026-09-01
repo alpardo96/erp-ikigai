@@ -1,0 +1,66 @@
+{% load formato_tags %}
+<table class="min-w-full divide-y divide-slate-200 text-[12px]">
+    <thead class="bg-slate-50">
+        <tr class="text-slate-400 uppercase text-[10px] font-black tracking-tighter">
+            <th class="px-3 py-2 text-center">Asiento</th>
+            <th class="px-3 py-2 text-center">Cond.</th>
+            <th class="px-3 py-2 text-center">Fecha</th>
+            <th class="px-3 py-2 text-center">Período</th>
+            <th class="px-3 py-2 text-left">Comprobante</th>
+            <th class="px-3 py-2 text-center">Cód.</th>
+            <th class="px-3 py-2 text-left">{% if filtro.es_venta %}Cliente{% else %}Proveedor{% endif %}</th>
+            <th class="px-3 py-2 text-right">Total</th>
+            <th class="px-3 py-2 text-right">Pagado</th>
+            <th class="px-3 py-2 text-right">Saldo</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+        {% for fila in filas %}
+        <tr class="hover:bg-blue-50/40 transition-colors {% if fila.anulada %}opacity-50 line-through{% endif %}">
+            <td class="px-3 py-2 text-center text-slate-400 font-bold">{{ fila.asiento_id|default:"—" }}</td>
+            <td class="px-3 py-2 text-center">
+                <span class="px-2 py-0.5 rounded text-[10px] font-black
+                    {% if fila.condic == 1 %}bg-emerald-50 text-emerald-700{% elif fila.condic == 2 %}bg-amber-50 text-amber-700{% elif fila.condic == 3 %}bg-indigo-50 text-indigo-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                    {{ fila.condic_nombre }}
+                </span>
+            </td>
+            <td class="px-3 py-2 text-center whitespace-nowrap font-bold text-slate-700">{{ fila.fecha|date:"d/m/Y" }}</td>
+            <td class="px-3 py-2 text-center text-slate-400 font-bold">{{ fila.periodo|default:"—" }}</td>
+            <td class="px-3 py-2 whitespace-nowrap font-black text-slate-900">{{ fila.comprobante }}</td>
+            <td class="px-3 py-2 text-center text-slate-400 font-bold">{{ fila.entidad_id }}</td>
+            <td class="px-3 py-2 text-slate-700">{{ fila.entidad_nombre }}</td>
+            <td class="px-3 py-2 text-right font-black text-slate-900">$ {{ fila.total|formato_ar }}</td>
+            <td class="px-3 py-2 text-right font-bold text-slate-600">$ {{ fila.pagado|formato_ar }}</td>
+            {# Saldo 0 = cancelado; negativo = nota de crédito todavía sin aplicar. #}
+            <td class="px-3 py-2 text-right font-black
+                {% if fila.saldo < 0 %}text-red-600{% elif fila.saldo > 0 %}text-orange-600{% else %}text-slate-300{% endif %}">
+                $ {{ fila.saldo|formato_ar }}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="10" class="px-3 py-8 text-center text-slate-400 italic">
+                No hay comprobantes con los filtros seleccionados.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    {% if filas %}
+    <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+        <tr class="font-black text-slate-900">
+            {# Los totales salen del conjunto COMPLETO, aunque la grilla esté truncada. #}
+            <td colspan="7" class="px-3 py-2 text-right uppercase text-[10px] tracking-tighter text-slate-400">
+                {{ totales.cantidad }} comprobantes seleccionados
+            </td>
+            <td class="px-3 py-2 text-right">$ {{ totales.total|formato_ar }}</td>
+            <td class="px-3 py-2 text-right">$ {{ totales.pagado|formato_ar }}</td>
+            <td class="px-3 py-2 text-right">$ {{ totales.saldo|formato_ar }}</td>
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>
+{% if truncado %}
+<div class="px-3 py-2 bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-tighter text-center italic">
+    Se muestran las primeras {{ limite }} filas de {{ totales.cantidad }}. El Excel y el PDF incluyen todas.
+</div>
+{% endif %}

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Compras | ERP - Gestión Administrativa Contable{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full">
+    <div class="mb-12 text-center">
+        <h1 class="text-3xl font-bold text-gray-900 italic">Módulo de Compras</h1>
+        <p class="mt-2 text-sm text-gray-500 italic">Gestión de compras, facturas de proveedores y gastos operativos.</p>
+    </div>
+    
+    <div class="flex flex-wrap justify-center gap-8 italic">
+        {% if empresa_actual.usa_orden_compra %}
+        <!-- Tarjeta de Órdenes de Compra -->
+        <a href="{% url 'oc_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-emerald-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-emerald-100 rounded-2xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Órdenes de Compra</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Generación y seguimiento de órdenes de compra prenumeradas. Inicio del circuito de abastecimiento.</p>
+            <div class="flex items-center text-emerald-600 font-bold text-sm">
+                Gestionar órdenes
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        {% endif %}
+
+        <!-- Tarjeta de Compras -->
+        <a href="{% url 'compras_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Carga de Compras</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Carga de facturas de proveedores, remitos y gastos operativos con desglose de impuestos.</p>
+            <div class="flex items-center text-blue-600 font-bold text-sm">
+                Ingresar carga
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        {% hook_ui 'compras_index_cards' %}
+
+        <!-- Tarjeta de Listado de Compras -->
+        <a href="{% url 'compras_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-slate-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-slate-100 rounded-2xl text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Listado de Compras</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Consulta de compras cargadas y baja de comprobantes con errores (revierte stock y limpia el asiento).</p>
+            <div class="flex items-center text-slate-600 font-bold text-sm">
+                Ver listado
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta de Facturas Pendientes (Plan 056) -->
+        <a href="{% url 'facturas_pendientes' %}?operacion=C" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-orange-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-orange-100 rounded-2xl text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Facturas Pendientes</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Estado de cancelación de la cuenta corriente, comprobante por comprobante. Pagadas, pendientes y saldos, con Excel y resumen de cuentas en PDF.</p>
+            <div class="flex items-center text-orange-600 font-bold text-sm">
+                Ver pendientes
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta de Compras Automática -->
+        <a href="{% url 'compras_carga_automatica' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-cyan-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-cyan-100 rounded-2xl text-cyan-600 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Compras Automática</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Importación automática de comprobantes desde archivos CSV/Excel. Procesamiento masivo con validación de datos.</p>
+            <div class="flex items-center text-cyan-600 font-bold text-sm">
+                Importar compras
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta de Carga IA -->
+        <a href="{% url 'compras_carga_ia' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-purple-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-purple-100 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Carga con IA</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Motor Gemini para lectura automática de facturas de compras mediante inteligencia artificial.</p>
+            <div class="flex items-center text-purple-600 font-bold text-sm">
+                Cargar con IA
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

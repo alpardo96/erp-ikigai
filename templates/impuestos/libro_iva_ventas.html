@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Libro IVA Ventas - Portal IVA | Impuestos{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full space-y-6">
+    <!-- Migas de pan y cabecera -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+            <nav class="flex text-xs text-slate-500 mb-1 space-x-2">
+                <a href="{% url 'impuestos:impuestos_index' %}" class="hover:text-blue-600 transition-colors">Impuestos</a>
+                <span>/</span>
+                <span class="text-slate-800 font-semibold">Libro IVA Ventas</span>
+            </nav>
+            <h1 class="text-2xl font-bold text-slate-900">Libro IVA Ventas - Portal IVA (ARCA)</h1>
+            <p class="text-sm text-slate-500">Listado consolidado de ventas y generación de archivos de importación para el Libro IVA Digital ARCA por Período Fiscal (YYYYMM).</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'impuestos:impuestos_index' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors">
+                ← Volver al Módulo
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros por Período Fiscal (Año y Mes) -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Año Fiscal</label>
+                <select name="anio" onchange="this.form.submit()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-2.5 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                    <option value="2026" {% if anio == 2026 %}selected{% endif %}>2026</option>
+                    <option value="2025" {% if anio == 2025 %}selected{% endif %}>2025</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mes Fiscal</label>
+                <select name="mes" onchange="this.form.submit()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-2.5 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Enero (01)</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Febrero (02)</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Marzo (03)</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril (04)</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Mayo (05)</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junio (06)</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julio (07)</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto (08)</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Septiembre (09)</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Octubre (10)</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Noviembre (11)</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Diciembre (12)</option>
+                </select>
+            </div>
+            <div>
+                <button type="submit" style="background-color: #2563eb !important; color: #ffffff !important;" class="w-full font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer hover:opacity-90">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <span>Consultar Período {{ periodo }}</span>
+                </button>
+            </div>
+            <div>
+                <button type="button" style="background-color: #0f172a !important; color: #ffffff !important;" class="w-full font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer hover:opacity-90">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <span>Exportar TXT ARCA</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resultados del Período -->
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-sm">Comprobantes de Venta del Período Fiscal {{ periodo }}</h3>
+            <span class="text-xs text-slate-500 font-semibold">{{ comprobantes|length }} registros encontrados</span>
+        </div>
+        {% if comprobantes %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+                <thead class="bg-slate-100 uppercase text-[10px] font-bold text-slate-500 border-b border-slate-200">
+                    <tr>
+                        <th class="px-4 py-3">Fecha</th>
+                        <th class="px-4 py-3">Cód.</th>
+                        <th class="px-4 py-3">Comprobante</th>
+                        <th class="px-4 py-3">Cliente / Razón Social</th>
+                        <th class="px-4 py-3">CUIT</th>
+                        <th class="px-4 py-3 text-right">Neto Grav.</th>
+                        <th class="px-4 py-3 text-right">Exento</th>
+                        <th class="px-4 py-3 text-right">No Grav.</th>
+                        <th class="px-4 py-3 text-right">IVA Total</th>
+                        <th class="px-4 py-3 text-right">Otros</th>
+                        <th class="px-4 py-3 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 bg-white">
+                    {% for c in comprobantes %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 whitespace-nowrap">{{ c.fecha|date:"d/m/Y" }}</td>
+                        <td class="px-4 py-3 font-mono font-bold text-blue-700">{{ c.codiva }}</td>
+                        <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"04d" }}-{{ c.numero }}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900">{{ c.clienteproveedor.razon_social }}</td>
+                        <td class="px-4 py-3 font-mono text-slate-600">{{ c.cuit|default:"-" }}</td>
+                        <td class="px-4 py-3 text-right font-mono">$ {{ c.neto_gravado|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono">$ {{ c.exento|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono">$ {{ c.no_gravado|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-blue-800">$ {{ c.iva_total|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono">$ {{ c.otros|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">$ {{ c.total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-slate-100 font-bold border-t-2 border-slate-300">
+                    <tr>
+                        <td colspan="5" class="px-4 py-3 uppercase text-slate-800">Totales del Período {{ periodo }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_neto|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_exento|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_no_gravado|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-blue-900">$ {{ totales.tot_iva|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_otros|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_total|default:0|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-8 text-center text-slate-400 text-sm">
+            No existen comprobantes de venta registrados para el Período Fiscal {{ periodo }}.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

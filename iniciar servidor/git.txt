@@ -1,0 +1,16 @@
+git config --global user.name "Tu Nombre"
+git config --global user.email "tuemail@gmail.com"
+
+git clone https://github.com/alpardo96/erp-lkigai.git
+git pull origin master
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+
+abrir iniciar_todo.bat
+
+
+Antes y despues de trabajar
+git pull origin master  <-- traer 
+git push origin master  <-- enviar

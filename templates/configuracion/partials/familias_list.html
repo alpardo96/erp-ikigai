@@ -1,0 +1,43 @@
+{% for familia in familias %}
+<tr>
+    <td class="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-gray-900">#{{ familia.id }}</td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500 italic">
+        {% if familia.rubro %}
+            {{ familia.rubro.detalle }}
+        {% else %}
+            <span class="text-red-400">Sin Rubro</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-600 font-semibold">{{ familia.detalle }}</td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+            {{ familia.margen }}%
+        </span>
+    </td>
+    <td class="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
+        <div class="flex justify-end space-x-2">
+            <button hx-get="{% url 'config_familia_edit' familia.id %}" hx-target="#modal-container"
+                class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-lg transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                </svg>
+            </button>
+            <button hx-delete="{% url 'config_familia_delete' familia.id %}" hx-confirm="¿Estás seguro de eliminar esta familia?" hx-target="closest tr" hx-swap="outerHTML"
+                class="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-lg transition-colors">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </button>
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="py-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No hay familias de productos</h3>
+    </td>
+</tr>
+{% endfor %}

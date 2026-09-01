@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe de Recepción {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</title>
+    <style>
+        @page { size: A4 portrait; margin: 2cm;
+            @frame footer { -pdf-frame-content: footerContent; bottom: 1cm; margin-left: 2cm; margin-right: 2cm; height: 1cm; text-align: right; } }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10pt; color: #333; margin: 0; padding: 0; }
+        .header { border-bottom: 2px solid #059669; padding-bottom: 10px; margin-bottom: 16px; }
+        .header h1 { margin: 0; font-size: 16pt; color: #111827; }
+        .header h2 { margin: 4px 0 0 0; font-size: 13pt; color: #059669; }
+        .doc-num { font-size: 13pt; font-weight: bold; color: #111827; }
+        .meta td { padding: 3px 6px; border: none; font-size: 9.5pt; }
+        .meta .lbl { color: #6B7280; font-size: 8pt; text-transform: uppercase; }
+        table.items { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        table.items th { background-color: #1F2937; color: white; text-align: left; padding: 6px 8px; font-size: 8.5pt; }
+        table.items td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; font-size: 9pt; }
+        .text-right { text-align: right; } .text-center { text-align: center; }
+        .box { border: 1px solid #e5e7eb; padding: 8px; margin-top: 12px; font-size: 9pt; }
+        .box .lbl { color: #6B7280; font-size: 8pt; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div id="footerContent" style="font-size: 8pt; color: #666;">Página <pdf:pagenumber> de <pdf:pagecount></div>
+
+    <div class="header">
+        <h1>{{ rec.empresa.nombre|upper }}</h1>
+        <h2>INFORME DE RECEPCIÓN</h2>
+        <span class="doc-num">N° {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</span>
+    </div>
+
+    <table class="meta">
+        <tr>
+            <td><span class="lbl">Fecha</span><br>{{ rec.fecha|date:"d/m/Y" }}</td>
+            <td><span class="lbl">Sucursal (destino)</span><br>{{ rec.sucursal.nombre }}</td>
+            <td><span class="lbl">Origen</span><br>{{ rec.get_origen_display }}</td>
+            <td><span class="lbl">N° Remito Prov.</span><br>{{ rec.remito_proveedor|default:"—" }}</td>
+        </tr>
+        <tr>
+            <td colspan="4"><span class="lbl">Proveedor</span><br><b>{{ rec.proveedor.razon_social|default:"—" }}</b>{% if rec.proveedor %} — CUIT {{ rec.proveedor.cuit }}{% endif %}</td>
+        </tr>
+    </table>
+
+    <table class="items">
+        <thead>
+            <tr>
+                <th>Cód</th>
+                <th>Descripción</th>
+                <th class="text-center">Cantidad Recibida</th>
+                <th>Imputa a OC</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for it in items %}
+            <tr>
+                <td>{{ it.producto.cod_prov|default:it.producto_id }}</td>
+                <td>{{ it.producto.detalle }}</td>
+                <td class="text-center">{{ it.cantidad_recibida|floatformat:2 }}</td>
+                <td>
+                    {% for imp in it.imputaciones.all %}{{ imp.orden_item.orden.punto|stringformat:"04d" }}-{{ imp.orden_item.orden.numero|stringformat:"08d" }} ({{ imp.cantidad|floatformat:2 }}){% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if rec.observaciones %}
+    <div class="box"><span class="lbl">Observaciones</span><br>{{ rec.observaciones }}</div>
+    {% endif %}
+
+    <div class="box" style="margin-top: 30px;">
+        <span class="lbl">Recepcionado por</span><br>{{ rec.usuario.get_full_name|default:rec.usuario.username }}
+    </div>
+</body>
+</html>

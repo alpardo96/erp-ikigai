@@ -1,0 +1,135 @@
+{% load l10n formato_tags %}
+<div class="h-full flex flex-col">
+    <table class="w-full text-left border-collapse bg-white">
+        <thead class="sticky top-0 shadow-sm z-10">
+            <tr class="bg-slate-800 text-white text-[9px] uppercase tracking-wider">
+                <th class="px-2 py-1.5 border-r border-slate-700">Cód</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 w-1/3">Descripción</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-center">Credencial</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-center">Cant</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-right">Precio Un</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-right">Desc %</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-right">IVA %</th>
+                <th class="px-2 py-1.5 text-right">Total Línea</th>
+                <th class="px-2 py-1.5 text-center w-8"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 italic">
+            {% for item in items %}
+            <tr class="transition-colors text-[10px] group {% if item.requiere_autorizacion %}bg-red-50 hover:bg-red-100{% elif item.alerta_stock %}bg-orange-50 hover:bg-orange-100{% else %}hover:bg-slate-50{% endif %}">
+                <td class="px-2 py-1.5 font-bold text-indigo-700 border-r border-slate-50">{{ item.codigo }}</td>
+                <td class="px-2 py-1.5 font-bold {% if item.alerta_stock %}text-orange-900{% else %}text-slate-700{% endif %} uppercase border-r border-slate-50">
+                    {{ item.detalle }}
+                </td>
+                <td class="px-2 py-1.5 text-center text-slate-500 font-bold border-r border-slate-50">{{ item.credencial|default:"-" }}</td>
+                <td class="px-2 py-1.5 text-center font-bold text-slate-800 border-r border-slate-50 relative">
+                    {{ item.cantidad|floatformat:1 }}
+                    {% if item.alerta_stock %}
+                    <span class="absolute top-1 right-1 text-orange-500 hover:text-orange-600 cursor-help" title="Stock Físico Insuficiente. Disponible: {{ item.stock_disponible|default:0|floatformat:1 }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="px-2 py-1.5 text-right font-bold text-slate-600 border-r border-slate-50">
+                    {% if moneda == 'DOL' %}USD{% else %}${% endif %} {{ item.precio|formato_ar }}
+                </td>
+                <td class="px-2 py-1.5 text-right font-bold {% if item.requiere_autorizacion %}text-red-600{% else %}text-slate-600{% endif %} border-r border-slate-50">
+                    {{ item.descuento|floatformat:2 }}%
+                    {% if item.requiere_autorizacion %}
+                    <span class="text-xs ml-1 cursor-help" title="Límite: {{ item.descuento_maximo|floatformat:2 }}%">⚠️</span>
+                    {% endif %}
+                </td>
+                <td class="px-2 py-1.5 text-right text-slate-500 border-r border-slate-50">{{ item.iva|floatformat:1 }}%</td>
+                <td class="px-2 py-1.5 text-right font-black text-slate-900">
+                    <input type="hidden" name="total_linea" value="{{ item.total|floatformat:2 }}" data-iva="{{ item.iva|unlocalize }}">
+                    {% if moneda == 'DOL' %}USD{% else %}${% endif %} {{ item.total|formato_ar }}
+                </td>
+                <td class="px-2 py-1.5 text-center">
+                    <button hx-post="{% url 'ventas_item_remove' item.index %}" 
+                            hx-target="#items-tabla-container"
+                            class="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="px-6 py-10 text-center text-slate-400 italic font-medium text-xs">Aguardando lectura de artículos...</td>
+            </tr>
+            {% endfor %}
+            
+            {% if items|length < 15 %}
+                {% with ""|center:15 as range %}
+                {% for i in range %}
+                    {% if forloop.counter > items|length %}
+                    <tr class="h-8">
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1"></td>
+                        <td class="px-2 py-1"></td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+                {% endwith %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    (function() {
+        let netoTotal = 0;
+        let ivaTotal = 0;
+        let ivasPorAlicuota = {};
+
+        {% for item in items %}
+            (function() {
+                let t = {{ item.total|unlocalize }};
+                let a = {{ item.iva|unlocalize }};
+                let n = t / (1 + a / 100);
+                let i = t - n;
+                netoTotal += n;
+                ivaTotal += i;
+
+                let key = parseFloat(a).toFixed(1).replace('.0', '') + '%';
+                if (!ivasPorAlicuota[key]) ivasPorAlicuota[key] = 0;
+                ivasPorAlicuota[key] += i;
+            })();
+        {% endfor %}
+        
+        const idNeto = document.getElementById('id_neto');
+        const idIva = document.getElementById('id_iva');
+        if (idNeto) {
+            idNeto.value = netoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            idNeto.dispatchEvent(new Event('input'));
+        }
+        if (idIva) {
+            idIva.value = ivaTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            idIva.dispatchEvent(new Event('input'));
+        }
+
+        const ivaContainer = document.getElementById('alicuotas_iva_container');
+        if (ivaContainer) {
+            let html = '<span class="text-[9px] text-slate-400 font-bold uppercase my-auto tracking-wider">IVA Discriminado:</span>';
+            let hasIva = false;
+            for (let alic in ivasPorAlicuota) {
+                if (ivasPorAlicuota[alic] > 0.005) {
+                    hasIva = true;
+                    let imp = ivasPorAlicuota[alic].toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    html += `<div class="bg-indigo-50 border border-indigo-200 rounded-md px-2 py-0.5 text-[10px] flex items-center gap-1 font-bold text-indigo-950 shadow-sm">
+                                <span class="text-indigo-600">IVA ${alic}:</span>
+                                <span>$ ${imp}</span>
+                             </div>`;
+                }
+            }
+            if (!hasIva) {
+                html += `<span class="text-[10px] text-slate-400 italic">0,00</span>`;
+            }
+            ivaContainer.innerHTML = html;
+        }
+    })();
+</script>

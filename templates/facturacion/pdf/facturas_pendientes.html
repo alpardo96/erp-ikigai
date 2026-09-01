@@ -1,0 +1,132 @@
+{% load formato_tags %}<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen de Cuentas</title>
+    {% comment %}
+    Réplica del reporte VFP `cons_lib_iva_pendientes.frx`, con los rótulos corregidos:
+    allá la columna "Pendiente" traía el saldo y la "Saldo" el acumulado del grupo.
+    {% endcomment %}
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.2cm;
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 0.6cm;
+                margin-left: 1.2cm;
+                margin-right: 1.2cm;
+                height: 1cm;
+                text-align: right;
+            }
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 8pt;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+        }
+        .header { border-bottom: 2px solid #4f46e5; padding-bottom: 6px; margin-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 14pt; color: #0f172a; font-weight: bold; }
+        .header h2 { margin: 3px 0 0 0; font-size: 11pt; color: #4f46e5; font-weight: bold; }
+        .header p { margin: 3px 0 0 0; font-size: 8pt; color: #64748b; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background-color: #4f46e5; color: #ffffff; font-weight: bold;
+            padding: 4px 6px; font-size: 8pt; border: 1px solid #4f46e5;
+        }
+        td { padding: 3px 6px; font-size: 8pt; border-bottom: 1px solid #f1f5f9; }
+
+        .grupo td {
+            background-color: #e2e8f0; font-weight: bold; font-size: 8.5pt;
+            padding: 4px 6px; border-top: 1px solid #94a3b8;
+        }
+        .subtotal td {
+            font-weight: bold; border-top: 1px solid #94a3b8;
+            border-bottom: 1px solid #94a3b8; background-color: #f8fafc;
+        }
+        .totales td {
+            font-weight: bold; font-size: 9pt; background-color: #0f172a; color: #ffffff;
+            padding: 5px 6px;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .negativo { color: #dc2626; }
+        .anulada { color: #94a3b8; text-decoration: line-through; }
+    </style>
+</head>
+<body>
+    <div id="footerContent" style="font-size: 7.5pt; color: #64748b;">
+        Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+
+    <div class="header">
+        <h1>{{ empresa.nombre|upper|default:"ERP IKIGAI" }}</h1>
+        <h2>RESUMEN DE CUENTAS</h2>
+        <p>
+            {{ filtro.descripcion }} &nbsp;|&nbsp;
+            Comprobantes: {{ totales.cantidad }} &nbsp;|&nbsp;
+            Emisión: {{ fecha_emision|date:"d/m/Y H:i" }}
+        </p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 7%;" class="text-center">Id Asto</th>
+                <th style="width: 9%;" class="text-center">Fecha</th>
+                <th style="width: 40%;">Comprobante</th>
+                <th style="width: 11%;" class="text-right">Total</th>
+                <th style="width: 11%;" class="text-right">Pagado</th>
+                <th style="width: 11%;" class="text-right">Saldo</th>
+                <th style="width: 11%;" class="text-right">Acumulado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for grupo in grupos %}
+            <tr class="grupo">
+                <td colspan="7">{{ etiqueta_entidad }}: {{ grupo.entidad_id }} - {{ grupo.entidad_nombre }}</td>
+            </tr>
+                {% for fila in grupo.filas %}
+                <tr {% if fila.anulada %}class="anulada"{% endif %}>
+                    <td class="text-center">{{ fila.asiento_id|default:"—" }}</td>
+                    <td class="text-center">{{ fila.fecha|date:"d/m/Y" }}</td>
+                    <td>
+                        {{ fila.comprobante }}{% if fila.descripcion %} · {{ fila.descripcion }}{% endif %}
+                    </td>
+                    <td class="text-right">{{ fila.total|formato_ar }}</td>
+                    <td class="text-right">{{ fila.pagado|formato_ar }}</td>
+                    <td class="text-right {% if fila.saldo < 0 %}negativo{% endif %}">{{ fila.saldo|formato_ar }}</td>
+                    {# Acumulado que reinicia en cada entidad, como el reporte original. #}
+                    <td class="text-right">{{ fila.acum_grupo|formato_ar }}</td>
+                </tr>
+                {% endfor %}
+            <tr class="subtotal">
+                <td colspan="3">Total {{ grupo.entidad_id }} - {{ grupo.entidad_nombre }}</td>
+                <td class="text-right">{{ grupo.total|formato_ar }}</td>
+                <td class="text-right">{{ grupo.pagado|formato_ar }}</td>
+                <td class="text-right">{{ grupo.saldo|formato_ar }}</td>
+                <td></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">No hay comprobantes con los filtros seleccionados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        {% if grupos %}
+        <tfoot>
+            <tr class="totales">
+                <td colspan="3">TOTALES:</td>
+                <td class="text-right">{{ totales.total|formato_ar }}</td>
+                <td class="text-right">{{ totales.pagado|formato_ar }}</td>
+                <td class="text-right">{{ totales.saldo|formato_ar }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</body>
+</html>

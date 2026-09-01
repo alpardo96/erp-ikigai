@@ -1,0 +1,23 @@
+{# Resultados de búsqueda de cuentas contables para la imputación de Recibos y Órdenes de Pago. #}
+{# Sirve tanto al typeahead como al modal de la lupa: ambos despachan el mismo CustomEvent. #}
+<div class="divide-y divide-slate-100 bg-white">
+    {% for c in cuentas %}
+    <button type="button"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-indigo-50 transition-colors"
+            onclick="document.body.dispatchEvent(new CustomEvent('imputacionCuentaSeleccionada', { detail: { id: '{{ c.pk }}', jerarquia: '{{ c.jerarquia|escapejs }}', cuenta: '{{ c.cuenta|escapejs }}' } }))">
+        <span class="min-w-0">
+            <span class="block truncate text-xs font-bold uppercase text-slate-800">{{ c.jerarquia }} - {{ c.cuenta }}</span>
+            <span class="block text-[10px] font-semibold text-slate-500">{{ c.get_tipo_display }}</span>
+        </span>
+        <span class="shrink-0 text-[10px] font-black text-slate-400">#{{ c.pk }}</span>
+    </button>
+    {% empty %}
+    <div class="px-6 py-8 text-center bg-white">
+        <svg class="w-9 h-9 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+        </svg>
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest">No se encontraron cuentas.</p>
+        <p class="text-[10px] text-slate-400 mt-1">Pruebe con el primer dígito de la jerarquía o parte del nombre.</p>
+    </div>
+    {% endfor %}
+</div>

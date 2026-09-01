@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Informe de Recepción Interna {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</title>
+    <style>
+        @page { size: A4 portrait; margin: 1.5cm;
+            @frame footer { -pdf-frame-content: footerContent; bottom: 1cm; margin-left: 1.5cm; margin-right: 1.5cm; height: 1cm; text-align: right; } }
+        body { font-family: 'Helvetica','Arial',sans-serif; font-size: 9.5pt; color: #1f2937; margin: 0; }
+        .header-table { width: 100%; border-bottom: 2px solid #059669; padding-bottom: 6px; margin-bottom: 12px; }
+        .meta { width: 100%; margin-bottom: 12px; border-collapse: collapse; }
+        .meta td { padding: 4px 6px; font-size: 9pt; background-color: #f8fafc; border: 1px solid #cbd5e1; }
+        .meta .lbl { color: #64748b; font-size: 7.5pt; text-transform: uppercase; font-weight: bold; display: block; }
+        .section-title { font-size: 9pt; font-weight: bold; color: #0f172a; text-transform: uppercase; margin-top: 10px; margin-bottom: 4px; border-bottom: 1.5px solid #059669; padding-bottom: 2px; }
+        table.items { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        table.items th { background-color: #f1f5f9; color: #0f172a; border-top: 1.5px solid #334155; border-bottom: 1.5px solid #334155; text-align: left; padding: 5px 6px; font-size: 8pt; text-transform: uppercase; font-weight: bold; }
+        table.items td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; font-size: 8.5pt; }
+        .text-center { text-align: center; }
+        .box { border: 1px solid #cbd5e1; padding: 6px 8px; margin-top: 10px; font-size: 8.5pt; background-color: #f8fafc; }
+        .box .lbl { color: #64748b; font-size: 7.5pt; text-transform: uppercase; font-weight: bold; }
+        .signatures { width: 100%; margin-top: 50px; text-align: center; font-size: 8pt; border-collapse: collapse; }
+        .signatures td { width: 50%; vertical-align: top; padding: 0 20px; }
+        .sig-line { border-top: 1px solid #64748b; padding-top: 6px; font-weight: bold; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div id="footerContent" style="font-size: 8pt; color: #64748b;">Página <pdf:pagenumber> de <pdf:pagecount></div>
+
+    <table class="header-table">
+        <tr>
+            <td style="vertical-align: bottom;">
+                <div style="font-size: 14pt; font-weight: bold; color: #0f172a; text-transform: uppercase;">{{ rec.empresa.nombre|upper }}</div>
+                <div style="font-size: 11pt; color: #059669; font-weight: bold; margin-top: 2px;">INFORME DE RECEPCIÓN INTERNA</div>
+            </td>
+            <td style="text-align: right; vertical-align: bottom;">
+                <div style="font-size: 12pt; font-weight: bold; color: #0f172a;">N° {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="meta">
+        <tr>
+            <td><span class="lbl">Fecha de Recepción</span>{{ rec.fecha|date:"d/m/Y" }}</td>
+            <td><span class="lbl">Sucursal Receptor (Destino)</span>{{ rec.sucursal.nombre }} (Pto {{ rec.punto|stringformat:"04d" }})</td>
+            <td><span class="lbl">Registrado por</span>{{ rec.usuario.get_full_name|default:rec.usuario.username }}</td>
+        </tr>
+    </table>
+
+    {% if remitos %}
+    <div class="section-title">Remitos Internos Vinculados (Origen)</div>
+    <table class="items" style="margin-bottom: 10px;">
+        <thead>
+            <tr>
+                <th>Comprobante</th>
+                <th>Fecha Emisión</th>
+                <th>Sucursal Origen</th>
+                <th>Estado Remito</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ri in remitos %}
+            <tr>
+                <td><strong>Remito Interno N° {{ ri.punto|stringformat:"04d" }}-{{ ri.numero|stringformat:"08d" }}</strong></td>
+                <td>{{ ri.fecha|date:"d/m/Y" }}</td>
+                <td>{{ ri.sucursal_origen.nombre }}</td>
+                <td>{{ ri.get_estado_display }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="section-title">Mercadería Ingresada a Inventario</div>
+    <table class="items">
+        <thead>
+            <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Descripción del Producto</th>
+                <th class="text-center" style="width: 100px;">Cant. Recibida</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for it in items %}
+            <tr>
+                <td>#{{ it.producto_id }}</td>
+                <td>
+                    <strong>{{ it.producto.detalle|upper }}</strong>
+                </td>
+                <td class="text-center font-bold" style="font-size: 9pt;">{{ it.cantidad_recibida|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if rec.observaciones %}
+    <div class="box">
+        <span class="lbl">Observaciones</span><br>
+        {{ rec.observaciones }}
+    </div>
+    {% endif %}
+
+    <table class="signatures">
+        <tr>
+            <td>
+                <div class="sig-line">
+                    RECIBIDO CONFORME (DESTINO)<br>
+                    <span style="font-size: 7.5pt; color: #64748b; font-weight: normal;">Firma, Aclaración y DNI (Sucursal {{ rec.sucursal.nombre }})</span>
+                </div>
+            </td>
+            <td>
+                <div class="sig-line">
+                    ENTREGADO / DESPACHADO POR (ORIGEN)<br>
+                    <span style="font-size: 7.5pt; color: #64748b; font-weight: normal;">Firma, Aclaración y DNI (Sucursal Origen)</span>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

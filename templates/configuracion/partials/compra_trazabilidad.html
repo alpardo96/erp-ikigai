@@ -1,0 +1,108 @@
+<div class="space-y-6">
+    <!-- Header con botón volver -->
+    <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+        <div>
+            <div class="flex items-center gap-2">
+                <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}" hx-target="#config-content"
+                    class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </button>
+                <h2 class="text-xl font-bold text-slate-800">Trazabilidad y Subproductos</h2>
+            </div>
+            <p class="text-sm text-slate-500 mt-1 ml-8">
+                Configura la operatividad y obligatoriedad de los atributos de trazabilidad para <strong>{{ empresa.nombre }}</strong>.
+            </p>
+        </div>
+    </div>
+
+    <!-- Mensaje de éxito si lo hubiere -->
+    {% if mensaje_exito %}
+    <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-800 text-sm font-medium">
+        <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span>{{ mensaje_exito }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Formulario de Configuración -->
+    <form hx-post="{% url 'config_trazabilidad_save' %}" hx-target="#config-content" class="space-y-6 max-w-3xl">
+        {% csrf_token %}
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+            <!-- Toggle principal: Usa Trazabilidad -->
+            <div class="flex items-start justify-between gap-4 pb-6 border-b border-slate-100">
+                <div class="space-y-1">
+                    <label for="usa_trazabilidad" class="text-base font-bold text-slate-800 cursor-pointer">
+                        Habilitar Trazabilidad de Productos
+                    </label>
+                    <p class="text-xs text-slate-500">
+                        Activa el seguimiento individual por Número de Serie / Identificador en compras y ventas de esta empresa.
+                    </p>
+                </div>
+                <label class="inline-flex items-center cursor-pointer shrink-0">
+                    <input type="checkbox" id="usa_trazabilidad" name="usa_trazabilidad" class="sr-only peer" {% if empresa.usa_trazabilidad %}checked{% endif %}>
+                    <div class="relative w-11 h-6 rounded-full bg-slate-300 transition-colors peer-checked:bg-amber-600 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5"></div>
+                </label>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">
+                    Atributos Obligatorios en Compra Trazabilidad
+                </h3>
+                <p class="text-xs text-slate-500">
+                    Activa qué datos deben completarse obligatoriamente para cada número de serie ingresado al registrar facturas de compra. Si están desactivados, el sistema no exigirá ni consultará su ingreso.
+                </p>
+
+                <!-- Pedir Estado -->
+                <div class="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <div>
+                        <label for="pedir_estado" class="text-sm font-semibold text-slate-700 cursor-pointer block">
+                            Pedir Estado (Nuevo / Usado)
+                        </label>
+                        <span class="text-xs text-slate-400">Exige especificar si el material adquirido es nuevo o de segundo uso.</span>
+                    </div>
+                    <label class="inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="pedir_estado" name="pedir_estado" class="sr-only peer" {% if config_trazabilidad.pedir_estado %}checked{% endif %}>
+                        <div class="relative w-11 h-6 rounded-full bg-slate-300 transition-colors peer-checked:bg-blue-600 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5"></div>
+                    </label>
+                </div>
+
+                <!-- Pedir CUIM -->
+                <div class="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <div>
+                        <label for="pedir_cuim" class="text-sm font-semibold text-slate-700 cursor-pointer block">
+                            Pedir CUIM / Patente / Dominio
+                        </label>
+                        <span class="text-xs text-slate-400">Exige registrar el CUIM (Armería) o el número de Patente/Dominio (Automotor).</span>
+                    </div>
+                    <label class="inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="pedir_cuim" name="pedir_cuim" class="sr-only peer" {% if config_trazabilidad.pedir_cuim %}checked{% endif %}>
+                        <div class="relative w-11 h-6 rounded-full bg-slate-300 transition-colors peer-checked:bg-blue-600 after:absolute after:top-0.5 after:left-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform after:content-[''] peer-checked:after:translate-x-5"></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Alerta Informativa -->
+            <div class="p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl flex items-start gap-3 text-amber-800 text-xs">
+                <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <p class="font-bold">Regla Invariable de Trazabilidad</p>
+                    <p class="mt-0.5 text-amber-700">
+                        El campo <strong>Nro. de Serie / Identificador (serie)</strong> es fundamental y se exigirá de manera absolutamente obligatoria para todo ítem cuyo producto tenga activa la marca de Subproducto (<code>subprod=True</code>).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button type="submit"
+                class="inline-flex items-center justify-center px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-xl shadow-sm hover:shadow transition-all">
+                Guardar Configuración
+            </button>
+        </div>
+    </form>
+</div>

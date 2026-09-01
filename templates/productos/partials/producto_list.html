@@ -1,0 +1,54 @@
+{% for producto in productos %}
+<tr class="hover:bg-gray-50 transition-colors group">
+    <td class="col-id py-4 pl-6 pr-3 text-sm font-medium text-gray-900">{{ producto.id }}</td>
+    <td class="col-codprov px-3 py-4 text-sm text-gray-500">{{ producto.cod_prov|default:"-" }}</td>
+    <td class="col-codfab px-3 py-4 text-sm text-gray-500">{{ producto.cod_fab|default:"-" }}</td>
+    <td class="col-detalle px-3 py-4 text-sm font-medium text-gray-900">{{ producto.detalle }}</td>
+    <td class="col-proveedor px-3 py-4 text-sm text-gray-500">{{ producto.proveedor.razon_social|default:"-" }}</td>
+    <td class="col-minimo px-3 py-4 text-sm text-gray-500">{{ producto.minimo }}</td>
+    <td class="col-ptopedir px-3 py-4 text-sm text-gray-500">{{ producto.ptopedir }}</td>
+    <td class="col-creden px-3 py-4 text-sm text-gray-500">
+        {% if producto.creden %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sí</span>
+        {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No</span>
+        {% endif %}
+    </td>
+    <td class="col-moneda px-3 py-4 text-sm text-gray-500">{{ producto.get_moneda_display }}</td>
+    <td class="col-margen px-3 py-4 text-sm text-gray-500">{{ producto.margen }}</td>
+    <td class="col-marca px-3 py-4 text-sm text-gray-500">{{ producto.marca.detalle|default:"-" }}</td>
+    <td class="col-rubro px-3 py-4 text-sm text-gray-500">{{ producto.rubro.detalle|default:"-" }}</td>
+    <td class="col-familia px-3 py-4 text-sm text-gray-500">{{ producto.familia.detalle|default:"-" }}</td>
+    <td class="col-subprod px-3 py-4 text-sm text-gray-500">
+        {% if producto.subprod %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Sí</span>
+        {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No</span>
+        {% endif %}
+    </td>
+    <td class="col-stock px-3 py-4 text-sm text-gray-500">{{ producto.stock_global }}</td>
+    <td class="col-ctoadq px-3 py-4 text-sm text-gray-500">{{ producto.cto_adq }}</td>
+    <td class="col-ctorep px-3 py-4 text-sm text-gray-500">{{ producto.cto_rep }}</td>
+    <td class="col-iva px-3 py-4 text-sm text-gray-500">{{ producto.alic_iva }}%</td>
+    <td class="col-precio px-3 py-4 text-sm font-bold text-indigo-600">${{ producto.precio_total }}</td>
+    <td class="col-fecact px-3 py-4 text-sm text-gray-500">{{ producto.fec_act|date:"d/m/Y"|default:"-" }}</td>
+    <td class="relative py-4 pl-3 pr-6 text-right text-sm font-medium">
+        <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button hx-get="{% url 'producto_edit' producto.id %}" hx-target="#modal-container"
+                class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors" title="Editar">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            </button>
+            <button hx-delete="{% url 'producto_delete' producto.id %}" hx-confirm="¿Está seguro de eliminar este producto?"
+                class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Eliminar">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="100%" class="py-8 text-center text-gray-500">
+        No se encontraron productos.
+    </td>
+</tr>
+{% endfor %}

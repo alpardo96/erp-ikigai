@@ -1,0 +1,95 @@
+{% load formato_tags %}
+
+<div class="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
+
+    <div class="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+            <h3 class="text-sm font-bold text-gray-800">
+                Período {{ desde|date:"d/m/Y" }} al {{ hasta|date:"d/m/Y" }}
+            </h3>
+            <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">
+                {% if 1 in condics and 2 in condics %}REAL + PRESUPUESTADO
+                {% elif 1 in condics %}REAL
+                {% elif 2 in condics %}PRESUPUESTADO
+                {% else %}SIN CONDICIÓN{% endif %}
+            </span>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'eoaf_excel' %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}&generado=1{% for c in condics %}&condic={{ c }}{% endfor %}"
+               class="inline-flex items-center px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors">
+                Excel
+            </a>
+            <a href="{% url 'eoaf_pdf' %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}&generado=1{% for c in condics %}&condic={{ c }}{% endfor %}"
+               target="_blank"
+               class="inline-flex items-center px-3 py-1.5 rounded-lg border border-rose-300 bg-rose-50 text-rose-700 text-xs font-semibold hover:bg-rose-100 transition-colors">
+                PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-xs">
+            <thead class="bg-blue-700 text-white sticky top-0">
+                <tr>
+                    <th class="px-3 py-2 text-left font-semibold">Código</th>
+                    <th class="px-3 py-2 text-left font-semibold">Jerarquía</th>
+                    <th class="px-3 py-2 text-left font-semibold">Detalle</th>
+                    <th class="px-3 py-2 text-right font-semibold">Ingresos Fondos</th>
+                    <th class="px-3 py-2 text-right font-semibold">Egresos Fondos</th>
+                    <th class="px-3 py-2 text-right font-semibold">Flujo Neto</th>
+                    {% for clave, rotulo in medios %}
+                        <th class="px-3 py-2 text-right font-semibold">{{ rotulo }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for fila in filas %}
+                    <tr class="{% if fila.imputable %}hover:bg-indigo-50/50 cursor-pointer{% else %}bg-blue-50/40 font-bold text-blue-700{% endif %}"
+                        {% if fila.imputable %}
+                            hx-get="{% url 'eoaf_cuenta_modal' fila.cuenta_id %}?desde={{ desde|date:'Y-m-d' }}&hasta={{ hasta|date:'Y-m-d' }}&generado=1{% for c in condics %}&condic={{ c }}{% endfor %}"
+                            hx-target="#eoaf-modal"
+                            title="Ver los movimientos de fondos de esta cuenta"
+                        {% endif %}>
+                        <td class="px-3 py-1.5 {% if not fila.imputable %}text-blue-700{% else %}text-gray-500{% endif %}">{{ fila.codigo|default:"" }}</td>
+                        <td class="px-3 py-1.5 whitespace-nowrap">{{ fila.jerarquia }}</td>
+                        <td class="px-3 py-1.5">{{ fila.detalle }}</td>
+                        <td class="px-3 py-1.5 text-right">{{ fila.ingresos|formato_ar }}</td>
+                        <td class="px-3 py-1.5 text-right">{{ fila.egresos|formato_ar }}</td>
+                        <td class="px-3 py-1.5 text-right font-bold {% if fila.neto < 0 %}text-red-600{% elif fila.imputable %}text-gray-900{% endif %}">{{ fila.neto|formato_ar }}</td>
+                        {% for valor in fila.medios_lista %}
+                            <td class="px-3 py-1.5 text-right {% if valor < 0 %}text-red-600{% endif %}">{{ valor|formato_ar }}</td>
+                        {% endfor %}
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="12" class="px-4 py-10 text-center text-sm text-gray-400">
+                            No hubo movimientos de fondos en el período con la condición elegida.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            {% if filas %}
+                <tfoot class="bg-blue-700 text-white font-bold">
+                    <tr>
+                        <td class="px-3 py-2" colspan="3">TOTALES</td>
+                        <td class="px-3 py-2 text-right">{{ totales.ingresos|formato_ar }}</td>
+                        <td class="px-3 py-2 text-right">{{ totales.egresos|formato_ar }}</td>
+                        <td class="px-3 py-2 text-right">{{ totales.neto|formato_ar }}</td>
+                        {% for valor in totales.medios_lista %}
+                            <td class="px-3 py-2 text-right">{{ valor|formato_ar }}</td>
+                        {% endfor %}
+                    </tr>
+                </tfoot>
+            {% endif %}
+        </table>
+    </div>
+
+    {% if filas %}
+        <div class="px-5 py-2.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
+            Las filas en azul son cuentas sumarizadoras: acumulan a sus imputables.
+            Los totales suman <span class="font-semibold">sólo las imputables</span>.
+            El Flujo Neto total coincide con la variación de las disponibilidades del período.
+            Clic en una imputable para ver su detalle.
+        </div>
+    {% endif %}
+</div>

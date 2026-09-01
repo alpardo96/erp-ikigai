@@ -1,0 +1,230 @@
+<div class="flex justify-between items-end mb-6">
+    <div>
+        <h2 class="text-xl font-bold text-gray-900">Libro Mayor</h2>
+        <p class="text-sm text-gray-500 mt-1">Evolución de movimientos y saldos por cuenta contable.</p>
+    </div>
+    <div class="flex gap-2 items-center">
+        <!-- Selector de Columnas -->
+        <div class="relative" x-data="{ open: false }">
+            <button @click="open = !open" type="button"
+                class="px-3.5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors font-semibold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <span>Columnas</span>
+            </button>
+            <div x-show="open" @click.outside="open = false" 
+                 class="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 max-h-80 overflow-y-auto"
+                 style="display: none;">
+                <p class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 border-b border-slate-100 pb-2">Configurar Columnas</p>
+                <div class="flex flex-col gap-1.5">
+                    {% for col in catalogo_columnas %}
+                    <label class="flex items-center gap-2 text-xs text-slate-700 hover:bg-slate-50 p-1 rounded cursor-pointer">
+                        <input type="checkbox" form="form-mayor-main" name="columnas" value="{{ col.clave }}"
+                               {% if col.clave in columnas_seleccionadas or not columnas_seleccionadas and col.default %}checked{% endif %}
+                               class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <span>{{ col.nombre }}</span>
+                        <span class="text-[10px] text-slate-400 ml-auto">({{ col.origen }})</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Exportaciones -->
+        <button onclick="exportarCsvMayor()"
+            class="px-3.5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium text-xs shadow-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            CSV
+        </button>
+        <button onclick="exportarExcelMayor()"
+            class="px-3.5 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-medium text-xs shadow-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Excel
+        </button>
+        <button onclick="exportarPdfMayor()"
+            class="px-3.5 py-2 bg-rose-600 text-white rounded-xl hover:bg-rose-700 transition-colors font-medium text-xs shadow-sm flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+            PDF
+        </button>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6">
+    <form id="form-mayor-main" hx-get="{% url 'libro_mayor_rows' %}" hx-target="#mayor-rows" hx-trigger="submit" class="flex flex-col gap-4">
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Cuentas -->
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-600 uppercase">Cuenta Desde</label>
+                <div class="relative w-full" x-data="{ open: false }">
+                    <input type="hidden" name="cuenta_desde" id="id_cuenta_desde" value="{{ primera_cuenta_id }}">
+                    <input type="text" id="display_cuenta_desde" name="q" style="font-size: 18px !important;"
+                        class="px-3 py-2 rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 w-full outline-none"
+                        placeholder="Buscar Cuenta Desde..."
+                        value="{{ primera_cuenta_display|default:'' }}"
+                        hx-get="{% url 'typeahead_cuentas_contable' %}?target=desde" 
+                        hx-trigger="keyup changed delay:300ms, search, focus" 
+                        hx-target="#cuentas_desde_suggestions"
+                        autocomplete="off"
+                        @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                        oninput="if(this.value === '') { document.getElementById('id_cuenta_desde').value = ''; }">
+                    <div x-show="open" id="cuentas_desde_suggestions" 
+                         class="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                         style="display: none;"></div>
+                </div>
+            </div>
+            
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-600 uppercase">Cuenta Hasta</label>
+                <div class="relative w-full" x-data="{ open: false }">
+                    <input type="hidden" name="cuenta_hasta" id="id_cuenta_hasta" value="{{ ultima_cuenta_id }}">
+                    <input type="text" id="display_cuenta_hasta" name="q" 
+                        class="px-3 py-2 rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 w-full outline-none"
+                        placeholder="Buscar Cuenta Hasta..."
+                        value="{{ ultima_cuenta_display|default:'' }}"
+                        hx-get="{% url 'typeahead_cuentas_contable' %}?target=hasta" 
+                        hx-trigger="keyup changed delay:300ms, search, focus" 
+                        hx-target="#cuentas_hasta_suggestions"
+                        autocomplete="off"
+                        @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                        oninput="if(this.value === '') { document.getElementById('id_cuenta_hasta').value = ''; }">
+                    <div x-show="open" id="cuentas_hasta_suggestions" 
+                         class="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                         style="display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Fechas -->
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-600 uppercase">Fecha Desde</label>
+                <input type="date" name="fecha_desde" value="{{ fecha_inicio|default:'' }}" class="px-3 py-2 rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 w-full">
+            </div>
+            
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-600 uppercase">Fecha Hasta</label>
+                <input type="date" name="fecha_hasta" value="{{ fecha_cierre|default:'' }}" class="px-3 py-2 rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 w-full">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            <!-- Entidad -->
+            <div class="flex flex-col gap-1 md:col-span-4">
+                <label class="text-xs font-bold text-gray-600 uppercase">Cliente / Proveedor</label>
+                <div class="relative w-full" x-data="{ open: false }">
+                    <input type="hidden" name="cli_pro_id" id="id_cli_pro_id">
+                    <input type="text" id="display_cli_pro" name="q"
+                        class="px-3 py-2 rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 w-full outline-none"
+                        placeholder="Buscar Cliente/Proveedor (Opcional)..."
+                        hx-get="{% url 'typeahead_clientes' %}" 
+                        hx-trigger="keyup changed delay:300ms, search, focus" 
+                        hx-target="#cli_pro_suggestions"
+                        autocomplete="off"
+                        @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                        oninput="if(this.value === '') { document.getElementById('id_cli_pro_id').value = ''; }">
+                    <div x-show="open" id="cli_pro_suggestions" 
+                         class="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                         style="display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Controles Secundarios: Sucursal, Condición y Botón -->
+            <div class="flex justify-between items-center bg-white border border-gray-200 rounded-xl px-4 py-2 md:col-span-8">
+                <div class="flex items-center gap-4 flex-wrap">
+                    <!-- Sucursal -->
+                    <div class="flex items-center gap-2 border-r border-gray-200 pr-4">
+                        <span class="text-xs font-bold text-gray-600 uppercase">Sucursal:</span>
+                        <select name="sucursal_id" id="id_sucursal_id" class="px-2 py-1 rounded-lg border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-gray-50 cursor-pointer">
+                            <option value="">Todas</option>
+                            {% for suc in sucursales %}
+                                <option value="{{ suc.id }}">{{ suc.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Condición (Default tildados 1, 2 y 5) -->
+                    <span class="text-xs font-bold text-gray-600 uppercase pl-2">Condición:</span>
+                    {% for c in condic_opciones %}
+                    <label class="flex items-center gap-1 text-sm text-gray-700 cursor-pointer">
+                        <input type="checkbox" name="condic" value="{{ c.valor }}"
+                               {% if c.valor|stringformat:'s' in condics_predeterminados or not condics_predeterminados and c.valor in '1,2,5' %}checked{% endif %}
+                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"> {{ c.nombre }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm text-sm cursor-pointer ml-auto">
+                    Consultar
+                </button>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<script>
+function getFiltrosMayorURL() {
+    let form = document.getElementById('form-mayor-main');
+    let formData = new FormData(form);
+    let params = new URLSearchParams();
+    
+    for (let [key, val] of formData.entries()) {
+        if (key !== 'q' && val) {
+            params.append(key, val);
+        }
+    }
+    return params.toString();
+}
+
+function exportarExcelMayor() {
+    let params = getFiltrosMayorURL();
+    if (params) window.location.href = "{% url 'exportar_mayor_excel' %}?" + params;
+}
+
+function exportarCsvMayor() {
+    let params = getFiltrosMayorURL();
+    if (params) window.location.href = "{% url 'exportar_mayor_csv' %}?" + params;
+}
+
+function exportarPdfMayor() {
+    let params = getFiltrosMayorURL();
+    if (params) window.location.href = "{% url 'exportar_mayor_pdf' %}?" + params;
+}
+
+document.body.addEventListener('cuentaSeleccionada', (e) => {
+    let target = e.detail.target; 
+    document.getElementById('id_cuenta_' + target).value = e.detail.id;
+    document.getElementById('display_cuenta_' + target).value = e.detail.jerarquia + ' - ' + e.detail.cuenta;
+    document.getElementById('display_cuenta_' + target).dispatchEvent(new Event('change'));
+});
+
+document.body.addEventListener('clienteVentaSeleccionado', (e) => {
+    document.getElementById('id_cli_pro_id').value = e.detail.id;
+    document.getElementById('display_cli_pro').value = e.detail.razon_social;
+});
+</script>
+
+<div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50" id="mayor-thead-page">
+            <tr>
+                <th class="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">ID Asiento</th>
+                <th class="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Concepto</th>
+                <th class="px-3 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Cuenta</th>
+                <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Debe</th>
+                <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Haber</th>
+                <th class="px-3 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Saldo</th>
+                <th class="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Condición</th>
+                <th class="px-3 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Sucursal</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200" id="mayor-rows">
+            <tr>
+                <td colspan="10" class="px-6 py-12 text-center text-gray-500">
+                    <svg class="w-10 h-10 mx-auto mb-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <p class="font-bold text-gray-700 text-sm">Verifique los parámetros de consulta y presione "Consultar"</p>
+                    <p class="text-xs text-gray-400 mt-1">Seleccione el rango de cuentas o fechas y haga clic en Consultar para generar el reporte.</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,148 @@
+<!-- 
+    MODAL DE USUARIO
+    Este modal se renderiza de forma absoluta dentro del contenedor #modal-container en base.html.
+    Permite crear y editar usuarios, asignando permisos granulares por módulo.
+-->
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl transform transition-all overflow-hidden border border-gray-100 my-auto" 
+         id="modal-content">
+        
+        <!-- Cabecera del Modal -->
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+            <h3 class="text-xl font-bold text-gray-900">
+                {% if is_new %}Añadir Nuevo Usuario{% else %}Editar Usuario: {{ usuario_obj.username }}{% endif %}
+            </h3>
+            <button type="button" 
+                    class="text-gray-400 hover:text-red-500 focus:outline-none transition-colors p-2 hover:bg-red-50 rounded-full"
+                    onclick="document.getElementById('modal-container').innerHTML = ''">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Formulario: Envía datos vía HTMX y dispara 'reloadUsuarios' al éxito -->
+        <form hx-post="{% if is_new %}{% url 'config_usuario_add' %}{% else %}{% url 'config_usuario_edit' usuario_obj.id %}{% endif %}" 
+              hx-target="#modal-container" hx-swap="innerHTML"
+              class="px-8 py-6 space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Identificación Básica -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre de Usuario</label>
+                    {{ form.username }}
+                    {{ form.username.errors }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Correo Electrónico</label>
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
+
+                <!-- Seguridad -->
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Contraseña</label>
+                    {{ form.password }}
+                    <p class="mt-1 text-[10px] text-gray-400 italic">{% if not is_new %}Dejar en blanco para mantener la actual.{% endif %}</p>
+                    {{ form.password.errors }}
+                </div>
+
+                <!-- SECCIÓN DE PERMISOS: Lo más importante para la lógica modular -->
+                <div class="col-span-1 md:col-span-2 mt-4 p-5 bg-slate-50 rounded-2xl border border-gray-200 shadow-inner">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-gray-200 pb-2">Nivel de Acceso y Permisos</h4>
+                    
+                    <div class="flex items-center mb-6">
+                        {{ form.is_active }}
+                        <label class="ml-2 block text-sm font-medium text-gray-700" for="{{ form.is_active.id_for_label }}">
+                            Cuenta Activa (Acceso Permitido)
+                        </label>
+                    </div>
+
+                    <!-- Toggle Admin: Da facultades sobre todo el sistema -->
+                    <div class="flex flex-col mb-4 bg-red-50 p-4 rounded-xl border border-red-100">
+                        <div class="flex items-center">
+                            {{ form.es_admin_sistema }}
+                            <label class="ml-2 block text-sm font-bold text-red-800 uppercase" for="{{ form.es_admin_sistema.id_for_label }}">
+                                Administrador General
+                            </label>
+                        </div>
+                        <p class="ml-6 mt-1 text-[11px] text-red-400">Control total sobre empresas, sucursales y otros usuarios.</p>
+                    </div>
+
+                    <!-- Permisos por Módulo: Clientes, Armería, Josen y Facturación -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        
+                        <!-- Caja: Clientes -->
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                            <h6 class="text-[10px] font-bold text-blue-500 uppercase mb-3">Módulo Clientes</h6>
+                            <div class="space-y-3">
+                                <div class="flex items-center text-xs text-gray-600">
+                                    {{ form.permiso_clientes_ver }} <span class="ml-2">Ver datos</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-600">
+                                    {{ form.permiso_clientes_editar }} <span class="ml-2">Gestionar (ABM)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Caja: Facturación -->
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                            <h6 class="text-[10px] font-bold text-orange-500 uppercase mb-3">Módulo Facturación</h6>
+                            <div class="space-y-3">
+                                <div class="flex items-center text-xs text-gray-600">
+                                    {{ form.permiso_facturacion_compras }} <span class="ml-2">Compras</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-600">
+                                    {{ form.permiso_facturacion_lista_compras }} <span class="ml-2">Lista de Compras</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-600">
+                                    {{ form.permiso_facturacion_autorizaciones }} <span class="ml-2">Autorizaciones</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-600">
+                                    {{ form.permiso_facturacion_carga_ventas }} <span class="ml-2">Carga de Ventas</span>
+                                </div>
+                                <div class="flex items-center text-xs text-gray-600">
+                                    {{ form.permiso_facturacion_lista_ventas }} <span class="ml-2">Listado de Ventas</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 border-t pt-4 border-slate-200">
+                            <p class="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tesorería</p>
+                            <div class="flex items-center text-sm text-slate-700">
+                                {{ form.es_cajero_mostrador }} <span class="ml-2">Sólo Caja Mostrador</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 italic mt-1">
+                                El usuario opera únicamente su caja: cobra con el botón «Emitir Recibo» de esa
+                                pantalla y rinde al cerrarla. No ve Recibos ni Órdenes de Pago de Tesorería,
+                                ni la Caja Diaria.
+                            </p>
+                        </div>
+
+
+                    </div>
+
+                    <!-- Asignación de Empresas: Solo relevante si no es superadmin -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Empresas Asignadas</label>
+                        <p class="mb-2 text-[10px] text-gray-400 italic">Obligatorio para que un operador pueda seleccionar empresa al entrar.</p>
+                        {{ form.empresas }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones Finales -->
+            <div class="pt-6 border-t border-gray-100 flex justify-end space-x-3">
+                <button type="button" 
+                        class="px-6 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                        onclick="document.getElementById('modal-container').innerHTML = ''">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-200 transition-transform active:scale-95">
+                    {% if is_new %}Crear Usuario{% else %}Guardar Cambios{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Reporte de Devoluciones | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-start border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Reporte de Devoluciones</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                La pregunta no es cuánto, es por qué: si el problema es de crédito, de calidad, de carga o de alguien en particular.
+            </p>
+        </div>
+        <div class="text-right">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Devuelto en el período</div>
+            <div class="text-2xl font-black text-slate-900">$ {{ datos.total_importe|formato_ar }}</div>
+            <div class="text-[11px] text-slate-500">{{ datos.total_cantidad|formato_ar }} unidades</div>
+        </div>
+    </div>
+
+    <form method="get" class="rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Desde</label>
+                <input type="date" name="desde" value="{{ filtros.desde|default:'' }}"
+                       class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Hasta</label>
+                <input type="date" name="hasta" value="{{ filtros.hasta|default:'' }}"
+                       class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Motivo</label>
+                <select name="motivo" class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    <option value="">Todos</option>
+                    {% for m in motivos %}
+                    <option value="{{ m.id }}" {% if filtros.motivo == m.id|stringformat:"s" %}selected{% endif %}>{{ m.codigo }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Repartidor</label>
+                <select name="repartidor" class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    <option value="">Todos</option>
+                    {% for r in repartidores %}
+                    <option value="{{ r.id }}" {% if filtros.repartidor == r.id|stringformat:"s" %}selected{% endif %}>{{ r.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-center">
+                <label class="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" name="solo_no_apto" value="1" {% if filtros.solo_no_apto %}checked{% endif %}
+                           class="rounded border-slate-300"> Sólo lo no apto
+                </label>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">
+                Filtrar
+            </button>
+        </div>
+    </form>
+
+    {% if datos.total_no_apto %}
+    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-800">
+        <strong>$ {{ datos.total_no_apto|formato_ar }} ({{ datos.porcentaje_no_apto|formato_ar }} %)</strong>
+        volvió en condiciones de NO poder revenderse. Eso no es una devolución más: es pérdida.
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {% comment %}
+        Cuatro cortes sobre los mismos renglones. Cada uno responde una pregunta distinta:
+        el motivo dice qué está fallando, el repartidor y el cliente dicen dónde, y el
+        producto dice si es un problema del artículo.
+        {% endcomment %}
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Por motivo</h2>
+                <p class="text-[10px] text-slate-400">Qué está fallando</p>
+            </div>
+            {% include 'distribucion/partials/corte_devoluciones.html' with filas=datos.por_motivo %}
+        </div>
+
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Por repartidor</h2>
+                <p class="text-[10px] text-slate-400">Si se concentran en alguien</p>
+            </div>
+            {% include 'distribucion/partials/corte_devoluciones.html' with filas=datos.por_repartidor %}
+        </div>
+
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Por producto</h2>
+                <p class="text-[10px] text-slate-400">Si el problema es del artículo — los 20 primeros</p>
+            </div>
+            {% include 'distribucion/partials/corte_devoluciones.html' with filas=datos.por_producto %}
+        </div>
+
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Por cliente</h2>
+                <p class="text-[10px] text-slate-400">Quién devuelve más — los 20 primeros</p>
+            </div>
+            {% include 'distribucion/partials/corte_devoluciones.html' with filas=datos.por_cliente %}
+        </div>
+    </div>
+
+    {% if datos.pre_carga %}
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-amber-200 bg-white">
+        <div class="px-4 py-2.5 bg-amber-50 border-b border-amber-200">
+            <h2 class="text-xs font-black text-amber-800 uppercase tracking-tight">
+                Anuladas antes de cargar — $ {{ datos.total_pre_carga|formato_ar }}
+            </h2>
+            <p class="text-[10px] text-amber-700">
+                La mercadería nunca salió, así que no pasó por ninguna recepción. Va aparte para no contarla
+                como «vuelto del reparto».
+            </p>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <tbody class="divide-y divide-gray-100">
+                {% for nc in datos.pre_carga %}
+                <tr>
+                    <td class="py-2 pl-6 pr-3 text-xs font-mono font-bold text-slate-700">
+                        {{ nc.nota_credito.tipo.detalle }}
+                        {{ nc.nota_credito.punto|stringformat:"04d" }}-{{ nc.nota_credito.numero|stringformat:"08d" }}
+                    </td>
+                    <td class="px-3 py-2 text-xs text-slate-500">{{ nc.nota_credito.fecha|date:"d/m/Y" }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ nc.venta_origen.cliente.razon_social }}</td>
+                    <td class="px-3 py-2 text-[11px] text-slate-500">{{ nc.motivo.codigo }}</td>
+                    <td class="px-6 py-2 text-sm text-right font-mono font-black text-amber-700">
+                        $ {{ nc.nota_credito.total|formato_ar }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+            <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Detalle</h2>
+        </div>
+        <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-white">
+                <tr>
+                    <th class="py-2 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recepción</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Repartidor</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Artículo</th>
+                    <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cant.</th>
+                    <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Motivo</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for f in datos.filas %}
+                <tr class="{% if not f.apto_reventa %}bg-red-50/40{% endif %}">
+                    <td class="whitespace-nowrap py-2 pl-6 pr-3 text-xs font-mono text-slate-600">{{ f.recepcion.numero_formateado }}</td>
+                    <td class="px-3 py-2 text-xs text-slate-500">{{ f.fecha|date:"d/m/Y" }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ f.cliente.razon_social }}</td>
+                    <td class="px-3 py-2 text-xs text-slate-500">{{ f.repartidor.nombre|default:"—" }}</td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ f.producto.detalle }}</td>
+                    <td class="px-3 py-2 text-sm text-right font-mono">{{ f.cantidad|formato_ar }}</td>
+                    <td class="px-3 py-2 text-sm text-right font-mono font-bold">$ {{ f.importe|formato_ar }}</td>
+                    <td class="px-3 py-2">
+                        <span class="text-[11px] text-slate-600">{{ f.motivo.codigo }}</span>
+                        {% if not f.apto_reventa %}
+                        <span class="ml-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-red-100 text-red-800">NO APTO</span>
+                        {% endif %}
+                        {% if f.observacion %}
+                        <div class="text-[10px] text-slate-400 italic">{{ f.observacion }}</div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="px-4 py-10 text-center text-xs text-slate-400 italic">
+                    No hubo devoluciones en el período elegido.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

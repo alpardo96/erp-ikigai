@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Recibir Rendiciones | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+            Recibir Rendiciones — {{ caja.nombre }}
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">
+            Contá lo que cada repartidor trae y aceptalo. Después esta caja rinde el consolidado a Tesorería
+            con el retiro y el cierre de siempre.
+        </p>
+    </div>
+
+    <div class="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-[11px] text-slate-600">
+        <strong>El que declara no es el mismo que cuenta.</strong> La diferencia entre lo que el repartidor declaró
+        y lo que vos contás genera su asiento contra Diferencias de Caja: un faltante queda registrado, no absorbido
+        en silencio.
+    </div>
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+            <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">En tránsito</h2>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for r in rendiciones %}
+            <form method="post" class="px-4 py-3 flex items-center gap-4">
+                {% csrf_token %}
+                <input type="hidden" name="rendicion" value="{{ r.id }}">
+                <div class="min-w-0 flex-1">
+                    <div class="text-sm font-bold text-slate-800">
+                        Reparto {{ r.reparto.numero }} · {{ r.reparto.responsables_display }}
+                    </div>
+                    <div class="text-[11px] text-slate-500">
+                        {{ r.reparto.fecha|date:"d/m/Y" }}
+                        {% if r.reparto.vehiculo %} · {{ r.reparto.vehiculo.patente }}{% endif %}
+                    </div>
+                    <div class="text-[10px] text-slate-400 font-mono">
+                        Declaró $ {{ r.retiro.efectivo_pesos|formato_ar }} ·
+                        el sistema esperaba $ {{ r.esperado|formato_ar }}
+                    </div>
+                    {% if r.observaciones %}
+                    <div class="text-[11px] text-amber-700 italic mt-0.5">{{ r.observaciones }}</div>
+                    {% endif %}
+                </div>
+                <div class="shrink-0 flex items-end gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Contado</label>
+                        <input type="text" name="contado_pesos" value="{{ r.retiro.efectivo_pesos|formato_ar }}"
+                               class="fInputAR w-32 h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                    </div>
+                    <button type="submit"
+                            class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                        Recibir
+                    </button>
+                </div>
+            </form>
+            {% empty %}
+            <p class="px-4 py-10 text-center text-xs text-slate-400 italic">
+                No hay rendiciones esperando ser contadas.
+            </p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <p class="text-[11px] text-slate-400 italic">
+        Quien recibe a los repartidores no es el tesorero central: es esta caja intermedia la que acumula, y recién
+        después entrega el consolidado. Es la misma lógica por la que el cajero de mostrador rinde al cierre de su turno.
+    </p>
+</div>
+{% endblock %}

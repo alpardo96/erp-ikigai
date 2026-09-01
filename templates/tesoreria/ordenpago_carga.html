@@ -1,0 +1,871 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="p-6 max-w-7xl mx-auto" x-data="ordenPagoForm()">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Emitir Orden de Pago</h1>
+        <div class="flex items-center space-x-2 bg-gray-100 p-2 rounded-lg">
+            <span class="text-sm font-medium" :class="data.tipo === 'P' ? 'text-indigo-600' : 'text-gray-500'">Pago a Proveedor</span>
+            <button type="button" 
+                    @click="toggleTipo()"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2" 
+                    :class="data.tipo === 'S' ? 'bg-indigo-600' : 'bg-gray-200'"
+                    role="switch" 
+                    aria-checked="false">
+                <span aria-hidden="true" 
+                      class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                      :class="data.tipo === 'S' ? 'translate-x-5' : 'translate-x-0'"></span>
+            </button>
+            <span class="text-sm font-medium" :class="data.tipo === 'S' ? 'text-indigo-600' : 'text-gray-500'">Orden Pago Simple</span>
+        </div>
+    </div>
+    
+    <form @submit.prevent="submitForm">
+        <!-- Cabecera -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4 border-b pb-2">Cabecera</h2>
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Sucursal</label>
+                    <select x-model="data.sucursal_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        {% for suc in sucursales %}
+                        <option value="{{ suc.id }}">{{ suc.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Punto</label>
+                    <input type="number" x-model="data.punto" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fecha</label>
+                    <input type="date" x-model="data.fecha" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Condición de Operación</label>
+                    <div class="flex items-center space-x-6 mt-1">
+                        <label class="flex items-center">
+                            <input type="radio" x-model.number="data.condic" value="1" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                            <span class="ml-2 text-sm text-gray-700">Real</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" x-model.number="data.condic" value="2" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300">
+                            <span class="ml-2 text-sm text-gray-700">Presupuestado</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-sm font-medium text-gray-700">Buscar Entidad (Proveedor/Cliente/Socio)</label>
+                    <div class="relative mt-1">
+                        <div class="flex">
+                            <input type="hidden" x-model="data.proveedor_id">
+                            <input type="text"
+                                   x-model="proveedorDisplay"
+                                   @input="proveedorEditado()"
+                                   @focus="proveedorResultsOpen = true"
+                                   @keydown.escape="proveedorResultsOpen = false"
+                                   placeholder="Razón social o CUIT..."
+                                   hx-get="{% url 'op_proveedor_buscar_lista' %}"
+                                   hx-trigger="keyup changed delay:300ms, focus"
+                                   hx-target="#proveedor_suggestions"
+                                   name="q"
+                                   autocomplete="off"
+                                   class="block w-full rounded-l-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <button type="button"
+                                    title="Ver lista de proveedores"
+                                    hx-get="{% url 'op_proveedor_buscar_modal' %}"
+                                    hx-target="#modal-container"
+                                    class="inline-flex w-11 items-center justify-center rounded-r-md border border-l-0 border-gray-300 bg-white text-gray-500 shadow-sm hover:bg-gray-50 hover:text-indigo-600">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="proveedor_suggestions"
+                             x-show="proveedorResultsOpen && proveedorDisplay.length > 0 && !data.proveedor_id"
+                             @click.outside="proveedorResultsOpen = false"
+                             x-cloak
+                             class="absolute z-40 mt-1 max-h-72 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                <span class="block text-xs font-semibold uppercase tracking-wide text-slate-500">Proveedor seleccionado</span>
+                <span class="text-sm font-medium text-slate-800" x-text="proveedorDisplay || 'Seleccione un proveedor para ver deuda'"></span>
+            </div>
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700">Observaciones</label>
+                <textarea x-model="data.observaciones" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+            </div>
+        </div>
+
+        <!-- Aplicaciones (Compras pendientes) -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6" x-show="data.tipo === 'P'">
+            <h2 class="text-lg font-semibold mb-4 border-b pb-2">Aplicación a Comprobantes</h2>
+            <div id="comprobantes_container" class="overflow-x-auto">
+                <p class="text-sm text-gray-500 italic">Seleccione un proveedor para ver sus comprobantes adeudados.</p>
+            </div>
+        </div>
+
+        <!-- Imputaciones Manuales (Solo para OP Simple) -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6" x-show="data.tipo === 'S'" x-cloak>
+            <h2 class="text-lg font-semibold mb-4 border-b pb-2">Imputaciones Contables Manuales</h2>
+            <div class="grid grid-cols-12 gap-4 mb-4">
+                <!-- Cuenta Contable: patrón Typeahead + Lupa (igual que el selector de entidad) -->
+                <div class="col-span-5 relative">
+                    <label class="block text-sm font-medium text-gray-700">Cuenta Contable</label>
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <input type="text"
+                               x-model="cuentaDisplay"
+                               @input="cuentaEditada()"
+                               @focus="cuentaResultsOpen = true"
+                               @keydown.escape="cuentaResultsOpen = false"
+                               placeholder="Jerarquía o nombre..."
+                               hx-get="{% url 'tesoreria_cuentas_buscar_lista' %}"
+                               hx-trigger="keyup changed delay:300ms, focus"
+                               hx-target="#cuenta_suggestions"
+                               name="q"
+                               autocomplete="off"
+                               class="block w-full rounded-l-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <button type="button"
+                                title="Buscar cuenta contable"
+                                hx-get="{% url 'tesoreria_cuentas_buscar_modal' %}"
+                                hx-target="#modal-container"
+                                class="inline-flex w-11 items-center justify-center rounded-r-md border border-l-0 border-gray-300 bg-white text-gray-500 hover:bg-gray-50 hover:text-indigo-600">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="cuenta_suggestions"
+                         x-show="cuentaResultsOpen && cuentaDisplay.length > 0 && !nuevaImputacion.cuenta_contable_id"
+                         @click.outside="cuentaResultsOpen = false"
+                         x-cloak
+                         class="absolute z-30 mt-1 w-full max-h-64 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg"></div>
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-sm font-medium text-gray-700">Importe</label>
+                    <input type="text" inputmode="decimal" x-model="nuevaImputacion.importe" placeholder="Importe" class="fInputAR mt-1 block w-full rounded-md border-gray-300 text-sm text-right font-black shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-sm font-medium text-gray-700">Leyenda (opcional)</label>
+                    <input type="text" x-model="nuevaImputacion.leyenda" class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div class="col-span-1 flex items-end">
+                    <button type="button" @click="addImputacion()" class="w-full bg-indigo-600 text-white rounded-md py-2 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">+</button>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <table class="min-w-full divide-y divide-gray-200 border">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cuenta</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Leyenda</th>
+                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Importe</th>
+                            <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="(imp, index) in data.imputaciones" :key="index">
+                            <tr>
+                                <td class="px-3 py-2 text-sm text-gray-900" x-text="imp.cuenta_display || imp.cuenta_contable_id"></td>
+                                <td class="px-3 py-2 text-sm text-gray-500" x-text="imp.leyenda"></td>
+                                <td class="px-3 py-2 text-sm font-medium text-right text-gray-900" x-text="formatCurrency(imp.importe)"></td>
+                                <td class="px-3 py-2 text-sm text-center">
+                                    <button type="button" @click="data.imputaciones.splice(index, 1)" title="Eliminar imputación" class="text-red-600 hover:text-red-800 transition-colors p-1 font-bold">
+                                        <svg class="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="data.imputaciones.length === 0">
+                            <td colspan="4" class="px-3 py-4 text-sm text-center text-gray-500">No hay imputaciones cargadas.</td>
+                        </tr>
+                    </tbody>
+                    <tfoot class="bg-gray-50 border-t">
+                        <tr>
+                            <th colspan="2" class="px-3 py-2 text-right text-sm font-bold text-gray-900">Total Imputado:</th>
+                            <th class="px-3 py-2 text-right text-sm font-bold text-indigo-600" x-text="formatCurrency(totalImputado)"></th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Valores (Medios de pago) Estilo Recibo -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4 border-b pb-2">Valores Entregados</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Columna Izquierda: Efectivo y Medios Simples -->
+                <div class="space-y-6">
+                    <div class="bg-gray-50 p-4 rounded-lg border">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <h3 class="font-bold text-gray-700">Efectivo</h3>
+                            <span class="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black border border-green-200">Cotización USD: $ <span x-text="data.cotizacion"></span></span>
+                        </div>
+                        <div class="grid grid-cols-5 gap-4">
+                            <div class="col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Pesos (ARS)</label>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg font-bold text-slate-400">$</span>
+                                    <input type="text" inputmode="decimal" x-model="pagos.efectivo" class="fInputAR w-full text-right text-lg font-black text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2" placeholder="Importe">
+                                </div>
+                            </div>
+                            <div class="col-span-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Dólares (USD)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" inputmode="decimal" x-model="pagos.dolares" class="fInputAR w-1/2 text-right text-lg font-black text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2" placeholder="U$D Importe">
+                                    <input type="text" readonly :value="formatCurrency(desformatearAR(pagos.dolares || 0) * data.cotizacion)" class="w-1/2 text-right text-lg font-black text-slate-800 bg-slate-100 border border-slate-200 rounded-lg p-2 outline-none" title="Pesificados">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Retenciones -->
+                    <div class="bg-gray-50 p-4 rounded-lg border">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <h3 class="font-bold text-gray-700">Retenciones</h3>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <select x-model="nuevoPago.retencion_id" id="retenciones_list" class="text-sm rounded-md border-gray-300">
+                                <option value="">-- Impuesto --</option>
+                                {% for mp in medios_pago %}
+                                    {% if mp.categoria == 'RET' %}
+                                        <option value="{{ mp.id }}">{{ mp.nombre }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <input type="text" inputmode="decimal" x-model="nuevoPago.ret_importe" placeholder="Importe" class="fInputAR text-right text-sm font-black rounded-md border-gray-300">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                            <input type="text" x-model="nuevoPago.ret_nro" placeholder="Nro Certificado" class="text-sm  rounded-md border-gray-300">
+                            <input type="date" x-model="nuevoPago.ret_fecha" class="text-sm rounded-md border-gray-300">
+                            <input type="text" x-model="nuevoPago.ret_cuit" placeholder="CUIT Retenido" class="text-sm rounded-md border-gray-300">
+                        </div>
+                        {# El régimen sale del plan de cuentas (Cuenta.rg_830) a través de la #}
+                        {# cuenta con la que se imputaron las facturas que se están pagando.   #}
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                                <label class="block text-[10px] text-gray-500">Régimen RG 830</label>
+                                <input type="text" x-model="nuevoPago.ret_regimen" placeholder="Se sugiere solo"
+                                       class="w-full text-sm rounded-md border-gray-300">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-gray-500">Base imponible</label>
+                                <input type="text" inputmode="decimal" x-model="nuevoPago.ret_base"
+                                       class="fInputAR w-full text-sm font-black text-right rounded-md border-gray-300" placeholder="Importe">
+                            </div>
+                        </div>
+                        <button type="button" @click="addRetencion()" class="w-full bg-indigo-100 text-indigo-700 py-1 rounded text-sm font-bold hover:bg-indigo-200">+ Agregar Retención</button>
+                        
+                        <div class="mt-2 space-y-1">
+                            <template x-for="(r, i) in pagos.retenciones" :key="i">
+                                <div class="flex justify-between text-sm bg-white p-2 rounded border">
+                                    <span x-text="getMedioPagoName(r.medio_pago_id) + ' N°' + r.numero_comprobante"></span>
+                                    <div>
+                                        <span class="font-bold text-gray-700" x-text="formatCurrency(r.importe)"></span>
+                                        <button type="button" @click="pagos.retenciones.splice(i,1)" class="ml-2 text-red-500">×</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Valores y Transferencias -->
+                <div class="space-y-6">
+                    <!-- Transferencias Bancarias -->
+                    <div class="bg-gray-50 p-4 rounded-lg border">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <h3 class="font-bold text-gray-700">Transferencias Emitidas</h3>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <select x-model="nuevoPago.cuenta_bancaria_id" id="cuentas_bancarias_list" class="text-sm rounded-md border-gray-300">
+                                <option value="">-- Cuenta Origen --</option>
+                                {% for cb in cuentas_bancarias %}
+                                    <option value="{{ cb.cta_bc_id }}">{{ cb.banco }} ({{ cb.cta_numero }})</option>
+                                {% endfor %}
+                            </select>
+                            <input type="text" inputmode="decimal" x-model="nuevoPago.transf_importe" placeholder="Importe" class="fInputAR text-right text-sm font-black rounded-md border-gray-300">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input type="text" x-model="nuevoPago.transf_nro" placeholder="Nro Operación" class="text-sm rounded-md border-gray-300">
+                            <input type="text" x-model="nuevoPago.transf_cuit" placeholder="CUIT Destino" class="text-sm rounded-md border-gray-300">
+                        </div>
+                        <button type="button" @click="addTransferencia()" class="w-full bg-indigo-100 text-indigo-700 py-1 rounded text-sm font-bold hover:bg-indigo-200">+ Agregar Transferencia</button>
+                        
+                        <div class="mt-2 space-y-1">
+                            <template x-for="(t, i) in pagos.transferencias" :key="i">
+                                <div class="flex justify-between text-sm bg-white p-2 rounded border">
+                                    <span x-text="getCuentaName(t.cuenta_bancaria_id) + ' Ref:' + t.numero_comprobante"></span>
+                                    <div>
+                                        <span class="font-bold text-gray-700" x-text="formatCurrency(t.importe)"></span>
+                                        <button type="button" @click="pagos.transferencias.splice(i,1)" class="ml-2 text-red-500">×</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Cheques Propios -->
+                    <div class="bg-gray-50 p-4 rounded-lg border">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <h3 class="font-bold text-gray-700">Cheques Propios</h3>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <select x-model="nuevoPago.cp_cuenta_bancaria_id" class="text-sm rounded-md border-gray-300">
+                                <option value="">-- Cuenta Origen --</option>
+                                {% for cb in cuentas_bancarias %}
+                                    <option value="{{ cb.cta_bc_id }}">{{ cb.banco }} ({{ cb.cta_numero }})</option>
+                                {% endfor %}
+                            </select>
+                            <input type="text" inputmode="decimal" x-model="nuevoPago.cp_importe" placeholder="Importe" class="fInputAR text-right text-sm font-black rounded-md border-gray-300">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                                <label class="block text-xs text-gray-500">Número de Cheque</label>
+                                <input type="text" x-model="nuevoPago.cp_nro" placeholder="Nro Cheque" class="text-sm rounded-md border-gray-300">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500">Vencimiento</label>
+                                <input type="date" x-model="nuevoPago.cp_vto" class="w-full text-sm rounded-md border-gray-300">
+                            </div>
+                        </div>
+                        <button type="button" @click="addChequePropio()" class="w-full bg-indigo-100 text-indigo-700 py-1 rounded text-sm font-bold hover:bg-indigo-200">+ Agregar Cheque Propio</button>
+                        
+                        <div class="mt-2 space-y-1">
+                            <template x-for="(c, i) in pagos.cheques_propios" :key="i">
+                                <div class="flex justify-between text-sm bg-white p-2 rounded border">
+                                    <span x-text="getCuentaName(c.cuenta_bancaria_id) + ' CHQ N°' + c.numero_comprobante"></span>
+                                    <div>
+                                        <span class="font-bold text-gray-700" x-text="formatCurrency(c.importe)"></span>
+                                        <button type="button" @click="pagos.cheques_propios.splice(i,1)" class="ml-2 text-red-500">×</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Valores de Terceros en Cartera -->
+                    <div class="bg-gray-50 p-4 rounded-lg border">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <h3 class="font-bold text-gray-700">Valores de Terceros (En Cartera)</h3>
+                        </div>
+                        
+                        <button type="button" 
+                                hx-get="{% url 'op_valores_cartera_buscar_modal' %}"
+                                hx-target="#modal-container"
+                                class="w-full bg-indigo-600 text-white py-2 rounded text-sm font-bold hover:bg-indigo-700 transition-colors shadow">
+                            <i class="fas fa-search mr-1"></i> + Seleccionar Valor en Cartera
+                        </button>
+                        
+                        <div class="mt-3 space-y-1">
+                            <template x-for="(v, i) in pagos.valores_cartera" :key="i">
+                                <div class="flex justify-between text-sm bg-white p-2 rounded border border-indigo-100">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-gray-800" x-text="v.banco + ' N°' + v.numero"></span>
+                                        <span class="text-xs text-gray-500" x-text="'Vto: ' + v.fecha + ' | ' + v.firmante"></span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="font-bold text-gray-900" x-text="formatCurrency(v.importe)"></span>
+                                        <button type="button" @click="pagos.valores_cartera.splice(i,1)" class="ml-3 text-red-500 hover:text-red-700 font-bold">×</button>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Resumen Totales -->
+            <div class="mt-6 bg-gray-800 text-white rounded-lg p-4 grid grid-cols-3 gap-4">
+                <div class="text-center">
+                    <span class="block text-sm text-gray-400">Total Valores Entregados</span>
+                    <span class="text-xl font-bold text-indigo-400" x-text="formatCurrency(totalValores)"></span>
+                </div>
+                <div class="text-center" x-show="data.tipo === 'P'">
+                    <span class="block text-sm text-gray-400">Total Aplicado a Comprobantes</span>
+                    <span class="text-xl font-bold text-green-400" x-text="formatCurrency(totalAplicado)"></span>
+                </div>
+                <div class="text-center" x-show="data.tipo === 'S'" x-cloak>
+                    <span class="block text-sm text-gray-400">Total Imputado Manual</span>
+                    <span class="text-xl font-bold text-green-400" x-text="formatCurrency(totalImputado)"></span>
+                </div>
+                <div class="text-center">
+                    <span class="block text-sm text-gray-400">Diferencia</span>
+                    <span class="text-xl font-bold" :class="diferencia === 0 ? 'text-white' : 'text-red-400'" x-text="formatCurrency(diferencia)"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-4">
+            <a href="{% url 'ordenpago_carga' %}" class="bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded shadow hover:bg-gray-50 font-semibold">Limpiar / Cancelar</a>
+            <button type="submit" 
+                    :disabled="Math.abs(diferencia) > 0.05 || totalValores <= 0 || (data.tipo === 'P' && !data.proveedor_id)" 
+                    :class="(Math.abs(diferencia) > 0.05 || totalValores <= 0 || (data.tipo === 'P' && !data.proveedor_id)) ? 'bg-gray-400 cursor-not-allowed text-gray-200 shadow-none' : 'bg-green-600 hover:bg-green-700 text-white shadow'"
+                    class="px-6 py-2 rounded font-bold transition-all">Guardar Orden de Pago</button>
+        </div>
+    </form>
+
+    <!-- Confirmación de guardado: muestra la OP y el número de asiento contable asignado -->
+    <div x-show="resultado.visible" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div class="bg-emerald-600 px-6 py-4 flex items-center gap-3">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <h3 class="text-lg font-bold text-white">Orden de Pago registrada</h3>
+            </div>
+
+            <div class="px-6 py-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-500">Orden de Pago N°</span>
+                    <span class="text-lg font-black text-gray-900" x-text="resultado.op"></span>
+                </div>
+                <div class="flex items-center justify-between border-t border-gray-100 pt-3">
+                    <span class="text-sm text-gray-500">Asiento contable N°</span>
+                    <template x-if="resultado.asiento">
+                        <span class="text-2xl font-black text-indigo-600" x-text="resultado.asiento"></span>
+                    </template>
+                    <template x-if="!resultado.asiento">
+                        <span class="text-sm font-semibold text-amber-600">Sin asiento generado</span>
+                    </template>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+                <a href="{% url 'tesoreria_index' %}"
+                   class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-100">
+                    Volver a Tesorería
+                </a>
+                <a href="{% url 'contable_libro_diario' %}"
+                   class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-100">
+                    Ver Libro Diario
+                </a>
+                <a href="{% url 'ordenpago_carga' %}"
+                   class="px-5 py-2 rounded-xl bg-indigo-600 text-sm font-bold text-white hover:bg-indigo-700 shadow">
+                    Nueva Orden de Pago
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('ordenPagoForm', () => ({
+        triggerCalc: 0,
+        data: {
+            sucursal_id: '{{ selected_sucursal_id }}',
+            punto: 1,
+            fecha: '{{ fecha_actual|date:"Y-m-d" }}',
+            condic: 1,
+            tipo: 'P',
+            proveedor_id: '',
+            observaciones: '',
+            cotizacion: parseFloat('{{ dolar_venta|stringformat:"f" }}'.replace(',', '.')) || 1.0,
+            aplicaciones: [],
+            imputaciones: [],
+            valores: []
+        },
+        proveedorDisplay: '',
+        proveedorResultsOpen: false,
+        
+        // Cuentas predeterminadas del proveedor seleccionado (pk + display, para poder sugerirlas).
+        ctasCliPro: { pat: '', res: '', patNombre: '', resNombre: '' },
+        cuentaDisplay: '',
+        cuentaResultsOpen: false,
+        // Resultado del guardado: OP y número de asiento contable asignado.
+        resultado: { visible: false, op: '', asiento: null },
+        nuevaImputacion: {
+            cuenta_contable_id: '',
+            importe: '',
+            leyenda: ''
+        },
+        
+        pagos: {
+            efectivo: '',
+            dolares: '',
+            transferencias: [],
+            cheques_propios: [],
+            valores_cartera: [],
+            retenciones: []
+        },
+        nuevoPago: {
+            retencion_id: '', ret_importe: '', ret_nro: '', ret_fecha: '', ret_cuit: '',
+            ret_regimen: '', ret_base: '',
+            cuenta_bancaria_id: '', transf_importe: '', transf_nro: '', transf_cuit: '', transf_titular: '',
+            cp_cuenta_bancaria_id: '', cp_importe: '', cp_nro: '', cp_vto: ''
+        },
+
+        // Formato es-AR centralizado: `formatearAR` vive en static/js/formato_ar.js, que es la
+        // única fuente de verdad del formato de importes del sistema.
+        formatCurrency(val) {
+            return '$' + formatearAR(val);
+        },
+        get totalValores() {
+            let t = 0;
+            t += desformatearAR(this.pagos.efectivo || 0);
+            t += desformatearAR(this.pagos.dolares || 0) * this.data.cotizacion;
+            this.pagos.transferencias.forEach(x => t += desformatearAR(x.importe || 0));
+            this.pagos.cheques_propios.forEach(x => t += desformatearAR(x.importe || 0));
+            this.pagos.valores_cartera.forEach(x => t += desformatearAR(x.importe || 0));
+            this.pagos.retenciones.forEach(x => t += desformatearAR(x.importe || 0));
+            return t;
+        },
+        get totalAplicado() {
+            if (this.data.tipo === 'S') return 0;
+            this.triggerCalc;
+            let inputs = document.querySelectorAll('.aplicacion-importe');
+            let t = 0;
+            inputs.forEach(i => {
+                // El operador tipea siempre en positivo; el signo lo aporta el comprobante
+                // (una Nota de Crédito resta del neto a pagar).
+                let signo = parseInt(i.dataset.signo || '1');
+                t += desformatearAR(i) * signo;
+            });
+            return t;
+        },
+        get totalImputado() {
+            if (this.data.tipo === 'P') return 0;
+            let t = 0;
+            this.data.imputaciones.forEach(i => {
+                t += desformatearAR(i.importe || 0);
+            });
+            return t;
+        },
+        get diferencia() {
+            if (this.data.tipo === 'P') {
+                return this.totalValores - this.totalAplicado;
+            } else {
+                return this.totalValores - this.totalImputado;
+            }
+        },
+
+        // --- Selector de Cuenta Contable: Typeahead + Lupa ---
+        cuentaEditada() {
+            // Al escribir se suelta la cuenta elegida, para que vuelva a abrirse el desplegable.
+            if (this.nuevaImputacion.cuenta_contable_id) {
+                this.nuevaImputacion.cuenta_contable_id = '';
+            }
+            this.cuentaResultsOpen = true;
+        },
+        seleccionarCuenta(cuenta) {
+            this.nuevaImputacion.cuenta_contable_id = cuenta.id;
+            this.cuentaDisplay = cuenta.jerarquia + ' - ' + cuenta.cuenta;
+            this.cuentaResultsOpen = false;
+            const contenedor = document.getElementById('cuenta_suggestions');
+            if (contenedor) contenedor.innerHTML = '';
+        },
+        limpiarCuenta() {
+            this.nuevaImputacion.cuenta_contable_id = '';
+            this.cuentaDisplay = '';
+        },
+
+        addImputacion() {
+            if (!this.nuevaImputacion.cuenta_contable_id || !this.nuevaImputacion.importe) {
+                alert("Seleccione una cuenta contable e ingrese un importe.");
+                return;
+            }
+            this.data.imputaciones.push({
+                cuenta_contable_id: this.nuevaImputacion.cuenta_contable_id,
+                cuenta_display: this.cuentaDisplay,
+                importe: desformatearAR(this.nuevaImputacion.importe),
+                leyenda: this.nuevaImputacion.leyenda
+            });
+            this.nuevaImputacion.cuenta_contable_id = '';
+            this.nuevaImputacion.importe = '';
+            this.nuevaImputacion.leyenda = '';
+            this.cuentaDisplay = '';
+        },
+        onAplicacionInput(e) {
+            this.triggerCalc++;
+            // Al aplicar a una factura en USD, la OP toma la cotización de ESA factura (origen),
+            // así el efectivo en dólares se valúa igual que lo aplicado → sin diferencia de cambio.
+            const el = e && e.target;
+            if (el && el.dataset && el.dataset.moneda === 'DOL') {
+                const cot = parseFloat(el.dataset.cotizacion || 0);
+                if (cot > 0) this.data.cotizacion = cot;
+            }
+            // Al cambiar lo aplicado cambia la base sobre la que se retiene.
+            this.sugerirDatosRetencion();
+        },
+        toggleTipo() {
+            this.data.tipo = this.data.tipo === 'P' ? 'S' : 'P';
+            // Limpiar datos
+            this.data.aplicaciones = [];
+            this.data.imputaciones = [];
+            // Al pasar a OP Simple aparece la imputación contable: se sugiere la cuenta del
+            // proveedor ya seleccionado, igual que Compras al entrar en modo gasto.
+            this.sugerirCuentaImputacion();
+        },
+
+        getMedioPagoName(id) {
+            let select = document.getElementById('retenciones_list');
+            if(!select) return id;
+            for(let i=0; i<select.options.length; i++) {
+                if(select.options[i].value == id) return select.options[i].text.trim();
+            }
+            return id;
+        },
+        getCuentaName(id) {
+            let select = document.getElementById('cuentas_bancarias_list');
+            if(!select) return id;
+            for(let i=0; i<select.options.length; i++) {
+                if(select.options[i].value == id) return select.options[i].text.split('(')[0].trim();
+            }
+            return id;
+        },
+
+        // Régimen RG 830 y base imponible que surgen de los comprobantes que se están pagando.
+        // El régimen está configurado en el plan de cuentas (Cuenta.rg_830) y llega en cada
+        // fila del selector: el operador no tiene que recordar cuál aplica a cada gasto.
+        sugerirDatosRetencion() {
+            if (this.data.tipo !== 'P') return;
+
+            let porRegimen = {};
+            document.querySelectorAll('.aplicacion-importe').forEach(i => {
+                const monto = desformatearAR(i);
+                if (monto === 0) return;
+                const regimen = (i.dataset.rg830 || '').trim();
+                if (!regimen) return;
+                const signo = parseInt(i.dataset.signo || '1');
+                porRegimen[regimen] = (porRegimen[regimen] || 0) + monto * signo;
+            });
+
+            const regimenes = Object.keys(porRegimen);
+            // Con un solo régimen se completa todo; con varios corresponde una retención por
+            // cada uno, así que se deja que el operador elija cuál está cargando.
+            if (regimenes.length === 1) {
+                this.nuevoPago.ret_regimen = regimenes[0];
+                this.nuevoPago.ret_base = formatearAR(porRegimen[regimenes[0]]);
+            }
+        },
+        addRetencion() {
+            if(!this.nuevoPago.retencion_id || !this.nuevoPago.ret_importe) { alert("Complete impuesto e importe."); return; }
+            this.pagos.retenciones.push({
+                medio_pago_id: this.nuevoPago.retencion_id,
+                impuesto: this.getImpuestoRetencion(this.nuevoPago.retencion_id),
+                importe: desformatearAR(this.nuevoPago.ret_importe),
+                numero_comprobante: this.nuevoPago.ret_nro,
+                fecha: this.nuevoPago.ret_fecha,
+                cuit: this.nuevoPago.ret_cuit,
+                regimen: this.nuevoPago.ret_regimen,
+                base: desformatearAR(this.nuevoPago.ret_base)
+            });
+            this.nuevoPago.ret_importe = '';
+            this.nuevoPago.ret_nro = '';
+            this.nuevoPago.ret_base = '';
+        },
+        // El impuesto se infiere del nombre del medio de pago elegido (Ganancias, IVA, IIBB...)
+        // para poder clasificar el certificado sin pedir un dato más en pantalla.
+        getImpuestoRetencion(id) {
+            const nombre = (this.getMedioPagoName(id) || '').toUpperCase();
+            if (nombre.includes('GANANC')) return 'GAN';
+            if (nombre.includes('IVA')) return 'IVA';
+            if (nombre.includes('BRUTO') || nombre.includes('IIBB')) return 'IIBB';
+            if (nombre.includes('SUSS') || nombre.includes('SEGURIDAD')) return 'SUSS';
+            if (nombre.includes('MUNIC')) return 'MUN';
+            return 'GAN';
+        },
+        addTransferencia() {
+            if(!this.nuevoPago.cuenta_bancaria_id || !this.nuevoPago.transf_importe) { alert("Complete cuenta e importe."); return; }
+            this.pagos.transferencias.push({
+                cuenta_bancaria_id: this.nuevoPago.cuenta_bancaria_id,
+                importe: desformatearAR(this.nuevoPago.transf_importe),
+                numero_comprobante: this.nuevoPago.transf_nro,
+                cuit_destino: this.nuevoPago.transf_cuit
+            });
+            this.nuevoPago.transf_importe = '';
+            this.nuevoPago.transf_nro = '';
+        },
+        addChequePropio() {
+            if(!this.nuevoPago.cp_cuenta_bancaria_id || !this.nuevoPago.cp_importe || !this.nuevoPago.cp_nro || !this.nuevoPago.cp_vto) { alert("Complete todos los campos del cheque propio."); return; }
+            this.pagos.cheques_propios.push({
+                cuenta_bancaria_id: this.nuevoPago.cp_cuenta_bancaria_id,
+                importe: desformatearAR(this.nuevoPago.cp_importe),
+                numero_comprobante: this.nuevoPago.cp_nro,
+                fecha_vencimiento: this.nuevoPago.cp_vto
+            });
+            this.nuevoPago.cp_importe = '';
+            this.nuevoPago.cp_nro = '';
+        },
+        addValorCartera(valor) {
+            // check if not already added
+            if(this.pagos.valores_cartera.some(v => v.id == valor.id)) {
+                alert("Este cheque ya fue agregado a la lista.");
+                return;
+            }
+            this.pagos.valores_cartera.push(valor);
+        },
+
+        fetchComprobantes() {
+            if(!this.data.proveedor_id) {
+                document.getElementById('comprobantes_container').innerHTML = '<p class="text-sm text-gray-500 italic">Seleccione un proveedor para ver sus comprobantes adeudados.</p>';
+                return;
+            }
+            htmx.ajax('GET', `/tesoreria/htmx/comprobantes-pendientes/proveedor/${this.data.proveedor_id}/`, {target: '#comprobantes_container'});
+        },
+        proveedorEditado() {
+            if (this.data.proveedor_id) {
+                this.data.proveedor_id = '';
+                document.getElementById('comprobantes_container').innerHTML = '<p class="text-sm text-gray-500 italic">Seleccione un proveedor para ver sus comprobantes adeudados.</p>';
+            }
+            this.proveedorResultsOpen = true;
+        },
+        seleccionarProveedor(proveedor) {
+            this.data.proveedor_id = proveedor.id;
+            this.proveedorDisplay = proveedor.razon_social;
+            this.proveedorResultsOpen = false;
+            document.getElementById('proveedor_suggestions').innerHTML = '';
+            
+            // Auto-fill CUIT
+            if (proveedor.cuit) {
+                this.nuevoPago.transf_cuit = proveedor.cuit;
+                this.nuevoPago.ret_cuit = proveedor.cuit;
+            }
+
+            // Cuentas predeterminadas del proveedor, para sugerir la imputación contable.
+            this.ctasCliPro = {
+                pat: proveedor.cta_pat || '',
+                res: proveedor.cta_res || '',
+                patNombre: proveedor.cta_pat_nombre || '',
+                resNombre: proveedor.cta_res_nombre || ''
+            };
+            this.sugerirCuentaImputacion();
+
+            if (this.data.tipo === 'P') {
+                this.fetchComprobantes();
+            }
+        },
+        sugerirCuentaImputacion() {
+            // SOLO para OP Simple, que es la única que lleva imputación contable. Mismo criterio
+            // que en Recibo Simple:
+            //   condic 1 (Real/Fiscal)           -> cuenta PATRIMONIAL del proveedor
+            //   condic 2 (Presupuestado/No fis.)  -> cuenta de RESULTADO del proveedor
+            // Es solo una sugerencia: el operador puede mantenerla o cambiarla.
+            if (this.data.tipo !== 'S') return;
+
+            const esReal = parseInt(this.data.condic) === 1;
+            const sugerida = esReal ? this.ctasCliPro.pat : this.ctasCliPro.res;
+            const nombre = esReal ? this.ctasCliPro.patNombre : this.ctasCliPro.resNombre;
+
+            if (sugerida && sugerida !== '0') {
+                this.nuevaImputacion.cuenta_contable_id = sugerida;
+                this.cuentaDisplay = nombre || String(sugerida);
+            }
+        },
+        submitForm() {
+            if (Math.abs(this.diferencia) > 0.05) {
+                alert("El total aplicado debe coincidir con el total de valores entregados.");
+                return;
+            }
+            
+            this.data.aplicaciones = [];
+            let inputs = document.querySelectorAll('.aplicacion-importe');
+            for (let i of inputs) {
+                // Se envía la MAGNITUD; el signo lo pone el servidor según el comprobante, de
+                // modo que el front no pueda aplicar un positivo a una Nota de Crédito.
+                let val = desformatearAR(i);
+                if (val === 0) continue;
+
+                let maximo = parseFloat(i.dataset.maximo || '0');
+                if (Math.abs(val) > maximo + 0.05) {
+                    alert(`No se puede aplicar ${this.formatCurrency(val)} a un comprobante con saldo de ${this.formatCurrency(maximo)}.`);
+                    return;
+                }
+
+                this.data.aplicaciones.push({
+                    id: i.dataset.id,
+                    importe: Math.abs(val)
+                });
+            }
+
+            if (this.data.aplicaciones.length === 0 && this.totalValores > 0) {
+                if(!confirm("No ha aplicado el monto a ninguna factura. ¿Registrar como anticipo?")) return;
+            }
+
+            this.data.valores = [];
+            
+            if (desformatearAR(this.pagos.efectivo||0) > 0) {
+                this.data.valores.push({categoria: 'EFE-ARS', importe: desformatearAR(this.pagos.efectivo)});
+            }
+            if (desformatearAR(this.pagos.dolares||0) > 0) {
+                this.data.valores.push({categoria: 'EFE-USD', importe: desformatearAR(this.pagos.dolares)});
+            }
+            for(let t of this.pagos.transferencias) {
+                this.data.valores.push({categoria: 'TRA', ...t});
+            }
+            for(let cp of this.pagos.cheques_propios) {
+                this.data.valores.push({categoria: 'CP', ...cp});
+            }
+            for(let vt of this.pagos.valores_cartera) {
+                this.data.valores.push({categoria: 'CHQ-TER', id: vt.id, importe: vt.importe});
+            }
+            for(let r of this.pagos.retenciones) {
+                this.data.valores.push({categoria: 'RET', ...r});
+            }
+
+            fetch("{% url 'htmx_procesar_orden_pago' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body: JSON.stringify(this.data)
+            }).then(res => res.json()).then(res => {
+                if(res.status === 'success') {
+                    // Se muestra en pantalla el número de asiento asignado en lugar de redirigir
+                    // de inmediato, para que el operador pueda anotarlo o ir al Libro Diario.
+                    this.resultado = {
+                        visible: true,
+                        op: res.op_id,
+                        asiento: res.asiento_id
+                    };
+                } else {
+                    alert("Error: " + res.message);
+                }
+            }).catch(err => {
+                alert("Error de conexión.");
+            });
+        }
+    }));
+});
+
+document.body.addEventListener('ordenPagoProveedorSeleccionado', (e) => {
+    const root = document.querySelector('[x-data="ordenPagoForm()"]');
+    const modalContainer = document.getElementById('modal-container');
+    if (modalContainer) modalContainer.innerHTML = '';
+    if (root && Alpine.$data(root)) {
+        Alpine.$data(root).seleccionarProveedor(e.detail);
+    }
+});
+
+document.body.addEventListener('ordenPagoValorSeleccionado', (e) => {
+    const root = document.querySelector('[x-data="ordenPagoForm()"]');
+    const modalContainer = document.getElementById('modal-container');
+    if (modalContainer) modalContainer.innerHTML = '';
+    if (root && Alpine.$data(root)) {
+        Alpine.$data(root).addValorCartera(e.detail);
+    }
+});
+
+// Selección de la cuenta de imputación, desde el typeahead o desde el modal de la lupa.
+document.body.addEventListener('imputacionCuentaSeleccionada', (e) => {
+    const root = document.querySelector('[x-data="ordenPagoForm()"]');
+    const modalContainer = document.getElementById('modal-container');
+    if (modalContainer) modalContainer.innerHTML = '';
+    if (root && Alpine.$data(root)) {
+        Alpine.$data(root).seleccionarCuenta(e.detail);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1302 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Carga de Compras | Diseño Profesional{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <!-- TITULO Y USUARIO -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Carga de Factura de Compra
+            </h1>
+            <span
+                class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                OPERADOR: {{ user.username }}
+            </span>
+        </div>
+        <a href="{% url 'compras_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </a>
+    </div>
+
+    <form id="compra-form" method="POST" action="{% url 'compras_carga' %}" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="id_fac_rem" id="id_id_fac_rem">
+        <input type="hidden" name="pdf_temp_path" id="id_pdf_temp_path">
+
+        <!-- BLOQUE 1: CABECERA COMPACTA -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+            <div class="bg-slate-900 px-4 py-1.5 flex justify-between items-center">
+                <h2 class="text-[10px] font-black text-white uppercase tracking-widest">01. Identificación del
+                    Comprobante</h2>
+                <div class="text-[10px] font-bold text-gray-400 uppercase">
+                    SUCURSAL: {{ request.session.sucursal_nombre|default:"GENERAL" }}
+                </div>
+            </div>
+
+            <div class="p-4 grid grid-cols-12 gap-4">
+                <!-- Fila 1: Fecha Emisión, Proveedor y Vincular Remito -->
+                <div class="col-span-12 flex flex-wrap items-center gap-4">
+                    <div class="w-44">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter text-left pl-3">Fecha
+                            Emisión</label>
+                        <input type="date" name="fecha" id="id_fecha" value="{{ form.fecha.value|date:'Y-m-d' }}" required autofocus style="font-size: 18px !important;"
+                            class="h-10 w-full pl-3 pr-1 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-left font-black text-slate-800 outline-none focus:border-blue-500 shadow-inner">                        
+                    </div>
+
+                    <div class="w-32">
+                        <label class="block text-[10px] font-black text-purple-600 uppercase mb-1 tracking-tighter text-center">Período IVA</label>
+                        <input type="text" name="periodo" id="id_periodo" value="{{ periodo_sugerido|default:'' }}" placeholder="YYYYMM" maxlength="6"
+                            title="Período fiscal IVA asignado (YYYYMM)"
+                            class="h-10 w-full px-2 bg-purple-50 border border-purple-200 rounded-lg text-[14px] text-center font-black text-purple-900 outline-none focus:border-purple-600 shadow-inner tracking-widest uppercase">
+                    </div>
+
+                    <div class="flex-1 min-w-[320px]">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Proveedor / Razón Social</label>
+                        <div class="flex gap-1">
+                            <!-- ID real que va al form -->
+                            <input type="hidden" id="id_proveedor" name="proveedor" required>
+                            <!-- Display NO editable: la selección es solo por la lupa (o el +) -->
+                            <input type="text" id="proveedor_nombre_display" readonly
+                                placeholder="Use la lupa para buscar el proveedor..."
+                                hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container" hx-trigger="click"
+                                title="Click para buscar el proveedor"
+                                class="w-full h-10 px-4 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-black text-slate-900 outline-none focus:bg-white shadow-inner transition-all uppercase cursor-pointer">
+                            <!-- Buscar (modal) -->
+                            <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container"
+                                class="w-10 h-10 shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </button>
+                            <!-- Alta rápida -->
+                            <button type="button" hx-get="{% url 'cliente_add' %}?origen=compra" hx-target="#modal-container"
+                                class="w-10 h-10 shrink-0 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-all shadow-sm" title="Alta rápida de proveedor">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="w-80 shrink-0 min-w-[280px]" id="div_vincular_container">
+                        <label class="block text-[10px] font-black text-green-600 uppercase mb-1">Vincular Remito de Compra</label>
+                        <div class="relative flex gap-2" id="remito_search_box">
+                            <input type="text" id="remito_num_search" name="remito_num"
+                                class="w-full h-10 px-4 bg-green-50 border border-green-100 rounded-lg text-[12px] font-black text-green-800 outline-none placeholder:text-green-200 shadow-inner pb-2"
+                                placeholder="Buscar Remito Pendiente...">
+                            <button type="button" hx-get="{% url 'factura_vincular_recepcion_modal' %}"
+                                hx-target="#modal-container" hx-include="[name='proveedor']"
+                                class="w-10 h-10 flex items-center justify-center bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-all shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <!-- Badge de Remito Vinculado -->
+                        <div id="remito_vinculado_info"
+                            class="hidden h-10 bg-green-600 text-white rounded-lg flex items-center justify-between px-4 animate-in zoom-in duration-200">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                    <path fill-rule="evenodd"
+                                        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                                <span id="remito_vinculado_text" class="text-[11px] font-black uppercase">REMITO:
+                                    0001-00001234</span>
+                            </div>
+                            <button type="button" onclick="desvincularRemito()" class="text-green-200 hover:text-white">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila 2: Datos del Comprobante (Tipo, Pto Vta, Número, Moneda, Cotización, Condición) -->
+                <div class="col-span-12 flex flex-wrap items-center gap-4 border-t border-slate-100 pt-4">
+                    <div class="w-64" id="comprobante_selector_container">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Tipo Comprobante</label>
+                        <div class="relative flex gap-1" id="comprobante_inputs_wrapper" x-data="{ open: false }">
+                            {% if form.instance.pk and form.instance.tipo %}
+                            <input type="hidden" name="tipo" id="id_tipo" value="{{ form.instance.tipo.codigo }}">
+                            <input type="text" id="quick_comprobante_display" 
+                                   value="{{ form.instance.tipo.codigo }} - {{ form.instance.tipo.detalle }}" 
+                                   class="w-full h-10 pl-3 pr-10 bg-blue-50 border border-blue-200 rounded-lg text-[13px] font-black text-blue-800 outline-none uppercase shadow-inner"
+                                   readonly>
+                            {% else %}
+                            <input type="hidden" name="tipo" id="id_tipo" value="">
+                            <input type="text" id="quick_comprobante_display" name="q"
+                                x-ref="inputComprobante"
+                                hx-get="{% url 'typeahead_comprobantes' %}" 
+                                hx-trigger="keyup changed delay:300ms, search" 
+                                hx-target="#comprobante_suggestions"
+                                autocomplete="off"
+                                @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                                oninput="if(this.value === '') { document.getElementById('id_tipo').value = ''; }"
+                                class="w-full h-10 pl-3 pr-10 bg-white border border-slate-300 rounded-lg text-[13px] font-black text-slate-900 outline-none focus:border-blue-500 shadow-sm uppercase"
+                                placeholder="Cód o Detalle">
+                            {% endif %}
+                            <button type="button" hx-get="{% url 'compras_comprobante_buscar_modal' %}"
+                                hx-target="#modal-container"
+                                class="absolute right-0 top-0 bottom-0 w-10 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                            <!-- Dropdown Suggestions -->
+                             <template x-teleport="body">
+                                <div x-show="open" id="comprobante_suggestions" 
+                                    x-anchor.bottom-start.offset.4="$refs.inputComprobante"
+                                    class="absolute z-[9999] w-[350px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                                    style="display: none;">
+                                </div>
+                             </template>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1" id="div_factura_fields">
+                        <div class="w-20">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Pto
+                                Vta</label>
+                            <input type="text" name="punto" placeholder="00000" maxlength="5" inputmode="numeric"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                onblur="if(this.value) this.value = this.value.padStart(5, '0');"
+                                class="w-full h-10 text-center border border-slate-200 rounded-lg text-[13px] font-black text-slate-900 outline-none bg-slate-50 shadow-inner pb-2">
+                        </div>
+                        <div class="w-28">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Número</label>
+                            <input type="text" name="numero" placeholder="00000000" maxlength="8" inputmode="numeric"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                onblur="if(this.value) this.value = this.value.padStart(8, '0');"
+                                class="w-full h-10 border border-slate-200 rounded-lg text-[13px] font-black text-slate-900 outline-none bg-slate-50 px-3 shadow-inner pb-2 text-center">
+                        </div>
+                    </div>
+
+                    <div class="w-28">
+                        <label
+                            class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Moneda</label>
+                        <select name="moneda" id="id_moneda" onchange="toggleMoneda(this.value)"
+                            class="w-full h-10 bg-slate-900 text-[12px] font-black text-white rounded-lg outline-none text-center shadow-lg">
+                            <option value="PES">ARS ($)</option>
+                            <option value="DOL">USD (U$S)</option>
+                        </select>
+                    </div>
+
+                    <div class="w-28">
+                        <label for="id_cotizacion"
+                            onclick="const c=document.getElementById('id_cotizacion'); c.focus(); c.select();"
+                            class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center cursor-pointer"
+                            title="Click para seleccionar la cotización">Cotización</label>
+                        <input type="text" name="cotizacion" id="id_cotizacion" maxlength="4" inputmode="numeric" value="1" readonly
+                            oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4);"
+                            onfocus="this.select();" onclick="this.select();"
+                            class="w-full h-10 border border-slate-200 rounded-lg text-[13px] font-black text-center outline-none bg-slate-100 px-2 focus:bg-white transition-all shadow-inner">
+                    </div>
+
+                    <div class="w-56">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Condición</label>
+                        <div class="flex items-center justify-center gap-5 h-10 bg-slate-50 border border-slate-200 rounded-lg shadow-inner px-3">
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" name="condic" value="1" checked
+                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300">
+                                <span class="text-[11px] font-black text-slate-700 uppercase tracking-tighter">Real</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" name="condic" value="2"
+                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300">
+                                <span class="text-[11px] font-black text-slate-700 uppercase tracking-tighter">Presupuestado</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if empresa_actual.usa_orden_compra %}
+        <!-- Circuito OC (Plan 028): aviso de órdenes de compra pendientes de facturar -->
+        <div id="oc-aviso-container" class="mb-2"></div>
+        <script>
+            const URL_OC_AVISO = "{% url 'factura_oc_aviso' %}";
+            const URL_FACTURA_VINCULAR_OC_MODAL = "{% url 'factura_vincular_oc_modal' %}";
+            const URL_FACTURA_VINCULAR_RECEPCION_MODAL = "{% url 'factura_vincular_recepcion_modal' %}";
+            
+            function facturaVincularOC() {
+                const prov = document.getElementById('id_proveedor').value;
+                if (!prov) { Swal.fire('Atención', 'Seleccioná primero el proveedor.', 'warning'); return; }
+                htmx.ajax('GET', URL_FACTURA_VINCULAR_OC_MODAL + '?proveedor=' + encodeURIComponent(prov),
+                          { target: '#modal-container', swap: 'innerHTML' });
+            }
+
+            function facturaVincularRecepcion() {
+                const prov = document.getElementById('id_proveedor').value;
+                if (!prov) { Swal.fire('Atención', 'Seleccioná primero el proveedor.', 'warning'); return; }
+                htmx.ajax('GET', URL_FACTURA_VINCULAR_RECEPCION_MODAL + '?proveedor=' + encodeURIComponent(prov),
+                          { target: '#modal-container', swap: 'innerHTML' });
+            }
+
+            // Al seleccionar proveedor, consultar OC pendientes (aditivo al handler existente).
+            document.body.addEventListener('clienteVentaSeleccionado', (e) => {
+                htmx.ajax('GET', URL_OC_AVISO + '?proveedor=' + encodeURIComponent(e.detail.id),
+                          { target: '#oc-aviso-container', swap: 'innerHTML' });
+            });
+
+            // Al vincular OC, la grilla pasa a modo cotejo: se oculta la carga rápida estándar
+            // (en el circuito OC las líneas salen de las órdenes, no de la carga manual).
+            document.body.addEventListener('ocVinculada', () => {
+                const cr = document.getElementById('bloque-carga-rapida');
+                if (cr) cr.style.display = 'none';
+            });
+
+            // Al enviar, inyectar la decisión de diferencia (ajustar/marcar) por cada línea de OC.
+            const _ocForm = document.getElementById('compra-form');
+            if (_ocForm) {
+                _ocForm.addEventListener('submit', () => {
+                    document.querySelectorAll('#items-tabla-container tr.cotejo-row[data-candidato="1"]').forEach(row => {
+                        const sel = row.querySelector('.cotejo-decision');
+                        const decision = sel ? sel.value : 'marcar';
+                        (row.dataset.ocItems || '').split(',').filter(Boolean).forEach(ocId => {
+                            const h = document.createElement('input');
+                            h.type = 'hidden'; h.name = 'oc_ajuste_' + ocId; h.value = decision;
+                            _ocForm.appendChild(h);
+                        });
+                    });
+                });
+            }
+        </script>
+        {% endif %}
+
+        <!-- TOGGLE: TIPO DE COMPRA -->
+        <input type="hidden" name="modo" id="id_modo" value="bienes">
+        <div class="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-slate-200 p-1.5 w-fit">
+            <button type="button" id="btn_modo_bienes" onclick="setModo('bienes')"
+                class="px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all">Bienes de Cambio e Insumos</button>
+            <button type="button" id="btn_modo_gasto" onclick="setModo('gasto')"
+                class="px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all">Gasto</button>
+        </div>
+
+        <!-- BLOQUE 2: CARGA RÁPIDA COMPACTA -->
+        <div id="bloque-carga-rapida"
+            class="bg-white rounded-xl shadow-md border border-slate-200 border-t-4 border-t-blue-600 animate-in fade-in duration-300">
+            <div class="bg-slate-50 p-4 flex items-end gap-3 italic font-bold rounded-b-xl">
+                <!-- ID -->
+                <div class="w-36" x-data="{ open: false }">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">ID Producto</label>
+                    <div class="relative">
+                        <input type="text" id="quick_producto_id" name="producto_id"
+                            hx-get="{% url 'typeahead_productos_compra' %}" 
+                            hx-trigger="keyup changed delay:300ms, search" 
+                            hx-vals='js:{q: document.getElementById("quick_producto_id").value}'
+                            hx-target="#producto_suggestions"
+                            autocomplete="off"
+                            @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                            class="w-full h-12 pl-3 pr-10 bg-white border border-slate-300 rounded-lg text-[13px] text-left font-black text-blue-600 outline-none focus:border-blue-500 shadow-sm uppercase"
+                            placeholder="Buscar"
+                            onkeydown="if(event.key === 'Enter') { 
+                                const urlParams = new URLSearchParams({q: this.value}).toString();
+                                htmx.ajax('GET', '{% url 'compras_producto_buscar_codigo' %}?' + urlParams, {source: this}); 
+                                open = false; 
+                                event.preventDefault();
+                                return false; 
+                            }">
+                        <button type="button" hx-get="{% url 'compras_producto_buscar_modal' %}"
+                            hx-target="#modal-container"
+                            class="absolute right-3 top-3.5 text-slate-300 hover:text-blue-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </button>
+                        <!-- Dropdown Suggestions -->
+                        <div x-show="open" id="producto_suggestions" 
+                             class="absolute z-50 left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                             style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detalle -->
+                <div class="flex-1">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Descripción del
+                        Artículo</label>
+                    <div id="quick_producto_detalle"
+                        class="w-full h-12 px-4 bg-slate-100 border border-slate-200 rounded-lg flex items-center text-[11px] font-black text-slate-700 uppercase italic truncate shadow-inner">
+                        <span class="opacity-30">Aguardando selección de producto...</span>
+                    </div>
+                </div>
+
+                <!-- Cantidad -->
+                <div class="w-24">
+                    <label
+                        class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Cantidad</label>
+                    <input type="text" id="quick_cantidad" name="cantidad" value="1"
+                        class="w-full h-12 bg-white border border-slate-300 rounded-lg text-sm font-black text-center outline-none fInputAR shadow-sm">
+                </div>
+
+                <!-- Precio -->
+                <div class="w-40">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-right">Total Neto
+                        ($)</label>
+                    <div class="relative group">
+                        <span
+                            class="absolute left-3 top-3.5 text-slate-400 font-black text-sm group-focus-within:text-blue-500 transition-colors">$</span>
+                        <input type="text" id="quick_precio" name="precio"
+                            class="w-full h-12 pl-7 pr-4 bg-white border border-slate-300 rounded-lg text-sm font-black text-right outline-none fInputAR shadow-sm focus:border-blue-500 transition-all"
+                            placeholder="0,00">
+                    </div>
+                </div>
+
+                <!-- Precio de Lista del Proveedor (costo de reposición) -->
+                <div class="w-40">
+                    <label class="block text-[10px] font-black text-blue-600 uppercase mb-1 text-right">Precio Lista
+                        ($)</label>
+                    <div class="relative group">
+                        <span
+                            class="absolute left-3 top-3.5 text-blue-600 font-black text-sm group-focus-within:text-blue-600 transition-colors">$</span>
+                        <input type="text" id="quick_precio_lista" name="precio_lista"
+                            class="w-full h-12 pl-7 pr-4 bg-amber-50 border border-amber-200 rounded-lg text-sm font-black text-right outline-none fInputAR shadow-sm focus:border-amber-500 transition-all"
+                            placeholder="Opc."
+                            title="Precio de lista del proveedor (costo de reposición). Si se deja vacío, se usa el costo de adquisición.">
+                    </div>
+                </div>
+
+                <!-- Botón Añadir -->
+                <div class="w-24">
+                    <button type="button" hx-post="{% url 'compras_item_add' %}" hx-target="#items-tabla-container"
+                        hx-include="#bloque-carga-rapida input, [name='csrfmiddlewaretoken']"
+                        class="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow-lg transition-all transform active:scale-95">
+                        AÑADIR
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOQUE GASTO (sin grilla de productos; IVA por alícuota) -->
+        <div id="bloque-gasto" x-data="gastoAlic()" x-init="init()" @modo-gasto-on.window="syncTotales()"
+            class="hidden bg-white rounded-xl shadow-md border border-slate-200 border-t-4 border-t-amber-500 p-4 space-y-3 animate-in fade-in duration-300">
+            <div class="flex flex-wrap gap-3">
+                <div class="flex-1 min-w-[280px]">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Detalle del Gasto</label>
+                    <input type="text" name="descripcion" id="id_descripcion"
+                        placeholder="Ej: Servicio de energía eléctrica - Período 06/2026"
+                        class="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-bold text-slate-900 outline-none focus:bg-white shadow-inner transition-all">
+                </div>
+                <div class="w-28">
+                    <label class="block text-[10px] font-black text-amber-600 uppercase mb-1 tracking-tighter text-center">Cant. Alíc.</label>
+                    <input type="number" min="1" max="10" x-model.number="cant" @input="syncRows()"
+                        class="w-full h-11 px-3 text-center bg-amber-50 border border-amber-300 rounded-lg text-[15px] font-black text-amber-700 outline-none focus:bg-white shadow-inner transition-all">
+                </div>
+            </div>
+            <div>
+                <label class="block text-[10px] font-black text-amber-600 uppercase mb-1 tracking-tighter">Cuenta de Imputación (Debe) — se sugiere la cuenta de resultado del proveedor</label>
+                <select name="cta_imputacion" id="id_cta_imputacion"
+                    class="w-full h-11 px-4 bg-amber-50 border border-amber-200 rounded-lg text-[13px] font-bold text-slate-900 outline-none focus:bg-white shadow-inner transition-all">
+                    <option value="">— Seleccionar cuenta —</option>
+                    {% for c in cuentas %}
+                    <option value="{{ c.pk }}">{{ c.jerarquia }} · {{ c.cuenta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Grilla de alícuotas de IVA (código ARCA · Neto · Alícuota · IVA editable) -->
+            <div class="border border-amber-200 rounded-lg overflow-hidden">
+                <table class="w-full text-[12px]">
+                    <thead class="bg-amber-100 text-amber-800">
+                        <tr class="font-black uppercase text-[10px] tracking-tighter">
+                            <th class="px-3 py-2 text-left w-64">Cód. Alícuota ARCA</th>
+                            <th class="px-3 py-2 text-right">Neto Gravado</th>
+                            <th class="px-3 py-2 text-center w-24">Alícuota</th>
+                            <th class="px-3 py-2 text-right">IVA Facturado <span class="normal-case font-normal">(editable)</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(row, idx) in rows" :key="idx">
+                            <tr class="border-t border-amber-100">
+                                <td class="px-3 py-1.5">
+                                    <select name="alic_codigo" x-model="row.codigo" @change="onCodigo(idx)"
+                                        class="w-full h-9 px-2 bg-white border border-slate-300 rounded text-[12px] font-bold text-slate-900 outline-none focus:border-amber-500 py-0">
+                                        <option value="">— Seleccionar —</option>
+                                        <template x-for="a in alicuotas" :key="a.codigo">
+                                            <option :value="a.codigo" x-text="a.codigo + ' · ' + a.desc"></option>
+                                        </template>
+                                    </select>
+                                    <input type="hidden" name="alic_porcentaje" :value="row.porc">
+                                </td>
+                                <td class="px-3 py-1.5">
+                                    <input type="text" name="alic_neto" x-model="row.netoStr" @input="onNeto(idx)"
+                                        class="w-full h-9 px-2 bg-white border border-slate-300 rounded text-[12px] font-black text-right outline-none focus:border-amber-500" placeholder="0,00">
+                                </td>
+                                <td class="px-3 py-1.5 text-center font-black text-slate-600 tabular-nums" x-text="fmtPorc(row.porc)"></td>
+                                <td class="px-3 py-1.5">
+                                    <input type="text" name="alic_iva" x-model="row.ivaStr" @input="syncTotales()"
+                                        class="w-full h-9 px-2 bg-blue-50 border border-blue-200 rounded text-[12px] font-black text-right text-blue-800 outline-none focus:border-blue-500" placeholder="0,00">
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                    <tfoot class="bg-slate-50 border-t-2 border-amber-200">
+                        <tr class="font-black text-slate-700">
+                            <td class="px-3 py-2 text-right uppercase text-[10px] tracking-tighter">Totales</td>
+                            <td class="px-3 py-2 text-right tabular-nums" x-text="fmt(totalNeto())"></td>
+                            <td></td>
+                            <td class="px-3 py-2 text-right tabular-nums text-blue-800" x-text="fmt(totalIva())"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Conceptos sin IVA (editables) -->
+            <div class="flex flex-wrap gap-4">
+                <div class="w-40">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">No Gravado</label>
+                    <input type="text" name="no_gravado" id="id_no_gravado" @input="syncTotales()"
+                        class="w-full h-9 px-2 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] bg-transparent focus:border-blue-500" placeholder="0,00">
+                </div>
+                <div class="w-40">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Exento</label>
+                    <input type="text" name="exento" id="id_exento" @input="syncTotales()"
+                        class="w-full h-9 px-2 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] bg-transparent focus:border-blue-500" placeholder="0,00">
+                </div>
+            </div>
+        </div>
+
+        <!-- GRILLA DE RESULTADOS -->
+        <div id="items-tabla-container"
+            class="bg-white min-h-[350px] mt-4 rounded-xl shadow-md border border-slate-200 overflow-hidden"
+            hx-get="{% url 'compras_item_add' %}" hx-trigger="load"></div>
+
+        <!-- SECCIÓN DE CIERRE COMPACTA -->
+        <div class="grid grid-cols-12 gap-3 mt-4 items-start">
+            <div class="col-span-12 lg:col-span-8 bg-white rounded-xl border border-slate-200 p-4 shadow-sm italic flex flex-col justify-between">
+                <!-- 1er Grupo: Subtotal, Descuento, Neto Gravado, IVA Facturado -->
+                <div>
+                    <div class="grid grid-cols-4 gap-4">
+                        <div class="space-y-1" id="cell_subtotal">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Subtotal</label>
+                            <input type="text" name="subtotal" id="id_subtotal" oninput="recalcSubtotalDesc()"
+                                class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
+                                placeholder="0,00">
+                        </div>
+                        <div class="space-y-1" id="cell_descuento">
+                            <label class="block text-[10px] font-black text-amber-600 uppercase tracking-tighter">(−) Descuento</label>
+                            <input type="text" name="descuento" id="id_descuento" oninput="recalcSubtotalDesc()"
+                                class="w-full h-8 border-b-2 border-amber-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-amber-500 transition-all text-amber-700"
+                                placeholder="0,00">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-black text-blue-600 uppercase tracking-tighter">Neto Gravado</label>
+                            <input type="text" name="neto" id="id_neto" readonly
+                                class="w-full h-8 border-b-2 border-blue-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent text-blue-800"
+                                placeholder="0,00">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">IVA
+                                Facturado</label>
+                            <input type="text" name="iva" id="id_iva" oninput="recalculateFinal()"
+                                class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
+                                placeholder="0,00">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2do Grupo: Perc. IIBB, Perc. IVA, Otros Imp. -->
+                <div class="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-slate-100">
+                    <div class="space-y-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Perc.
+                            IIBB</label>
+                        <input type="text" name="p_iibb" id="id_p_iibb" oninput="recalculateFinal()"
+                            onchange="if('{{ condicion_iibb }}'==='CM') abrirRetpercModal('iibb')"
+                            class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
+                            placeholder="0,00">
+                        {% if condicion_iibb == 'CM' %}
+                        <button type="button" onclick="abrirRetpercModal('iibb')"
+                            class="text-[9px] font-black text-blue-500 hover:text-blue-700 uppercase tracking-tighter">⊞ jurisdicciones</button>
+                        {% endif %}
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Perc.
+                            IVA</label>
+                        <input type="text" name="p_iva" id="id_p_iva" oninput="recalculateFinal()"
+                            class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
+                            placeholder="0,00">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Otros
+                            Imp.</label>
+                        <input type="text" name="otros" id="id_otros" oninput="recalculateFinal()"
+                            onchange="abrirRetpercModal('otros')"
+                            class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
+                            placeholder="0,00">
+                        <button type="button" onclick="abrirRetpercModal('otros')"
+                            class="text-[9px] font-black text-amber-600 hover:text-amber-800 uppercase tracking-tighter">⊞ desglosar</button>
+                    </div>
+                </div>
+
+                <!-- Discriminación de IVA por Alícuota (rellenado horizontal hacia la derecha) -->
+                <div id="alicuotas_iva_container" class="flex flex-row flex-wrap gap-2 mt-3 pt-3 border-t border-slate-100 min-h-[26px] items-center w-full">
+                    <span class="text-[9px] text-slate-400 font-bold uppercase my-auto tracking-wider">IVA Discriminado:</span>
+                    <span class="text-[10px] text-slate-400 italic">0,00</span>
+                </div>
+            </div>
+
+            <!-- TOTAL FINAL -->
+            <div
+                class="col-span-12 lg:col-span-4 bg-slate-900 rounded-xl p-4 text-white flex flex-col gap-3 italic shadow-xl border-t-4 border-indigo-500 self-start h-fit">
+                <div class="flex justify-between items-center">
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Total
+                        Comprobante</span>
+                    <span
+                        class="text-[9px] font-black bg-blue-600 px-2 py-0.5 rounded text-white uppercase">Final</span>
+                </div>
+                <div id="display_total" class="text-3xl font-black tabular-nums text-white tracking-tighter">$0,00</div>
+                <input type="hidden" name="total" id="id_total" value="0.00">
+                <button type="button" id="btn_confirmar"
+                    data-modal-url="{% url 'compras_revisar_precios' %}"
+                    onclick="confirmarCarga()"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-lg text-[10px] uppercase tracking-widest shadow-lg transition-all transform active:scale-95">
+                    CONFIRMAR Y GUARDAR
+                </button>
+            </div>
+        </div>
+
+        <!-- MODALES DE DETALLE DE RET/PERC (jurisdicciones IIBB / tipos de Otros) -->
+        <div x-data="retpercModales()" @abrir-retperc.window="abrir($event.detail.tipo)">
+            <!-- Hidden inputs comprometidos: se envían con el form -->
+            <template x-for="(r, i) in iibbRows" :key="'j'+i">
+                <span class="hidden">
+                    <input type="hidden" name="iibb_juris" :value="r.juris">
+                    <input type="hidden" name="iibb_importe" :value="r.importe">
+                </span>
+            </template>
+            <template x-for="(r, i) in otrosRows" :key="'o'+i">
+                <span class="hidden">
+                    <input type="hidden" name="otros_impuesto" :value="r.impuesto">
+                    <input type="hidden" name="otros_importe" :value="r.importe">
+                </span>
+            </template>
+
+            <div x-show="open" x-cloak class="fixed inset-0 z-[9998] bg-black/50 flex items-center justify-center p-4" @click.self="cerrar()">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                    <div class="bg-slate-900 px-5 py-3 flex justify-between items-center">
+                        <h3 class="text-[12px] font-black text-white uppercase tracking-widest" x-text="titulo"></h3>
+                        <button type="button" @click="cerrar()" class="text-slate-400 hover:text-white font-black">✕</button>
+                    </div>
+                    <div class="p-5 space-y-2">
+                        <template x-for="(row, idx) in rows" :key="idx">
+                            <div class="flex gap-2 items-center">
+                                <select x-model="row.key" class="flex-1 h-10 px-2 bg-white border border-slate-300 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+                                    <option value="">— Seleccionar —</option>
+                                    <template x-for="opt in opciones" :key="opt.value">
+                                        <option :value="opt.value" x-text="opt.label"></option>
+                                    </template>
+                                </select>
+                                <input type="text" x-model="row.importeStr" placeholder="0,00"
+                                    class="w-32 h-10 px-2 bg-white border border-slate-300 rounded-lg text-[12px] font-black text-right outline-none focus:border-blue-500">
+                                <button type="button" @click="quitar(idx)" class="w-8 text-red-400 hover:text-red-600 font-black">✕</button>
+                            </div>
+                        </template>
+                        <button type="button" @click="agregar()" class="text-[11px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-tighter">+ Agregar renglón</button>
+
+                        <div class="flex justify-between items-center border-t border-slate-200 pt-3 mt-2 text-[12px] font-black">
+                            <span class="uppercase text-slate-500">Total a asignar: <span class="text-slate-800" x-text="fmt(objetivo)"></span></span>
+                            <span :class="cuadra() ? 'text-green-600' : 'text-red-600'">Σ <span x-text="fmt(suma())"></span></span>
+                        </div>
+                        <p x-show="!cuadra()" class="text-[11px] text-red-600 font-bold" x-text="'Falta asignar / verificar: ' + fmt(objetivo - suma())"></p>
+                    </div>
+                    <div class="px-5 py-3 bg-slate-50 flex justify-end gap-2">
+                        <button type="button" @click="cerrar()" class="px-4 py-2 text-[11px] font-black text-slate-500 uppercase tracking-widest">Cancelar</button>
+                        <button type="button" @click="confirmar()" :disabled="!cuadra()"
+                            :class="cuadra() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-300 cursor-not-allowed'"
+                            class="px-5 py-2 text-[11px] font-black text-white rounded-lg uppercase tracking-widest transition-all">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    [x-cloak] {
+        display: none !important;
+    }
+
+    /* Bloqueo de UI cuando hay remito vinculado */
+    body.remito-vinculado #bloque-carga-rapida {
+        display: none !important;
+    }
+
+    body.remito-vinculado .columna-accion-item {
+        display: none !important;
+    }
+
+    /* Estilo para valores en cero */
+    .fInputAR.valor-cero {
+        color: #cbd5e1 !important;
+        font-weight: normal !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Catálogo de alícuotas de IVA (códigos ARCA) para la grilla de gastos.
+    window.ALICUOTAS_IVA = [
+        {% for a in alicuotas_iva %}{ codigo: '{{ a.codigo }}', desc: '{{ a.descripcion|escapejs }}', porc: {{ a.porcentaje|unlocalize }} },
+        {% endfor %}
+    ];
+
+    // Catálogo para los modales de ret/perc.
+    window.CONDICION_IIBB = '{{ condicion_iibb }}';
+    window.JURIS_IIBB = [
+        {% for j in jurisdicciones_iibb %}{ id: {{ j.pk }}, codigo: '{{ j.codigo|escapejs }}', nombre: '{{ j.nombre|escapejs }}' },
+        {% endfor %}
+    ];
+    window.TIPOS_OTROS = [
+        { value: 'SIRCREB', label: 'SIRCREB' },
+        { value: 'TEM', label: 'Tasa Específica / TEM' },
+        { value: 'SUSS', label: 'SUSS' },
+        { value: 'MUN', label: 'Municipal' },
+        { value: 'GAN', label: 'Percepción Ganancias' },
+        { value: 'OTRO', label: 'Otro' },
+    ];
+
+    // Dispara la apertura del modal correspondiente (lo escucha el componente Alpine).
+    function abrirRetpercModal(tipo) {
+        window.dispatchEvent(new CustomEvent('abrir-retperc', { detail: { tipo } }));
+    }
+
+    // Modales de detalle de ret/perc: reparte Perc. IIBB por jurisdicción (CM) y desglosa "Otros Imp.".
+    function retpercModales() {
+        return {
+            open: false, tipo: null, titulo: '', opciones: [], rows: [], objetivo: 0,
+            iibbRows: [], otrosRows: [],
+            abrir(tipo) {
+                this.tipo = tipo;
+                const fieldId = tipo === 'iibb' ? 'id_p_iibb' : 'id_otros';
+                this.objetivo = parseAR(document.getElementById(fieldId).value);
+                if (this.objetivo <= 0) {  // limpiaron el campo → limpiar el detalle
+                    if (tipo === 'iibb') this.iibbRows = []; else this.otrosRows = [];
+                    return;
+                }
+                if (tipo === 'iibb') {
+                    this.titulo = 'Percepción IIBB por jurisdicción';
+                    this.opciones = (window.JURIS_IIBB || []).map(j => ({ value: String(j.id), label: j.codigo + ' · ' + j.nombre }));
+                    this.rows = this.iibbRows.length
+                        ? this.iibbRows.map(r => ({ key: String(r.juris), importeStr: this.fmt(r.importe) }))
+                        : [{ key: '', importeStr: this.fmt(this.objetivo) }];
+                } else {
+                    this.titulo = 'Otros Impuestos — desglose';
+                    this.opciones = (window.TIPOS_OTROS || []).map(t => ({ value: t.value, label: t.label }));
+                    this.rows = this.otrosRows.length
+                        ? this.otrosRows.map(r => ({ key: r.impuesto, importeStr: this.fmt(r.importe) }))
+                        : [{ key: '', importeStr: this.fmt(this.objetivo) }];
+                }
+                this.open = true;
+            },
+            agregar() { this.rows.push({ key: '', importeStr: '' }); },
+            quitar(i) { this.rows.splice(i, 1); },
+            suma() { return this.rows.reduce((s, r) => s + parseAR(r.importeStr), 0); },
+            cuadra() { return Math.abs(this.suma() - this.objetivo) < 0.005 && this.rows.length > 0 && this.rows.every(r => r.key); },
+            fmt(n) { return Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+            cerrar() { 
+                this.open = false;
+                if (this.tipo === 'iibb') {
+                    document.getElementById('id_p_iibb').value = this.fmt(this.iibbRows.reduce((s, r) => s + (parseAR(r.importe) || 0), 0));
+                } else {
+                    document.getElementById('id_otros').value = this.fmt(this.otrosRows.reduce((s, r) => s + (parseAR(r.importe) || 0), 0));
+                }
+                if (typeof recalculateFinal === 'function') recalculateFinal();
+            },
+            confirmar() {
+                if (!this.cuadra()) return;
+                const committed = this.rows.filter(r => r.key && parseAR(r.importeStr) !== 0)
+                    .map(r => ({ key: r.key, importe: parseAR(r.importeStr) }));
+                if (this.tipo === 'iibb') {
+                    this.iibbRows = committed.map(r => ({ juris: r.key, importe: r.importe }));
+                    document.getElementById('id_p_iibb').value = this.fmt(this.suma());
+                } else {
+                    this.otrosRows = committed.map(r => ({ impuesto: r.key, importe: r.importe }));
+                    document.getElementById('id_otros').value = this.fmt(this.suma());
+                }
+                if (typeof recalculateFinal === 'function') recalculateFinal();
+                this.open = false;
+            },
+        };
+    }
+
+    // Componente Alpine de captura de IVA por alícuota (solo modo Gasto).
+    // Cargás Neto por alícuota → calcula IVA = Neto × % (editable, para cuadrar con la factura).
+    // El Σ Neto y Σ IVA se vuelcan a la cabecera (id_neto / id_iva) y recalculan el total.
+    function gastoAlic() {
+        return {
+            cant: 1,
+            rows: [],
+            alicuotas: window.ALICUOTAS_IVA || [],
+            init() { this.syncRows(); },
+            nuevaFila() { return { codigo: '', porc: 0, netoStr: '', ivaStr: '' }; },
+            syncRows() {
+                let n = parseInt(this.cant) || 1;
+                if (n < 1) n = 1;
+                while (this.rows.length < n) this.rows.push(this.nuevaFila());
+                while (this.rows.length > n) this.rows.pop();
+                this.syncTotales();
+            },
+            onCodigo(idx) {
+                const a = this.alicuotas.find(x => x.codigo === this.rows[idx].codigo);
+                this.rows[idx].porc = a ? a.porc : 0;
+                this.recalcIva(idx);
+                this.syncTotales();
+            },
+            onNeto(idx) { this.recalcIva(idx); this.syncTotales(); },
+            recalcIva(idx) {
+                const neto = parseAR(this.rows[idx].netoStr);
+                const porc = parseFloat(this.rows[idx].porc) || 0;
+                const iva = Math.round(neto * porc) / 100;  // neto × % con 2 decimales
+                this.rows[idx].ivaStr = iva ? this.fmt(iva) : '';
+            },
+            totalNeto() { return this.rows.reduce((s, r) => s + parseAR(r.netoStr), 0); },
+            totalIva() { return this.rows.reduce((s, r) => s + parseAR(r.ivaStr), 0); },
+            fmt(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+            fmtPorc(p) { return (parseFloat(p) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'; },
+            syncTotales() {
+                const netoEl = document.getElementById('id_neto');
+                const ivaEl = document.getElementById('id_iva');
+                if (netoEl) netoEl.value = this.fmt(this.totalNeto());
+                if (ivaEl) ivaEl.value = this.fmt(this.totalIva());
+                let ivasPorAlicuota = {};
+                this.rows.forEach(r => {
+                    const iVal = parseAR(r.ivaStr || 0);
+                    if (r.porc > 0 && iVal > 0) {
+                        let key = parseFloat(r.porc).toFixed(1).replace('.0', '') + '%';
+                        if (!ivasPorAlicuota[key]) ivasPorAlicuota[key] = 0;
+                        ivasPorAlicuota[key] += iVal;
+                    }
+                });
+                if (typeof actualizarInsigniasIva === 'function') actualizarInsigniasIva(ivasPorAlicuota);
+                if (typeof recalculateFinal === 'function') recalculateFinal();
+            },
+        };
+    }
+
+    function toggleTipoComprobante(v) {
+        const dv = document.getElementById('div_vincular_container');
+        // El buscador de remitos solo se muestra si NO estamos cargando un Remito (091)
+        dv.classList.toggle('hidden', v === '091');
+    }
+
+    function toggleMoneda(v) {
+        const c = document.getElementById('id_cotizacion');
+        if (v === 'PES') {
+            c.value = "1";
+            c.readOnly = true;
+            c.classList.add('bg-slate-100');
+            c.classList.remove('bg-white');
+        } else {
+            if (c.value === "1") c.value = "";
+            c.readOnly = false;
+            c.classList.remove('bg-slate-100');
+            c.classList.add('bg-white');
+            c.focus();
+            c.select();
+        }
+    }
+
+    // --- Modo de carga: Bienes de Cambio vs Gasto ---
+    function getModo() { return document.getElementById('id_modo').value; }
+
+    function setModo(modo) {
+        document.getElementById('id_modo').value = modo;
+        const esGasto = modo === 'gasto';
+        document.getElementById('bloque-carga-rapida').style.display = esGasto ? 'none' : '';
+        document.getElementById('items-tabla-container').style.display = esGasto ? 'none' : '';
+        document.getElementById('bloque-gasto').classList.toggle('hidden', !esGasto);
+        const base = 'px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ';
+        document.getElementById('btn_modo_bienes').className = base + (esGasto ? 'text-slate-400 hover:text-slate-600' : 'bg-blue-600 text-white shadow');
+        document.getElementById('btn_modo_gasto').className = base + (esGasto ? 'bg-amber-500 text-white shadow' : 'text-slate-400 hover:text-slate-600');
+
+        // En Gasto, el Neto y el IVA los maneja la grilla de alícuotas (no se editan a mano en la
+        // fila de cierre). El Descuento global es exclusivo de Bienes: se oculta y se neutraliza.
+        const ivaEl = document.getElementById('id_iva');
+        const subEl = document.getElementById('id_subtotal');
+        const descEl = document.getElementById('id_descuento');
+        if (ivaEl) { ivaEl.readOnly = esGasto; ivaEl.classList.toggle('bg-slate-100', esGasto); }
+        // Subtotal/Descuento no aplican a gasto: se ocultan y se ponen en 0 para no descalzar el total.
+        document.getElementById('cell_subtotal').style.display = esGasto ? 'none' : '';
+        document.getElementById('cell_descuento').style.display = esGasto ? 'none' : '';
+        if (esGasto) {
+            if (descEl) descEl.value = '';
+            sugerirCuentaGasto();
+            window.dispatchEvent(new CustomEvent('modo-gasto-on'));
+        }
+    }
+
+    function sugerirCuentaGasto() {
+        const ctaSel = document.getElementById('id_cta_imputacion');
+        if (!ctaSel || ctaSel.value) return;
+        const ctaRes = window._provCtaRes || '';
+        if (ctaRes && ctaRes !== '0') ctaSel.value = ctaRes;
+    }
+
+    function confirmarCarga() {
+        const form = document.getElementById('compra-form');
+        // En Compras el proveedor DEBE existir en la tabla: no se admite texto libre.
+        if (!document.getElementById('id_proveedor').value) {
+            alert('Debe seleccionar un proveedor de la lista. Si no existe, agréguelo con el botón "+".');
+            document.getElementById('proveedor_nombre_display').focus();
+            return;
+        }
+
+        // Validación de OCs
+        if (getModo() === 'bienes' && window._exigeOcActual) {
+            // Verificar si hay alguna fila que provenga de OC
+            const itemsOc = document.querySelectorAll('#items-tabla-body tr input[name^="oc_fuentes_"]');
+            let hasOcItems = false;
+            itemsOc.forEach(input => { if (input.value && input.value.trim() !== '' && input.value !== '[]') hasOcItems = true; });
+            
+            if (!hasOcItems) {
+                Swal.fire({
+                    title: 'Proveedor exige OC',
+                    text: 'Este proveedor exige Orden de Compra, pero no has vinculado ningún producto proveniente de una. ¿Deseas continuar y registrar la factura de todas formas?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, continuar',
+                    cancelButtonText: 'No, revisar OC'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        htmx.ajax('GET', document.getElementById('btn_confirmar').dataset.modalUrl, { target: '#modal-container' });
+                    }
+                });
+                return;
+            }
+        }
+
+        if (getModo() === 'gasto') {
+            // Gasto: sin productos, se guarda directo (sin modal de revisión de precios).
+            if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+        } else {
+            // Bienes de cambio: abre el modal de revisión de precios.
+            htmx.ajax('GET', document.getElementById('btn_confirmar').dataset.modalUrl, { target: '#modal-container' });
+        }
+    }
+
+    // Inicialización y formateo de .fInputAR centralizados en static/js/formato_ar.js (global, uniforme).
+
+
+    // Función para convertir el string formateado (12.000) a número puro (12000)
+    function parseAR(val) {
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(/\./g, '').replace(',', '.'));
+    }
+
+    // Función para mostrar en el resumen azul con formato AR completo
+    function fMiles(n) {
+        return parseFloat(n).toLocaleString('es-AR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function recalculateFinal() {
+        const c = ['neto', 'iva', 'no_gravado', 'exento', 'p_iibb', 'p_iva', 'otros'];
+        let t = 0;
+        c.forEach(f => {
+            const el = document.getElementById('id_' + f);
+            const val = parseAR(el?.value || 0);
+            t += val;
+            if (el) {
+                if (val === 0) el.classList.add('valor-cero');
+                else el.classList.remove('valor-cero');
+            }
+        });
+
+        document.getElementById('display_total').innerText = '$ ' + fMiles(t);
+        document.getElementById('id_total').value = fMiles(t);
+    }
+
+    function actualizarInsigniasIva(ivasPorAlicuota) {
+        const ivaContainer = document.getElementById('alicuotas_iva_container');
+        if (!ivaContainer) return;
+        let html = '<span class="text-[9px] text-slate-400 font-bold uppercase my-auto tracking-wider">IVA Discriminado:</span>';
+        let hasIva = false;
+        for (let alic in ivasPorAlicuota) {
+            if (ivasPorAlicuota[alic] > 0.005) {
+                hasIva = true;
+                let imp = ivasPorAlicuota[alic].toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                html += `<div class="bg-indigo-50 border border-indigo-200 rounded-md px-2 py-0.5 text-[10px] inline-flex items-center gap-1 font-bold text-indigo-950 shadow-sm whitespace-nowrap">
+                            <span class="text-indigo-600">IVA ${alic}:</span>
+                            <span>$ ${imp}</span>
+                         </div>`;
+            }
+        }
+        if (!hasIva) {
+            html += `<span class="text-[10px] text-slate-400 italic">0,00</span>`;
+        }
+        ivaContainer.innerHTML = html;
+    }
+
+    // Neto Gravado = Subtotal − Descuento global. Recalcula y refresca el total y el IVA Facturado.
+    function recalcSubtotalDesc() {
+        // En modo Gasto el Neto lo gobierna la grilla de alícuotas: no lo pisamos con Subtotal−Descuento.
+        if (getModo() === 'gasto') { recalculateFinal(); return; }
+        const sub = parseAR(document.getElementById('id_subtotal')?.value || 0);
+        const desc = parseAR(document.getElementById('id_descuento')?.value || 0);
+        const netoEl = document.getElementById('id_neto');
+        const ivaEl = document.getElementById('id_iva');
+        
+        let ivaFacturado = 0;
+        let ivasPorAlicuota = {};
+        if (sub > 0) {
+            const factor = (sub - desc) / sub; // % que queda del valor original
+            
+            // Recorrer los items para calcular el IVA prorrateado
+            document.querySelectorAll('input[name="total_linea"]').forEach(input => {
+                const totalLinea = parseAR(input.value);
+                const tr = input.closest('tr');
+                const ivaAlic = parseFloat(tr ? tr.getAttribute('data-iva') : 0) || 0;
+                
+                const netoProrrateado = totalLinea * factor;
+                const ivaLinea = netoProrrateado * (ivaAlic / 100);
+                ivaFacturado += ivaLinea;
+
+                if (ivaAlic > 0) {
+                    let key = parseFloat(ivaAlic).toFixed(1).replace('.0', '') + '%';
+                    if (!ivasPorAlicuota[key]) ivasPorAlicuota[key] = 0;
+                    ivasPorAlicuota[key] += ivaLinea;
+                }
+            });
+            
+            // Fallback para tabla estática si la hubiera
+            if (document.querySelectorAll('input[name="total_linea"]').length === 0) {
+                 document.querySelectorAll('#items-tabla-container table tbody tr.item-row').forEach(row => {
+                     const totalText = row.querySelector('td:nth-last-child(2)')?.innerText.replace('$', '').trim();
+                     if (totalText) {
+                         const totalLinea = parseAR(totalText);
+                         const ivaAlic = parseFloat(row.getAttribute('data-iva')) || 0;
+                         const ivaLinea = (totalLinea * factor) * (ivaAlic / 100);
+                         ivaFacturado += ivaLinea;
+
+                         if (ivaAlic > 0) {
+                             let key = parseFloat(ivaAlic).toFixed(1).replace('.0', '') + '%';
+                             if (!ivasPorAlicuota[key]) ivasPorAlicuota[key] = 0;
+                             ivasPorAlicuota[key] += ivaLinea;
+                         }
+                     }
+                 });
+            }
+        }
+
+        if (netoEl) netoEl.value = (sub - desc).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+        if (ivaEl) {
+            if (ivaFacturado > 0) {
+                 ivaEl.value = ivaFacturado.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+            } else if (sub === 0) {
+                 ivaEl.value = '0,00';
+            }
+        }
+        actualizarInsigniasIva(ivasPorAlicuota);
+        recalculateFinal();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleTipoComprobante(document.getElementById('id_tipo').value);
+        toggleMoneda(document.getElementById('id_moneda').value);
+        setModo('bienes');
+        recalculateFinal();
+    });
+
+    // Selección de proveedor desde el typeahead o el modal de búsqueda.
+    document.body.addEventListener('clienteVentaSeleccionado', (e) => {
+        const modal = document.getElementById('modal-container');
+        if (modal) modal.innerHTML = '';
+        document.getElementById('id_proveedor').value = e.detail.id;
+        document.getElementById('proveedor_nombre_display').value = e.detail.razon_social;
+        window._provCtaRes = e.detail.cta_res || '';
+        
+        // --- INICIO LÓGICA ORDEN DE COMPRA ---
+        const empresaUsaOc = '{{ empresa_usa_oc|yesno:"true,false" }}' === 'true';
+        const exigeOc = e.detail.usa_orden_compra === 'true';
+        const tipoCompEl = document.getElementById('id_tipo');
+        const tipoComp = tipoCompEl.options[tipoCompEl.selectedIndex]?.text || '';
+        const esNotaCreditoDebito = tipoComp.toLowerCase().includes('nota de crédito') || tipoComp.toLowerCase().includes('nota de débito');
+        
+        if (getModo() === 'bienes' && empresaUsaOc && exigeOc && !esNotaCreditoDebito) {
+            window._exigeOcActual = true;
+            // Levantar modal de vinculación de OC automáticamente si hay un retraso mínimo para el cierre del autocompletado
+            setTimeout(() => {
+                htmx.ajax('GET', URL_FACTURA_VINCULAR_OC_MODAL + '?proveedor=' + encodeURIComponent(e.detail.id), { target: '#modal-container', swap: 'innerHTML' });
+            }, 100);
+        } else {
+            window._exigeOcActual = false;
+        }
+        // --- FIN LÓGICA OC ---
+
+        // Re-sugerir la cuenta de gasto si estamos en modo gasto.
+        if (getModo() === 'gasto') {
+            document.getElementById('id_cta_imputacion').value = '';
+            sugerirCuentaGasto();
+        }
+        document.getElementById('proveedor_nombre_display').dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Escape' }));
+    });
+
+    // ===== Carga de Productos (por ID y Modal) =====
+    const URL_LUPA_PRODUCTOS = "{% url 'compras_producto_buscar_modal' %}";
+    const URL_ALTA_PRODUCTO = "{% url 'producto_add' %}";
+
+    function aplicarProductoSeleccionado(id, detalle) {
+        const idInput = document.getElementById('quick_producto_id');
+        const detalleBox = document.getElementById('quick_producto_detalle');
+        if (idInput) idInput.value = id;
+        if (detalleBox) detalleBox.innerHTML = `<span class="text-blue-600 font-black">${detalle}</span>`;
+        const modal = document.getElementById('modal-container'); if (modal) modal.innerHTML = '';
+        document.getElementById('quick_cantidad').focus();
+    }
+
+    // Producto encontrado por ID o autocompletado general
+    document.body.addEventListener('productoEncontrado', (e) => {
+        aplicarProductoSeleccionado(e.detail.id, e.detail.detalle);
+    });
+
+    // Producto seleccionado desde el modal de búsqueda avanzada (clic en "Elegir")
+    document.body.addEventListener('productoSeleccionadoDesdeModal', (e) => {
+        aplicarProductoSeleccionado(e.detail.id, e.detail.detalle);
+    });
+
+    document.body.addEventListener('htmx:afterOnLoad', (e) => {
+        if (e.detail.target.id === 'items-tabla-container') {
+            setTimeout(recalculateFinal, 50);
+        }
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (event) {
+        if (event.detail.target.id === 'items-tabla-container') {
+            document.getElementById('quick_producto_id').value = '';
+            document.getElementById('quick_producto_detalle').innerHTML = '<span class="opacity-30">Aguardando selección de producto...</span>';
+            document.getElementById('quick_cantidad').value = '1';
+            document.getElementById('quick_precio').value = '';
+            document.getElementById('quick_precio_lista').value = '';
+            const prodIdInput = document.getElementById('quick_producto_id');
+            if (prodIdInput) prodIdInput.focus();
+        }
+    });
+
+    document.body.addEventListener('comprobanteSeleccionado', (e) => {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+        
+        document.getElementById('id_tipo').value = e.detail.codigo;
+        document.getElementById('quick_comprobante_display').value = `${e.detail.codigo} - ${e.detail.detalle}`;
+        
+        document.getElementById('quick_comprobante_display').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
+    });
+
+    document.body.addEventListener('limpiarInputsCarga', () => {
+        document.getElementById('quick_producto_id').value = '';
+        document.getElementById('quick_producto_detalle').innerText = 'Aguardando selección de producto...';
+        document.getElementById('quick_cantidad').value = '1';
+        document.getElementById('quick_precio').value = '';
+        document.getElementById('quick_precio_lista').value = '';
+        const prodIdInput = document.getElementById('quick_producto_id');
+        if (prodIdInput) prodIdInput.focus();
+    });
+
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        const fieldsToClean = ['precio', 'precio_lista', 'cantidad', 'neto', 'iva', 'p_iibb', 'p_iva', 'otros', 'total_linea'];
+        fieldsToClean.forEach(field => {
+            if (event.detail.parameters[field]) {
+                // Quitamos puntos de miles y cambiamos coma decimal por punto
+                event.detail.parameters[field] = event.detail.parameters[field].toString().replace(/\./g, '').replace(',', '.');
+            }
+        });
+    });
+
+    // Bloquear el Enter para evitar envíos accidentales (Solo preventDefault global)
+    const form = document.getElementById('compra-form');
+    form.addEventListener('keydown', function (e) {
+        if (e.keyCode === 13) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Escuchar el vínculo del remito desde HTMX
+    document.body.addEventListener('vincularRemitoID', (e) => {
+        const idRemito = e.detail.value;
+        const dataRemito = e.detail.vincularRemitoData || "VINCULADO";
+
+        const inputFacRem = document.getElementById('id_id_fac_rem');
+        const selectTipo = document.getElementsByName('tipo')[0];
+        const searchBox = document.getElementById('remito_search_box');
+        const infoBox = document.getElementById('remito_vinculado_info');
+        const infoText = document.getElementById('remito_vinculado_text');
+
+        if (inputFacRem && idRemito) {
+            inputFacRem.value = idRemito;
+            // Cambiar tipo a Factura A automáticamente
+            if (selectTipo) selectTipo.value = '001';
+
+            // Bloquear interfaz (Carga rápida y borrado)
+            document.body.classList.add('remito-vinculado');
+
+            // UI Toggle
+            searchBox.classList.add('hidden');
+            infoBox.classList.remove('hidden');
+            infoText.innerText = "REMITO: " + dataRemito;
+        }
+    });
+
+    // --- LÓGICA AUTO-COMPLETADO DESDE OCR ---
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('from_ocr') === '1') {
+        try {
+            const ocrDataStr = sessionStorage.getItem('ocr_data');
+            const pdfTempPath = sessionStorage.getItem('pdf_temp_path');
+            if (pdfTempPath) {
+                document.getElementById('id_pdf_temp_path').value = pdfTempPath;
+                sessionStorage.removeItem('pdf_temp_path');
+                // Bloquear edición de precios de artículos escaneados
+                setTimeout(() => {
+                    document.querySelectorAll('input[name="precio"], input[name="cto_adq"], input[name="cto_rep"], input[name="descuento"]').forEach(el => {
+                        el.readOnly = true;
+                        el.title = "Dato extraído del comprobante, no editable";
+                        el.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-80');
+                    });
+                }, 200);
+            }
+            if (ocrDataStr) {
+                const ocrData = JSON.parse(ocrDataStr);
+                
+                if (ocrData.numero) document.getElementsByName('numero')[0].value = ocrData.numero;
+                if (ocrData.punto) document.getElementsByName('punto')[0].value = ocrData.punto;
+                if (ocrData.p_iibb) {
+                    const iibbInput = document.getElementById('id_p_iibb');
+                    if (iibbInput) {
+                        iibbInput.value = ocrData.p_iibb.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                        // Tambien hay que disparar recalculateFinal
+                        setTimeout(() => recalculateFinal(), 100);
+                    }
+                }
+                if (ocrData.subtotal) {
+                    const subInput = document.getElementById('id_subtotal');
+                    if (subInput) subInput.value = parseFloat(ocrData.subtotal).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+                if (ocrData.descuento) {
+                    const descInput = document.getElementById('id_descuento');
+                    if (descInput) descInput.value = parseFloat(ocrData.descuento).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+                if (ocrData.neto) {
+                    const netoEl = document.getElementById('id_neto');
+                    if (netoEl) netoEl.value = parseFloat(ocrData.neto).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+                if (ocrData.iva) {
+                    const ivaEl = document.getElementById('id_iva');
+                    if (ivaEl) ivaEl.value = parseFloat(ocrData.iva).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+                if (ocrData.total) {
+                    const totalEl = document.getElementById('id_total');
+                    if (totalEl) totalEl.value = parseFloat(ocrData.total).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+                if (ocrData.descuento || ocrData.subtotal) {
+                    setTimeout(() => recalcSubtotalDesc(), 100);
+                }
+                
+                if (ocrData.fecha) {
+                    const dateParts = ocrData.fecha.split('/');
+                    if (dateParts.length === 3) {
+                        document.getElementsByName('fecha')[0].value = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+                    }
+                }
+                if (ocrData.moneda === 'DOL') {
+                    const monedaSelect = document.getElementById('id_moneda');
+                    monedaSelect.value = 'DOL';
+                    toggleMoneda('DOL');
+                    setTimeout(() => {
+                        const cotInput = document.getElementById('id_cotizacion');
+                        if (cotInput && !cotInput.classList.contains('hidden')) {
+                            if (ocrData.cotizacion) cotInput.value = Math.round(parseFloat(ocrData.cotizacion)) || ocrData.cotizacion;
+                            cotInput.focus();
+                            cotInput.select();
+                        }
+                    }, 500);
+                }
+
+                if (ocrData.tipo_comprobante_codigo && ocrData.tipo_comprobante_detalle) {
+                    document.getElementById('id_tipo').value = ocrData.tipo_comprobante_codigo;
+                    document.getElementById('quick_comprobante_display').value = `${ocrData.tipo_comprobante_codigo} - ${ocrData.tipo_comprobante_detalle}`;
+                    document.getElementById('quick_comprobante_display').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
+                    toggleTipoComprobante(ocrData.tipo_comprobante_codigo);
+                }
+
+                if (ocrData.proveedor_id && ocrData.proveedor_nombre) {
+                    const evt = new CustomEvent('clienteVentaSeleccionado', {
+                        detail: {
+                            id: ocrData.proveedor_id,
+                            razon_social: ocrData.proveedor_nombre,
+                            cta_res: ocrData.proveedor_cta_res || ''
+                        }
+                    });
+                    document.body.dispatchEvent(evt);
+                }
+                
+                sessionStorage.removeItem('ocr_data');
+            }
+        } catch (e) { console.error("Error cargando OCR data", e); }
+    }
+
+    // Recálculo Local Instantáneo (Sin tocar el servidor)
+    document.body.addEventListener('input', (e) => {
+        if (e.target.name === 'total_linea' || e.target.classList.contains('fInputAR')) {
+            actualizarResumenVisual();
+        }
+    });
+
+    function actualizarResumenVisual() {
+        // En Gasto no hay grilla de productos que alimente el Subtotal; el Neto/IVA salen de la
+        // grilla de alícuotas. Solo refrescamos el total para no pisar el Neto con 0.
+        if (getModo() === 'gasto') { recalculateFinal(); return; }
+        let netoDeGrilla = 0;
+        // Sumamos los totales de la grilla (inputs)
+        document.querySelectorAll('input[name="total_linea"]').forEach(input => {
+            netoDeGrilla += parseAR(input.value);
+        });
+
+        // Si no hay inputs (porque la tabla es estática), sumamos los textos
+        if (netoDeGrilla === 0) {
+            document.querySelectorAll('#items-tabla-container table tbody tr').forEach(row => {
+                const totalText = row.querySelector('td:nth-last-child(2)')?.innerText.replace('$', '').trim();
+                if (totalText) netoDeGrilla += parseAR(totalText);
+            });
+        }
+
+        // La grilla alimenta el SUBTOTAL (antes del descuento global); el Neto Gravado se deriva.
+        const subInput = document.getElementById('id_subtotal');
+        if (subInput && (document.activeElement.name === 'total_linea' || document.activeElement.classList.contains('fInputAR'))) {
+            subInput.value = netoDeGrilla.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+        }
+
+        recalcSubtotalDesc();
+    }
+
+    // Escuchar actualización de totales desde el servidor (cuando se confirma el cambio)
+    document.body.addEventListener('actualizarTotales', () => {
+        actualizarResumenVisual();
+    });
+
+    function desvincularRemito() {
+        const inputFacRem = document.getElementById('id_id_fac_rem');
+        const searchBox = document.getElementById('remito_search_box');
+        const infoBox = document.getElementById('remito_vinculado_info');
+
+        if (inputFacRem) inputFacRem.value = '';
+        document.body.classList.remove('remito-vinculado');
+
+        searchBox.classList.remove('hidden');
+        infoBox.classList.add('hidden');
+        document.getElementById('remito_num_search').value = '';
+    }
+
+</script>
+{% endblock %}

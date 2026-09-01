@@ -1,0 +1,27 @@
+{% load formato_tags %}
+{% for fila in filas %}
+<form hx-post="{% url 'distribucion_movil_item_add' %}"
+      hx-target="#movil-carrito"
+      class="w-full border-b border-slate-100 last:border-0">
+    {% csrf_token %}
+    <input type="hidden" name="producto_id" value="{{ fila.producto.id }}">
+    <input type="hidden" name="cantidad" value="1">
+    <button type="submit"
+            class="w-full text-left px-3 py-3 hover:bg-indigo-50 active:bg-indigo-100 transition-colors">
+        <div class="flex justify-between items-start gap-2">
+            <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900 leading-tight truncate">{{ fila.producto.detalle }}</div>
+                <div class="text-[11px] text-slate-500 font-mono">
+                    {{ fila.producto.id }}{% if fila.producto.codigo_anterior %} | {{ fila.producto.codigo_anterior }}{% endif %}
+                    {% if fila.disponible is not None %}
+                        · <span class="{% if fila.disponible <= 0 %}text-red-600 font-bold{% else %}text-slate-500{% endif %}">disp. {{ fila.disponible|formato_ar:0 }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-sm font-black text-indigo-700 shrink-0">$ {{ fila.precio|formato_ar }}</div>
+        </div>
+    </button>
+</form>
+{% empty %}
+<div class="px-3 py-4 text-xs text-slate-400 italic text-center">Sin resultados.</div>
+{% endfor %}

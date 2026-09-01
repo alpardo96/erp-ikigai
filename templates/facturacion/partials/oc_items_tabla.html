@@ -1,0 +1,67 @@
+{% load l10n %}
+<div class="overflow-hidden border border-gray-200 rounded shadow-sm italic">
+    <table class="w-full text-left border-collapse bg-white">
+        <thead>
+            <tr class="bg-gray-900 text-white text-[10px] uppercase tracking-wider">
+                <th class="px-3 py-2 border-r border-gray-700">Cód (Int / Prov)</th>
+                <th class="px-3 py-2 border-r border-gray-700 w-1/3">Descripción</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Cantidad</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-right col-costo">Importe Neto</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-right">IVA %</th>
+                <th class="px-3 py-2 text-right col-costo">Total Estimado</th>
+                <th class="px-3 py-2 text-center columna-accion-item"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 italic">
+            {% for item in items %}
+            <tr class="hover:bg-blue-50 transition-colors text-[11px] item-row">
+                <td class="px-3 py-2 font-bold text-blue-700 whitespace-nowrap">
+                    #{{ item.producto_id }}
+                    {% if item.cod_prov %}<br><span class="text-gray-400 text-[9px]">{{ item.cod_prov }}</span>{% endif %}
+                </td>
+                <td class="px-3 py-2 font-medium text-gray-900 uppercase">{{ item.detalle }}</td>
+                <td class="px-3 py-2 text-center">
+                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:2 }}"
+                           onfocus="this.select()"
+                           class="w-20 bg-transparent border-b border-dashed border-slate-300 text-center focus:border-blue-500 outline-none fInputAR font-bold"
+                           hx-post="{% url 'oc_item_edit' item.index %}"
+                           hx-trigger="change" hx-include="closest tr"
+                           hx-target="#oc-items-container">
+                </td>
+                <td class="px-3 py-2 text-right col-costo">
+                    <input type="text" name="neto" value="{{ item.total|floatformat:2 }}"
+                           onfocus="this.select()"
+                           class="w-28 bg-transparent border-b border-dashed border-slate-300 text-right focus:border-blue-500 outline-none fInputAR font-black"
+                           hx-post="{% url 'oc_item_edit' item.index %}"
+                           hx-trigger="change" hx-include="closest tr"
+                           hx-target="#oc-items-container">
+                </td>
+                <td class="px-3 py-2 text-right text-gray-500">{{ item.iva|floatformat:1 }}%</td>
+                <td class="px-3 py-2 text-right font-black text-gray-900 col-costo fMoneyAR" data-monto="{{ item.total|unlocalize }}" data-total="{{ item.total|unlocalize }}">
+                    $ {{ item.total|floatformat:2 }}
+                </td>
+                <td class="px-3 py-2 text-center columna-accion-item">
+                    <button hx-post="{% url 'oc_item_remove' item.index %}"
+                            hx-target="#oc-items-container"
+                            class="text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay productos cargados en esta orden.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    (function() {
+        let total = 0;
+        {% for item in items %}
+            total += {{ item.total|unlocalize }};
+        {% endfor %}
+        const box = document.getElementById('oc_total_estimado');
+        if (box) box.textContent = '$ ' + total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    })();
+</script>

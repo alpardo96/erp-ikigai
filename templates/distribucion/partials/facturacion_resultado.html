@@ -1,0 +1,47 @@
+{% load formato_tags %}
+{% if error %}
+<div class="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm font-bold text-amber-800">
+    {{ error }}
+</div>
+{% else %}
+<div class="mt-4 rounded-2xl border border-gray-100 bg-white shadow overflow-hidden">
+    <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="text-sm font-black text-slate-800 uppercase tracking-tight">Resultado de la emisión</h3>
+        <div class="flex items-center gap-4 text-xs">
+            <span class="font-bold text-emerald-700">{{ emitidos }} emitido{{ emitidos|pluralize }}</span>
+            {% if fallidos %}<span class="font-bold text-red-700">{{ fallidos }} con error</span>{% endif %}
+        </div>
+    </div>
+
+    <ul class="divide-y divide-slate-100">
+        {% for r in resultados %}
+        <li class="px-6 py-2.5 flex items-start gap-3 text-sm">
+            {% if r.ok %}
+                <svg class="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            {% else %}
+                <svg class="w-4 h-4 mt-0.5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            {% endif %}
+            <div class="min-w-0">
+                <span class="font-mono text-xs text-slate-500">{{ r.pedido.numero_formateado }}</span>
+                <span class="font-semibold text-slate-800">{{ r.pedido.preventa.cliente.razon_social }}</span>
+                <div class="text-xs {% if r.ok %}text-slate-500{% else %}text-red-700 font-semibold{% endif %}">
+                    {{ r.mensaje }}
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+        <p class="text-[10px] text-slate-400 italic">
+            Los pedidos con error siguen pendientes: se pueden corregir y volver a emitir sin afectar a los demás.
+        </p>
+        <button type="button"
+                hx-get="{% url 'distribucion_facturacion' %}"
+                hx-target="#facturacion-rows"
+                class="px-4 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">
+            Actualizar lista
+        </button>
+    </div>
+</div>
+{% endif %}

@@ -1,0 +1,466 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Compra de Bienes Usados | ERP Ikigai{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <!-- TITULO Y USUARIO -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-black text-black-600 tracking-tighter uppercase italic">
+                Compra de Bienes Usados (Armería)
+            </h1>
+            <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                OPERADOR: {{ user.username }}
+            </span>
+        </div>
+        <a href="{% url 'compras_index' %}" class="text-slate-400 hover:text-red-600 transition-colors" title="Volver a Compras">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </a>
+    </div>
+
+    <form id="compra-trazabilidad-form" method="POST" action="{% url 'compras_trazabilidad_carga' %}" class="space-y-4">
+        {% csrf_token %}
+
+        <!-- BLOQUE 1: IDENTIFICACIÓN DEL COMPROBANTE -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+            <div class="bg-slate-900 px-4 py-1.5 flex justify-between items-center">
+                <h2 class="text-[10px] font-black text-white uppercase tracking-widest">01. Identificación del Comprobante</h2>
+                <div class="text-[10px] font-bold text-gray-400 uppercase">
+                    SUCURSAL: {{ request.session.sucursal_nombre|default:"GENERAL" }}
+                </div>
+            </div>
+
+            <div class="p-4 grid grid-cols-12 gap-4">
+                <!-- Fila 1: Fecha, Proveedor -->
+                <div class="col-span-12 flex flex-wrap items-center gap-4">
+                    <div class="w-44 text-center">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">
+                            Fecha Emisión
+                        </label>
+                        <input type="date" name="fecha" id="id_fecha" value="{% if form.data.fecha %}{{ form.data.fecha }}{% else %}{{ form.fecha.value|date:'Y-m-d' }}{% endif %}" required autofocus
+                            class="h-10 px-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] text-center font-black text-slate-800 outline-none focus:border-amber-500">
+                    </div>
+
+                    <div class="flex-1 min-w-[280px]">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">
+                            Proveedor / Razón Social
+                        </label>
+                        <div class="flex gap-1 h-10">
+                            <!-- ID oculto que se envía al form real -->
+                            <input type="hidden" name="proveedor" id="id_proveedor" value="{{ form.proveedor.value|default_if_none:'' }}" required>
+                            
+                            <!-- Display de sólo lectura -->
+                            <input type="text" id="proveedor_nombre_display" readonly
+                                value="" 
+                                placeholder="Buscar proveedor..."
+                                hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container" hx-trigger="click"
+                                class="w-full h-full px-3 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-amber-500 cursor-pointer uppercase shadow-sm">
+                            
+                            <!-- Botón Lupa -->
+                            <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container"
+                                class="w-10 h-full shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all shadow-sm">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </button>
+                            
+                            <!-- Botón Alta Rápida -->
+                            <button type="button" hx-get="{% url 'cliente_add' %}?origen=compra" hx-target="#modal-container"
+                                class="w-10 h-full shrink-0 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-all shadow-sm" title="Alta rápida de proveedor">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila 2: Tipo, Punto, Número, Moneda y Cotización -->
+                <div class="col-span-12 flex flex-wrap items-center gap-4">
+                    <div class="w-auto min-w-[200px]">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">
+                            Tipo Comprobante
+                        </label>
+                        <input type="hidden" name="tipo" value="{{ tipo_30.codigo }}">
+                        <div class="h-10 px-3 flex items-center bg-slate-100 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-700">
+                            {{ tipo_30.codigo }} - {{ tipo_30.detalle }}
+                        </div>
+                    </div>
+
+                    <div class="w-24">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter text-center">
+                            Punto
+                        </label>
+                        <input type="number" name="punto" id="id_punto" min="1" max="99999" required
+                            class="h-10 px-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] text-center font-mono font-bold text-slate-800 outline-none focus:border-amber-500"
+                            placeholder="00001">
+                    </div>
+
+                    <div class="w-36">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter text-center">
+                            Número
+                        </label>
+                        <input type="number" name="numero" id="id_numero" min="1" max="99999999" required
+                            class="h-10 px-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] text-center font-mono font-bold text-slate-800 outline-none focus:border-amber-500"
+                            placeholder="00000001">
+                    </div>
+
+                    <div class="w-32">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter text-center">
+                            Moneda
+                        </label>
+                        <select name="moneda" id="id_moneda_cpra" onchange="toggleMonedaTrazabilidad(this.value)"
+                            class="h-10 px-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 text-center outline-none focus:border-amber-500">
+                            <option value="PES" selected>PES (ARS)</option>
+                            <option value="DOL">DOL (USD)</option>
+                        </select>
+                    </div>
+
+                    <div class="w-36">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter text-center">
+                            Cotización ($/USD)
+                        </label>
+                        <input type="text" name="cotizacion" id="id_cotizacion_cpra" value="1" readonly
+                            class="h-10 px-2 w-full bg-slate-100 border border-slate-200 rounded-lg text-[12px] text-center font-mono font-bold text-slate-800 outline-none focus:border-amber-500 fInputAR">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOQUE 2: INGRESO DE ÍTEMS TRAZABLES (SUBPRODUCTOS) -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+            <div class="bg-slate-900 px-4 py-1.5 flex justify-between items-center">
+                <h2 class="text-[10px] font-black text-white uppercase tracking-widest">
+                    02. Ingreso de Ítems Trazables (Subproductos)
+                </h2>
+            </div>
+
+            <!-- Panel interactivo para agregar ítem (Similar a compra normal) -->
+            <div class="p-4 bg-slate-50/30 border-b border-slate-100/60 space-y-3">
+                <!-- Renglón 1: ID Producto (con modal), Descripción del Artículo, Cantidad, Importe -->
+                <div class="flex flex-wrap items-end gap-3">
+                    
+                    <!-- ID Producto + Modal / Typeahead -->
+                    <div class="w-36" x-data="{ open: false }" @click.outside="open = false; document.getElementById('typeahead-traz-results').innerHTML = ''">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">ID Producto *</label>
+                        <div class="relative">
+                            <input type="text" id="item_traz_producto_id" name="producto_id"
+                                hx-get="{% url 'typeahead_productos_compra' %}?solo_trazables=1"
+                                hx-trigger="keyup changed delay:300ms, focus"
+                                hx-vals='js:{q: document.getElementById("item_traz_producto_id").value}'
+                                hx-target="#typeahead-traz-results"
+                                autocomplete="off"
+                                @focus="open = true"
+                                @keydown.escape="open = false; document.getElementById('typeahead-traz-results').innerHTML = ''"
+                                class="w-full h-11 pl-3 pr-10 bg-white border border-slate-300 rounded-lg text-xs font-black text-blue-600 outline-none focus:border-amber-500 shadow-sm uppercase"
+                                placeholder="Buscar"
+                                onkeydown="if(event.key === 'Enter') { 
+                                    const urlParams = new URLSearchParams({q: this.value, solo_trazables: 1}).toString();
+                                    htmx.ajax('GET', '{% url 'compras_producto_buscar_codigo' %}?' + urlParams, {source: this}); 
+                                    event.preventDefault();
+                                    return false; 
+                                }">
+                            <button type="button"
+                                hx-get="{% url 'compras_producto_buscar_modal' %}?solo_trazables=1"
+                                hx-target="#modal-container"
+                                class="absolute right-0 inset-y-0 px-2.5 flex items-center justify-center text-slate-400 hover:text-amber-600 transition-colors"
+                                title="Buscar producto trazable">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                            <div id="typeahead-traz-results"
+                                class="absolute left-0 top-full mt-1 w-[380px] bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Descripción del Artículo -->
+                    <div class="flex-1 min-w-[260px]">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Descripción del Artículo</label>
+                        <div id="item_traz_producto_detalle"
+                            class="w-full h-11 px-4 bg-slate-100 border border-slate-200 rounded-lg flex items-center text-xs font-black text-slate-700 uppercase italic truncate shadow-inner">
+                            <span class="opacity-30">Aguardando selección de producto...</span>
+                        </div>
+                    </div>
+
+                    <!-- Importe Total ($/USD) -->
+                    <div class="w-56">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-right">Importe Total (<span class="simbolo-moneda">$</span>) *</label>
+                        <div class="relative group">
+                            <span class="absolute left-3 top-3 text-slate-400 font-black text-xs group-focus-within:text-amber-500 transition-colors simbolo-moneda">$</span>
+                            <input type="text" id="item_traz_precio" placeholder="0,00"
+                                class="w-full h-11 pl-10 pr-3 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 text-right outline-none focus:border-amber-500 shadow-sm transition-all fInputAR">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Renglón 2: Nro. de Serie / Identificador, Estado (Condicional), CUIM / Patente (Condicional), Botón Añadir -->
+                <div class="flex flex-wrap items-end gap-3 pt-2 border-t border-slate-200/50">
+                    
+                    <!-- Serie / Identificador (Ancho coherente, no estirado excesivamente) -->
+                    <div class="w-72">
+                        <label class="block text-[10px] font-black text-slate-700 uppercase mb-1 tracking-tighter">
+                            Nro. de Serie / Identificador *
+                        </label>
+                        <input type="text" id="item_traz_serie" placeholder="EJ: SN-90210"
+                            class="w-full h-11 px-3 bg-white border-2 border-amber-300 rounded-lg text-xs font-mono font-bold text-amber-900 outline-none focus:border-amber-600 uppercase shadow-sm">
+                    </div>
+
+                    <!-- Estado (Condicional) -->
+                    {% if config_trazabilidad.pedir_estado %}
+                    <div class="w-36">
+                        <label class="block text-[10px] font-black text-slate-600 uppercase mb-1 tracking-tighter text-center">
+                            Estado *
+                        </label>
+                        <select id="item_traz_estado"
+                            class="w-full h-11 px-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-amber-500 shadow-sm">
+                            <option value="NUEVO" selected>NUEVO</option>
+                            <option value="USADO">USADO</option>
+                        </select>
+                    </div>
+                    {% endif %}
+
+                    <!-- CUIM / Patente / Dominio (Condicional) -->
+                    {% if config_trazabilidad.pedir_cuim %}
+                    <div class="w-56">
+                        <label class="block text-[10px] font-black text-slate-600 uppercase mb-1 tracking-tighter">
+                            CUIM / Patente *
+                        </label>
+                        <input type="text" id="item_traz_cuim" placeholder="EJ: 4492019 / AF123YZ"
+                            class="w-full h-11 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 outline-none focus:border-amber-500 uppercase shadow-sm">
+                    </div>
+                    {% endif %}
+
+                    <!-- Botón Agregar Subproducto (Pegado a la derecha con ml-auto) -->
+                    <div class="w-36 ml-auto">
+                        <button type="button"
+                            onclick="agregarItemCompraTrazabilidad()"
+                            class="w-full h-11 bg-blue-600 hover:bg-amber-700 text-white rounded-lg transition-all shadow-sm font-bold text-xs flex items-center justify-center gap-1.5 uppercase tracking-wider">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            <span>Añadir</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla dinámica HTMX -->
+            <div id="tabla-items-compra-trazabilidad">
+                {% include 'facturacion/partials/compra_trazabilidad_items_tabla.html' with items=request.session.compra_trazabilidad_items_temp %}
+            </div>
+        </div>
+
+        <!-- BLOQUE 3: TOTALES Y CIERRE -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+            <div class="bg-slate-900 px-4 py-1.5 flex justify-between items-center">
+                <h2 class="text-[10px] font-black text-white uppercase tracking-widest">03. Resumen y Totales del Comprobante</h2>
+            </div>
+            
+            <div class="p-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50">
+                <div class="p-3 bg-white rounded-xl border border-slate-200 text-center">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Neto Gravado</span>
+                    <span id="display_neto" class="text-lg font-mono font-bold text-slate-800"><span class="simbolo-moneda">$</span> 0,00</span>
+                    <input type="hidden" name="neto" id="id_neto" value="0.00">
+                </div>
+
+                <div class="p-3 bg-white rounded-xl border border-slate-200 text-center">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Total IVA</span>
+                    <span id="display_iva" class="text-lg font-mono font-bold text-blue-700"><span class="simbolo-moneda">$</span> 0,00</span>
+                    <input type="hidden" name="iva" id="id_iva" value="0.00">
+                </div>
+
+                <div class="p-3 bg-white rounded-xl border border-slate-200 text-center">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Exento / Otros</span>
+                    <span class="text-lg font-mono font-bold text-slate-500"><span class="simbolo-moneda">$</span> 0,00</span>
+                    <input type="hidden" name="exento" id="id_exento" value="0.00">
+                    <input type="hidden" name="no_gravado" id="id_no_gravado" value="0.00">
+                    <input type="hidden" name="otros" id="id_otros" value="0.00">
+                </div>
+
+                <div class="p-3 bg-amber-50/80 rounded-xl border-2 border-amber-400 text-center shadow-sm">
+                    <span class="text-[10px] font-black text-amber-700 uppercase tracking-wider block">Total General</span>
+                    <span id="display_total" class="text-xl font-mono font-black text-amber-900"><span class="simbolo-moneda">$</span> 0,00</span>
+                    <input type="hidden" name="total" id="id_total" value="0.00">
+                </div>
+            </div>
+        </div>
+
+        <!-- ACCIONES FINALES -->
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'compras_index' %}"
+                class="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all">
+                Cancelar
+            </a>
+            <button type="submit"
+                class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all">
+                Confirmar Compra y Generar Stock
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleMonedaTrazabilidad(v) {
+        const c = document.getElementById('id_cotizacion_cpra');
+        if (c) {
+            if (v === 'PES') {
+                c.value = "1,0000";
+                c.readOnly = true;
+                c.classList.add('bg-slate-100');
+            } else {
+                c.readOnly = false;
+                c.classList.remove('bg-slate-100');
+                c.focus();
+            }
+        }
+        actualizarSimbolosMoneda();
+    }
+
+    function actualizarSimbolosMoneda() {
+        const v = document.getElementById('id_moneda_cpra')?.value || 'PES';
+        const sim = (v === 'DOL') ? 'USD' : '$';
+        const simWithSpace = (v === 'DOL') ? 'USD ' : '$ ';
+        document.querySelectorAll('.simbolo-moneda').forEach(el => {
+            el.textContent = sim;
+        });
+        const displayNeto = document.getElementById('display_neto');
+        const displayIva = document.getElementById('display_iva');
+        const displayTotal = document.getElementById('display_total');
+        [displayNeto, displayIva, displayTotal].forEach(el => {
+            if (el && el.textContent) {
+                el.textContent = el.textContent.replace(/^(\$|USD)\s*/, simWithSpace);
+            }
+        });
+    }
+
+    function aplicarProductoSeleccionadoTrazabilidad(id, detalle, precio_sugerido) {
+        const idInput = document.getElementById('item_traz_producto_id');
+        const detalleBox = document.getElementById('item_traz_producto_detalle');
+        if (idInput) idInput.value = id;
+        if (detalleBox) {
+            detalleBox.innerHTML = `<span class="text-blue-600 font-black">${detalle}</span>`;
+        }
+        if (precio_sugerido && parseFloat(precio_sugerido) > 0) {
+            const prEl = document.getElementById('item_traz_precio');
+            if (prEl && !prEl.value) {
+                const num = parseFloat(precio_sugerido);
+                prEl.value = num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        }
+        const modal = document.getElementById('modal-container');
+        if (modal) modal.innerHTML = '';
+        const suggestions = document.getElementById('typeahead-traz-results');
+        if (suggestions) suggestions.innerHTML = '';
+        const inputSerie = document.getElementById('item_traz_serie');
+        if (inputSerie) inputSerie.focus();
+    }
+
+    document.body.addEventListener('productoEncontrado', (e) => {
+        aplicarProductoSeleccionadoTrazabilidad(e.detail.id, e.detail.detalle, e.detail.precio_sugerido);
+    });
+
+    // Evento disparado al hacer clic en "Elegir" dentro del modal de búsqueda
+    document.body.addEventListener('productoSeleccionadoDesdeModal', (e) => {
+        aplicarProductoSeleccionadoTrazabilidad(e.detail.id, e.detail.detalle);
+    });
+
+    // Después de que HTMX reemplace la tabla (p.ej. al eliminar un item), re-ejecutar scripts y actualizar moneda
+    document.body.addEventListener('htmx:afterSwap', (e) => {
+        if (e.detail.target && e.detail.target.id === 'tabla-items-compra-trazabilidad') {
+            const scripts = e.detail.target.getElementsByTagName('script');
+            for (let s of scripts) { eval(s.innerHTML); }
+            actualizarSimbolosMoneda();
+        }
+    });
+
+    function agregarItemCompraTrazabilidad() {
+        const prodId = document.getElementById('item_traz_producto_id').value;
+        const serie = (document.getElementById('item_traz_serie')?.value || '').trim();
+        const estado = document.getElementById('item_traz_estado')?.value || 'NUEVO';
+        const cuim = (document.getElementById('item_traz_cuim')?.value || '').trim();
+        const precio = (document.getElementById('item_traz_precio')?.value || '0').trim();
+
+        if (!prodId) {
+            alert('Por favor, seleccione un producto trazable primero.');
+            document.getElementById('item_traz_producto_id').focus();
+            return;
+        }
+        if (!serie) {
+            alert('El Nro. de Serie / Identificador es obligatorio en compra por trazabilidad.');
+            document.getElementById('item_traz_serie').focus();
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('producto_id', prodId);
+        formData.append('serie', serie);
+        formData.append('estado', estado);
+        formData.append('cuim', cuim);
+        formData.append('precio', precio);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch("{% url 'compras_trazabilidad_item_add' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(err => { throw new Error(err); });
+            }
+            return response.text();
+        })
+        .then(html => {
+            const container = document.getElementById('tabla-items-compra-trazabilidad');
+            container.innerHTML = html;
+            // Procesar atributos hx-* del contenido recién insertado (botón eliminar, etc.)
+            htmx.process(container);
+            const scripts = container.getElementsByTagName('script');
+            for (let s of scripts) {
+                eval(s.innerHTML);
+            }
+            if (typeof inicializarFormatoAR === 'function') {
+                inicializarFormatoAR();
+            }
+            actualizarSimbolosMoneda();
+            limpiarInputsTrazabilidadCompra();
+        })
+        .catch(err => {
+            alert(err.message || 'Error al agregar el ítem');
+        });
+    }
+
+    function limpiarInputsTrazabilidadCompra() {
+        document.getElementById('item_traz_producto_id').value = '';
+        const detEl = document.getElementById('item_traz_producto_detalle');
+        if (detEl) {
+            detEl.innerHTML = '<span class="opacity-30">Aguardando selección de producto...</span>';
+        }
+        if (document.getElementById('item_traz_serie')) document.getElementById('item_traz_serie').value = '';
+        if (document.getElementById('item_traz_cuim')) document.getElementById('item_traz_cuim').value = '';
+        document.getElementById('item_traz_precio').value = '';
+        document.getElementById('item_traz_producto_id').focus();
+    }
+
+    document.body.addEventListener('limpiarInputsTrazabilidadCompra', function() {
+        limpiarInputsTrazabilidadCompra();
+    });
+    document.body.addEventListener('clienteVentaSeleccionado', function (e) {
+        const idProv = document.getElementById('id_proveedor');
+        const displayProv = document.getElementById('proveedor_nombre_display');
+        if (idProv && displayProv) {
+            idProv.value = e.detail.id;
+            displayProv.value = e.detail.razon_social + (e.detail.cuit ? ' (CUIT: ' + e.detail.cuit + ')' : '');
+            
+            // Cerrar modal
+            const mc1 = document.getElementById('modal-container');
+            if (mc1) mc1.innerHTML = '';
+        }
+    });
+</script>
+{% endblock %}

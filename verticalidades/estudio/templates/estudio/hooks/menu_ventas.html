@@ -1,0 +1,8 @@
+<a href="{% url 'estudio_actualizar_tarifas' %}"
+    class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'estudio_actualizar_tarifas' %}text-green-400 font-bold{% endif %}">
+    Actualizar Tarifas
+</a>
+<a href="{% url 'estudio_facturacion_lotes' %}"
+    class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'estudio_facturacion_lotes' %}text-green-400 font-bold{% endif %}">
+    Facturación por Lotes
+</a>

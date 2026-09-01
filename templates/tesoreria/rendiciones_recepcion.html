@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Recepción de Rendiciones | Tesorería{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <!-- Header -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic"> Recepción de Rendiciones
+            </h1>
+            <p class="text-xs text-slate-500 mt-1 font-bold">
+                Rendiciones de las cajas mostrador pendientes de recibir en Tesorería.
+            </p>
+        </div>
+        <a href="{% url 'tesoreria_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+    </div>
+    <!-- Listado -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Origen</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Cajero</th>
+                        <th class="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipo</th>
+                        <th class="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Pesos Decl.</th>
+                        <th class="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Dólares Decl.</th>
+                        <th class="px-4 py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for r in rendiciones %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ r.fecha|date:"d/m/Y H:i" }}</td>
+                        <td class="px-4 py-3 text-sm font-bold text-slate-800">{{ r.sucursal_origen.nombre }}</td>
+                        <td class="px-4 py-3 text-sm text-slate-600">{{ r.usuario.username }}</td>
+                        <td class="px-4 py-3 text-sm">
+                            {% if r.tipo == 'C' %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-50 text-red-600">CIERRE</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-600">PARCIAL</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-right font-mono text-slate-700">$ {{ r.efectivo_pesos|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-sm text-right font-mono text-slate-700">US$ {{ r.efectivo_dolares|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button
+                                hx-get="{% url 'rendicion_recibir_modal' r.id %}"
+                                hx-target="#modal-container"
+                                hx-swap="innerHTML"
+                                class="px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 font-bold text-xs rounded transition-colors inline-flex items-center gap-2">
+                                <i class="fa-solid fa-hand-holding-dollar"></i> Recibir
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-12 text-center text-slate-400 text-sm italic">
+                            No hay rendiciones pendientes de recibir.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modal-container"></div>
+{% endblock %}

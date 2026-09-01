@@ -1,0 +1,71 @@
+{% extends 'contable/pdf/base_pdf.html' %}
+
+{% block title %}Libro Mayor PDF{% endblock %}
+{% block report_name %}LIBRO MAYOR CONTABLE{% endblock %}
+
+{% block extra_header %}
+<p><strong>Rango de Cuentas:</strong> Selección múltiple</p>
+{% endblock %}
+
+{% block content %}
+{% if not cuentas_data %}
+<p class="text-center mt-4">No se encontraron movimientos para el rango de cuentas y fechas seleccionado.</p>
+{% else %}
+
+{% for cta_data in cuentas_data %}
+<h3 style="margin-top: 20px; margin-bottom: 10px; background-color: #f3f4f6; padding: 5px;">Cuenta: [{{ cta_data.cuenta.jerarquia }}] - {{ cta_data.cuenta.cuenta }}</h3>
+<table>
+    <thead>
+            <th style="width: 9%">Fecha</th>
+            <th style="width: 10%">Asiento Nº</th>
+            <th style="width: 33%">Concepto / Leyenda</th>
+            <th style="width: 12%" class="text-right">Debe</th>
+            <th style="width: 12%" class="text-right">Haber</th>
+            <th style="width: 14%" class="text-right">Saldo</th>
+            <th style="width: 10%" class="text-center">Cód. Suc.</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Saldo Anterior -->
+        {% if cta_data.saldo_anterior != 0 %}
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="text-right font-bold italic">SALDO ANTERIOR:</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="text-right font-bold">{{ cta_data.saldo_anterior|floatformat:"2g" }}</td>
+            <td>&nbsp;</td>
+        </tr>
+        {% endif %}
+        
+        {% for mov in cta_data.movimientos %}
+            <td>{{ mov.asiento.fecha|date:"d/m/Y" }}</td>
+            <td>{{ mov.asiento.asiento_id }}</td>
+            <td>{% if cta_data.cuenta.imputable == 0 %}<strong>[{{ mov.cuenta.cuenta }}]</strong><br>{% endif %}{{ mov.asiento.concepto }}{% if mov.leyenda %}. {{ mov.leyenda }}{% endif %}</td>
+            <td class="text-right">{% if mov.debe %}{{ mov.debe|floatformat:"2g" }}{% else %}0,00{% endif %}</td>
+            <td class="text-right">{% if mov.haber %}{{ mov.haber|floatformat:"2g" }}{% else %}0,00{% endif %}</td>
+            <td class="text-right font-bold">{{ mov.saldo_acumulado|floatformat:"2g" }}</td>
+            <td class="text-center">{% if mov.asiento.sucursal_id %}{{ mov.asiento.sucursal_id }}{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7" class="text-center">Solo arrastra saldo anterior en el período.</td>
+        </tr>
+        {% endfor %}
+        
+        <!-- Saldo Final -->
+        <tr class="total-row">
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td class="text-right italic font-bold">TOTAL / SALDO FINAL:</td>
+            <td class="text-right font-bold">{{ cta_data.suma_debe|floatformat:"2g" }}</td>
+            <td class="text-right font-bold">{{ cta_data.suma_haber|floatformat:"2g" }}</td>
+            <td class="text-right font-bold">{{ cta_data.saldo_final|floatformat:"2g" }}</td>
+            <td>&nbsp;</td>
+        </tr>
+    </tbody>
+</table>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

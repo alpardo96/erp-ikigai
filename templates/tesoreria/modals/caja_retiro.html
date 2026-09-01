@@ -1,0 +1,156 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" id="retiroModal">
+    <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-700 flex justify-between items-center bg-gray-900 rounded-t-lg">
+            <h3 class="text-xl font-bold text-white">Retiro Parcial de Caja</h3>
+            <button onclick="document.getElementById('retiroModal').remove()" class="text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="formRetiro" onsubmit="procesarRetiro(event)">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Efectivo -->
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <h4 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Efectivo a Retirar</h4>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Pesos ($)</label>
+                                <input type="number" step="0.01" id="retiroEfectivoPesos" class="mt-1 block w-full rounded-md bg-gray-600 border-gray-500 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-right font-mono" value="0.00">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300">Dólares (US$)</label>
+                                <input type="number" step="0.01" id="retiroEfectivoDolares" class="mt-1 block w-full rounded-md bg-gray-600 border-gray-500 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-right font-mono" value="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Observaciones -->
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <h4 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Observaciones</h4>
+                        <textarea id="retiroObservaciones" rows="4" class="block w-full rounded-md bg-gray-600 border-gray-500 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Motivo del retiro o notas adicionales..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Valores y Tarjetas -->
+                <div class="bg-gray-700 p-4 rounded-lg mb-6">
+                    <h4 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Valores y Cupones Disponibles</h4>
+                    <p class="text-sm text-gray-400 mb-4">Seleccione los valores que desea incluir en este retiro hacia la tesorería.</p>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-600">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                        <input type="checkbox" id="selectAllValores" onclick="toggleAllValores(this)" class="rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Detalle</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Importe</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-600">
+                                {% for valor in valores %}
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <input type="checkbox" name="valor_id" value="{{ valor.id }}" class="chk-valor rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
+                                    </td>
+                                    {% if valor.cuenta_bancaria_id %}
+                                    <td class="px-4 py-3 text-sm text-white">Transferencia</td>
+                                    <td class="px-4 py-3 text-sm text-gray-300">CUIT: {{ valor.cuit_emisor|default:"S/D" }} - Titular: {{ valor.titular_emisor|default:"S/D" }}</td>
+                                    {% else %}
+                                    <td class="px-4 py-3 text-sm text-white">Cheque/Valor</td>
+                                    <td class="px-4 py-3 text-sm text-gray-300">{{ valor.banco_entidad.nombre|default:valor.banco }} - Nro: {{ valor.numero_comprobante }}</td>
+                                    {% endif %}
+                                    <td class="px-4 py-3 text-sm text-white text-right font-mono">${{ valor.importe }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% for cupon in cupones %}
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <input type="checkbox" name="cupon_id" value="{{ cupon.id }}" class="chk-cupon rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-white">Cupón Tarjeta</td>
+                                    <td class="px-4 py-3 text-sm text-gray-300">{{ cupon.tarjeta_entidad.nombre|default:cupon.tarjeta }} - Lote: {{ cupon.lote }} - Cupón: {{ cupon.cupon }}</td>
+                                    <td class="px-4 py-3 text-sm text-white text-right font-mono">${{ cupon.importe }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% if not valores and not cupones %}
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400 text-sm italic">
+                                        No hay valores ni cupones pendientes de retiro en esta sucursal.
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 mt-6 border-t border-gray-700 pt-4">
+                    <button type="button" onclick="document.getElementById('retiroModal').remove()" class="px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Confirmar Retiro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleAllValores(source) {
+        let checkboxes = document.querySelectorAll('.chk-valor, .chk-cupon');
+        for(let i=0, n=checkboxes.length;i<n;i++) {
+            checkboxes[i].checked = source.checked;
+        }
+    }
+
+    function procesarRetiro(event) {
+        event.preventDefault();
+        
+        let efectivoPesos = parseFloat(document.getElementById('retiroEfectivoPesos').value) || 0;
+        let efectivoDolares = parseFloat(document.getElementById('retiroEfectivoDolares').value) || 0;
+        let observaciones = document.getElementById('retiroObservaciones').value;
+        
+        let valoresIds = Array.from(document.querySelectorAll('.chk-valor:checked')).map(cb => cb.value);
+        let cuponesIds = Array.from(document.querySelectorAll('.chk-cupon:checked')).map(cb => cb.value);
+        
+        if (efectivoPesos <= 0 && efectivoDolares <= 0 && valoresIds.length === 0 && cuponesIds.length === 0) {
+            alert('Debe ingresar un monto o seleccionar al menos un valor para retirar.');
+            return;
+        }
+        
+        const payload = {
+            efectivo_pesos: efectivoPesos,
+            efectivo_dolares: efectivoDolares,
+            observaciones: observaciones,
+            valores_ids: valoresIds,
+            cupones_ids: cuponesIds
+        };
+        
+        fetch("{% url 'caja_retiro_procesar' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Retiro procesado correctamente.');
+                document.getElementById('retiroModal').remove();
+                window.location.reload();
+            } else {
+                alert('Error al procesar retiro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de red al procesar el retiro.');
+        });
+    }
+</script>

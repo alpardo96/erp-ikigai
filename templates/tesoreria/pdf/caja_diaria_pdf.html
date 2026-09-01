@@ -1,0 +1,144 @@
+{% load formato_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page { size: A4 landscape; margin: 1.2cm 1cm; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 7.5pt; color: #111; }
+        .titulo { font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 2px; }
+        .subtitulo { font-size: 8pt; text-align: center; color: #555; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background-color: #1e3a8a; color: #fff; padding: 3px 4px; font-size: 7pt; text-align: right; }
+        th.izq { text-align: left; }
+        td { padding: 2px 4px; text-align: right; border-bottom: 0.5px solid #e2e8f0; }
+        td.izq { text-align: left; }
+        .seccion { background-color: #334155; color: #fff; font-weight: bold; padding: 4px; font-size: 8.5pt; text-align: left; }
+        .cuenta { background-color: #f1f5f9; font-weight: bold; padding: 3px 4px; text-align: left; }
+        .subtotal td { border-top: 0.5px solid #94a3b8; font-weight: bold; background-color: #f8fafc; }
+        .total td { border-top: 1px solid #1e3a8a; border-bottom: 1px solid #1e3a8a; font-weight: bold; background-color: #e0e7ff; }
+        .saldos { margin-top: 14px; }
+        .saldos th { background-color: #334155; }
+        .saldos td { padding: 3px 4px; }
+        .saldos .etiqueta { text-align: left; font-weight: bold; background-color: #f1f5f9; }
+        .neto { background-color: #e0e7ff; font-weight: bold; }
+        .pie { margin-top: 8px; font-size: 6.5pt; color: #666; text-align: right; }
+    </style>
+</head>
+<body>
+
+<div class="titulo">{{ titulo }}</div>
+<div class="subtitulo">Emisión: {{ fecha_emision|date:"d/m/Y H:i" }}</div>
+
+<table>
+    <thead>
+        <tr>
+            <th class="izq" style="width:6%">Asto.</th>
+            <th class="izq" style="width:26%">Cliente / Proveedor</th>
+            <th class="izq" style="width:26%">Concepto</th>
+            <th style="width:9%">Efectivo</th>
+            <th style="width:9%">Dólares</th>
+            <th style="width:8%">Banco</th>
+            <th style="width:8%">Valores</th>
+            <th style="width:8%">Tarjetas</th>
+            <th style="width:9%">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for seccion in secciones %}
+            <tr><td colspan="9" class="seccion">{{ seccion.titulo }}</td></tr>
+
+            {% for grupo in seccion.grupos %}
+                <tr><td colspan="9" class="cuenta">{{ grupo.jerarquia }} - {{ grupo.cuenta }}</td></tr>
+
+                {% for mov in grupo.movimientos %}
+                    <tr>
+                        <td class="izq">{{ mov.asiento_id|default:"—" }}</td>
+                        <td class="izq">{{ mov.razon|truncatechars:38 }}</td>
+                        <td class="izq">{{ mov.descripcion|truncatechars:38 }}</td>
+                        <td>{{ mov.efectivo|formato_ar }}</td>
+                        <td>{{ mov.dolares|formato_ar }}</td>
+                        <td>{{ mov.banco|formato_ar }}</td>
+                        <td>{{ mov.valores|formato_ar }}</td>
+                        <td>{{ mov.tarjetas|formato_ar }}</td>
+                        <td>{{ mov.total|formato_ar }}</td>
+                    </tr>
+                {% endfor %}
+
+                <tr class="subtotal">
+                    <td colspan="3" class="izq">SUB-TOTAL {{ grupo.cuenta|truncatechars:46 }}</td>
+                    <td>{{ grupo.subtotal.efectivo|formato_ar }}</td>
+                    <td>{{ grupo.subtotal.dolares|formato_ar }}</td>
+                    <td>{{ grupo.subtotal.banco|formato_ar }}</td>
+                    <td>{{ grupo.subtotal.valores|formato_ar }}</td>
+                    <td>{{ grupo.subtotal.tarjetas|formato_ar }}</td>
+                    <td>{{ grupo.subtotal.total|formato_ar }}</td>
+                </tr>
+            {% endfor %}
+
+            <tr class="total">
+                <td colspan="3" class="izq">TOTAL {{ seccion.titulo }}</td>
+                <td>{{ seccion.total.efectivo|formato_ar }}</td>
+                <td>{{ seccion.total.dolares|formato_ar }}</td>
+                <td>{{ seccion.total.banco|formato_ar }}</td>
+                <td>{{ seccion.total.valores|formato_ar }}</td>
+                <td>{{ seccion.total.tarjetas|formato_ar }}</td>
+                <td>{{ seccion.total.total|formato_ar }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="9" style="text-align:center; padding:20px; color:#888;">Sin movimientos registrados.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<table class="saldos">
+    <thead>
+        <tr>
+            <th class="izq" style="width:22%"></th>
+            <th>Efectivo</th>
+            <th>Dólares</th>
+            <th>Valores</th>
+            <th>Banco</th>
+            <th>Tarjetas</th>
+            <th>Otros</th>
+            <th class="neto">Neto</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="etiqueta">Saldos Iniciales</td>
+            <td>{{ saldos.inicial.efectivo|formato_ar }}</td>
+            <td>{{ saldos.inicial.dolares|formato_ar }}</td>
+            <td>{{ saldos.inicial.valores|formato_ar }}</td>
+            <td>—</td><td>—</td><td>—</td>
+            <td class="neto">{{ saldos.inicial.neto|formato_ar }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">Movimientos</td>
+            <td>{{ saldos.movimiento.efectivo|formato_ar }}</td>
+            <td>{{ saldos.movimiento.dolares|formato_ar }}</td>
+            <td>{{ saldos.movimiento.valores|formato_ar }}</td>
+            <td>{{ saldos.movimiento.banco|formato_ar }}</td>
+            <td>{{ saldos.movimiento.tarjetas|formato_ar }}</td>
+            <td>{{ saldos.movimiento.otros|formato_ar }}</td>
+            <td class="neto">{{ saldos.movimiento.neto|formato_ar }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">Saldos Finales</td>
+            <td>{{ saldos.final.efectivo|formato_ar }}</td>
+            <td>{{ saldos.final.dolares|formato_ar }}</td>
+            <td>{{ saldos.final.valores|formato_ar }}</td>
+            <td>—</td><td>—</td><td>—</td>
+            <td class="neto">{{ saldos.final.neto|formato_ar }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="pie">
+    Ingresos: {{ saldos.movimiento.ingresos|formato_ar }} &nbsp;|&nbsp;
+    Egresos: {{ saldos.movimiento.egresos|formato_ar }} &nbsp;|&nbsp;
+    Saldo disponible = Efectivo + Dólares + Valores.
+</div>
+
+</body>
+</html>

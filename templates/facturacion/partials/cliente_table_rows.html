@@ -1,0 +1,73 @@
+{% for cliente in clientes %}
+<tr class="hover:bg-gray-50 transition-colors group">
+    <td class="col-id whitespace-nowrap py-4 pl-6 pr-3 text-sm font-bold text-gray-900">#{{ cliente.codigo_id }}</td>
+    <td class="col-razon whitespace-nowrap px-3 py-4 text-sm text-gray-700 font-medium">{{ cliente.razon_social }}</td>
+    <td class="col-tipodoc whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.tipo_documento }}</td>
+    <td class="col-cuit whitespace-nowrap px-3 py-4 text-sm text-gray-500 font-mono">{{ cliente.cuit|default:"--" }}
+    </td>
+    <td class="col-tipo whitespace-nowrap px-3 py-4 text-sm">
+        {% if cliente.tipo_entidad == 1 %}
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            Cliente
+        </span>
+        {% else %}
+        <span
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+            Proveedor
+        </span>
+        {% endif %}
+    </td>
+    {% hook_ui 'cliente_table_cells' cliente=cliente %}
+    <td class="col-domicilio whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.domicilio|default:"--" }}
+    </td>
+    <td class="col-cp whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.codigo_postal|default:"--" }}</td>
+    <td class="col-localidad whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.localidad|default:"--" }}
+    </td>
+    <td class="col-jurisdiccion whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.jurisdiccion.nombre|default:"--" }}</td>
+    <td class="col-contacto whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.contacto|default:"--" }}</td>
+    <td class="col-telefono whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.telefono|default:"--" }}</td>
+    <td class="col-correo whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.correo|default:"--" }}</td>
+    <td class="col-iva whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.condicion_iva }}</td>
+    <td class="col-iibb whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.get_tipo_iibb_display }}</td>
+    <td class="col-saldo-ini whitespace-nowrap px-3 py-4 text-sm text-gray-500">${{ cliente.saldo_inicial }}</td>
+    <td
+        class="col-saldo whitespace-nowrap px-3 py-4 text-sm font-bold {% if cliente.saldo < 0 %}text-red-600{% else %}text-green-600{% endif %}">
+        ${{ cliente.saldo }}
+    </td>
+    <td class="col-limite whitespace-nowrap px-3 py-4 text-sm text-gray-500">${{ cliente.limite }}</td>
+    <td class="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
+        <div class="flex items-center justify-end space-x-2">
+            <button hx-get="{% url 'cliente_edit' cliente.codigo_id %}" hx-target="#modal-container"
+                class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-xl transition-all shadow-sm">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                    </path>
+                </svg>
+            </button>
+            <button hx-post="{% url 'cliente_delete' cliente.codigo_id %}"
+                hx-confirm="¿Estás seguro de eliminar a {{ cliente.razon_social }}? Esta acción no se puede deshacer."
+                class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2.5 rounded-xl transition-all shadow-sm">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="18" class="px-6 py-12 text-center text-gray-500 text-sm italic">
+        <div class="flex flex-col items-center">
+            <svg class="h-12 w-12 text-gray-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                </path>
+            </svg>
+            No se encontraron clientes o proveedores registrados.
+        </div>
+    </td>
+</tr>
+{% endfor %}

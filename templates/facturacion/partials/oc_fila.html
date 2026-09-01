@@ -1,0 +1,35 @@
+{% load l10n %}
+<tr class="hover:bg-blue-50 transition-colors {% if oc.estado == 3 %}opacity-50 bg-slate-50{% endif %}">
+    <td class="px-4 py-2 font-bold text-slate-600">{{ oc.fecha|date:"d/m/Y" }}</td>
+    <td class="px-4 py-2 font-black text-slate-800">{{ oc.punto|stringformat:"04d" }}-{{ oc.numero|stringformat:"08d" }}</td>
+    <td class="px-4 py-2 uppercase text-slate-700">{{ oc.proveedor.razon_social }}</td>
+    <td class="px-4 py-2 text-right font-black tabular-nums">$ {{ oc.total|floatformat:2 }}</td>
+    <td class="px-4 py-2 text-center">
+        {% if oc.estado == 0 %}<span class="text-[9px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full uppercase">Borrador</span>
+        {% elif oc.estado == 1 %}<span class="text-[9px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">Confirmada</span>
+        {% elif oc.estado == 2 %}<span class="text-[9px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase">Cerrada</span>
+        {% else %}<span class="text-[9px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase">Anulada</span>{% endif %}
+    </td>
+    <td class="px-4 py-2 text-center text-[9px] font-black uppercase">
+        <span class="{% if oc.estado_recepcion == 3 %}text-red-600{% elif oc.estado_recepcion == 2 %}text-green-600{% elif oc.estado_recepcion == 1 %}text-amber-600{% else %}text-slate-400{% endif %}">R: {{ oc.get_estado_recepcion_display }}</span>
+        <span class="text-slate-300">·</span>
+        <span class="{% if oc.estado_facturacion == 3 %}text-red-600{% elif oc.estado_facturacion == 2 %}text-green-600{% elif oc.estado_facturacion == 1 %}text-amber-600{% else %}text-slate-400{% endif %}">F: {{ oc.get_estado_facturacion_display }}</span>
+    </td>
+    <td class="px-4 py-2 text-center whitespace-nowrap">
+        <a href="{% url 'oc_legajo' oc.oc_id %}" class="text-slate-400 hover:text-indigo-600 transition-colors inline-block align-middle mr-2" title="Legajo de la OC">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+        </a>
+        <a href="{% url 'oc_imprimir' oc.oc_id %}" target="_blank" class="text-slate-400 hover:text-blue-600 transition-colors inline-block align-middle" title="Imprimir OC">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        </a>
+        {% if oc.estado != 3 and oc.estado_recepcion == 0 and oc.estado_facturacion == 0 %}
+        <button type="button"
+                hx-post="{% url 'oc_baja' oc.oc_id %}"
+                hx-confirm="¿Anular la Orden de Compra {{ oc.punto|stringformat:'04d' }}-{{ oc.numero|stringformat:'08d' }}? El número se conserva en la serie."
+                hx-target="closest tr" hx-swap="outerHTML"
+                class="text-red-400 hover:text-red-600 transition-colors align-middle ml-2" title="Anular OC">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+        </button>
+        {% endif %}
+    </td>
+</tr>

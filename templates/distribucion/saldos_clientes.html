@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Clientes a Cobrar | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-start border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Clientes a Cobrar</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Agrupado por vendedor: es el responsable directo del saldo de su cartera.
+            </p>
+        </div>
+        <div class="text-right">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total a cobrar</div>
+            <div class="text-2xl font-black text-slate-900">$ {{ datos.total|formato_ar }}</div>
+        </div>
+    </div>
+
+    <form method="get" class="rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vendedor</label>
+                <select name="vendedor" class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    <option value="">Todos</option>
+                    {% for v in vendedores %}
+                    <option value="{{ v.id }}" {% if filtros.vendedor == v.id|stringformat:"s" %}selected{% endif %}>{{ v.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Zona</label>
+                <select name="zona" class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    <option value="">Todas</option>
+                    {% for z in zonas %}
+                    <option value="{{ z.id }}" {% if filtros.zona == z.id|stringformat:"s" %}selected{% endif %}>{{ z.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Día de visita</label>
+                <select name="dia" class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    <option value="">Todos</option>
+                    {% for valor, etiqueta in dias %}
+                    <option value="{{ valor }}" {% if filtros.dia == valor|stringformat:"s" %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end gap-4">
+                {% comment %}
+                Filtro de condición obligatorio en todo reporte con importes (regla del proyecto).
+                {% endcomment %}
+                <label class="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" name="condic" value="1" {% if '1' in filtros.condics %}checked{% endif %}
+                           class="rounded border-slate-300"> Real
+                </label>
+                <label class="flex items-center gap-1.5 text-xs text-slate-600">
+                    <input type="checkbox" name="condic" value="2" {% if '2' in filtros.condics %}checked{% endif %}
+                           class="rounded border-slate-300"> Presupuestado
+                </label>
+                <button type="submit" class="ml-auto px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">
+                    Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+        <div class="flex flex-wrap gap-6 text-xs">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest self-center">Antigüedad</span>
+            {% for etiqueta, importe in datos.tramos %}
+            <span class="text-slate-500">{{ etiqueta }} días:
+                <strong class="text-slate-900">$ {{ importe|formato_ar }}</strong></span>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% for grupo in datos.grupos %}
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+            <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">
+                {{ grupo.vendedor.nombre|default:"Sin vendedor asignado" }}
+            </h2>
+            <span class="text-sm font-black text-slate-900">$ {{ grupo.total|formato_ar }}</span>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-white">
+                <tr>
+                    <th class="py-2 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                    <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Límite</th>
+                    <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo operativo</th>
+                    <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Disponible</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Composición</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for f in grupo.clientes %}
+                <tr>
+                    <td class="py-2.5 pl-6 pr-3 align-top">
+                        <div class="text-sm font-bold text-slate-800">{{ f.cliente.razon_social }}</div>
+                        <div class="text-[10px] text-slate-400 font-mono">#{{ f.cliente.codigo_id }}</div>
+                    </td>
+                    <td class="px-3 py-2.5 text-sm text-right font-mono text-slate-500 align-top">$ {{ f.limite|formato_ar }}</td>
+                    <td class="px-3 py-2.5 text-sm text-right font-mono font-black align-top">$ {{ f.saldo|formato_ar }}</td>
+                    <td class="px-3 py-2.5 text-sm text-right font-mono align-top {% if f.disponible < 0 %}text-red-600 font-black{% else %}text-slate-500{% endif %}">
+                        $ {{ f.disponible|formato_ar }}
+                    </td>
+                    <td class="px-3 py-2.5 align-top">
+                        <div class="space-y-0.5">
+                            {% for c in f.comprobantes %}
+                            <div class="text-[11px] font-mono flex items-center gap-2">
+                                <span class="text-slate-600">
+                                    {{ c.venta.tipo.detalle }}
+                                    {{ c.venta.punto|stringformat:"04d" }}-{{ c.venta.numero|stringformat:"08d" }}
+                                </span>
+                                <span class="text-slate-400">{{ c.venta.fecha|date:"d/m/y" }}</span>
+                                <span class="text-slate-400">{{ c.dias }} d ({{ c.tramo }})</span>
+                                <span class="font-bold text-slate-800">$ {{ c.saldo|formato_ar }}</span>
+                                {% if c.solo_efectivo %}
+                                <span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-800"
+                                      title="Un PRE no se cancela con una transferencia">SÓLO EFECTIVO</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% empty %}
+    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm px-6 py-12 text-center">
+        <p class="text-sm text-slate-400 italic">No hay clientes con saldo para los filtros elegidos.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+## Promp para cada IA
+# Si abrís a Claude Opus (Estrategia):
+
+"Actúa como el Arquitecto Estratégico (El Jefe). Por favor, lee tu base de conocimiento en docs/Documento_integral_ERP_Ikigai_v0_GPT.md. [Acá le hacés tu pregunta estratégica, ej: ¿Cómo encaramos la migración?]"
+
+
+# Si me abrís a mí, Gemini (Diseño de Módulos):
+
+"Actúa como el Diseñador Modular (El Patrón). Por favor, lee docs/GUIA_MODULAR.md para ver el estado, y luego revisemos el plan docs/planes/[NOMBRE_DEL_PLAN].md. Necesito que definas los modelos de datos y los servicios para este módulo."
+
+
+# Si abrís a Codex (Código puro):
+
+"Actúa como Desarrollador Senior. Lee el plan técnico en docs/planes/[NOMBRE_DEL_PLAN].md. No cambies la arquitectura. Necesito que escribas el código exacto indicado en el plan. Al terminar, actualizá docs/walkthrough.txt."

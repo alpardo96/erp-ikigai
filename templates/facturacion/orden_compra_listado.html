@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Listado de Órdenes de Compra{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4">
+
+    <!-- TÍTULO -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Órdenes de Compra</h1>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'correlativos_auditoria' %}"
+               class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-black px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest shadow transition-all">
+                Auditar correlativos
+            </a>
+            <a href="{% url 'oc_carga' %}"
+               class="bg-blue-600 hover:bg-blue-500 text-white font-black px-4 py-2 rounded-lg text-[10px] uppercase tracking-widest shadow transition-all">
+                + Nueva Orden
+            </a>
+            <a href="{% url 'compras_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-wrap items-end gap-3 italic">
+        <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Desde</label>
+            <input type="date" name="desde" value="{{ desde }}" class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+        </div>
+        <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Hasta</label>
+            <input type="date" name="hasta" value="{{ hasta }}" class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+        </div>
+        <div class="min-w-[240px]">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Proveedor</label>
+            <select name="proveedor" class="w-full h-8 px-1 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none cursor-pointer shadow-inner py-0 leading-8">
+                <option value="">Todos los proveedores</option>
+                {% for p in proveedores %}
+                <option value="{{ p.pk }}" {% if p.pk|stringformat:'s' == proveedor_id %}selected{% endif %}>{{ p.razon_social }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Estado</label>
+            <select name="estado" class="w-full h-8 px-1 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none cursor-pointer shadow-inner py-0 leading-8">
+                <option value="">Todos</option>
+                {% for val, txt in ESTADOS %}
+                <option value="{{ val }}" {% if estado == val|stringformat:'s' %}selected{% endif %}>{{ txt }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="h-9 px-5 bg-slate-900 hover:bg-slate-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow transition-all">Filtrar</button>
+        <a href="{% url 'oc_listado' %}" class="h-9 flex items-center px-4 text-slate-400 hover:text-slate-700 font-black text-[10px] uppercase tracking-widest">Limpiar</a>
+    </form>
+
+    <!-- TABLA -->
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic"
+         hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <table class="w-full text-left text-[12px]">
+            <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
+                <tr>
+                    <th class="px-4 py-2">Fecha</th>
+                    <th class="px-4 py-2">N° OC</th>
+                    <th class="px-4 py-2">Proveedor</th>
+                    <th class="px-4 py-2 text-right">Total Est.</th>
+                    <th class="px-4 py-2 text-center">Estado</th>
+                    <th class="px-4 py-2 text-center">Avance</th>
+                    <th class="px-4 py-2 text-center">Acción</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for oc in ordenes %}
+                    {% include 'facturacion/partials/oc_fila.html' with oc=oc %}
+                {% empty %}
+                <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay órdenes de compra para los filtros seleccionados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Carga de Preventa | Diseño Profesional{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <!-- TITULO Y USUARIO -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Generar Preventa</h1>
+            <span
+                class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                VENDEDOR: {{ user.username }}
+            </span>
+        </div>
+        <a href="{% url 'ventas_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </a>
+    </div>
+
+    <form method="post" id="preventa-form" class="space-y-2">
+        {% csrf_token %}
+
+        <!-- BLOQUE 1: CABECERA COMPACTA -->
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible italic">
+            <div class="bg-slate-900 px-3 py-1 flex justify-between items-center rounded-t-lg">
+                <h2 class="text-[9px] font-black text-white uppercase tracking-widest">01. Identificación del Cliente</h2>
+                <div class="text-[9px] font-bold text-gray-400 uppercase">
+                    SUCURSAL: {{ request.session.sucursal_nombre|default:"GENERAL" }}
+                </div>
+            </div>
+
+            <div class="p-2 grid grid-cols-12 gap-2">
+                <!-- Fila 1 -->
+                <div class="col-span-12 lg:col-span-12 flex flex-wrap items-center gap-4">
+
+                    <div class="flex-1 max-w-sm">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Cliente / Razón Social</label>
+                        <div class="relative flex gap-1" x-data="{ open: false }">
+                            <!-- Input oculto para el ID real que va al form -->
+                            <input type="hidden" id="id_cliente" name="cliente" required value="1"
+                                hx-get="{% url 'preventas_cliente_info' %}" hx-trigger="change" hx-target="#cliente_clu_info">
+
+                            <!-- Input visual (Ahora editable) -->
+                            <input type="text" id="cliente_nombre_display" name="q"
+                                class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none focus:border-indigo-500 focus:bg-white placeholder:text-slate-400"
+                                placeholder="Tipee Consumidor Final o busque..."
+                                hx-get="{% url 'typeahead_clientes' %}" 
+                                hx-trigger="keyup changed delay:300ms, search, focus" 
+                                hx-target="#cliente_suggestions"
+                                autocomplete="off"
+                                @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                                oninput="if(this.value === '') { document.getElementById('id_cliente').value = ''; }">
+                            
+                            <!-- Botón Buscar Cliente -->
+                            <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}"
+                                hx-target="#modal-container"
+                                class="w-8 h-8 shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-all cursor-pointer shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+
+                            <!-- Botón Alta Rápida -->
+                            <button type="button" hx-get="{% url 'cliente_add' %}?origen=preventa"
+                                hx-target="#modal-container"
+                                class="w-8 h-8 shrink-0 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-all cursor-pointer shadow-sm"
+                                title="Alta rápida de cliente">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            </button>
+
+                            <!-- Dropdown Suggestions -->
+                            <div x-show="open" id="cliente_suggestions" 
+                                 class="absolute z-50 left-0 top-full mt-1 w-[350px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                                 style="display: none;">
+                            </div>
+                        </div>
+                        
+                        <!-- Checkbox Consumidor Final (Consumo Propio) -->
+                        <div class="mt-1.5 flex items-center">
+                            <label class="flex items-center gap-2 cursor-pointer select-none bg-slate-50 hover:bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 transition-colors">
+                                <input type="checkbox" name="es_consumidor_final" id="id_es_consumidor_final" value="1"
+                                    class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer">
+                                <span class="text-[10px] font-bold text-slate-700 uppercase tracking-tight">
+                                    Facturar como Consumidor Final (Factura B)
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 min-w-[200px] max-w-xs">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Vendedor Asignado</label>
+                        {{ form.vendedor }}
+                    </div>
+
+                    {% comment %}
+                    La fecha de la preventa la determina el SISTEMA (`Preventa.fecha` es
+                    `auto_now_add`): no se edita ni se muestra, porque es siempre la del día
+                    de carga y ocupar espacio de pantalla con un dato que no se decide no
+                    aporta nada al operador.
+                    {% endcomment %}
+
+                    {% if is_armeria %}
+                    <div id="cliente_clu_info" class="flex items-center">
+                        <!-- El info del CLU cargará aquí vía HTMX -->
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if is_distribuidora %}
+                <!-- Distribución (Plan 074): condición de facturación, entrega y el panel
+                     de crédito del cliente, que es con lo que el vendedor decide la venta. -->
+                <div class="col-span-12 mt-3 flex flex-wrap items-end gap-4">
+                    <div class="w-44">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Se facturará como</label>
+                        <select name="condic_destino"
+                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none focus:border-indigo-500 focus:bg-white">
+                            <option value="1">Factura (Real)</option>
+                            <option value="2">PRE (Presupuestado)</option>
+                        </select>
+                    </div>
+                    <div class="w-44">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Fecha de Entrega</label>
+                        <input type="date" name="fecha_entrega"
+                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none focus:border-indigo-500 focus:bg-white">
+                    </div>
+                    <div class="flex-1 min-w-[220px]">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Observaciones del Pedido</label>
+                        <input type="text" name="observaciones_pedido" maxlength="255"
+                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] text-slate-900 outline-none focus:border-indigo-500 focus:bg-white"
+                            placeholder="Indicaciones de entrega, aclaraciones...">
+                    </div>
+                </div>
+                <div class="col-span-12 mt-3">
+                    <div id="cliente_clu_info">
+                        <!-- El panel de crédito del cliente carga acá vía HTMX -->
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- BLOQUE 2: CARGA RÁPIDA COMPACTA -->
+        <div id="bloque-carga-rapida"
+            class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible border-t-2 border-t-blue-600 animate-in fade-in duration-300">
+            <div class="bg-slate-50 p-2 flex items-end gap-2 italic font-bold rounded-t-lg">
+                <!-- ID -->
+                <div class="w-32 relative" x-data="{ open: false }">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Cód/Desc/ID</label>
+                    <div class="relative">
+                        <input type="text" id="quick_producto_id" name="producto_id" autofocus
+                            hx-get="{% url 'typeahead_productos_venta' %}" 
+                            hx-trigger="keyup changed delay:300ms, search, focus" 
+                            hx-vals='js:{q: document.getElementById("quick_producto_id").value}'
+                            hx-target="#producto_suggestions"
+                            autocomplete="off"
+                            @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                            class="w-full h-8 pl-2 pr-7 bg-white border border-slate-300 rounded text-[11px] font-black text-blue-600 outline-none focus:border-blue-500 uppercase"
+                            placeholder="Buscar..."
+                            onkeydown="if(event.key === 'Enter') { 
+                                htmx.ajax('GET', '{% url 'ventas_producto_buscar_codigo' %}', {values: {q: this.value}, source: this}); 
+                                open = false; 
+                                event.preventDefault();
+                                return false; 
+                            }">
+                        <button type="button" hx-get="{% url 'ventas_producto_buscar_modal' %}"
+                            hx-target="#modal-container"
+                            class="absolute right-1.5 top-1.5 text-slate-300 hover:text-blue-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Dropdown Suggestions -->
+                    <div x-show="open" id="producto_suggestions" 
+                         class="absolute z-50 left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                         style="display: none;">
+                    </div>
+                </div>
+
+                <!-- Detalle -->
+                <div class="flex-1">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Descripción</label>
+                    <div id="quick_producto_detalle"
+                        class="w-full h-8 px-3 bg-slate-100 border border-slate-200 rounded flex items-center text-[10px] font-black text-slate-700 uppercase italic truncate shadow-inner">
+                        <span class="opacity-30">Aguardando...</span>
+                    </div>
+                </div>
+
+                <!-- Credencial -->
+                <div id="div_credencial" class="w-24 hidden">
+                    <label class="block text-[9px] font-black text-red-500 uppercase mb-0.5 text-center">Credencial</label>
+                    <input type="text" id="quick_credencial" name="credencial" minlength="7"
+                        onblur="if(this.required && this.value.length > 0 && this.value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => this.focus(), 10); }"
+                        class="w-full h-8 px-2 bg-red-50 border border-red-300 rounded text-xs font-black text-red-900 outline-none uppercase placeholder:text-red-300"
+                        placeholder="OBLIGATORIO">
+                </div>
+
+                <!-- Cantidad -->
+                <div class="w-16">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Cant.</label>
+                    <input type="text" id="quick_cantidad" name="cantidad" value="1"
+                        class="w-full h-8 bg-white border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR">
+                </div>
+
+                <!-- Precio -->
+                <div class="w-28">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-right">Pcio. Lista ($)</label>
+                    <input type="text" id="quick_precio" name="precio"
+                        class="w-full h-8 px-2 bg-white border border-slate-300 rounded text-xs font-black text-right outline-none fInputAR text-slate-900"
+                        placeholder="0,00">
+                </div>
+
+                <!-- Descuento -->
+                <div class="w-20">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Desc (%)</label>
+                    <input type="text" id="quick_descuento" name="descuento" value="0"
+                        class="w-full h-8 px-2 bg-white border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR"
+                        placeholder="0">
+                </div>
+
+                <!-- Botón Añadir -->
+                <div class="w-20">
+                    <button type="button" hx-post="{% url 'preventas_item_add' %}" hx-target="#items-tabla-container"
+                        hx-include="#preventa-form"
+                        class="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white font-black rounded text-[9px] uppercase tracking-widest shadow-sm transition-all">
+                        AÑADIR
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRILLA DE RESULTADOS -->
+        <div id="items-tabla-container"
+            class="bg-white min-h-[350px] mt-4 rounded-xl shadow-md border border-slate-200 overflow-hidden"
+            hx-get="{% url 'preventas_item_add' %}" hx-trigger="load">
+        </div>
+
+        <!-- SECCIÓN DE CIERRE COMPACTA -->
+        <div class="grid grid-cols-12 gap-2 mt-4">
+            <div class="col-span-12 lg:col-span-8 bg-white rounded-lg border border-slate-200 p-2 italic flex flex-col justify-end">
+                <div class="text-xs font-black text-red-600 hidden" id="warning_autorizacion">
+                    ⚠️ Esta preventa superó el límite de descuento en algunos ítems y quedará PENDIENTE DE AUTORIZACIÓN.
+                </div>
+            </div>
+
+            <!-- TOTAL FINAL -->
+            <div
+                class="col-span-12 lg:col-span-4 bg-slate-900 rounded-lg p-3 text-white flex flex-col justify-between italic shadow-xl border-t-4 border-blue-600">
+                <div class="text-center py-2">
+                    <span class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mb-2 block">Total Preventa</span>
+                    <div class="flex items-center justify-center gap-2">
+                        <span class="text-xl font-bold text-slate-500">$</span>
+                        <div id="display_total"
+                            class="text-4xl lg:text-5xl font-black tabular-nums text-white tracking-tighter drop-shadow-md">
+                            0,00</div>
+                    </div>
+                </div>
+                <input type="hidden" name="total" id="id_total" value="0.00">
+                <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black h-14 rounded-lg text-xs uppercase tracking-widest mt-2 shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 border-b-4 border-blue-800">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Confirmar Preventa
+                </button>
+            </div>
+        </div>
+    </form>
+    <style>
+        [x-cloak] { display: none !important; }
+        .fInputAR.valor-cero { color: #cbd5e1 !important; font-weight: normal !important; }
+    </style>
+</div>
+
+{% block extra_js %}
+<script>
+    let unidadPrecioSugerido = 0;
+
+    // Inicialización y formateo de .fInputAR centralizados en static/js/formato_ar.js (global, uniforme).
+
+    function parseAR(val) {
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(/\./g, '').replace(',', '.'));
+    }
+
+    function fMiles(n) {
+        return parseFloat(n).toLocaleString('es-AR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    // EVENTO CLIENTE SELECCIONADO (Desde el modal)
+    document.body.addEventListener('clienteVentaSeleccionado', (e) => {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+
+        const inputId = document.getElementById('id_cliente');
+        inputId.value = e.detail.id;
+        document.getElementById('cliente_nombre_display').value = e.detail.razon_social;
+        
+        // Disparar escape para cerrar el dropdown si está abierto
+        document.getElementById('cliente_nombre_display').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
+        
+        // Disparar HTMX para CLU si corresponde
+        htmx.trigger(inputId, 'change');
+    });
+
+    // EVENTO PRODUCTO SELECCIONADO
+    document.body.addEventListener('productoVentaEncontrado', (e) => {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+
+        const data = e.detail;
+        unidadPrecioSugerido = data.precio_sugerido; 
+        
+        document.getElementById('quick_producto_id').value = data.id;
+        document.getElementById('quick_producto_detalle').innerText = data.detalle;
+        document.getElementById('quick_precio').value = fMiles(unidadPrecioSugerido);
+        document.getElementById('quick_descuento').value = "0";
+
+        const divCred = document.getElementById('div_credencial');
+        const inputCred = document.getElementById('quick_credencial');
+
+        if (data.requiere_credencial) {
+            divCred.classList.remove('hidden');
+            inputCred.required = true;
+            inputCred.value = '';
+            setTimeout(() => inputCred.focus(), 50);
+        } else {
+            divCred.classList.add('hidden');
+            inputCred.required = false;
+            inputCred.value = '';
+            setTimeout(() => document.getElementById('quick_cantidad').focus(), 50);
+        }
+    });
+
+    document.body.addEventListener('limpiarInputsCargaPreventa', () => {
+        unidadPrecioSugerido = 0;
+        document.getElementById('quick_producto_id').value = '';
+        document.getElementById('quick_producto_detalle').innerText = 'Aguardando selección de producto...';
+        document.getElementById('quick_cantidad').value = '1';
+        document.getElementById('quick_precio').value = '';
+        document.getElementById('quick_descuento').value = '0';
+        const divCred = document.getElementById('div_credencial');
+        const inputCred = document.getElementById('quick_credencial');
+        if (divCred) divCred.classList.add('hidden');
+        if (inputCred) { inputCred.required = false; inputCred.value = ''; }
+        document.getElementById('quick_producto_id').focus();
+    });
+
+    document.body.addEventListener('actualizarTotalesPreventa', (e) => {
+        const total = e.detail.total;
+        const requiere_aut = e.detail.requiere_autorizacion;
+        document.getElementById('display_total').innerText = fMiles(total);
+        document.getElementById('id_total').value = total;
+
+        const warning = document.getElementById('warning_autorizacion');
+        if (warning) {
+            if (requiere_aut) warning.classList.remove('hidden');
+            else warning.classList.add('hidden');
+        }
+    });
+
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        const fieldsToClean = ['precio', 'cantidad', 'descuento'];
+        fieldsToClean.forEach(field => {
+            if (event.detail.parameters && event.detail.parameters[field]) {
+                event.detail.parameters[field] = event.detail.parameters[field].toString().replace(/\./g, '').replace(',', '.');
+            }
+        });
+    });
+
+    // Bloquear el Enter para evitar envíos accidentales
+    const form = document.getElementById('preventa-form');
+    if (form) {
+        form.addEventListener('keydown', function (e) {
+            if (e.keyCode === 13 && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+</script>
+{% endblock %}
+{% endblock %}

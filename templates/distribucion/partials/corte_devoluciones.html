@@ -1,0 +1,34 @@
+{% load formato_tags %}
+{% comment %}
+Un corte del reporte de devoluciones. Ordenado de mayor a menor importe: el reporte tiene
+que empezar por lo que más pesa, no por lo que viene primero alfabéticamente.
+La barra de porcentaje está para que la concentración se vea sin leer los números.
+{% endcomment %}
+<table class="min-w-full divide-y divide-gray-200">
+    <tbody class="divide-y divide-gray-100">
+        {% for f in filas %}
+        <tr>
+            <td class="py-2 pl-6 pr-3">
+                <div class="text-sm text-slate-800">
+                    {{ f.entidad|default:"Sin identificar" }}
+                </div>
+                <div class="mt-1 h-1 w-full max-w-[10rem] bg-slate-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-400 rounded-full" style="width: {{ f.porcentaje|floatformat:0 }}%"></div>
+                </div>
+            </td>
+            <td class="px-3 py-2 text-[11px] text-slate-400 text-right whitespace-nowrap">
+                {{ f.casos }} caso{{ f.casos|pluralize:"s" }}<br>
+                {{ f.cantidad|formato_ar }} u.
+            </td>
+            <td class="px-3 py-2 text-sm text-right font-mono font-black whitespace-nowrap">
+                $ {{ f.importe|formato_ar }}
+            </td>
+            <td class="px-6 py-2 text-xs text-right font-mono text-slate-500 whitespace-nowrap">
+                {{ f.porcentaje|formato_ar }} %
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td class="px-4 py-8 text-center text-xs text-slate-400 italic">Sin datos en el período.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>

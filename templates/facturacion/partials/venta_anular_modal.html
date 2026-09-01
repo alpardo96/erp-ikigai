@@ -1,0 +1,93 @@
+<div id="modal" x-data="{ cargando: false }" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all relative">
+        
+        <!-- OVERLAY DE CARGA / ARCA -->
+        <div x-show="cargando" 
+             class="absolute inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white p-6 animate-in fade-in duration-200" style="display: none;">
+            <div class="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h4 class="text-lg font-black uppercase tracking-wider mb-1">Emitiendo Nota de Crédito...</h4>
+            <p class="text-xs font-bold text-slate-300">Aguardando autorización de ARCA / AFIP y ajustando inventario</p>
+        </div>
+
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2 tracking-tight">
+                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Anular Comprobante / Emitir Nota de Crédito
+            </h3>
+            <button type="button" :disabled="cargando" onclick="document.getElementById('modal').remove()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto bg-slate-50/50">
+            <div class="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Datos del Comprobante Original</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Comprobante</p>
+                        <p class="text-xs font-black text-slate-800">{{ venta.tipo.codigo }} {{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Fecha</p>
+                        <p class="text-xs font-black text-slate-800">{{ venta.fecha|date:"d/m/Y" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Cliente</p>
+                        <p class="text-xs font-black text-slate-800 truncate" title="{{ venta.cliente.razon_social|default:'Consumidor Final' }}">{{ venta.cliente.razon_social|default:"Consumidor Final" }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Total Original</p>
+                        <p class="text-xs font-black text-slate-800 tabular-nums">$ {{ venta.total|floatformat:2 }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <form id="ncForm" hx-post="{% url 'venta_emitir_nc' venta.ventas_id %}" hx-target="body" @submit="cargando = true">
+                {% csrf_token %}
+                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Ítems Facturados (Seleccione cantidades a devolver)</h4>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900 text-white uppercase tracking-wider text-[10px]">
+                            <tr>
+                                <th class="px-4 py-2">Producto</th>
+                                <th class="px-4 py-2 text-right">Cant. Facturada</th>
+                                <th class="px-4 py-2 text-right">Precio Unitario</th>
+                                <th class="px-4 py-2 text-center bg-red-900/50 w-32">Cant. a Devolver</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for item in items %}
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-2 font-medium text-slate-800">{{ item.producto.nombre }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-600">{{ item.cantidad|floatformat:2 }}</td>
+                                <td class="px-4 py-2 text-right tabular-nums text-slate-600">$ {{ item.precio_unitario|floatformat:2 }}</td>
+                                <td class="px-4 py-2 bg-red-50 text-center">
+                                    <input type="number" name="cant_devolver_{{ item.id }}" value="{{ item.cantidad|stringformat:'f' }}" step="0.01" min="0" max="{{ item.cantidad|stringformat:'f' }}" class="w-full text-right h-7 px-1 text-xs font-bold border border-red-200 rounded outline-none focus:border-red-500 text-red-700 bg-white">
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="px-4 py-6 text-center text-slate-400 italic">No hay ítems.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+            <div class="mt-4 text-[10px] text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-100 italic">
+                <strong>Nota:</strong> Se generará una Nota de Crédito correspondiente (Ej: Factura A -> NC A) y se restaurará el stock de las cantidades indicadas como devolución.
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3 rounded-b-2xl">
+            <button type="button" :disabled="cargando" onclick="document.getElementById('modal').remove()" class="px-5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
+                Cancelar
+            </button>
+            <button type="submit" form="ncForm" :disabled="cargando" class="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-black rounded-lg uppercase tracking-widest shadow transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Emitir Nota de Crédito
+            </button>
+        </div>
+    </div>
+</div>

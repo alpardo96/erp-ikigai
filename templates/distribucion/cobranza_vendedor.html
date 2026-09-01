@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Cobranza de Vendedor | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Cobranza de Vendedor</h1>
+        <p class="text-xs text-slate-500 mt-1">
+            Lo que el vendedor cobra por su cuenta, fuera de todo reparto. Se acumula a su nombre hasta que lo rinde.
+        </p>
+    </div>
+
+    <form method="get" class="rounded-2xl bg-white border border-gray-100 shadow-sm px-4 py-3 flex items-end gap-3">
+        <div class="flex-1">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Vendedor</label>
+            <select name="vendedor" onchange="this.form.submit()"
+                    class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                <option value="">— Elegí quién trajo la plata —</option>
+                {% for v in vendedores %}
+                <option value="{{ v.id }}" {% if vendedor and vendedor.id == v.id %}selected{% endif %}>{{ v.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if not vendedor %}
+    <div class="rounded-2xl bg-white border border-gray-100 shadow-sm px-6 py-12 text-center">
+        <p class="text-sm text-slate-400 italic">Elegí un vendedor para ver lo que cobró y cargarle una cobranza.</p>
+    </div>
+    {% else %}
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cobrado</div>
+            <div class="text-lg font-black text-emerald-700">$ {{ resumen.cobrado|formato_ar }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Efectivo en mano</div>
+            <div class="text-lg font-black text-slate-800">$ {{ resumen.efectivo_cobrado|formato_ar }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ya rendido</div>
+            <div class="text-lg font-black text-indigo-700">$ {{ resumen.declarado|formato_ar }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sin rendir</div>
+            <div class="text-lg font-black text-amber-700">$ {{ resumen.pendiente_de_rendir|formato_ar }}</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Cargar una cobranza</h2>
+            </div>
+            <form method="get" class="px-4 pt-3">
+                <input type="hidden" name="vendedor" value="{{ vendedor.id }}">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cliente</label>
+                <div class="flex gap-2">
+                    <input type="text" name="cliente" value="{{ cliente.codigo_id|default:'' }}"
+                           placeholder="Código de cliente"
+                           class="flex-1 h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    <button type="submit" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
+                        Buscar
+                    </button>
+                </div>
+            </form>
+
+            {% if cliente %}
+            <form method="post" class="px-4 py-3 space-y-3">
+                {% csrf_token %}
+                <input type="hidden" name="vendedor" value="{{ vendedor.id }}">
+                <input type="hidden" name="cliente" value="{{ cliente.codigo_id }}">
+                <input type="hidden" name="accion" value="cobrar">
+
+                <div class="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2">
+                    <div class="text-sm font-black text-slate-900">{{ cliente.razon_social }}</div>
+                    <div class="text-[11px] text-slate-500">
+                        Saldo operativo (1+2): <strong>$ {{ saldo_operativo|formato_ar }}</strong> ·
+                        fiscal (1): $ {{ saldo_fiscal|formato_ar }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Efectivo</label>
+                        <input type="text" name="valor_efe"
+                               class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Transferencia</label>
+                        <input type="text" name="valor_tra"
+                               class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cheque</label>
+                        <input type="text" name="valor_chq"
+                               class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Observaciones</label>
+                        <input type="text" name="observaciones"
+                               class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                        Registrar cobranza
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-400 italic">
+                    Se imputa igual que en el reparto: a lo más antiguo, y el efectivo cancela primero los
+                    comprobantes no fiscales.
+                </p>
+            </form>
+            {% endif %}
+        </div>
+
+        <div class="rounded-2xl bg-white border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Cobranzas sin rendir</h2>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="divide-y divide-gray-100">
+                    {% for c in resumen.cobranzas %}
+                    <tr>
+                        <td class="py-2 pl-6 pr-3 text-xs font-mono font-bold text-slate-700">
+                            RC {{ c.recibo.punto|stringformat:"04d" }}-{{ c.recibo.numero|stringformat:"08d" }}
+                        </td>
+                        <td class="px-3 py-2 text-sm text-slate-700">{{ c.recibo.cliente.razon_social }}</td>
+                        <td class="px-3 py-2 text-center">
+                            {% if c.recibo.condic == 2 %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">PRESUP.</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">REAL</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-2 text-sm text-right font-mono font-black">$ {{ c.recibo.total|formato_ar }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td class="px-4 py-10 text-center text-xs text-slate-400 italic">
+                        Todavía no cobró nada.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if resumen.pendiente_de_rendir > 0 %}
+            <form method="post" class="px-4 py-3 border-t border-slate-200 bg-slate-50"
+                  onsubmit="return confirm('Al rendir se cierra la sesión de caja del vendedor. ¿Continuar?')">
+                {% csrf_token %}
+                <input type="hidden" name="vendedor" value="{{ vendedor.id }}">
+                <input type="hidden" name="accion" value="rendir">
+                <h3 class="text-xs font-black text-slate-700 uppercase tracking-tight mb-2">
+                    Rendir a la Tesorería de Reparto
+                </h3>
+                <div class="flex items-end gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Efectivo que entrega</label>
+                        <input type="text" name="efectivo_pesos" value="{{ resumen.pendiente_de_rendir|formato_ar }}"
+                               class="fInputAR w-36 h-9 px-3 text-right bg-white border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+                    </div>
+                    <input type="text" name="observaciones" placeholder="Observaciones"
+                           class="flex-1 h-9 px-3 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                        Rendir
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-400 italic mt-2">
+                    Queda EN TRÁNSITO hasta que la Tesorería de Reparto la cuente y la acepte: el que declara no es el
+                    mismo que cuenta.
+                </p>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

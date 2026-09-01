@@ -1,0 +1,110 @@
+
+<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up ring-1 ring-slate-900/5 relative">
+        
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 uppercase">Detalle de Compra #{{ compra.tipo.codigo }} {{ compra.punto|stringformat:'04d' }}-{{ compra.numero|stringformat:'08d' }}</h3>
+                    <p class="text-xs text-slate-500 font-medium">{{ compra.fecha|date:"d/m/Y" }} - Proveedor: <span class="font-bold text-slate-700">{{ compra.proveedor.razon_social }}</span></p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('modal-container').innerHTML=''" 
+                    class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors" title="Cerrar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto bg-slate-50 flex-1 flex flex-col gap-6">
+            
+            {% if compra.descripcion %}
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Detalle del Gasto</p>
+                <p class="text-sm text-slate-800">{{ compra.descripcion }}</p>
+            </div>
+            {% endif %}
+
+            {% if items %}
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                            <th class="p-3 pl-4">Producto</th>
+                            <th class="p-3 text-right">Cant.</th>
+                            <th class="p-3 text-right">P. Unit.</th>
+                            <th class="p-3 text-right">IVA</th>
+                            <th class="p-3 pr-4 text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm">
+                            <td class="p-3 pl-4 font-medium text-slate-800">{{ item.producto.detalle }}</td>
+                            <td class="p-3 text-right font-mono text-slate-600">{{ item.cantidad|floatformat:2 }}</td>
+                            <td class="p-3 text-right font-mono text-slate-600">$ {{ item.precio_unitario|floatformat:2 }}</td>
+                            <td class="p-3 text-right font-mono text-slate-600">{{ item.iva_alicuota|floatformat:2 }}%</td>
+                            <td class="p-3 pr-4 text-right font-mono font-bold text-slate-900">$ {{ item.total|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Totales -->
+            <div class="flex justify-end">
+                <div class="w-80 bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500 font-medium">Neto Gravado:</span>
+                        <span class="font-mono font-bold text-slate-700">$ {{ compra.neto|floatformat:2 }}</span>
+                    </div>
+                    {% if compra.descuento > 0 %}
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500 font-medium">Descuento Global:</span>
+                        <span class="font-mono font-bold text-red-600">- $ {{ compra.descuento|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                    {% for imp in impuestos %}
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500 font-medium">{{ imp.nombre }}:</span>
+                        <span class="font-mono font-bold text-slate-700">$ {{ imp.monto|floatformat:2 }}</span>
+                    </div>
+                    {% endfor %}
+                    <div class="border-t border-slate-200 my-1"></div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-800 font-black uppercase tracking-wider">Total:</span>
+                        <span class="text-xl font-mono font-black text-indigo-700">$ {{ compra.total|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- Footer / Actions -->
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <div>
+                {% if tiene_asiento %}
+                <button type="button" 
+                        hx-get="{% url 'asiento_editar_modal' compra.asiento_id %}" 
+                        hx-target="#modal-container-2" 
+                        class="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    Editar Asiento Contable
+                </button>
+                {% else %}
+                <span class="text-xs font-bold text-slate-400 uppercase">Sin asiento contable</span>
+                {% endif %}
+            </div>
+            <button onclick="document.getElementById('modal-container').innerHTML=''" 
+                    class="px-6 py-2 bg-slate-800 text-white font-medium rounded-xl hover:bg-slate-700 transition-colors shadow-sm text-sm">
+                Cerrar
+            </button>
+        </div>
+
+    </div>
+</div>

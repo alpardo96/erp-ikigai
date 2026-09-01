@@ -1,0 +1,79 @@
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md transform transition-all overflow-hidden border border-gray-100 my-auto" id="modal-content">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-xl font-bold text-gray-900">
+                    {% if is_new %}Nuevo Punto de Venta{% else %}Editar Punto de Venta{% endif %}
+                </h3>
+                <button type="button" onclick="document.getElementById('modal-container').innerHTML = ''" class="text-gray-400 hover:text-gray-500 transition-colors p-2 hover:bg-gray-100 rounded-full">
+                    <span class="sr-only">Cerrar</span>
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <form {% if is_new %}hx-post="{% url 'config_puntoventa_add' %}"{% else %}hx-post="{% url 'config_puntoventa_edit' punto.id %}"{% endif %} 
+                  hx-target="#modal-container" hx-swap="innerHTML"
+                  class="space-y-4">
+                {% csrf_token %}
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Sucursal Vinculada</label>
+                    <select name="sucursal" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm" required>
+                        <option value="">Seleccione una sucursal</option>
+                        {% for suc in form.fields.sucursal.queryset %}
+                            <option value="{{ suc.id }}" {% if form.sucursal.value|stringformat:"s" == suc.id|stringformat:"s" %}selected{% endif %}>{{ suc.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1">Número de Punto</label>
+                    <input type="number" name="numero" value="{{ form.numero.value|default:'' }}" min="1" max="99999" class="w-full rounded-xl border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm font-black" required>
+                    <p class="text-xs text-slate-500 mt-1">Número asignado por AFIP (máx. 5 dígitos).</p>
+                </div>
+
+                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 mt-2">
+                    <div>
+                        <label class="text-sm font-bold text-slate-800">Caja Mostrador (Predeterminado)</label>
+                        <p class="text-xs text-slate-500">Usar este punto automáticamente en ventas de mostrador.</p>
+                    </div>
+                    <div x-data="{ checked: {% if form.caja_mostrador_default.value %}true{% else %}false{% endif %} }" 
+                         class="relative inline-flex items-center cursor-pointer" 
+                         @click="checked = !checked">
+                        <input type="checkbox" name="caja_mostrador_default" class="sr-only" x-model="checked">
+                        <div class="w-11 h-6 rounded-full transition-colors duration-200 ease-in-out" 
+                             :class="checked ? 'bg-indigo-600' : 'bg-gray-200'"></div>
+                        <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ease-in-out shadow-sm" 
+                             :class="checked ? 'translate-x-full border-white' : ''"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 mt-2">
+                    <div>
+                        <label class="text-sm font-bold text-slate-800">Punto Activo</label>
+                        <p class="text-xs text-slate-500">Habilita su uso para facturación.</p>
+                    </div>
+                    <div x-data="{ checked: {% if form.activo.value or is_new %}true{% else %}false{% endif %} }" 
+                         class="relative inline-flex items-center cursor-pointer" 
+                         @click="checked = !checked">
+                        <input type="checkbox" name="activo" class="sr-only" x-model="checked">
+                        <div class="w-11 h-6 rounded-full transition-colors duration-200 ease-in-out" 
+                             :class="checked ? 'bg-green-600' : 'bg-gray-200'"></div>
+                        <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ease-in-out shadow-sm" 
+                             :class="checked ? 'translate-x-full border-white' : ''"></div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                    <button type="button" onclick="document.getElementById('modal-container').innerHTML = ''" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 font-bold transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold shadow-md transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

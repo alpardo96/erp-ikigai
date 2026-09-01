@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Caja Mostrador{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm p-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-black text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-cash-register text-indigo-500"></i> Caja Mostrador
+            </h1>
+            <p class="text-xs text-slate-500 mt-1 font-bold">
+                Sesión abierta por <span class="text-indigo-600">{{ sesion.usuario.username }}</span> 
+                en <span class="text-slate-700">{{ caja.nombre }} ({{ caja.sucursal.nombre }})</span>
+            </p>
+        </div>
+        
+        <div class="flex gap-4 items-center">
+            <div class="text-right">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo Inicial</p>
+                <p class="text-sm font-bold text-slate-700">$ {{ sesion.saldo_inicial|floatformat:2 }}</p>
+            </div>
+            <div class="w-px h-8 bg-slate-200"></div>
+            <div class="text-right">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo Actual (Efe)</p>
+                <p class="text-lg font-black text-emerald-600">$ {{ sesion.saldo_final_calculado|floatformat:2 }}</p>
+            </div>
+            {% comment %}
+            El mismo recibo del Tesorero, pero la plata cae en ESTA caja: la cobra el cajero
+            y la tiene que rendir (Plan 077 §F). Va acá y no en el menú principal porque el
+            cajero opera todo desde su Caja Mostrador.
+            {% endcomment %}
+            <a href="{% url 'recibo_carga_mostrador' %}"
+                class="ml-4 px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold text-xs rounded transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-receipt"></i> Emitir Recibo
+            </a>
+            <button
+                hx-get="{% url 'caja_retiro_modal' %}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML"
+                class="px-4 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 font-bold text-xs rounded transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-money-bill-transfer"></i> Retiro Parcial
+            </button>
+            <button 
+                hx-get="{% url 'caja_cierre_modal' %}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML"
+                class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-bold text-xs rounded transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-lock"></i> Cerrar Caja
+            </button>
+        </div>
+    </div>
+
+    <!-- Lista de Preventas Listas para Cobrar -->
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
+        <div class="bg-slate-50 border-b border-slate-200 px-4 py-3 flex justify-between items-center">
+            <h2 class="text-sm font-black text-slate-700 uppercase tracking-wide">
+                <i class="fa-solid fa-file-invoice-dollar mr-2 text-slate-400"></i> Preventas Pendientes de Cobro
+            </h2>
+            <button class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1" onclick="location.reload()">
+                <i class="fa-solid fa-rotate"></i> Refrescar
+            </button>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Preventa</th>
+                        <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Fecha</th>
+                        <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente</th>
+                        <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Vendedor</th>
+                        <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Estado</th>
+                        <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
+                        <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Acción</th>
+                    </tr>
+                </thead>
+                  {% for p in preventas %}
+                  <tbody class="divide-y divide-slate-100" x-data="{ open: false }">
+                    <tr class="hover:bg-slate-50 transition-colors group cursor-pointer" @click="open = !open">
+                        <td class="px-4 py-3 text-sm font-black text-indigo-700 flex items-center gap-2">
+                            <i class="fa-solid fa-chevron-right text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-90': open}"></i>
+                            # {{ p.preventa_id }}
+                        </td>
+                        <td class="px-4 py-3 text-xs text-slate-600">{{ p.fecha|date:"d/m/Y" }}</td>
+                        <td class="px-4 py-3 text-xs font-bold text-slate-800 uppercase">{{ p.cliente.razon_social }}</td>
+                        <td class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{{ p.vendedor.username }}</td>
+                        <td class="px-4 py-3">
+                            {% if p.estado == 2 %}
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[9px] font-black uppercase tracking-wider">Autorizada</span>
+                            {% else %}
+                                <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[9px] font-black uppercase tracking-wider">Lista</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm font-black text-slate-900 text-right">$ {{ p.total|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button 
+                                    hx-post="{% url 'htmx_caja_mostrador_anular_preventa' p.preventa_id %}"
+                                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                                    hx-confirm="¿Estás seguro que deseas anular esta preventa? El cliente no realizará la compra."
+                                    hx-swap="none"
+                                    title="Anular Preventa"
+                                    class="w-8 h-8 flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-sm font-black transition-colors shadow-sm">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                                <button 
+                                    hx-get="{% url 'htmx_caja_mostrador_cobrar_modal' p.preventa_id %}?t={% now 'U' %}"
+                                    hx-target="#modal-container"
+                                    hx-swap="innerHTML"
+                                    class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">
+                                    Cobrar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr x-show="open" style="display: none;" class="bg-slate-50 border-b border-slate-100">
+                        <td colspan="7" class="p-0">
+                            <div class="px-8 py-4" x-transition>
+                                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3"><i class="fa-solid fa-box-open mr-1"></i> Detalle de Productos a Entregar</h4>
+                                <table class="w-full text-left bg-white rounded shadow-sm border border-slate-200">
+                                    <thead class="bg-slate-50 border-b border-slate-200">
+                                        <tr>
+                                            <th class="px-3 py-2 text-[10px] font-bold text-slate-500 w-16">Cant.</th>
+                                            <th class="px-3 py-2 text-[10px] font-bold text-slate-500">Producto</th>
+                                            <th class="px-3 py-2 text-[10px] font-bold text-slate-500 text-right w-24">Precio Un.</th>
+                                            <th class="px-3 py-2 text-[10px] font-bold text-slate-500 text-right w-24">Desc.</th>
+                                            <th class="px-3 py-2 text-[10px] font-bold text-slate-500 text-right w-24">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        {% for item in p.items.all %}
+                                        <tr>
+                                            <td class="px-3 py-2 text-xs font-black text-slate-700">{{ item.cantidad|floatformat:2 }}</td>
+                                            <td class="px-3 py-2 text-xs text-slate-800">{{ item.producto.detalle }} <span class="text-slate-400 text-[10px]">(#{{ item.producto.id }})</span></td>
+                                            <td class="px-3 py-2 text-xs text-slate-600 text-right">$ {{ item.precio_unitario|floatformat:2 }}</td>
+                                            <td class="px-3 py-2 text-xs text-slate-600 text-right">{{ item.porcentaje_descuento|floatformat:2 }}%</td>
+                                            <td class="px-3 py-2 text-xs font-bold text-slate-900 text-right">$ {{ item.total|floatformat:2 }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="px-3 py-2 text-xs text-slate-400 italic text-center">Sin items</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                    {% empty %}
+                  <tbody>
+                    <tr>
+                        <td colspan="7" class="px-4 py-12 text-center">
+                            <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-50 mb-3">
+                                <i class="fa-solid fa-check-double text-slate-300 text-xl"></i>
+                            </div>
+                            <p class="text-sm font-bold text-slate-500">No hay preventas pendientes de cobro.</p>
+                            <p class="text-xs text-slate-400 mt-1">Todas las ventas han sido facturadas o están pendientes de autorización.</p>
+                        </td>
+                    </tr>
+                  </tbody>
+                    {% endfor %}
+              </table>
+        </div>
+    </div>
+</div>
+<div id="modal-container"></div>
+
+
+
+
+
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Cartera de Vendedores | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Cartera y Agenda de Visitas</h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Cada cliente tiene un solo vendedor, porque es el responsable directo de su saldo.
+            </p>
+        </div>
+        {% if total_sin_asignar %}
+        <div class="text-right">
+            <div class="text-2xl font-black text-amber-600">{{ total_sin_asignar }}</div>
+            <div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Clientes sin vendedor</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-3 flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[240px]">
+            <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Buscar cliente</label>
+            <input type="text" name="q" value="{{ q }}"
+                   placeholder="Código, razón social o CUIT..."
+                   class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-900 outline-none focus:border-indigo-500 focus:bg-white"
+                   hx-get="{% url 'distribucion_cartera' %}"
+                   hx-trigger="keyup changed delay:300ms, search"
+                   hx-include="[name='vendedor'][form='filtros-cartera'], [name='sin_asignar']"
+                   hx-target="#cartera-rows">
+        </div>
+        <div class="w-56">
+            <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Vendedor</label>
+            <select name="vendedor" form="filtros-cartera"
+                    class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded text-sm text-slate-900 outline-none focus:border-indigo-500"
+                    hx-get="{% url 'distribucion_cartera' %}"
+                    hx-trigger="change"
+                    hx-include="[name='q'], [name='sin_asignar']"
+                    hx-target="#cartera-rows">
+                <option value="">Todos</option>
+                {% for v in vendedores %}
+                    <option value="{{ v.id }}" {% if vendedor_id == v.id|stringformat:'s' %}selected{% endif %}>{{ v.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <label class="flex items-center gap-2 h-9 px-3 bg-slate-50 border border-slate-200 rounded cursor-pointer">
+            <input type="checkbox" name="sin_asignar" value="1" {% if sin_asignar %}checked{% endif %}
+                   class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                   hx-get="{% url 'distribucion_cartera' %}"
+                   hx-trigger="change"
+                   hx-include="[name='q'], [name='vendedor'][form='filtros-cartera']"
+                   hx-target="#cartera-rows">
+            <span class="text-xs font-bold text-slate-600 uppercase tracking-tight">Sólo sin asignar</span>
+        </label>
+    </div>
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Código</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest w-56">Vendedor Responsable</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Domicilios de Entrega · Zona · Días</th>
+                    </tr>
+                </thead>
+                <tbody id="cartera-rows" class="divide-y divide-gray-100 bg-white"
+                       hx-get="{% url 'distribucion_cartera' %}"
+                       hx-trigger="reloadCartera from:body">
+                    {% include 'distribucion/partials/cartera_filas.html' %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p class="text-[11px] text-slate-400 italic">
+        Los cambios se guardan solos al elegir una opción. Se muestran hasta 300 clientes: usá el buscador para acotar.
+    </p>
+</div>
+{% endblock %}

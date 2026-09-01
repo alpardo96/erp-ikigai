@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Apertura de Caja Mostrador{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-10">
+    <div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+        <div class="bg-indigo-600 px-6 py-4">
+            <h2 class="text-lg font-black text-white flex items-center gap-2">
+                <i class="fa-solid fa-cash-register"></i> Apertura de Turno
+            </h2>
+            <p class="text-indigo-100 text-xs mt-1">{{ caja.nombre }} - Sucursal: {{ caja.sucursal.nombre }}</p>
+        </div>
+        
+        <form method="POST" action="{% url 'caja_mostrador_abrir' %}" class="p-6 space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="caja_id" value="{{ caja.id }}">
+            
+            <div class="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm flex gap-3 items-start border border-blue-100">
+                <i class="fa-solid fa-info-circle mt-0.5 text-blue-500"></i>
+                <p>Estás a punto de abrir un nuevo turno de caja. Por favor, declara el saldo inicial (Fondo Fijo) con el que cuentas en efectivo antes de comenzar a cobrar.</p>
+            </div>
+            
+            <div>
+                <label class="block text-xs font-black text-slate-500 uppercase mb-2">Saldo Inicial (Efectivo)</label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <span class="text-slate-400 font-bold">$</span>
+                    </div>
+                    <input type="text" id="saldo_inicial_display"
+                        class="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-lg text-lg font-black text-right outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 fInputAR"
+                        placeholder="0,00" autocomplete="off" required>
+                    <input type="hidden" id="saldo_inicial" name="saldo_inicial" value="0">
+                </div>
+            </div>
+            
+            <div class="pt-4 border-t border-slate-100 flex justify-end gap-3">
+                <a href="{% url 'ventas_index' %}" class="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-lg shadow-sm transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-lock-open"></i> Abrir Caja
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // JS para manejar la separación entre el input visual (con miles) y el raw
+    const displayInput = document.getElementById('saldo_inicial_display');
+    const rawInput = document.getElementById('saldo_inicial');
+    
+    function fMiles(n) {
+        return parseFloat(n || 0).toLocaleString('es-AR', {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+    }
+
+    displayInput.addEventListener('blur', function() {
+        // Al perder el foco, limpiamos lo que tipeó el usuario
+        let valorTipeado = this.value.replace(/\./g, '').replace(/,/g, '.');
+        let floatValue = parseFloat(valorTipeado);
+        if(isNaN(floatValue)) floatValue = 0;
+        
+        rawInput.value = floatValue;
+        this.value = fMiles(floatValue);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+VERSION 1.0 (Definitiva) - Refactorización de Tipos de Comprobante y CRUD en Configuración
+Fecha: 13 de Mayo 2026
+
+1. CREACIÓN DEL MODELO 'TipoComprobante'
+   - Se añadió la tabla maestra en `facturacion/models.py` para almacenar los comprobantes requeridos. [Ver Líneas 6-18](file:///d:/JM_Soft/erp-ikigai/facturacion/models.py#L6-L18)
+   - Campos creados con nomenclatura exacta solicitada: `id` (AutoField), `codigo` (CharField), `detalle` (CharField), `signo` (SmallIntegerField), `estado` (BooleanField).
+   - Se insertaron los registros iniciales mediante un script temporal (luego eliminado).
+
+2. MODIFICACIÓN DE MODELOS 'Compra' y 'Venta'
+   - Se actualizaron las claves foráneas en ambos modelos para apuntar al nuevo `TipoComprobante`. [Compra.tipo Línea 145](file:///d:/JM_Soft/erp-ikigai/facturacion/models.py#L145) | [Venta.tipo Línea 204](file:///d:/JM_Soft/erp-ikigai/facturacion/models.py#L204)
+   
+3. ACTUALIZACIÓN DE FORMULARIOS Y COMPATIBILIDAD JS
+   - En `facturacion/forms.py` se filtraron los selectores por `estado=True`. [VentaForm Líneas 56-57](file:///d:/JM_Soft/erp-ikigai/facturacion/forms.py#L56-L57) | [CompraForm Líneas 233-234](file:///d:/JM_Soft/erp-ikigai/facturacion/forms.py#L233-L234)
+   - *CRÍTICO*: Se añadió `self.fields['tipo'].to_field_name = "codigo"` en los forms. Esto garantiza que el HTML renderice `<option value="001">` en lugar del ID autonumérico, lo que mantuvo intacta toda la lógica previa de Javascript en la carga de comprobantes (como la vinculación automática de remitos).
+   - Se añadió la clase `TipoComprobanteForm` para el modal. [Líneas 196-205](file:///d:/JM_Soft/erp-ikigai/facturacion/forms.py#L196-L205)
+
+4. ACTUALIZACIÓN EN VISTAS DE CARGA (HTMX/UI)
+   - En `templates/facturacion/ventas_carga.html`, se reemplazó el combo estático por un bucle dinámico que renderiza `choice.codigo` y `choice.detalle`. [Líneas 75-77](file:///d:/JM_Soft/erp-ikigai/templates/facturacion/ventas_carga.html#L75-L77)
+   - Lo mismo se replicó para `templates/facturacion/compras_carga.html`. [Líneas 55-57](file:///d:/JM_Soft/erp-ikigai/templates/facturacion/compras_carga.html#L55-L57)
+
+5. CREACIÓN DEL MÓDULO CRUD (CONFIGURACIÓN)
+   - **Backend Vistas (HTMX)**: Se añadieron funciones `comprobante_modal`, `buscar_comprobantes`, `eliminar_comprobante` al final de `facturacion/views_htmx.py`. [Líneas 648-682](file:///d:/JM_Soft/erp-ikigai/facturacion/views_htmx.py#L648-L682)
+   - **Enrutamiento (URLs)**: Se registraron 4 nuevas rutas HTMX en `config/urls.py`. [Líneas 94-98](file:///d:/JM_Soft/erp-ikigai/config/urls.py#L94-L98) y la importación de las vistas [Línea 17](file:///d:/JM_Soft/erp-ikigai/config/urls.py#L17).
+   - **Gestor de Pestañas**: Se añadió el contexto de comprobantes en la vista principal `core/views_config.py`. [Líneas 44-45](file:///d:/JM_Soft/erp-ikigai/core/views_config.py#L44-L45)
+   - **Frontend (Templates Nuevos)**:
+     - Botón de acceso en el Hub: [Líneas 96-101 de hub.html](file:///d:/JM_Soft/erp-ikigai/templates/configuracion/partials/hub.html#L96-L101)
+     - Tabla principal y buscador: Creado `templates/configuracion/partials/comprobantes.html` (Nuevo archivo).
+     - Filas de la tabla dinámicas: Creado `templates/configuracion/partials/comprobante_table_rows.html` (Nuevo archivo).
+     - Formulario emergente: Creado `templates/configuracion/modals/comprobante_form.html` (Nuevo archivo).
+
+--------------------------------------------------------------------------------
+
+VERSION 1.1 - Margen Único por Producto y Limpieza de Jerarquías
+Fecha: 13 de Mayo 2026
+
+1. REESTRUCTURACIÓN DE MÁRGENES (MODELO)
+   - Se simplificó la propiedad `margen_aplicable` en `productos/models.py`. Ahora retorna ÚNICAMENTE el margen del producto, ignorando la jerarquía de Marca/Rubro/Familia. [Ver Línea 91](file:///d:/JM_Soft/erp-ikigai/productos/models.py#L91)
+   - Se eliminó el campo redundante `mg_rubro` de la tabla `Producto`.
+   - Se actualizó el campo `margen` con `verbose_name="Margen (%)"`. [Línea 78](file:///d:/JM_Soft/erp-ikigai/productos/models.py#L78)
+
+2. ACTUALIZACIÓN DE FORMULARIOS
+   - Se incluyó el campo `margen` en `ProductoForm` dentro de `productos/forms.py` para permitir su edición directa. [Líneas 62-65](file:///d:/JM_Soft/erp-ikigai/productos/forms.py#L62-L65)
+   - Se eliminaron los disparadores HTMX (`hx-get`) que consultaban márgenes de marcas/rubros/familias automáticamente, simplificando el formulario. [Líneas 73-95](file:///d:/JM_Soft/erp-ikigai/productos/forms.py#L73-L95)
+
+3. ACTUALIZACIÓN DE INTERFAZ (UI)
+   - Se añadió la columna **Margen** en el listado de stock. [Ver stock_index.html Línea 130](file:///d:/JM_Soft/erp-ikigai/templates/productos/stock_index.html#L130)
+   - Se habilitó la columna en el partial de la grilla. [Ver producto_list.html Línea 18](file:///d:/JM_Soft/erp-ikigai/templates/productos/partials/producto_list.html#L18)
+   - Se integró el campo en el modal de edición de productos. **IMPORTANTE**: Se mantienen las etiquetas de "Margen Sugerido" para Marca, Rubro y Familia como referencia visual para el usuario, aunque no afectan al cálculo final. [Ver producto_modal.html Líneas 103-126](file:///d:/JM_Soft/erp-ikigai/templates/productos/modals/producto_modal.html#L103-L126)
+
+4. MANTENIMIENTO DE CÓDIGO
+   - Se restauró la vista `obtener_margen` y su ruta en `urls.py` para alimentar las etiquetas de referencia en el modal.
+
+5. AMPLIACIÓN DE COLUMNAS EN MAESTRO DE STOCK
+   - Se añadieron nuevos campos del modelo `Producto` al selector de columnas y a la tabla principal: **Stock Total**, **Costo Adq.**, **Costo Rep.**, **IVA**, **Precio Final** y **Fecha de Actualización**. [Ver stock_index.html](file:///d:/JM_Soft/erp-ikigai/templates/productos/stock_index.html)
+
+
+koasjdoaksjfpaosk

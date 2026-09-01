@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Recepción de Devoluciones {{ recepcion.numero_formateado }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-start border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+                Recepción de Devoluciones {{ recepcion.numero_formateado }}
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Contá lo que efectivamente volvió al depósito. Recién después se acredita al cliente.
+            </p>
+        </div>
+        <a href="{% url 'distribucion_entrega' parada.reparto_id %}"
+           class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">Volver a la entrega</a>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reparto</div>
+            <div class="text-sm font-black text-slate-800">{{ recepcion.reparto.numero }}</div>
+            <div class="text-[11px] text-slate-500">{{ recepcion.reparto.fecha|date:"d/m/Y" }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pedido</div>
+            <div class="text-sm font-black text-slate-800">{{ parada.pedido.numero_formateado }}</div>
+            <div class="text-[11px] text-slate-500">
+                {{ parada.venta.tipo.detalle }}
+                {{ parada.venta.punto|stringformat:"04d" }}-{{ parada.venta.numero|stringformat:"08d" }}
+            </div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</div>
+            <div class="text-sm font-black text-slate-800 truncate">{{ parada.cliente.razon_social }}</div>
+            <div class="text-[11px] text-slate-500 truncate">{{ parada.domicilio_entrega }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</div>
+            <div class="text-sm font-black {% if recepcion.editable %}text-amber-600{% else %}text-emerald-600{% endif %}">
+                {{ recepcion.get_estado_display }}
+            </div>
+            <div class="text-[11px] text-slate-500">Devuelto: $ {{ recepcion.total_devuelto|formato_ar }}</div>
+        </div>
+    </div>
+
+    {% if parada.observacion_repartidor %}
+    <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-xs text-amber-800">
+        <strong>Observación del repartidor:</strong> {{ parada.observacion_repartidor }}
+    </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Conteo del depósito</h2>
+                <span class="text-[11px] text-slate-500">Dejá en cero lo que no volvió.</span>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-white">
+                    <tr>
+                        <th class="py-2.5 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Código</th>
+                        <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Artículo</th>
+                        <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Entregado</th>
+                        <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Devuelto</th>
+                        <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Motivo</th>
+                        <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Observación</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for fila in filas %}
+                    <tr>
+                        <td class="whitespace-nowrap py-2 pl-6 pr-3 text-xs font-mono text-slate-500">{{ fila.item.producto_id }}</td>
+                        <td class="px-3 py-2 text-sm text-slate-800">{{ fila.item.producto.detalle }}</td>
+                        <td class="px-3 py-2 text-sm text-right font-mono text-slate-500">{{ fila.item.cantidad|formato_ar }}</td>
+                        <td class="px-3 py-2 text-right">
+                            <input type="text" name="cantidad_{{ fila.item.id }}"
+                                   value="{% if fila.dev %}{{ fila.dev.cantidad|formato_ar }}{% else %}0,00{% endif %}"
+                                   {% if not recepcion.editable %}disabled{% endif %}
+                                   class="fInputAR w-24 h-8 px-2 text-right bg-slate-50 border border-slate-200 rounded text-xs font-mono outline-none focus:border-indigo-500 disabled:opacity-50">
+                        </td>
+                        <td class="px-3 py-2">
+                            <select name="motivo_{{ fila.item.id }}"
+                                    {% if not recepcion.editable %}disabled{% endif %}
+                                    class="w-48 h-8 px-2 bg-slate-50 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500 disabled:opacity-50">
+                                <option value="">— Motivo —</option>
+                                {% for m in motivos %}
+                                <option value="{{ m.id }}" {% if fila.dev.motivo_id == m.id %}selected{% endif %}>
+                                    {{ m.codigo }} — {{ m.descripcion }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td class="px-3 py-2">
+                            <input type="text" name="obs_{{ fila.item.id }}"
+                                   value="{{ fila.dev.observacion|default_if_none:'' }}"
+                                   {% if not recepcion.editable %}disabled{% endif %}
+                                   class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500 disabled:opacity-50">
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="px-4 py-8 text-center text-xs text-slate-400 italic">
+                        El comprobante no tiene artículos.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex justify-end items-center gap-2 mt-3">
+            {% if recepcion.editable %}
+                <button type="submit" name="accion" value="guardar"
+                        class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">
+                    Guardar conteo
+                </button>
+                <button type="submit" name="accion" value="confirmar"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">
+                    Confirmar recepción
+                </button>
+            {% elif recepcion.nota_credito_id %}
+                <span class="px-3 py-2 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Acreditada con {{ recepcion.nota_credito.tipo.detalle }}
+                    {{ recepcion.nota_credito.punto|stringformat:"04d" }}-{{ recepcion.nota_credito.numero|stringformat:"08d" }}
+                    por $ {{ recepcion.nota_credito.total|formato_ar }}
+                </span>
+            {% else %}
+                <input type="text" name="observacion" placeholder="Observación de la NC (opcional)"
+                       class="w-72 h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500">
+                <button type="submit" name="accion" value="emitir_nc"
+                        class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                    Emitir Nota de Crédito
+                </button>
+            {% endif %}
+        </div>
+    </form>
+
+    <p class="text-[11px] text-slate-400 italic">
+        La Recepción de Devoluciones es al reparto lo que el Informe de Recepción es a la compra: el espejo físico de
+        la Nota de Crédito. Uno dice que se le acreditó al cliente; el otro, que entró de vuelta al depósito.
+    </p>
+</div>
+{% endblock %}

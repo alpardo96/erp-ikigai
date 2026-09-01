@@ -1,0 +1,93 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200" id="modal-autorizacion">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <h2 class="text-lg font-black text-slate-800 uppercase tracking-tighter italic">Revisión de Preventa #{{ preventa.preventa_id }}</h2>
+            <button type="button" onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto">
+            <div class="grid grid-cols-2 gap-4 mb-6 border-b pb-4">
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cliente</p>
+                    <p class="text-sm font-bold text-slate-800 uppercase">{{ preventa.cliente.razon_social }}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Vendedor</p>
+                    <p class="text-sm font-bold text-slate-800 uppercase">{{ preventa.vendedor.username }}</p>
+                </div>
+            </div>
+
+            <h3 class="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-2">Ítems de la Preventa</h3>
+            <div class="border rounded-lg overflow-hidden">
+                <table class="w-full text-left text-xs mb-0">
+                    <thead class="bg-slate-100 text-slate-500 uppercase text-[9px]">
+                        <tr>
+                            <th class="px-3 py-2 border-r">Producto</th>
+                            <th class="px-3 py-2 border-r text-center">Cant.</th>
+                            <th class="px-3 py-2 border-r text-right">Precio Un.</th>
+                            <th class="px-3 py-2 border-r text-right">Desc. %</th>
+                            <th class="px-3 py-2 border-r text-right">Límite %</th>
+                            <th class="px-3 py-2 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 italic font-medium">
+                        {% for item in preventa.items.all %}
+                        <tr class="{% if item.porcentaje_descuento > item.producto.rubro.descuento_maximo|default:0 %}bg-red-50 hover:bg-red-100{% else %}hover:bg-slate-50{% endif %}">
+                            <td class="px-3 py-2 border-r uppercase {% if item.porcentaje_descuento > item.producto.rubro.descuento_maximo|default:0 %}text-red-900 font-bold{% endif %}">{{ item.producto.detalle }}</td>
+                            <td class="px-3 py-2 border-r text-center">{{ item.cantidad|floatformat:1 }}</td>
+                            <td class="px-3 py-2 border-r text-right">$ {{ item.precio_unitario|floatformat:2 }}</td>
+                            <td class="px-3 py-2 border-r text-right font-bold {% if item.porcentaje_descuento > item.producto.rubro.descuento_maximo|default:0 %}text-red-700{% endif %}">{{ item.porcentaje_descuento|floatformat:2 }}%</td>
+                            <td class="px-3 py-2 border-r text-right text-slate-500">{{ item.producto.rubro.descuento_maximo|default:0|floatformat:2 }}%</td>
+                            <td class="px-3 py-2 text-right font-black">$ {{ item.total|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-4 flex justify-end">
+                <div class="bg-slate-900 text-white rounded px-4 py-2 text-right shadow-md">
+                    <p class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Total Preventa</p>
+                    <p class="text-xl font-black tabular-nums tracking-tighter">$ {{ preventa.total|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50" x-data="{ confirmandoRechazo: false }">
+            
+            <!-- Vista Normal -->
+            <div x-show="!confirmandoRechazo" class="flex justify-end gap-3" x-transition>
+                <button type="button" onclick="cerrarModal()" class="px-4 py-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 rounded text-xs font-black uppercase tracking-widest transition-colors">
+                    Cancelar
+                </button>
+                <button @click="confirmandoRechazo = true" type="button" class="px-4 py-2 text-red-700 bg-red-100 hover:bg-red-200 rounded text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    Rechazar Descuento
+                </button>
+                <button hx-post="{% url 'preventas_autorizacion_modal' preventa.preventa_id %}" hx-vals='{"accion": "aprobar"}' hx-target="#modal-container" hx-swap="none" class="px-4 py-2 text-white bg-green-600 hover:bg-green-700 shadow-lg rounded text-xs font-black uppercase tracking-widest transition-colors flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Aprobar con Descuento
+                </button>
+            </div>
+
+            <!-- Vista Confirmación de Rechazo -->
+            <div x-show="confirmandoRechazo" style="display: none;" class="flex items-center justify-between" x-transition>
+                <p class="text-xs font-bold text-slate-600"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> ¿Qué deseas hacer con la Preventa?</p>
+                <div class="flex gap-2">
+                    <button @click="confirmandoRechazo = false" type="button" class="px-3 py-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 rounded text-[10px] font-black uppercase tracking-widest transition-colors">
+                        Volver
+                    </button>
+                    <button hx-post="{% url 'preventas_autorizacion_modal' preventa.preventa_id %}" hx-vals='{"accion": "forzar_lista"}' hx-target="#modal-container" hx-swap="none" class="px-3 py-2 text-amber-800 bg-amber-100 hover:bg-amber-200 rounded text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-money-bill-wave"></i> Aprobar a Precio Lista
+                    </button>
+                    <button hx-post="{% url 'preventas_autorizacion_modal' preventa.preventa_id %}" hx-vals='{"accion": "anular"}' hx-target="#modal-container" hx-swap="none" class="px-3 py-2 text-white bg-red-600 hover:bg-red-700 shadow-lg rounded text-[10px] font-black uppercase tracking-widest transition-colors flex items-center gap-1">
+                        <i class="fa-solid fa-trash-can"></i> Anular Operación
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

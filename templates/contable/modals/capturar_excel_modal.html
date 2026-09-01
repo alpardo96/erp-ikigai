@@ -1,0 +1,142 @@
+<div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Fondo oscuro translúcido -->
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity" onclick="cerrarModalCapturarCuentas()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-100">
+            <form hx-post="{% url 'config_cuentacontable_capturar_excel' %}" hx-target="#modal-container" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- Encabezado del Modal -->
+                <div class="bg-gradient-to-r from-emerald-900 via-slate-900 to-indigo-950 px-6 py-5 flex items-center justify-between text-white">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 bg-emerald-500/20 rounded-2xl border border-emerald-400/30">
+                            <svg class="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Recapturar / Importar Plan de Cuentas</h3>
+                            <p class="text-xs text-emerald-200">Actualización masiva de cuentas y alta automática en Excel</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="cerrarModalCapturarCuentas()" class="text-gray-400 hover:text-white transition-colors p-1 rounded-xl hover:bg-white/10">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-5">
+
+                    <!-- RESUMEN DE RESULTADOS DE CAPTURA (Si ya se procesó) -->
+                    {% if resultado %}
+                    <div class="p-4 rounded-2xl border shadow-sm {% if resultado.errores %}bg-rose-50 border-rose-200{% else %}bg-emerald-50 border-emerald-200{% endif %}">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="text-sm font-bold {% if resultado.errores %}text-rose-900{% else %}text-emerald-900{% endif %}">
+                                {% if resultado.errores %}Proceso completado con observaciones{% else %}¡Captura procesada con éxito!{% endif %}
+                            </h4>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3 text-xs">
+                            <div class="bg-white/80 p-2.5 rounded-xl border border-gray-200">
+                                <span class="text-gray-500 block">Actualizados:</span>
+                                <span class="text-base font-bold text-indigo-600">{{ resultado.actualizados }}</span>
+                            </div>
+                            <div class="bg-white/80 p-2.5 rounded-xl border border-gray-200">
+                                <span class="text-gray-500 block">Nuevos creados:</span>
+                                <span class="text-base font-bold text-emerald-600">{{ resultado.creados }}</span>
+                            </div>
+                        </div>
+                        {% if resultado.errores %}
+                        <div class="text-xs text-rose-700 bg-white/90 p-3 rounded-xl border border-rose-200 max-h-36 overflow-y-auto space-y-1">
+                            <p class="font-bold">Observaciones / Errores:</p>
+                            <ul class="list-disc pl-4 space-y-0.5">
+                                {% for err in resultado.errores %}
+                                <li>{{ err }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- ALERTA / MENSAJE ACLARATORIO DESTACADO -->
+                    <div class="p-4 bg-amber-50 rounded-2xl border border-amber-200/80 flex items-start gap-3.5 shadow-sm">
+                        <div class="p-2 bg-amber-500 text-white rounded-xl flex-shrink-0 mt-0.5">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                        <div class="text-xs text-amber-900 leading-relaxed space-y-1.5">
+                            <p class="font-bold text-sm text-amber-950">Instrucciones para la recaptura de Cuentas:</p>
+                            <ul class="list-disc pl-4 space-y-1">
+                                <li><strong>Para corregir/actualizar cuentas existentes:</strong> Mantenga el <code>ID</code> original. Se modificará cualquier campo editado excepto el ID.</li>
+                                <li><strong>Para cuentas nuevas:</strong> <u>No le ponga el ID</u> (deje la celda en blanco). Si coloca un ID no existente, el sistema no usará dicho ID sino que le asignará automáticamente el `ID` correspondiente según el sistema.</li>
+                                <li>Todos los nombres de cuentas se unificarán automáticamente en <strong>MAYÚSCULAS</strong>.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Input de Archivo Excel -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Seleccione el archivo Excel (.xlsx)</label>
+                        <div class="relative border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-2xl p-6 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all cursor-pointer group" onclick="document.getElementById('input-excel-file-cta').click()">
+                            <input type="file" id="input-excel-file-cta" name="archivo_excel" accept=".xlsx, .xls" class="hidden" onchange="mostrarNombreArchivoCta(this)">
+                            
+                            <div class="flex flex-col items-center justify-center space-y-2">
+                                <div class="p-3 bg-white rounded-2xl shadow-sm border border-gray-200 group-hover:scale-110 transition-transform">
+                                    <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 01-2-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-sm font-medium text-gray-700" id="texto-nombre-archivo-cta">
+                                    Haga clic o arrastre su archivo Excel aquí
+                                </div>
+                                <p class="text-xs text-gray-400">Soporta formatos `.xlsx` o `.xls`</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Pie del Modal -->
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex items-center justify-between gap-3">
+                    <a href="{% url 'config_cuentacontable_exportar_excel' %}" target="_blank" class="text-xs font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1.5 hover:underline">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Descargar Excel Completo
+                    </a>
+
+                    <div class="flex gap-3">
+                        <button type="button" onclick="cerrarModalCapturarCuentas()" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-all font-medium text-sm">
+                            Cerrar
+                        </button>
+                        <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium text-sm shadow-md shadow-emerald-200">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            Capturar Excel
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function cerrarModalCapturarCuentas() {
+        const container = document.getElementById('modal-container');
+        if (container) container.innerHTML = '';
+    }
+
+    function mostrarNombreArchivoCta(input) {
+        const texto = document.getElementById('texto-nombre-archivo-cta');
+        if (input.files && input.files[0]) {
+            texto.innerHTML = `<span class="text-emerald-700 font-bold">Archivo seleccionado:</span> ${input.files[0].name}`;
+        }
+    }
+</script>

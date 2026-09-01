@@ -1,0 +1,42 @@
+{% if comprobantes %}
+<table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+        <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprobante</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Pendiente</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">A Aplicar</th>
+        </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+        {% for c in comprobantes %}
+        <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ c.fecha|date:"d/m/Y" }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Venta #{{ c.numero }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                {% if c.moneda == 'DOL' %}
+                    <span class="block text-gray-500 text-xs">USD {{ c.total }}</span>
+                {% endif %}
+                <span class="font-bold">ARS {{ c.total_pesificado }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600 text-right">
+                {% if c.moneda == 'DOL' %}
+                    <span class="block text-gray-400 text-xs font-normal">USD {{ c.saldo }}</span>
+                {% endif %}
+                <span>ARS {{ c.saldo_pesificado }}</span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                <input type="number" step="0.01" max="{{ c.saldo_pesificado|stringformat:'f' }}" min="0" data-id="{{ c.ventas_id }}"
+                       class="aplicacion-importe block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-right"
+                       placeholder="0.00 (ARS)" x-on:input="triggerCalc++">
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="p-4 bg-yellow-50 text-yellow-700 rounded-md">
+    El cliente seleccionado no posee facturas con saldo pendiente.
+</div>
+{% endif %}

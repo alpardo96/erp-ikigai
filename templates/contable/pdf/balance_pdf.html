@@ -1,0 +1,46 @@
+{% extends 'contable/pdf/base_pdf.html' %}
+
+{% block title %}Balance Sumas y Saldos PDF{% endblock %}
+{% block report_name %}BALANCE DE COMPROBACIÓN DE SUMAS Y SALDOS{% endblock %}
+
+{% block extra_header %}
+{% endblock %}
+
+{% block content %}
+<table>
+    <thead>
+        <tr>
+            <th style="width: 40%">Cuenta Contable</th>
+            <th style="width: 15%" class="text-right">Apertura</th>
+            <th style="width: 15%" class="text-right">Debe</th>
+            <th style="width: 15%" class="text-right">Haber</th>
+            <th style="width: 15%" class="text-right">Saldo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fila in balance %}
+        <tr style="{% if fila.cuenta.imputable == 0 %}color: #2563EB; font-weight: bold;{% endif %}">
+            <td>{{ fila.cuenta.codigo|default:fila.cuenta.id }} - {{ fila.cuenta.jerarquia }} - {{ fila.cuenta.cuenta }}</td>
+            <td class="text-right">{{ fila.apertura|floatformat:"2g" }}</td>
+            <td class="text-right">{{ fila.periodo_debe|floatformat:"2g" }}</td>
+            <td class="text-right">{{ fila.periodo_haber|floatformat:"2g" }}</td>
+            <td class="text-right font-bold">{{ fila.saldo|floatformat:"2g" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="text-center">No hay movimientos registrados.</td>
+        </tr>
+        {% endfor %}
+        
+        {% if balance %}
+        <tr class="total-row">
+            <td class="text-right italic font-bold">Totales Generales:</td>
+            <td class="text-right">{{ context_data.total_apertura|floatformat:2 }}</td>
+            <td class="text-right">{{ context_data.total_debe|floatformat:2 }}</td>
+            <td class="text-right">{{ context_data.total_haber|floatformat:2 }}</td>
+            <td class="text-right">{{ context_data.total_saldo|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endblock %}

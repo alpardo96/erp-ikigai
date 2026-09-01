@@ -1,0 +1,499 @@
+<div class="fixed inset-0 z-50 overflow-y-auto" 
+     aria-labelledby="modal-title" 
+     role="dialog" 
+     aria-modal="true"
+     x-data="{
+    preventa_id: {{ preventa.preventa_id }},
+    preventa_cliente_id: {{ preventa.cliente.codigo_id|default:0 }},
+    total: parseFloat(`{{ preventa.total|stringformat:'f' }}`.replace(',', '.')),
+    dolar_cobranza: parseFloat(`{{ dolar_cobranza|stringformat:'f' }}`.replace(',', '.')),
+    
+    pagos: {
+        efectivo: '',
+        usd_recibidos: '',
+        ctacte: '',
+        tarjetas: [],
+        transferencias: [],
+        valores: []
+    },
+    
+    cargando: false,
+    error: '',
+
+    parseImporte(val) {
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(',', '.')) || 0;
+    },
+
+    get totalTarjetas() {
+        return this.pagos.tarjetas.reduce((acc, t) => acc + this.parseImporte(t.importe), 0);
+    },
+    
+    get totalTransferencias() {
+        return this.pagos.transferencias.reduce((acc, t) => acc + this.parseImporte(t.importe), 0);
+    },
+    
+    get totalValores() {
+        return this.pagos.valores.reduce((acc, t) => acc + this.parseImporte(t.importe), 0);
+    },
+
+    get totalIngresado() {
+        return this.parseImporte(this.pagos.efectivo) + 
+               (this.parseImporte(this.pagos.usd_recibidos) * this.dolar_cobranza) + 
+               this.parseImporte(this.pagos.ctacte) +
+               this.totalTarjetas + this.totalTransferencias + this.totalValores;
+    },
+
+    get restante() {
+        return this.total - this.totalIngresado;
+    },
+
+    formatCurrency(value) {
+        return '$ ' + parseFloat(value || 0).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    },
+
+    cerrarModal() {
+        document.getElementById('modal-container').innerHTML = '';
+    },
+
+    getBancoIdFromStr(str) {
+        if(!str) return null;
+        let options = document.getElementById('bancos_list').options;
+        for(let i=0; i<options.length; i++){
+            if(options[i].value === str) return options[i].getAttribute('data-id');
+        }
+        return null;
+    },
+
+    async procesarCobro(condicion = 1) {
+        try {
+            if (this.restante > 0.05) {
+                this.error = 'El monto ingresado es insuficiente para cubrir la preventa.';
+                alert('Atención: ' + this.error);
+                return;
+            }
+            
+            for(let t of this.pagos.tarjetas){
+                if(this.parseImporte(t.importe) > 0 && !t.tarjeta_id){
+                    this.error = 'Hay un importe en tarjeta pero no se seleccionó qué tarjeta es.';
+                    alert('Atención: ' + this.error);
+                    return;
+                }
+            }
+            for(let t of this.pagos.transferencias){
+                if(this.parseImporte(t.importe) > 0 && !t.id){
+                    this.error = 'Hay una transferencia sin cuenta destino seleccionada.';
+                    alert('Atención: ' + this.error);
+                    return;
+                }
+            }
+
+            let payload = {
+                efectivo: this.parseImporte(this.pagos.efectivo),
+                dolares: this.parseImporte(this.pagos.usd_recibidos) * this.dolar_cobranza,
+                ctacte: this.parseImporte(this.pagos.ctacte),
+                tarjetas: this.pagos.tarjetas.map(t => ({...t, importe: this.parseImporte(t.importe)})).filter(t => t.importe > 0),
+                transferencias: this.pagos.transferencias.map(t => ({...t, importe: this.parseImporte(t.importe)})).filter(t => t.importe > 0),
+                valores: this.pagos.valores.map(v => ({
+                    ...v,
+                    importe: this.parseImporte(v.importe),
+                    banco_id: this.getBancoIdFromStr(v.banco_str),
+                    tipo_valor: v.tipo_valor || 'F'
+                })).filter(v => v.importe > 0),
+                condic: condicion
+            };
+            
+            let vuelto = this.totalIngresado - this.total;
+            payload.saldo_a_favor_ctacte = 0;
+
+            if (vuelto > 0.05) {
+                let tieneValores = payload.valores.length > 0;
+                
+                if (tieneValores) {
+                    if (!confirm(`Atención: El monto ingresado supera el total a cobrar por $ ${vuelto.toFixed(2)}.\n\n¿Es correcto este importe cobrado de más?`)) {
+                        return;
+                    }
+                    if (confirm(`¿Desea aplicar el saldo a favor de $ ${vuelto.toFixed(2)} a la Cuenta Corriente del cliente?`)) {
+                        if (this.preventa_cliente_id === 1) { // 1 es Consumidor Final
+                            this.error = 'No puede dejar saldo a favor a un Consumidor Final. Debe modificar la preventa e identificar al cliente.';
+                            alert(this.error);
+                            return;
+                        }
+                        payload.saldo_a_favor_ctacte = vuelto;
+                        vuelto = 0; // Ya no hay vuelto en efectivo
+                    }
+                }
+                
+                // Si aún queda vuelto (o si no se aplicó a CtaCte)
+                if (vuelto > 0.05) {
+                    if (payload.efectivo >= vuelto) {
+                        payload.efectivo -= vuelto; // Se devuelve en efectivo
+                    } else {
+                        this.error = 'El vuelto supera el monto ingresado en efectivo. El sistema asume que el exceso se debe devolver en efectivo si no se aplica a Cuenta Corriente.';
+                        alert(this.error);
+                        return;
+                    }
+                }
+            }
+
+            this.error = '';
+            this.cargando = true;
+
+            try {
+                const url = `/tesoreria/htmx/caja-mostrador/procesar/${this.preventa_id}/`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    this.cerrarModal();
+                    window.location.reload();
+                } else {
+                    this.error = data.message || 'Error al procesar el cobro.';
+                    alert('Error del Servidor: ' + this.error);
+                    this.cargando = false;
+                }
+            } catch (err) {
+                this.error = 'Error de conexión.';
+                alert('Error de conexión: ' + err.message);
+                this.cargando = false;
+            }
+        } catch (globalErr) {
+            alert('CRASH INTERNO JAVASCRIPT: ' + globalErr.message);
+            console.error(globalErr);
+        }
+    }
+}">
+    
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-slate-900 bg-opacity-75 transition-opacity" 
+             aria-hidden="true"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <!-- Modal panel -->
+        <div class="inline-flex flex-col align-bottom bg-slate-100 rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl w-full max-h-[90vh] relative z-10"
+             @click.away="cerrarModal()">
+            
+            <!-- OVERLAY DE CARGA / ARCA -->
+            <div x-show="cargando" 
+                 class="absolute inset-0 bg-slate-900/75 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white p-6 animate-in fade-in duration-200" style="display: none;">
+                <div class="w-16 h-16 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h4 class="text-lg font-black uppercase tracking-wider mb-1">Procesando Comprobante...</h4>
+                <p class="text-xs font-bold text-slate-300">Aguardando respuesta de ARCA / AFIP y confirmando transacción</p>
+            </div>
+
+            <!-- HEADER -->
+            <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center flex-shrink-0 shadow-md z-20">
+                <div>
+                    <h3 class="text-lg leading-6 font-black text-white flex items-center gap-2" id="modal-title">
+                        <i class="fa-solid fa-cash-register"></i> Cobrar Preventa #{{ preventa.preventa_id }}
+                    </h3>
+                    <p class="text-indigo-200 text-xs mt-1 font-bold uppercase">{{ preventa.cliente.razon_social }}</p>
+                </div>
+                <button type="button" @click="cerrarModal()" class="text-indigo-200 hover:text-white transition-colors focus:outline-none">
+                    <i class="fa-solid fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- RESUMEN TOP BAR -->
+            <div class="bg-white px-6 py-4 border-b border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 flex-shrink-0 z-10">
+                <div class="flex-1">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Total a Cobrar</p>
+                    <p class="text-3xl text-slate-800 font-black" x-text="formatCurrency(total)"></p>
+                </div>
+                <div class="w-px h-12 bg-slate-200 hidden md:block"></div>
+                <div class="flex-1 text-center md:text-left">
+                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Total Ingresado</p>
+                    <p class="text-3xl text-indigo-600 font-black" x-text="formatCurrency(totalIngresado)"></p>
+                </div>
+                <div class="w-px h-12 bg-slate-200 hidden md:block"></div>
+                <div class="flex-1 text-right">
+                    <div class="inline-block px-4 py-2 rounded-lg border-2 shadow-sm" :class="restante > 0 ? 'bg-white border-red-200' : 'bg-white border-green-200'">
+                        <p class="text-[10px] uppercase font-black tracking-widest" :class="restante > 0 ? 'text-red-500' : 'text-green-500'" x-text="restante > 0 ? 'Falta Cobrar' : 'Vuelto'"></p>
+                        <p class="text-2xl font-black" :class="restante > 0 ? 'text-red-600' : 'text-green-600'" x-text="formatCurrency(Math.abs(restante))"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BODY CONTENT: MEDIOS DE PAGO -->
+            <div class="px-6 py-6 overflow-y-auto flex-1">
+                
+                <div x-show="error" class="bg-red-50 text-red-600 border border-red-200 p-4 rounded-lg text-sm font-bold mb-6 flex items-center gap-2" style="display: none;">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i> <span x-text="error"></span>
+                </div>
+
+                <div class="space-y-6">
+                    
+                    <!-- Efectivo -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-money-bill-wave"></i>
+                                </div>
+                                Efectivo (Pesos)
+                            </label>
+                            <button @click="pagos.efectivo = restante > 0 ? (parseImporte(pagos.efectivo) + restante).toFixed(2) : pagos.efectivo" type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-xs font-bold transition-colors">
+                                Cargar Faltante
+                            </button>
+                        </div>
+                        <!-- TEXT input mode decimal allows comma or dot natively -->
+                        <input type="text" inputmode="decimal" x-model="pagos.efectivo" class="w-full text-right text-2xl font-black text-slate-800 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3" placeholder="0.00">
+                    </div>
+
+                    <!-- Dolares -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-dollar-sign"></i>
+                                </div>
+                                Dólares
+                            </label>
+                            <span class="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black border border-green-200">Cotización: $ {{ dolar_cobranza }}</span>
+                        </div>
+                        <div class="flex items-end gap-4">
+                            <div class="w-1/2">
+                                <label class="text-xs font-black text-slate-500 uppercase">U$D Recibidos</label>
+                                <input type="text" inputmode="decimal" x-model="pagos.usd_recibidos" class="w-full text-right text-xl font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                            </div>
+                            <div class="w-1/2">
+                                <label class="text-xs font-black text-slate-500 uppercase">Total Pesificados</label>
+                                <input type="text" readonly :value="formatCurrency(parseImporte(pagos.usd_recibidos) * dolar_cobranza)" class="w-full text-right text-xl font-black text-slate-800 bg-slate-100 border border-slate-200 rounded-lg p-3 outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tarjetas (Múltiples) -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm transition-all hover:shadow-md" x-data="{ expanded: false }">
+                        <div class="flex items-center justify-between cursor-pointer" @click="expanded = !expanded">
+                            <label class="text-sm font-bold text-slate-700 flex items-center gap-2 pointer-events-none">
+                                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                </div>
+                                Tarjeta Crédito/Débito
+                            </label>
+                            <div class="flex items-center gap-4">
+                                <span class="text-lg font-black text-slate-800" x-show="totalTarjetas > 0" x-text="formatCurrency(totalTarjetas)"></span>
+                                <div class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors">
+                                    <i class="fa-solid transition-transform" :class="expanded ? 'fa-xmark text-lg' : 'fa-chevron-down'"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="expanded" class="mt-5 pt-5 border-t border-slate-100 space-y-4">
+                            <template x-for="(tarj, index) in pagos.tarjetas" :key="index">
+                                <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
+                                    <button type="button" title="Cancelar carga" @click="pagos.tarjetas.splice(index, 1)" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full border border-slate-700 text-slate-200 hover:text-white hover:bg-red-600 transition-colors shadow-md z-10">
+                                        <i class="fa-solid fa-xmark text-sm"></i>
+                                    </button>
+                                    <div class="flex flex-col md:flex-row gap-4 mb-4 pr-10">
+                                        <div class="flex-1">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Tarjeta</label>
+                                            <select x-model="tarj.tarjeta_id" class="w-full text-base font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5">
+                                                <option value="">Seleccione...</option>
+                                                {% for t in tarjetas %}
+                                                    <option value="{{ t.id }}">{{ t.nombre }} ({{ t.get_tipo_display }})</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div style="width: 5rem;">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Lote</label>
+                                            <input type="text" maxlength="4" x-model="tarj.lote" class="w-full text-base font-bold text-center text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5">
+                                        </div>
+                                        <div style="width: 5rem;">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Cupón</label>
+                                            <input type="text" maxlength="4" x-model="tarj.cupon" class="w-full text-base font-bold text-center text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-black text-slate-500 uppercase">Importe</label>
+                                        <div class="flex gap-3">
+                                            <input type="text" inputmode="decimal" x-model="tarj.importe" class="w-full text-right text-xl font-black text-slate-800 bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                                            <button @click="tarj.importe = restante > 0 ? (parseImporte(tarj.importe) + restante).toFixed(2) : tarj.importe" type="button" class="px-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 transition-colors whitespace-nowrap">
+                                                Cargar Faltante
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <button type="button" @click="pagos.tarjetas.push({tarjeta_id: '', lote: '', cupon: '', importe: ''})" class="w-full py-4 border-2 border-dashed border-slate-300 bg-slate-50 rounded-lg text-sm font-black text-slate-500 hover:bg-white hover:text-indigo-600 hover:border-indigo-400 transition-all shadow-sm">
+                                <i class="fa-solid fa-plus mr-2"></i> Agregar Tarjeta
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Transferencias -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm transition-all hover:shadow-md" x-data="{ expanded: false }">
+                        <div class="flex items-center justify-between cursor-pointer" @click="expanded = !expanded">
+                            <label class="text-sm font-bold text-slate-700 flex items-center gap-2 pointer-events-none">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-money-bill-transfer"></i>
+                                </div>
+                                Transferencia Bancaria
+                            </label>
+                            <div class="flex items-center gap-4">
+                                <span class="text-lg font-black text-slate-800" x-show="totalTransferencias > 0" x-text="formatCurrency(totalTransferencias)"></span>
+                                <div class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors">
+                                    <i class="fa-solid transition-transform" :class="expanded ? 'fa-xmark text-lg' : 'fa-chevron-down'"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="expanded" class="mt-5 pt-5 border-t border-slate-100 space-y-4">
+                            <template x-for="(transf, index) in pagos.transferencias" :key="index">
+                                <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
+                                    <button type="button" title="Cancelar carga" @click="pagos.transferencias.splice(index, 1)" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full border border-slate-700 text-slate-200 hover:text-white hover:bg-red-600 transition-colors shadow-md z-10">
+                                        <i class="fa-solid fa-xmark text-sm"></i>
+                                    </button>
+                                    <div class="mb-4 pr-10">
+                                        <label class="text-xs font-black text-slate-500 uppercase">Cuenta Destino</label>
+                                        <select x-model="transf.id" class="w-full text-base font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5">
+                                            <option value="">Seleccione Cuenta Receptora...</option>
+                                            {% for cta in cuentas_bancarias %}
+                                                <option value="{{ cta.cta_bc_id }}">{{ cta.banco }} - {{ cta.cta_numero }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="flex flex-col md:flex-row gap-4 mb-4">
+                                        <div style="width: 8.5rem;">
+                                            <label class="text-xs font-black text-slate-500 uppercase">CUIT/CUIL</label>
+                                            <input type="text" maxlength="11" x-model="transf.cuit" class="w-full text-base font-bold text-center text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5" placeholder="Opcional">
+                                        </div>
+                                        <div class="flex-1">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Titular Origen (Razón Social / Nombre)</label>
+                                            <input type="text" x-model="transf.titular" class="w-full text-base font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5" placeholder="Opcional">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-black text-slate-500 uppercase">Importe Recibido</label>
+                                        <div class="flex gap-3">
+                                            <input type="text" inputmode="decimal" x-model="transf.importe" class="w-full text-right text-xl font-black text-slate-800 bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                                            <button @click="transf.importe = restante > 0 ? (parseImporte(transf.importe) + restante).toFixed(2) : transf.importe" type="button" class="px-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-xs font-bold text-indigo-700 transition-colors whitespace-nowrap">
+                                                Cargar Faltante
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <button type="button" @click="pagos.transferencias.push({cuenta_id: '', cuit: '', titular: '', importe: ''})" class="w-full py-4 border-2 border-dashed border-slate-300 bg-slate-50 rounded-lg text-sm font-black text-slate-500 hover:bg-white hover:text-indigo-600 hover:border-indigo-400 transition-all shadow-sm">
+                                <i class="fa-solid fa-plus mr-2"></i> Agregar Transferencia
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cheques -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm transition-all hover:shadow-md" x-data="{ expanded: false }">
+                        <div class="flex items-center justify-between cursor-pointer" @click="expanded = !expanded">
+                            <label class="text-sm font-bold text-slate-700 flex items-center gap-2 pointer-events-none">
+                                <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-money-check"></i>
+                                </div>
+                                Valores de Terceros (Cheques)
+                            </label>
+                            <div class="flex items-center gap-4">
+                                <span class="text-lg font-black text-slate-800" x-show="totalValores > 0" x-text="formatCurrency(totalValores)"></span>
+                                <div class="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-700 transition-colors">
+                                    <i class="fa-solid transition-transform" :class="expanded ? 'fa-xmark text-lg' : 'fa-chevron-down'"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="expanded" class="mt-5 pt-5 border-t border-slate-100 space-y-4">
+                            <datalist id="bancos_list">
+                                {% for b in bancos %}
+                                    <option data-id="{{ b.id }}" value="{{ b.codigo_bcra }} - {{ b.nombre }}"></option>
+                                {% endfor %}
+                            </datalist>
+                            
+                            <template x-for="(cheq, index) in pagos.valores" :key="index">
+                                <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
+                                    <button type="button" title="Cancelar carga" @click="pagos.valores.splice(index, 1)" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full border border-slate-700 text-slate-200 hover:text-white hover:bg-red-600 transition-colors shadow-md z-10">
+                                        <i class="fa-solid fa-xmark text-sm"></i>
+                                    </button>
+                                    <div class="flex flex-col md:flex-row gap-4 mb-4 pr-10">
+                                        <div class="flex-1">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Banco Emisor</label>
+                                            <input list="bancos_list" x-model="cheq.banco_str" class="w-full text-base font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5" placeholder="Escriba para buscar...">
+                                        </div>
+                                        <div style="width: 7rem;">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Tipo</label>
+                                            <select x-model="cheq.tipo_valor" class="w-full text-base font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5">
+                                                <option value="F">Físico</option>
+                                                <option value="E">Echeq</option>
+                                            </select>
+                                        </div>
+                                        <div style="width: 7.5rem;">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Nro Cheque</label>
+                                            <input type="text" maxlength="10" x-model="cheq.numero" class="w-full text-base font-bold text-center text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5">
+                                        </div>
+                                        <div style="width: 9rem;">
+                                            <label class="text-xs font-black text-slate-500 uppercase">Fecha Vto</label>
+                                            <input type="date" x-model="cheq.vto" class="w-full text-base font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-black text-slate-500 uppercase">Importe</label>
+                                        <div class="flex gap-3">
+                                            <input type="text" inputmode="decimal" x-model="cheq.importe" class="w-full md:w-1/3 text-right text-xl font-black text-slate-800 bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <button type="button" @click="pagos.valores.push({banco_str: '', numero: '', vto: '', importe: '', tipo_valor: 'F'})" class="w-full py-4 border-2 border-dashed border-slate-300 bg-slate-50 rounded-lg text-sm font-black text-slate-500 hover:bg-white hover:text-indigo-600 hover:border-indigo-400 transition-all shadow-sm">
+                                <i class="fa-solid fa-plus mr-2"></i> Agregar Cheque
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cuenta Corriente -->
+                    {% if permite_ctacte %}
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+                                    <i class="fa-solid fa-book"></i>
+                                </div>
+                                Cuenta Corriente (Cargar a Deuda)
+                            </label>
+                            <button @click="pagos.ctacte = restante > 0 ? (parseImporte(pagos.ctacte) + restante).toFixed(2) : pagos.ctacte" type="button" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-xs font-bold transition-colors">
+                                Cargar Faltante
+                            </button>
+                        </div>
+                        <input type="text" inputmode="decimal" x-model="pagos.ctacte" class="w-full text-right text-2xl font-black text-slate-800 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-3" placeholder="0.00">
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <!-- FOOTER ACCIONES -->
+            <div class="bg-slate-100 px-6 py-4 border-t border-slate-200 flex justify-end gap-3 flex-shrink-0 z-10">
+                <button type="button" @click="procesarCobro(2)" :disabled="cargando" class="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-lg font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="cargando"></i>
+                    <span x-show="!cargando"><i class="fa-solid fa-file-invoice"></i> Reserva</span>
+                </button>
+                <button type="button" @click="cerrarModal()" :disabled="cargando" class="px-6 py-3 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg font-bold shadow-sm transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" @click="procesarCobro(1)" :disabled="cargando" class="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-spinner fa-spin" x-show="cargando"></i>
+                    <span x-show="!cargando"><i class="fa-solid fa-check"></i> Facturar</span>
+                </button>
+            </div>
+            
+        </div>
+    </div>
+</div>

@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Rendición Reparto {{ reparto.numero }} | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-start border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+                Rendición — Reparto {{ reparto.numero }}
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Esperado vs. cobrado vs. rendido. El cierre del circuito de la calle.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'distribucion_cobranza' reparto.id %}"
+               class="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900">Cobranzas</a>
+            <a href="{% url 'distribucion_reparto_detalle' reparto.id %}"
+               class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">Volver</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Esperado</div>
+            <div class="text-lg font-black text-slate-800">$ {{ resumen.esperado|formato_ar }}</div>
+            <div class="text-[10px] text-slate-400">cobro mínimo de la hoja de ruta</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cobrado</div>
+            <div class="text-lg font-black text-emerald-700">$ {{ resumen.cobrado|formato_ar }}</div>
+            <div class="text-[10px] text-slate-400">todos los medios</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Efectivo</div>
+            <div class="text-lg font-black text-slate-800">$ {{ resumen.efectivo_cobrado|formato_ar }}</div>
+            <div class="text-[10px] text-slate-400">lo único que se rinde en mano</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Declarado</div>
+            <div class="text-lg font-black text-indigo-700">$ {{ resumen.declarado|formato_ar }}</div>
+            <div class="text-[10px] text-slate-400">contado por el tesorero: $ {{ resumen.recibido|formato_ar }}</div>
+        </div>
+        <div class="rounded-xl bg-white border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Devuelto (NC)</div>
+            <div class="text-lg font-black text-amber-700">$ {{ resumen.total_notas_credito|formato_ar }}</div>
+            <div class="text-[10px] text-slate-400">baja lo que había que cobrar</div>
+        </div>
+    </div>
+
+    {% if resumen.pendiente_de_rendir %}
+    <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
+        Quedan <strong>$ {{ resumen.pendiente_de_rendir|formato_ar }}</strong> en efectivo cobrados y todavía sin declarar.
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Cobrado por medio de pago</h2>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="divide-y divide-gray-100">
+                    {% for medio, importe in resumen.cobrado_por_medio %}
+                    <tr>
+                        <td class="py-2 pl-6 pr-3 text-sm text-slate-700">{{ medio }}</td>
+                        <td class="px-6 py-2 text-sm text-right font-mono font-black">$ {{ importe|formato_ar }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td class="px-4 py-8 text-center text-xs text-slate-400 italic">Todavía no se cobró nada.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="px-6 py-2.5 bg-slate-50 border-t border-slate-200 flex justify-between text-xs">
+                <span class="text-slate-500">Real (condic 1): <strong>$ {{ resumen.cobrado_real|formato_ar }}</strong></span>
+                <span class="text-slate-500">Presupuestado (condic 2): <strong>$ {{ resumen.cobrado_presupuestado|formato_ar }}</strong></span>
+            </div>
+        </div>
+
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Notas de crédito del reparto</h2>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="divide-y divide-gray-100">
+                    {% for nc in resumen.notas_credito %}
+                    <tr>
+                        <td class="py-2 pl-6 pr-3">
+                            <div class="text-xs font-mono font-bold text-slate-700">
+                                {{ nc.nota_credito.tipo.detalle }}
+                                {{ nc.nota_credito.punto|stringformat:"04d" }}-{{ nc.nota_credito.numero|stringformat:"08d" }}
+                            </div>
+                            <div class="text-[11px] text-slate-500">{{ nc.parada.cliente.razon_social }}</div>
+                        </td>
+                        <td class="px-3 py-2 text-[11px] text-slate-500">{{ nc.motivo.codigo }}</td>
+                        <td class="px-6 py-2 text-sm text-right font-mono font-black text-amber-700">
+                            $ {{ nc.nota_credito.total|formato_ar }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td class="px-4 py-8 text-center text-xs text-slate-400 italic">Sin devoluciones acreditadas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+            <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Cobranzas registradas</h2>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-white">
+                <tr>
+                    <th class="py-2 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recibo</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                    <th class="px-3 py-2 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cobrador</th>
+                    <th class="px-3 py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condic</th>
+                    <th class="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for c in resumen.cobranzas %}
+                <tr>
+                    <td class="py-2 pl-6 pr-3 text-xs font-mono font-bold text-slate-700">
+                        RC {{ c.recibo.punto|stringformat:"04d" }}-{{ c.recibo.numero|stringformat:"08d" }}
+                    </td>
+                    <td class="px-3 py-2 text-sm text-slate-700">{{ c.recibo.cliente.razon_social }}</td>
+                    <td class="px-3 py-2 text-xs text-slate-500">{{ c.cobrador.nombre|default:"—" }}</td>
+                    <td class="px-3 py-2 text-center">
+                        {% if c.recibo.condic == 2 %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">PRESUP.</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">REAL</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-2 text-sm text-right font-mono font-black">$ {{ c.recibo.total|formato_ar }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="px-4 py-8 text-center text-xs text-slate-400 italic">
+                    Todavía no se cargó ninguna cobranza de este reparto.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if reparto.estado == 1 %}
+    <form method="post" class="rounded-2xl bg-white border border-gray-100 shadow-sm px-5 py-4"
+          onsubmit="return confirm('Al rendir se cierra la caja recaudadora del reparto. ¿Continuar?')">
+        {% csrf_token %}
+        <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight mb-3">Declarar la rendición a Tesorería</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Efectivo que entrega</label>
+                <input type="text" name="efectivo_pesos" value="{{ resumen.efectivo_cobrado|formato_ar }}"
+                       class="fInputAR w-full h-9 px-3 text-right bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono outline-none focus:border-indigo-500">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Observaciones</label>
+                <input type="text" name="observaciones"
+                       class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500">
+            </div>
+        </div>
+        <div class="flex justify-end mt-3">
+            <button type="submit"
+                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                Declarar rendición
+            </button>
+        </div>
+        <p class="text-[11px] text-slate-400 italic mt-2">
+            La rendición queda EN TRÁNSITO. El tesorero la cuenta y la acepta desde la recepción de rendiciones de
+            Tesorería, y la diferencia genera su asiento automático: el que declara no es el mismo que cuenta.
+        </p>
+    </form>
+    {% elif reparto.estado == 2 %}
+    <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs text-emerald-800">
+        Reparto <strong>RENDIDO</strong>. La caja recaudadora está cerrada.
+        {% for r in resumen.rendiciones %}
+            Rendición #{{ r.retiro.id }}: declaró $ {{ r.retiro.efectivo_pesos|formato_ar }},
+            {% if r.retiro.estado == 'R' %}
+                el tesorero contó $ {{ r.retiro.efectivo_pesos_recibido|formato_ar }}
+                (diferencia $ {{ r.retiro.diferencia_pesos|formato_ar }}).
+            {% else %}
+                <span class="font-bold">en tránsito</span>, pendiente de que Tesorería la reciba.
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

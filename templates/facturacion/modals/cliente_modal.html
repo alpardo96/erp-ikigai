@@ -1,0 +1,774 @@
+<!-- 
+    MODAL INTEGRAL DE CLIENTES Y PROVEEDORES
+    Renderiza un formulario complejo que incluye datos básicos, fiscales y extensiones modulares.
+    Posicionamiento: ABSOLUTO (se superpone solo al área de contenido central).
+-->
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-6 overflow-y-auto"
+    id="modal-backdrop">
+
+    <!-- Contenedor del Modal -->
+    <div
+        class="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-5xl border border-gray-100 my-auto">
+
+        <!-- Cabecera Premium -->
+        <div
+            class="bg-gradient-to-r from-gray-50 to-white px-8 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div class="flex items-center">
+                <div
+                    class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-100 mr-5">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">
+                        {% if cliente %}Editar {{ cliente.razon_social }}{% else %}Alta Cliente / Proveedor{% endif %}
+                    </h3>
+                    <p class="text-xs text-gray-400 mt-1">Gestión de datos.</p>
+                </div>
+            </div>
+            <button type="button"
+                class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"
+                onclick="document.body.dispatchEvent(new Event('cerrarModal'))">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Formulario: Integra la lógica de ExtensionArmeria y ExtensionJosen -->
+        <form novalidate
+            hx-post="{% if cliente %}{% url 'cliente_edit' cliente.codigo_id %}{% else %}{% url 'cliente_add' %}{% endif %}"
+            hx-target="#modal-container" hx-swap="innerHTML" class="flex flex-col">
+            
+            <input type="hidden" name="origen" value="{{ origen|default_if_none:'' }}">
+            
+            <!-- Visualización de errores globales -->
+            {% if form.errors %}
+            <div class="mx-10 mt-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-xl shadow-md" id="error-banner">
+                <div class="flex items-center mb-2">
+                    <svg class="h-5 w-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-sm font-bold text-red-700">Por favor, corrige los siguientes errores antes de guardar:</span>
+                </div>
+                <ul class="text-xs text-red-600 list-disc list-inside space-y-1">
+                    {% for field, errors in form.errors.items %}
+                        <li><strong>{% if field == '__all__' %}Validación{% else %}{{ field|title }}{% endif %}:</strong> {{ errors|join:", " }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="bg-white px-10 py-8 space-y-10 max-h-[75vh] overflow-y-auto custom-scrollbar">
+
+                <div x-data="{
+                    tipoEntidad: '{{ form.tipo_entidad.value|default:'1' }}',
+                    condicionIva: '{{ form.condicion_iva.value|default:'CONSUMIDOR FINAL' }}',
+                    tipoDoc: '{{ form.tipo_documento.value|default:'99' }}',
+                    cuitVal: '{{ form.cuit.value|default:'' }}',
+                    pedirFechaNacimiento: {{ pedir_fecha_nacimiento|yesno:'true,false' }},
+                    tipoPersona: '{{ form_armeria.tipo_persona.value|default:'' }}',
+                    cliApellido: '{{ cli_apellido|escapejs }}',
+                    cliNombre: '{{ cli_nombre|escapejs }}',
+                    puedeArmeria: {{ puede_armeria|yesno:'true,false' }},
+                    
+                    get esFiscal() {
+                        return ['RESPONSABLE INSCRIPTO', 'MONOTRIBUTO', 'EXENTO'].includes(this.condicionIva);
+                    },
+
+                    get esProveedor() {
+                        return String(this.tipoEntidad) === '2';
+                    },
+
+                    onTipoEntidadChange() {
+                        const entValue = String(this.tipoEntidad);
+                        if (entValue === '2') {
+                            if (this.condicionIva === 'CONSUMIDOR FINAL' || !this.condicionIva) {
+                                this.condicionIva = 'RESPONSABLE INSCRIPTO';
+                            }
+                            this.tipoDoc = '80';
+                        }
+                        window.dispatchEvent(new CustomEvent('cambio-tipo-entidad', { detail: { tipo: entValue } }));
+                        if (typeof actualizarInterfaz === 'function') {
+                            actualizarInterfaz();
+                        }
+                    },
+                    
+                    onCondicionIvaChange() {
+                        if (this.esFiscal) {
+                            this.tipoDoc = '80';
+                        } else if (this.condicionIva === 'CONSUMIDOR FINAL') {
+                            if (String(this.tipoEntidad) !== '2') {
+                                this.tipoDoc = '99';
+                            }
+                        }
+                    },
+                    
+                    verificarCuit(e) {
+                        let cuit = e.target.value;
+                        if(cuit.length < 5 || cuit === '0' || cuit === '00') return;
+                        
+                        fetch(`{% url 'htmx_verificar_documento' %}?cuit=${cuit}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.existe) {
+                                    e.target.blur();
+                                    if('{{ origen }}' === 'preventa' || '{{ origen }}' === 'compra') {
+                                        Swal.fire({
+                                            title: 'Cliente Existente',
+                                            text: `El CUIT/DNI ya está registrado bajo: ${data.cliente.razon_social}. ¿Desea seleccionarlo?`,
+                                            icon: 'info',
+                                            showCancelButton: true,
+                                            confirmButtonText: 'Sí, seleccionarlo',
+                                            cancelButtonText: 'Cancelar',
+                                            buttonsStyling: false,
+                                            customClass: {
+                                                confirmButton: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors mr-2',
+                                                cancelButton: 'bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors'
+                                            }
+                                        }).then((result) => {
+                                            if (result.isConfirmed) {
+                                                document.body.dispatchEvent(new CustomEvent('clienteVentaSeleccionado', {
+                                                    detail: { id: data.cliente.id, razon_social: data.cliente.razon_social }
+                                                }));
+                                                document.getElementById('modal-container').innerHTML = '';
+                                            }
+                                        });
+                                    } else {
+                                        Swal.fire({
+                                            title: 'Atención',
+                                            text: `El CUIT/DNI ya pertenece a ${data.cliente.razon_social}.`,
+                                            icon: 'warning',
+                                            buttonsStyling: false,
+                                            customClass: {
+                                                confirmButton: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors'
+                                            }
+                                        });
+                                    }
+                                }
+                            });
+                    },
+                    
+                    isSearchingAfip: false,
+                    consultarPadronAfip() {
+                        if (!this.cuitVal || String(this.cuitVal).length !== 11) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Atención',
+                                text: 'Para consultar en AFIP debes ingresar un CUIT válido de 11 dígitos.',
+                                toast: true, position: 'top-end', timer: 3000, showConfirmButton: false
+                            });
+                            return;
+                        }
+                        this.isSearchingAfip = true;
+                        
+                        fetch(`{% url 'htmx_consultar_afip' '99999999999' %}`.replace('99999999999', this.cuitVal))
+                            .then(response => response.json())
+                            .then(data => {
+                                this.isSearchingAfip = false;
+                                if (data.error) {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error ARCA',
+                                        text: data.error,
+                                        confirmButtonText: 'Entendido',
+                                        buttonsStyling: false,
+                                        customClass: {
+                                            confirmButton: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors'
+                                        }
+                                    });
+                                } else {
+                                    // Rellenar Tipo de Persona, Razón Social, Nombre, Apellido
+                                    console.log('DATOS ARCA FRONTEND:', data);
+                                    if (data.tipo_persona) {
+                                        this.tipoPersona = data.tipo_persona;
+                                    }
+                                    
+                                    let rsInput = document.getElementById('id_razon_social');
+                                    if(rsInput) {
+                                        rsInput.value = data.razon_social;
+                                        rsInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                    }
+                                    
+                                    if (data.tipo_persona === 'F') {
+                                        this.cliApellido = data.apellido || '';
+                                        this.cliNombre = data.nombre || '';
+                                    }
+                                    
+                                    // Condición IVA
+                                    this.condicionIva = data.condicion_iva;
+                                    this.onCondicionIvaChange();
+
+                                    // Tipo de Documento
+                                    if (data.tipo_documento) {
+                                        this.tipoDoc = data.tipo_documento;
+                                    }
+                                    
+                                    // Dirección (Domicilio)
+                                    let dirInput = document.getElementById('id_domicilio');
+                                    if(dirInput) {
+                                        dirInput.value = data.domicilio;
+                                        dirInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                    }
+                                    
+                                    // Código Postal
+                                    let cpInput = document.getElementById('id_codigo_postal');
+                                    if(cpInput) {
+                                        cpInput.value = data.codigo_postal;
+                                        cpInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                    }
+                                    
+                                    // Localidad
+                                    let locInput = document.getElementById('id_localidad');
+                                    if(locInput) {
+                                        locInput.value = data.localidad;
+                                        locInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                    }
+
+                                    // Jurisdicción (Provincia)
+                                    if (data.jurisdiccion_id) {
+                                        let jurInput = document.getElementById('id_jurisdiccion');
+                                        if (jurInput) {
+                                            jurInput.value = data.jurisdiccion_id;
+                                            jurInput.dispatchEvent(new Event('change', {bubbles: true}));
+                                        }
+                                    }
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'ARCA',
+                                        text: 'Datos autocompletados con éxito.',
+                                        toast: true, 
+                                        position: 'top-end', 
+                                        timer: 5000, 
+                                        showConfirmButton: false
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                this.isSearchingAfip = false;
+                                console.error('Error ARCA:', error);
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error de Conexión',
+                                    text: 'No se pudo comunicar con el servidor de ARCA.',
+                                    confirmButtonText: 'Entendido',
+                                    buttonsStyling: false,
+                                    customClass: {
+                                        confirmButton: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors'
+                                    }
+                                });
+                            });
+                    }
+                }" x-init="onTipoEntidadChange()">
+                    <h4
+                        class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-6 border-b pb-3 border-indigo-50 flex items-center">
+                        <span
+                            class="bg-indigo-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] mr-2">1</span>
+                        Identidad y Condición Fiscal
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        
+                        <!-- Bloque de Identidad (Dinámico por Armería) -->
+                        <template x-if="puedeArmeria">
+                            <div class="lg:col-span-3 mb-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                        Naturaleza del Cliente <span class="text-red-500 font-bold">*</span>
+                                    </label>
+                                    <div class="flex flex-col sm:flex-row gap-4">
+                                        <label class="relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none transition-all duration-200"
+                                               :class="tipoPersona === 'F' ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 hover:bg-gray-50'">
+                                            <input type="radio" name="tipo_persona" value="F" class="sr-only" x-model="tipoPersona" required>
+                                            <span class="flex flex-1">
+                                                <span class="flex flex-col">
+                                                    <span class="block text-sm font-medium text-gray-900">Persona Física</span>
+                                                    <span class="mt-1 flex items-center text-xs text-gray-500">Individuos (Apellido y Nombre)</span>
+                                                </span>
+                                            </span>
+                                            <svg class="h-5 w-5 text-indigo-600 ml-3" :class="tipoPersona === 'F' ? 'opacity-100' : 'opacity-0'" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                            </svg>
+                                        </label>
+                                        
+                                        <label class="relative flex cursor-pointer rounded-lg border bg-white p-4 shadow-sm focus:outline-none transition-all duration-200"
+                                               :class="tipoPersona === 'J' ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 hover:bg-gray-50'">
+                                            <input type="radio" name="tipo_persona" value="J" class="sr-only" x-model="tipoPersona" required>
+                                            <span class="flex flex-1">
+                                                <span class="flex flex-col">
+                                                    <span class="block text-sm font-medium text-gray-900">Persona Jurídica</span>
+                                                    <span class="mt-1 flex items-center text-xs text-gray-500">Empresas (Razón Social)</span>
+                                                </span>
+                                            </span>
+                                            <svg class="h-5 w-5 text-indigo-600 ml-3" :class="tipoPersona === 'J' ? 'opacity-100' : 'opacity-0'" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+                                            </svg>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="w-full md:w-1/3 ml-auto">
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                        Número de Documento / CUIT
+                                        <span x-show="esFiscal" class="text-red-500 font-bold">* (11 dígitos)</span>
+                                    </label>
+                                    <div class="flex space-x-2" @blur.capture="verificarCuit($event)">
+                                        <input type="text" name="cuit" id="id_cuit" x-model="cuitVal"
+                                            :placeholder="esFiscal ? 'CUIT obligatorio (11 dígitos)' : (tipoDoc === '96' ? 'DNI (7 u 8 dígitos)' : (tipoDoc === '80' ? 'CUIT (11 dígitos)' : 'Sin identificar (0)'))"
+                                            :maxlength="esFiscal || tipoDoc === '80' ? '11' : (tipoDoc === '96' ? '8' : '20')"
+                                            class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono"
+                                            :required="esFiscal">
+                                        <button type="button" @click="consultarPadronAfip()"
+                                            :disabled="isSearchingAfip"
+                                            class="flex-shrink-0 bg-blue-600 text-white rounded-xl px-4 flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-sm"
+                                            title="Autocompletar con AFIP">
+                                            <svg x-show="!isSearchingAfip" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                            <svg x-show="isSearchingAfip" x-cloak class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                        </button>
+                                    </div>
+                                    {% if form.cuit.errors %}
+                                        <p class="text-[10px] text-red-500 mt-1 font-medium">{{ form.cuit.errors.0 }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Campos para Física -->
+                        <template x-if="puedeArmeria && tipoPersona === 'F'">
+                            <div class="lg:col-span-2 grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Apellido</label>
+                                    <input type="text" name="cli_apellido" x-model="cliApellido" required
+                                           class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all uppercase placeholder-gray-400"
+                                           placeholder="Ej: PEREZ">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre</label>
+                                    <input type="text" name="cli_nombre" x-model="cliNombre" required
+                                           class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all uppercase placeholder-gray-400"
+                                           placeholder="Ej: JUAN CARLOS">
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Campo para Jurídica (o si no tiene armería) -->
+                        <div class="lg:col-span-2" x-show="!puedeArmeria || tipoPersona === 'J'">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Razón Social / Nombre Completo</label>
+                            {{ form.razon_social }}
+                            {% if form.razon_social.errors %}
+                                <p class="text-[10px] text-red-500 mt-1 font-medium">{{ form.razon_social.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Rol Comercial</label>
+                            <select name="tipo_entidad" id="id_tipo_entidad" x-model="tipoEntidad" @change="onTipoEntidadChange()"
+                                class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                                {% for val, label in form.fields.tipo_entidad.choices %}
+                                    <option value="{{ val }}" {% if form.tipo_entidad.value == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- 1. TIPO DE DOCUMENTO DERIVADO -->
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">1. Tipo de Documento</label>
+                            <input type="hidden" name="tipo_documento" :value="esFiscal ? '80' : tipoDoc">
+                            <select id="id_tipo_documento" x-model="tipoDoc"
+                                :class="esFiscal ? 'bg-gray-100 text-gray-500 pointer-events-none' : 'bg-white text-gray-900'"
+                                :tabindex="esFiscal ? -1 : 0"
+                                class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                                {% for val, label in form.fields.tipo_documento.choices %}
+                                    <option value="{{ val }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.tipo_documento.errors %}
+                                <p class="text-[10px] text-red-500 mt-1 font-medium">{{ form.tipo_documento.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 2. NÚMERO DE IDENTIFICACIÓN -->
+                        <template x-if="!puedeArmeria">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    2. Número de Documento / CUIT
+                                    <span x-show="esFiscal" class="text-red-500 font-bold">* (11 dígitos)</span>
+                                </label>
+                                <div class="flex space-x-2" @blur.capture="verificarCuit($event)">
+                                    <input type="text" name="cuit" id="id_cuit" x-model="cuitVal"
+                                        :placeholder="esFiscal ? 'CUIT obligatorio (11 dígitos)' : (tipoDoc === '96' ? 'DNI (7 u 8 dígitos)' : (tipoDoc === '80' ? 'CUIT (11 dígitos)' : 'Sin identificar (0)'))"
+                                        :maxlength="esFiscal || tipoDoc === '80' ? '11' : (tipoDoc === '96' ? '8' : '20')"
+                                        class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono"
+                                        :required="esFiscal">
+                                    <button type="button" @click="consultarPadronAfip()"
+                                        :disabled="isSearchingAfip"
+                                        class="flex-shrink-0 bg-blue-600 text-white rounded-xl px-4 flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-50 shadow-sm"
+                                        title="Autocompletar con AFIP">
+                                        <svg x-show="!isSearchingAfip" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        <svg x-show="isSearchingAfip" x-cloak class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                    </button>
+                                </div>
+                                {% if form.cuit.errors %}
+                                    <p class="text-[10px] text-red-500 mt-1 font-medium">{{ form.cuit.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </template>
+
+                        <!-- 3. DEFINICIÓN PRINCIPAL: CONDICIÓN ANTE EL IVA -->
+                        <div>
+                            <label class="block text-sm font-bold text-indigo-700 mb-2">3. Condición ante el IVA</label>
+                            <select name="condicion_iva" id="id_condicion_iva" x-model="condicionIva" @change="onCondicionIvaChange()"
+                                class="w-full rounded-xl border-indigo-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-indigo-50/40 font-semibold text-indigo-900 transition-all">
+                                {% for val, label in form.fields.condicion_iva.choices %}
+                                    <option value="{{ val }}" {% if form.condicion_iva.value == val %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+
+                        <div id="div-fecha-nacimiento" x-show="!esProveedor && pedirFechaNacimiento" x-cloak>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Nacimiento</label>
+                            {{ form.fecha_nacimiento }}
+                        </div>
+                        <!-- Campos que se ocultan/muestran dinámicamente según el tipo -->
+                        <div id="div-clasificacion-cli" x-show="!esProveedor" x-cloak>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Perfil de Cliente</label>
+                            {{ form.clasificacion_cli }}
+                        </div>
+                        <div id="div-clasificacion-pro" x-show="esProveedor" x-cloak>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Perfil de Proveedor</label>
+                            {{ form.clasificacion_pro }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Ubicación Física y Contacto Humano -->
+                <div>
+                    <h4
+                        class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-6 border-b pb-3 border-emerald-50 flex items-center">
+                        <span
+                            class="bg-emerald-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] mr-2">2</span>
+                        Ubicación y Comunicación
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Domicilio</label>
+                            {{ form.domicilio }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">C. Postal</label>
+                            {{ form.codigo_postal }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Localidad / Ciudad</label>
+                            {{ form.localidad }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Provincia /
+                                Jurisdicción</label>
+                            {{ form.jurisdiccion }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Línea Telefónica</label>
+                            {{ form.telefono }}
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">E-Mail (Notificaciones de
+                                Facturación)</label>
+                            {{ form.correo }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Persona de Contacto</label>
+                            {{ form.contacto }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Datos Fiscales y Lógicas de Venta -->
+                <div>
+                    <h4
+                        class="text-xs font-bold text-amber-500 uppercase tracking-widest mb-6 border-b pb-3 border-amber-50 flex items-center">
+                        <span
+                            class="bg-amber-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] mr-2">3</span>
+                        Finanzas y Fiscalidad
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Régimen IIBB</label>
+                            {{ form.tipo_iibb }}
+                        </div>
+                        <!-- SECCIÓN CUENTAS CONTABLES (ALPINE.JS) — Lock/Unlock según Rol Comercial -->
+                        <div class="col-span-1 md:col-span-2 lg:col-span-3"
+                            x-data="{
+                                ctaPatId: '{{ form.instance.cta_pat|default:'' }}',
+                                ctaPatNombre: '{{ form.cta_pat_nombre|escapejs }}',
+                                ctaResId: '{{ form.instance.cta_res|default:'' }}',
+                                ctaResNombre: '{{ form.cta_res_nombre|escapejs }}',
+                                targetField: '',
+                                
+                                defaultCliId: '{{ form.default_cta_cli_id }}',
+                                defaultCliNombre: '{{ form.default_cta_cli_nombre|escapejs }}',
+                                defaultVtaId: '{{ form.default_cta_vta_id }}',
+                                defaultVtaNombre: '{{ form.default_cta_vta_nombre|escapejs }}',
+                                defaultProvId: '{{ form.default_cta_prov_id }}',
+                                defaultProvNombre: '{{ form.default_cta_prov_nombre|escapejs }}',
+                                
+                                // Tipo actual — se sincroniza con el select tipo_entidad del DOM
+                                tipoActual: '{{ form.instance.tipo_entidad|default:1 }}',
+                                
+                                // Derivadas
+                                get locked() { return String(this.tipoActual) === '1'; },
+                                get paramsFaltantes() { return !this.defaultCliId && !this.defaultVtaId; },
+                                
+                                init() {
+                                    if (this.ctaPatId == '0' || this.ctaPatId == 'None') this.ctaPatId = '';
+                                    if (this.ctaResId == '0' || this.ctaResId == 'None') this.ctaResId = '';
+                                    
+                                    // Leer el valor actual del select tipo_entidad
+                                    const sel = document.querySelector('[name=tipo_entidad]');
+                                    if (sel) {
+                                        this.tipoActual = sel.value;
+                                        // Listener DIRECTO al select — funciona siempre
+                                        sel.addEventListener('change', () => {
+                                            this.tipoActual = sel.value;
+                                            this.aplicarDefaults(sel.value);
+                                        });
+                                    }
+                                    
+                                    // Sugerir defaults solo al crear nuevo (sin pk)
+                                    if ('{{ form.instance.pk|default:'' }}' == '') {
+                                        this.aplicarDefaults(this.tipoActual);
+                                    }
+
+                                    // Escuchar selección desde el buscador de cuentas
+                                    window.addEventListener('cuenta-seleccionada', (e) => {
+                                        if (this.locked) return;
+                                        if (this.targetField === 'pat') {
+                                            this.ctaPatId = e.detail.id;
+                                            this.ctaPatNombre = e.detail.nombre;
+                                        } else if (this.targetField === 'res') {
+                                            this.ctaResId = e.detail.id;
+                                            this.ctaResNombre = e.detail.nombre;
+                                        }
+                                    });
+                                },
+
+                                aplicarDefaults(tipo) {
+                                    // Solo aplica defaults al ALTA (sin pk). Al editar se respetan los valores existentes.
+                                    if ('{{ form.instance.pk|default:'' }}' != '') return;
+                                    if (String(tipo) === '1') {
+                                        this.ctaPatId = this.defaultCliId;
+                                        this.ctaPatNombre = this.defaultCliNombre;
+                                        this.ctaResId = this.defaultVtaId;
+                                        this.ctaResNombre = this.defaultVtaNombre;
+                                    } else {
+                                        this.ctaPatId = this.defaultProvId;
+                                        this.ctaPatNombre = this.defaultProvNombre;
+                                        this.ctaResId = '';
+                                        this.ctaResNombre = '';
+                                    }
+                                }
+                            }">
+                            
+                            <!-- Alerta: Parámetros contables no configurados -->
+                            <div x-show="paramsFaltantes" x-cloak
+                                class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
+                                <svg class="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                                <p class="text-xs text-amber-700 font-medium">
+                                    Los <strong>Parámetros Contables</strong> de la empresa no están configurados. Configure las cuentas por defecto desde el módulo Contable para que se auto-asignen.
+                                </p>
+                            </div>
+
+                            <!-- Badge de estado -->
+                            <div class="flex items-center gap-2 mb-4">
+                                <span x-show="locked" x-cloak
+                                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                    Cuentas definidas por parámetros (Cliente)
+                                </span>
+                                <span x-show="!locked" x-cloak
+                                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                                    Cuentas editables (Proveedor)
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <!-- Cuenta Patrimonial -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Cta. Patrimonial</label>
+                                    <div class="relative flex items-center">
+                                        <input type="hidden" name="cta_pat" x-model="ctaPatId">
+                                        <input type="text" x-model="ctaPatNombre" readonly
+                                            placeholder="Seleccione cuenta..."
+                                            :class="locked
+                                                ? 'w-full rounded-xl border-gray-200 bg-slate-100 text-sm text-slate-400 focus:ring-0 cursor-not-allowed'
+                                                : 'w-full rounded-l-xl rounded-r-none border-gray-200 bg-gray-50 text-sm text-gray-600 focus:ring-0 cursor-default'">
+                                        <button x-show="!locked" x-cloak type="button" 
+                                            @click="targetField='pat'"
+                                            hx-get="{% url 'buscador_cuentas_modal' %}" 
+                                            hx-target="#modal-buscador-cuentas"
+                                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-[9px] rounded-r-xl border border-indigo-600 transition-colors flex items-center h-full">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Cuenta Resultado -->
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Cta. Resultado</label>
+                                    <div class="relative flex items-center">
+                                        <input type="hidden" name="cta_res" x-model="ctaResId">
+                                        <input type="text" x-model="ctaResNombre" readonly
+                                            placeholder="Seleccione cuenta..."
+                                            :class="locked
+                                                ? 'w-full rounded-xl border-gray-200 bg-slate-100 text-sm text-slate-400 focus:ring-0 cursor-not-allowed'
+                                                : 'w-full rounded-l-xl rounded-r-none border-gray-200 bg-gray-50 text-sm text-gray-600 focus:ring-0 cursor-default'">
+                                        <button x-show="!locked" x-cloak type="button" 
+                                            @click="targetField='res'"
+                                            hx-get="{% url 'buscador_cuentas_modal' %}" 
+                                            hx-target="#modal-buscador-cuentas"
+                                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-[9px] rounded-r-xl border border-indigo-600 transition-colors flex items-center h-full">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.instance.pk %}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Balance al Inicio</label>
+                            {{ form.saldo_inicial }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Límite</label>
+                            {{ form.limite }}
+                        </div>
+                        {% endif %}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Meta de Facturación</label>
+                            {{ form.objetivo_mensual }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orden de Compra (Solo Proveedores) -->
+                <div id="div-orden-compra" x-show="esProveedor" x-cloak class="flex items-center gap-3 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 mb-6 transition-all hover:bg-indigo-50">
+                    <div class="flex items-center h-5">
+                        {{ form.usa_orden_compra }}
+                    </div>
+                    <div>
+                        <label class="text-sm font-bold text-slate-800">Exige Orden de Compra</label>
+                        <p class="text-xs text-slate-500">Obliga a vincular una OC al cargar facturas de Bienes e Insumos.</p>
+                    </div>
+                </div>
+
+                <!-- Observaciones -->
+                <div>
+                    <label
+                        class="block text-sm font-semibold text-gray-700 mb-3 uppercase tracking-tighter text-slate-400">Notas
+                        Adicionales</label>
+                    {{ form.observaciones }}
+                </div>
+
+                <!-- Módulos de Especialidad: Solo si el usuario tiene permiso -->
+                {% if puede_armeria %}
+                <div
+                    class="bg-gradient-to-br from-purple-50 to-white p-8 rounded-3xl border border-purple-100 shadow-sm shadow-purple-50">
+                    <h4 class="text-sm font-bold text-purple-600 uppercase tracking-wider mb-6 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                            </path>
+                        </svg>
+                        Registro de Armería
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Identificación CLU</label>
+                            {{ form_armeria.clu }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Fecha de Expiración</label>
+                            {{ form_armeria.clu_vto }}
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                ¿Es Policía / Fuerza de Seguridad?
+                                <span class="text-red-500 font-bold">*</span>
+                            </label>
+                            {{ form_armeria.es_policia }}
+                            {% if form_armeria.es_policia.errors %}
+                                <p class="text-[10px] text-red-500 mt-1 font-medium">{{ form_armeria.es_policia.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if puede_distribuidora %}
+                <!-- Distribución (Plan 074): el coeficiente define el precio del cliente
+                     sobre el precio de lista con IVA. -->
+                <div
+                    class="bg-gradient-to-br from-amber-50 to-white p-8 rounded-3xl border border-amber-100 shadow-sm shadow-amber-50">
+                    <h4 class="text-sm font-bold text-amber-600 uppercase tracking-wider mb-6 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0">
+                            </path>
+                        </svg>
+                        Distribución
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Coeficiente Mayorista</label>
+                            {{ form_distribuidora.coeficiente_mayorista }}
+                            <p class="mt-1 text-[10px] text-gray-400 italic">Se aplica sobre el precio de lista con IVA del producto.</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Clasificación</label>
+                            {{ form_distribuidora.clasificacion }}
+                        </div>
+                        <div class="flex items-end">
+                            <p class="text-[10px] text-gray-400 italic leading-tight">
+                                La zona de reparto se define en cada <strong>domicilio de entrega</strong>,
+                                porque un cliente con sucursales entrega en más de una.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <label class="flex items-center cursor-pointer">
+                            {{ form_distribuidora.bloqueado_credito }}
+                            <span class="ml-2 text-sm font-semibold text-gray-700">Bloqueado para crédito</span>
+                        </label>
+                        <p class="mt-1 ml-6 text-[10px] text-gray-400 italic">Fuerza la venta de contado, con independencia del límite cargado.</p>
+                    </div>
+                </div>
+                {% endif %}
+
+
+
+            </div>
+
+            <!-- Footer con Acciones -->
+            <div class="bg-slate-50 px-10 py-6 border-t border-gray-100 sm:flex sm:flex-row-reverse gap-4">
+                <button type="submit"
+                    class="inline-flex w-full justify-center rounded-2xl bg-indigo-600 px-10 py-3.5 text-sm font-bold text-white shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all hover:scale-[1.02] active:scale-95 sm:w-auto">
+                    Guardar Entidad
+                </button>
+                <button type="button" onclick="document.body.dispatchEvent(new Event('cerrarModal'))"
+                    class="mt-3 inline-flex w-full justify-center rounded-2xl bg-white px-10 py-3.5 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all sm:mt-0 sm:w-auto">
+                    Cerrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Contenedor dinámico para el modal anidado de Búsqueda de Cuentas -->
+<div id="modal-buscador-cuentas"></div>

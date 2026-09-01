@@ -1,0 +1,577 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Facturación de Ventas | Diseño Profesional{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <!-- TITULO Y USUARIO -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Generar Venta</h1>
+            <span
+                class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                VENDEDOR: {{ user.username }}
+            </span>
+        </div>
+        <a href="{% url 'ventas_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </a>
+    </div>
+
+    <form method="post" id="venta-form" class="space-y-2" x-data="{ esPre: false, enviando: false }" x-init="esPre = $el.querySelector('#id_tipo')?.value?.startsWith('PRE') || false" @change="if ($event.target.id === 'id_tipo') { esPre = $event.target.value.startsWith('PRE') }" @submit="enviando = true">
+        {% csrf_token %}
+        <input type="hidden" name="id_fac_rem" id="id_id_fac_rem">
+
+        <!-- BLOQUE 1: CABECERA COMPACTA -->
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible italic">
+            <div class="bg-slate-900 px-3 py-1 flex justify-between items-center rounded-t-lg">
+                <h2 class="text-[9px] font-black text-white uppercase tracking-widest">01. Identificación del
+                    Comprobante</h2>
+                <div class="text-[9px] font-bold text-gray-400 uppercase">
+                    SUCURSAL: {{ request.session.sucursal_nombre|default:"GENERAL" }}
+                </div>
+            </div>
+
+            <div class="p-2 grid grid-cols-12 gap-2">
+                <!-- Fila 1 -->
+                <div class="col-span-12 lg:col-span-12 flex flex-wrap items-center gap-2">
+
+                    <div class="flex-1 max-w-sm">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Cliente / Razón
+                            Social</label>
+                        <div class="relative flex gap-1" x-data="{ open: false }">
+                            <!-- Input oculto para el ID real que va al form -->
+                            <input type="hidden" id="id_cliente" name="cliente" required>
+
+                            <!-- Input visual -->
+                            <input type="text" id="cliente_nombre_display" name="q"
+                                class="w-full h-7 px-2 bg-slate-50 border border-slate-200 rounded text-[11px] font-black text-slate-900 outline-none placeholder:text-slate-400"
+                                placeholder="Buscar Cliente..."
+                                hx-get="{% url 'typeahead_clientes' %}" 
+                                hx-trigger="keyup changed delay:300ms, search, focus" 
+                                hx-target="#cliente_suggestions"
+                                autocomplete="off"
+                                @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                                oninput="if(this.value === '') { document.getElementById('id_cliente').value = ''; document.getElementById('cliente_detalle_container').innerHTML = ''; }">
+                                
+                            <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}"
+                                hx-target="#modal-container"
+                                class="w-7 h-7 shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-all cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown Suggestions -->
+                            <div x-show="open" id="cliente_suggestions" 
+                                 class="absolute z-50 left-0 top-full mt-1 w-[350px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                                 style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-44">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Fecha Emisión</label>
+                        <input type="date" name="fecha" value="{{ form.fecha.value|date:'Y-m-d' }}" required
+                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none focus:border-blue-500 shadow-inner py-0 leading-8">
+                    </div>
+
+                    <div class="w-64">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Tipo Doc.</label>
+                        <select name="tipo" id="id_tipo" required
+                            class="w-full h-8 px-1 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none cursor-pointer shadow-inner py-0 leading-8">
+                            {% for choice in form.fields.tipo.queryset %}
+                            <option value="{{ choice.codigo }}" data-codigo="{{ choice.codigo }}" {% if choice.codigo == '006' or choice.codigo == '6' %}selected{% endif %}>{{ choice.detalle }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <div class="w-24" x-show="!esPre">
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Pto</label>
+                            <select name="punto" x-bind:disabled="esPre"
+                                class="w-full p-1 bg-slate-50 border border-slate-200 rounded text-xs font-black text-slate-900 outline-none cursor-pointer shadow-inner">
+                                {% for pv in puntos_venta %}
+                                <option value="{{ pv.numero }}" {% if pv.caja_mostrador_default %}selected{% endif %}>{{ pv.numero|stringformat:"05d" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <input type="hidden" name="punto_interno" value="0" x-bind:name="esPre ? 'punto' : ''">
+                    </div>
+                </div>
+
+                <div id="cliente_detalle_container" class="col-span-12"></div>
+
+                <!-- Fila 2 -->
+                <div class="col-span-12 flex items-center gap-2 border-t border-slate-100 pt-2">
+                    <div class="flex-1 max-w-xs">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Vendedor
+                            Asignado</label>
+                        <select name="vendedor" required
+                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[11px] font-black text-slate-900 outline-none py-0 leading-8">
+                            {% for choice in form.fields.vendedor.queryset %}
+                            <option value="{{ choice.pk }}" {% if user.pk == choice.pk %}selected{% endif %}>
+                                {{ choice.username|upper }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="w-20">
+                        <label
+                            class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Moneda</label>
+                        <select name="moneda" id="id_moneda"
+                            hx-get="{% url 'ventas_item_add' %}" hx-target="#items-tabla-container" hx-include="#venta-form" hx-trigger="change"
+                            class="w-full h-8 bg-slate-900 text-[10px] font-black text-white rounded outline-none text-center py-0 leading-8">
+                            <option value="PES">ARS</option>
+                            <option value="DOL">USD</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOQUE 2: CARGA RÁPIDA COMPACTA -->
+
+        <div id="bloque-carga-rapida"
+            class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible border-t-2 border-t-blue-600 animate-in fade-in duration-300">
+            <div class="bg-slate-50 p-2 flex items-end gap-2 italic font-bold rounded-t-lg">
+                <!-- ID -->
+                <div class="w-32 relative" x-data="{ open: false }">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Cód/Desc/ID</label>
+                    <div class="relative">
+                        <input type="text" id="quick_producto_id" name="producto_id" autofocus
+                            hx-get="{% url 'typeahead_productos_venta' %}" 
+                            hx-trigger="keyup changed delay:300ms, search, focus" 
+                            hx-vals='js:{q: document.getElementById("quick_producto_id").value}'
+                            hx-target="#producto_suggestions"
+                            autocomplete="off"
+                            @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                            class="w-full h-8 pl-2 pr-7 bg-white border border-slate-300 rounded text-[11px] font-black text-blue-600 outline-none focus:border-blue-500 uppercase"
+                            placeholder="Buscar..."
+                            onkeydown="if(event.key === 'Enter') { 
+                                htmx.ajax('GET', '{% url 'ventas_producto_buscar_codigo' %}', {values: {q: this.value}, source: this}); 
+                                open = false; 
+                                event.preventDefault();
+                                return false; 
+                            }">
+                        <button type="button" hx-get="{% url 'ventas_producto_buscar_modal' %}"
+                            hx-target="#modal-container"
+                            class="absolute right-1.5 top-1.5 text-slate-300 hover:text-blue-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Dropdown Suggestions -->
+                    <div x-show="open" id="producto_suggestions" 
+                         class="absolute z-50 left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                         style="display: none;">
+                    </div>
+                </div>
+
+                <!-- Detalle -->
+                <div class="flex-1">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Descripción</label>
+                    <div id="quick_producto_detalle"
+                        class="w-full h-8 px-3 bg-slate-100 border border-slate-200 rounded flex items-center text-[10px] font-black text-slate-700 uppercase italic truncate shadow-inner">
+                        <span class="opacity-30">Aguardando...</span>
+                    </div>
+                </div>
+
+                <!-- Credencial -->
+                <div id="div_credencial" class="w-24 hidden">
+                    <label
+                        class="block text-[9px] font-black text-red-500 uppercase mb-0.5 text-center">Credencial</label>
+                    <input type="text" id="quick_credencial" name="credencial" minlength="7"
+                        onblur="if(this.required && this.value.length > 0 && this.value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => this.focus(), 10); }"
+                        class="w-full h-8 px-2 bg-red-50 border border-red-300 rounded text-xs font-black text-red-900 outline-none uppercase placeholder:text-red-300"
+                        placeholder="OBLIGATORIO">
+                </div>
+
+                <!-- Cantidad -->
+                <div class="w-16">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Cant.</label>
+                    <input type="text" id="quick_cantidad" name="cantidad" value="1"
+                        class="w-full h-8 bg-white border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR">
+                </div>
+
+                <!-- Precio -->
+                <div class="w-28">
+                    <label id="label_quick_precio" class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-right">Pcio. Lista ($)</label>
+                    <input type="text" id="quick_precio" name="precio"
+                        class="w-full h-8 px-2 bg-white border border-slate-300 rounded text-xs font-black text-right outline-none fInputAR text-slate-900"
+                        placeholder="0,00">
+                </div>
+
+                <!-- Descuento -->
+                <div class="w-20">
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Desc (%)</label>
+                    <input type="text" id="quick_descuento" name="descuento" value="0"
+                        class="w-full h-8 px-2 bg-white border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR"
+                        placeholder="0">
+                </div>
+
+                <!-- Botón Añadir -->
+                <div class="w-20">
+                    <button type="button" hx-post="{% url 'ventas_item_add' %}" hx-target="#items-tabla-container"
+                        hx-include="#venta-form"
+                        onclick="if(!document.getElementById('quick_producto_id').value) { alert('Debe seleccionar un producto.'); event.stopImmediatePropagation(); event.preventDefault(); return false; } if(document.getElementById('quick_credencial').required && document.getElementById('quick_credencial').value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => document.getElementById('quick_credencial').focus(), 10); event.stopImmediatePropagation(); event.preventDefault(); return false; }"
+                        class="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white font-black rounded text-[9px] uppercase tracking-widest shadow-sm transition-all">
+                        AÑADIR
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRILLA DE RESULTADOS -->
+        <div id="items-tabla-container"
+            class="bg-white min-h-[350px] mt-4 rounded-xl shadow-md border border-slate-200 overflow-hidden"
+            hx-get="{% url 'ventas_item_add' %}" hx-trigger="load"></div>
+
+        <div id="alerta_autorizacion"
+            class="hidden w-full bg-amber-50 border-l-4 border-amber-400 p-4 rounded-lg shadow-sm text-amber-800 text-xs font-bold flex items-center gap-3 mt-4">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                </path>
+            </svg>
+            ⚠️ Esta venta superó el límite de descuento en algunos ítems y quedará PENDIENTE DE AUTORIZACIÓN.
+        </div>
+
+        <!-- SECCIÓN DE CIERRE COMPACTA -->
+        <div class="grid grid-cols-12 gap-2 mt-2">
+            <div class="col-span-12 lg:col-span-8 bg-white rounded-lg border border-slate-200 p-2 italic flex flex-col justify-between">
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="space-y-0.5">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase">Subtotal Neto</label>
+                        <input type="text" name="neto" id="id_neto" oninput="recalculateFinal()"
+                            class="w-full h-6 border-b border-slate-100 font-black text-right outline-none text-[11px] fInputAR"
+                            placeholder="0,00">
+                    </div>
+                    <div class="space-y-0.5">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase">Total I.V.A.</label>
+                        <input type="text" name="iva" id="id_iva" oninput="recalculateFinal()"
+                            class="w-full h-6 border-b border-slate-100 font-black text-right outline-none text-[11px] fInputAR"
+                            placeholder="0,00">
+                    </div>
+                    <div class="space-y-0.5">
+                        <label class="block text-[9px] font-black text-slate-400 uppercase">Otros / Perc.</label>
+                        <input type="text" name="otros" id="id_otros" oninput="recalculateFinal()"
+                            class="w-full h-6 border-b border-slate-100 font-black text-right outline-none text-[11px] fInputAR"
+                            placeholder="0,00">
+                    </div>
+                </div>
+                <div id="alicuotas_iva_container" class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-slate-100 min-h-[26px] items-center">
+                    <span class="text-[9px] text-slate-400 font-bold uppercase my-auto tracking-wider">IVA Discriminado:</span>
+                    <span class="text-[10px] text-slate-400 italic">0,00</span>
+                </div>
+            </div>
+
+            <!-- TOTAL FINAL -->
+            <div
+                class="col-span-12 lg:col-span-4 bg-slate-900 rounded-lg p-3 text-white flex flex-col justify-between italic shadow-xl border-t-4 border-blue-600">
+                <div class="text-center py-2">
+                    <span class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mb-2 block">Total a
+                        Cobrar</span>
+                    <div class="flex items-center justify-center gap-2">
+                        <span id="symbol_total" class="text-xl font-bold text-slate-500">$</span>
+                        <div id="display_total"
+                            class="text-4xl lg:text-5xl font-black tabular-nums text-white tracking-tighter drop-shadow-md">
+                            0,00</div>
+                    </div>
+                </div>
+                <input type="hidden" name="total" id="id_total" value="0.00">
+                <div class="flex flex-col gap-2 w-full mt-2">
+                    <button type="submit" name="accion" value="grabar" x-bind:disabled="enviando"
+                        class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black h-12 rounded-lg text-xs uppercase tracking-widest shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 border-b-4 border-blue-800">
+                        <template x-if="enviando">
+                            <svg class="w-5 h-5 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        </template>
+                        <template x-if="!enviando">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7">
+                                </path>
+                            </svg>
+                        </template>
+                        <span x-text="enviando ? 'Emitiendo en AFIP...' : 'Grabar Venta'"></span>
+                    </button>
+
+                </div>
+            </div>
+        </div>
+    </form>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .fInputAR.valor-cero {
+            color: #cbd5e1 !important;
+            font-weight: normal !important;
+        }
+    </style>
+</div>
+
+{% block extra_js %}
+<script>
+    // PRECIO UNITARIO SUGERIDO (Memoria para cálculo en vivo)
+    let unidadPrecioSugerido = 0;
+
+    // Inicialización y formateo de .fInputAR centralizados en static/js/formato_ar.js (global, uniforme).
+
+    function parseAR(val) {
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(/\./g, '').replace(',', '.'));
+    }
+
+    function fMiles(n) {
+        return parseFloat(n).toLocaleString('es-AR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function recalculateFinal() {
+        const c = ['neto', 'iva', 'otros'];
+        let t = 0;
+        c.forEach(f => {
+            const el = document.getElementById('id_' + f);
+            const val = parseAR(el?.value || 0);
+            t += val;
+            if (el) {
+                if (val === 0) el.classList.add('valor-cero');
+                else el.classList.remove('valor-cero');
+            }
+        });
+
+        document.getElementById('display_total').innerText = fMiles(t);
+        document.getElementById('id_total').value = fMiles(t);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        recalculateFinal();
+    });
+
+    document.body.addEventListener('htmx:afterOnLoad', (e) => {
+        if (e.detail.target.id === 'items-tabla-container') {
+            setTimeout(recalculateFinal, 50);
+        }
+    });
+
+    document.body.addEventListener('limpiarInputsCargaVenta', () => {
+        unidadPrecioSugerido = 0; // Reset
+        document.getElementById('quick_producto_id').value = '';
+        document.getElementById('quick_producto_detalle').innerText = 'Aguardando selección de producto...';
+        document.getElementById('quick_cantidad').value = '1';
+        document.getElementById('quick_precio').value = '';
+        document.getElementById('quick_credencial').value = '';
+        document.getElementById('quick_producto_id').focus();
+    });
+
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        const fieldsToClean = ['precio', 'cantidad', 'neto', 'iva', 'otros'];
+        fieldsToClean.forEach(field => {
+            if (event.detail.parameters && event.detail.parameters[field]) {
+                event.detail.parameters[field] = event.detail.parameters[field].toString().replace(/\./g, '').replace(',', '.');
+            }
+        });
+    });
+
+    // Bloquear el Enter para evitar envíos accidentales
+    const form = document.getElementById('venta-form');
+    if (form) {
+        form.addEventListener('keydown', function (e) {
+            if (e.keyCode === 13 && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
+
+    document.body.addEventListener('productoVentaEncontrado', (e) => {
+        // Cierra el modal borrando el HTML
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+
+        const data = e.detail;
+        // Parsear el string de precio sugerido que viene formateado con comas
+        unidadPrecioSugerido = parseAR(data.precio_sugerido); 
+        
+        document.getElementById('quick_producto_id').value = data.id;
+        document.getElementById('quick_producto_detalle').innerText = data.detalle;
+        
+        // Seteamos el precio de lista unitario sugerido (editable por el usuario)
+        document.getElementById('quick_precio').value = fMiles(unidadPrecioSugerido);
+
+        const divCred = document.getElementById('div_credencial');
+        const inputCred = document.getElementById('quick_credencial');
+
+        if (data.requiere_credencial) {
+            divCred.classList.remove('hidden');
+            inputCred.required = true;
+            inputCred.value = '';
+            // Foco a la credencial si es obligatoria
+            setTimeout(() => inputCred.focus(), 50);
+        } else {
+            divCred.classList.add('hidden');
+            inputCred.required = false;
+            inputCred.value = '';
+            // Foco al campo de cantidad
+            setTimeout(() => document.getElementById('quick_cantidad').focus(), 50);
+        }
+    });
+
+    // EVENTO CLIENTE SELECCIONADO (Desde el modal que crearemos)
+    document.body.addEventListener('clienteVentaSeleccionado', (e) => {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+
+        document.getElementById('id_cliente').value = e.detail.id;
+        document.getElementById('cliente_nombre_display').value = e.detail.razon_social;
+        
+        // Fetch client details
+        htmx.ajax('GET', '/ventas/cliente-detalle/' + e.detail.id + '/', {target: '#cliente_detalle_container'});
+        
+        // Lógica de filtrado de comprobantes según Condición IVA
+        const condicionIva = e.detail.condicion_iva;
+        const selectTipo = document.getElementById('id_tipo');
+        if(selectTipo && condicionIva) {
+            let allowedCodes = [];
+            const upperIva = String(condicionIva).toUpperCase().trim();
+            const esRIoMono = upperIva.includes('RESPONSABLE INSCRIPTO') || upperIva.includes('MONOTRIBUT');
+            
+            if (esRIoMono) {
+                // Responsable Inscripto y Monotributista -> Factura A
+                allowedCodes = ['001', '1', '002', '2', '003', '3', 'PRE']; 
+            } else {
+                // Consumidor Final, Exento, etc -> Factura B
+                allowedCodes = ['006', '6', '007', '7', '008', '8', 'PRE'];
+            }
+            
+            let targetOption = null;
+            let targetCode = esRIoMono ? ['001', '1'] : ['006', '6'];
+            
+            Array.from(selectTipo.options).forEach(opt => {
+                if (!opt.value) return;
+                let code = opt.dataset.codigo || opt.value;
+                if (code) {
+                    if (allowedCodes.includes(code)) {
+                        opt.style.display = '';
+                        opt.disabled = false;
+                        if (targetCode.includes(code)) targetOption = opt;
+                    } else {
+                        opt.style.display = 'none';
+                        opt.disabled = true;
+                        opt.selected = false;
+                    }
+                }
+            });
+            
+            if (targetOption) {
+                targetOption.selected = true;
+            }
+            // Disparar change para actualizar Alpine.js (esPre, etc.)
+            selectTipo.dispatchEvent(new Event('change'));
+        }
+
+        // Disparar escape para cerrar el dropdown si está abierto
+        document.getElementById('cliente_nombre_display').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
+    });
+
+    // Recálculo Local Instantáneo
+    document.body.addEventListener('input', (e) => {
+        if (e.target.name === 'total_linea' || e.target.classList.contains('fInputAR')) {
+            actualizarResumenVisual();
+        }
+    });
+
+    function actualizarResumenVisual() {
+        let netoDeGrilla = 0;
+        let ivaDeGrilla = 0;
+        
+        document.querySelectorAll('input[name="total_linea"]').forEach(input => {
+            let totalLinea = parseAR(input.value);
+            let alicIva = parseFloat(input.dataset.iva || 21.0);
+            let netoLinea = totalLinea / (1 + alicIva / 100);
+            let ivaLinea = totalLinea - netoLinea;
+            netoDeGrilla += netoLinea;
+            ivaDeGrilla += ivaLinea;
+        });
+
+        if (netoDeGrilla === 0 && ivaDeGrilla === 0) {
+            document.querySelectorAll('#items-tabla-container table tbody tr').forEach(row => {
+                const totalText = row.querySelector('td:nth-last-child(2)')?.innerText.replace('$', '').trim();
+                // To do this perfectly we'd need IVA per row, but if it's reading static text, it's just a fallback
+                if (totalText) {
+                    let totalLinea = parseAR(totalText);
+                    let alicIva = 21.0; // fallback default
+                    let netoLinea = totalLinea / (1 + alicIva / 100);
+                    netoDeGrilla += netoLinea;
+                    ivaDeGrilla += (totalLinea - netoLinea);
+                }
+            });
+        }
+
+        const netoInput = document.getElementById('id_neto');
+        const ivaInput = document.getElementById('id_iva');
+        
+        if (netoInput) netoInput.value = netoDeGrilla.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        if (ivaInput) ivaInput.value = ivaDeGrilla.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        recalculateFinal();
+    }
+
+    function recalculateFinal() {
+        const neto = parseAR(document.getElementById('id_neto')?.value || '0');
+        const iva = parseAR(document.getElementById('id_iva')?.value || '0');
+        const otros = parseAR(document.getElementById('id_otros')?.value || '0');
+        
+        const total = neto + iva + otros;
+        
+        const idTotal = document.getElementById('id_total');
+        if (idTotal) idTotal.value = total.toFixed(2);
+        
+        const displayTotal = document.getElementById('display_total');
+        if (displayTotal) displayTotal.innerText = total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    document.body.addEventListener('actualizarTotalesVenta', (e) => {
+        actualizarResumenVisual();
+        if (e.detail && e.detail.requiere_autorizacion !== undefined) {
+            const warning = document.getElementById('alerta_autorizacion');
+            if (warning) {
+                if (e.detail.requiere_autorizacion) {
+                    warning.classList.remove('hidden');
+                } else {
+                    warning.classList.add('hidden');
+                }
+            }
+        }
+    });
+
+    // Cambiar dinámicamente símbolos de moneda al cambiar select
+    const monedaSelect = document.getElementById('id_moneda');
+    if (monedaSelect) {
+        monedaSelect.addEventListener('change', function() {
+            const isDol = this.value === 'DOL';
+            const sym = isDol ? 'USD' : '$';
+            const symLabel = isDol ? 'Pcio. Lista (USD)' : 'Pcio. Lista ($)';
+            
+            const symbolTotal = document.getElementById('symbol_total');
+            if (symbolTotal) symbolTotal.innerText = sym;
+            
+            const labelQuickPrecio = document.getElementById('label_quick_precio');
+            if (labelQuickPrecio) labelQuickPrecio.innerText = symLabel;
+        });
+    }
+
+
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,193 @@
+<div id="modal-backdrop" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 transition-opacity" x-data="{
+    cerrarModal() {
+        let el = document.getElementById('modal-container');
+        if (el) {
+            el.innerHTML = '';
+        }
+    }
+}">
+    <!-- Modal Content -->
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col overflow-hidden" @click.away="cerrarModal()">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 bg-slate-800 text-white rounded-t-xl shrink-0">
+            <h3 class="text-xl font-bold">
+                <i class="fa-solid fa-book-journal-whills mr-2"></i> Parámetros Contables
+            </h3>
+            <button @click="cerrarModal()" class="text-slate-300 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+
+        <datalist id="cuentas_list">
+            {% for c in cuentas_imputables %}
+            <option data-id="{{ c.id }}" value="{{ c.jerarquia }} - {{ c.cuenta }}"></option>
+            {% endfor %}
+        </datalist>
+
+        <!-- Body -->
+        <form id="parametros-form" class="flex flex-col grow overflow-hidden" hx-post="{% url 'config_parametros_contables' %}" hx-target="#modal-container" hx-swap="innerHTML">
+            <div class="p-6 overflow-y-auto grow bg-slate-50">
+                
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Sección Tesorería -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+                        <h4 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2"><i class="fa-solid fa-vault text-blue-600 mr-2"></i> Tesorería y Medios de Pago</h4>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Caja Efectivo</label>
+                            {{ form.cta_caja }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Caja Moneda Extranjera (USD)</label>
+                            {{ form.cta_dolar }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Valores en Cartera (Cheques)</label>
+                            {{ form.cta_valores_cartera }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Tarjetas a Cobrar</label>
+                            {{ form.cta_tarjetas_a_cobrar }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Caja Mostrador (ARS)</label>
+                            {{ form.cta_caja_mostrador }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Caja Mostrador (USD)</label>
+                            {{ form.cta_caja_mostrador_dolares }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Caja de Reparto (Distribución)</label>
+                            {{ form.cta_caja_reparto }}
+                            <p class="text-[11px] text-slate-400 mt-1 italic">
+                                El efectivo que está en la calle: la caja recaudadora de cada reparto y la Tesorería
+                                de Reparto. Va aparte de la mostrador porque los responsables son otros.
+                            </p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Caja Central / Tesorería (ARS)</label>
+                            {{ form.cta_caja_central }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Caja Central / Tesorería (USD)</label>
+                            {{ form.cta_caja_central_dolares }}
+                        </div>
+                        <div class="mb-4 border-t pt-4 mt-4 border-slate-200 bg-blue-50/50 p-3 rounded">
+                            <label class="block text-sm font-bold text-blue-700 mb-1"><i class="fa-solid fa-arrow-right-arrow-left"></i> Transferencias entre Sucursales (Puente)</label>
+                            <p class="text-xs text-slate-500 mb-2">Utilizada automáticamente para los retiros de caja hacia la tesorería central.</p>
+                            {{ form.cta_transferencias_sucursal }}
+                        </div>
+                    </div>
+
+                    <!-- Sección Comercial -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm">
+                        <h4 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2"><i class="fa-solid fa-cart-shopping text-emerald-600 mr-2"></i> Comercial (Ventas y Compras)</h4>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Ventas Generales</label>
+                            {{ form.cta_ventas }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Compras Generales</label>
+                            {{ form.cta_compras }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Deudores por Ventas (Clientes)</label>
+                            {{ form.cta_clientes_default }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Proveedores</label>
+                            {{ form.cta_proveedores_default }}
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Bonificaciones y Descuentos</label>
+                            {{ form.cta_bonificaciones }}
+                        </div>
+                    </div>
+
+                    <!-- Sección Impuestos -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm md:col-span-2">
+                        <h4 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2"><i class="fa-solid fa-file-invoice text-rose-600 mr-2"></i> Impuestos (AFIP / Municipales / Provinciales)</h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">IVA Crédito Fiscal (Compras)</label>
+                                {{ form.cta_iva_credito }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">IVA Débito Fiscal (Ventas)</label>
+                                {{ form.cta_iva_debito }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Retenciones IVA</label>
+                                {{ form.cta_ret_iva }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Retenciones Ganancias</label>
+                                {{ form.cta_ret_ganancias }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Retenciones IIBB</label>
+                                {{ form.cta_ret_iibb }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Retenciones SUSS</label>
+                                {{ form.cta_ret_suss }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Retenciones Municipales</label>
+                                {{ form.cta_ret_mun }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Impuestos Internos</label>
+                                {{ form.cta_impuestos_internos }}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">I.T.C.</label>
+                                {{ form.cta_itc }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Opciones Generales -->
+                    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm md:col-span-2">
+                        <h4 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2"><i class="fa-solid fa-gears text-slate-600 mr-2"></i> Configuración de Automatización</h4>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Método de Contabilización de Ventas</label>
+                            <p class="text-xs text-slate-500 mb-2">Define si las ventas se contabilizan factura por factura de forma instantánea o mediante un resumen unificado al final del día.</p>
+                            {{ form.metodo_contabilizacion_ventas }}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex items-center justify-end px-6 py-4 bg-slate-100 border-t border-slate-200 shrink-0 space-x-3">
+                <button type="button" @click="cerrarModal()" class="px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:ring-4 focus:ring-slate-200 transition-all">
+                    Cancelar
+                </button>
+                <button type="submit" class="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all">
+                    <i class="fa-solid fa-save mr-2"></i> Guardar Parámetros
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.body.addEventListener("parametrosGuardados", function() {
+        Swal.fire({
+            title: '¡Guardado!',
+            text: 'Parámetros contables actualizados correctamente.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    }, {once: true});
+</script>

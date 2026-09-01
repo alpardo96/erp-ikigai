@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Integridad de Numeración | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Integridad de Numeración</h1>
+        <p class="text-xs text-slate-500 mt-1">
+            Las cinco series que emite el módulo, con sus huecos, duplicados y el desfasaje contra el contador.
+        </p>
+    </div>
+
+    <div class="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-[11px] text-slate-600">
+        El control de integridad <strong>sólo es posible sobre los comprobantes que uno emite</strong> con
+        numeración correlativa propia: sobre el número de un tercero no se puede auditar nada. Por eso existen
+        el Informe de Recepción frente al remito del proveedor, y la Orden de Pago frente al recibo que emite
+        el tercero. Los documentos anulados conservan su número y no generan hueco.
+    </div>
+
+    {% if con_problemas %}
+    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-800">
+        <strong>{{ con_problemas|length }} serie(s) con problemas.</strong> Un hueco significa que se consumió
+        un número que no llegó a ningún documento; un duplicado, que dos documentos comparten número.
+    </div>
+    {% else %}
+    <div class="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs text-emerald-800">
+        Todas las series están completas y sin duplicados.
+    </div>
+    {% endif %}
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-2.5 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Documento</th>
+                    <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Punto</th>
+                    <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Desde</th>
+                    <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hasta</th>
+                    <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Emitidos</th>
+                    <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contador</th>
+                    <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for f in filas %}
+                <tr class="{% if not f.ok %}bg-red-50/50{% endif %}">
+                    <td class="py-2.5 pl-6 pr-3 text-sm font-bold text-slate-800">{{ f.tipo_label }}</td>
+                    <td class="px-3 py-2.5 text-center text-xs font-mono text-slate-500">{{ f.punto|stringformat:"04d" }}</td>
+                    <td class="px-3 py-2.5 text-right text-xs font-mono text-slate-500">{{ f.minimo }}</td>
+                    <td class="px-3 py-2.5 text-right text-xs font-mono text-slate-500">{{ f.maximo }}</td>
+                    <td class="px-3 py-2.5 text-right text-sm font-mono font-bold">{{ f.cantidad }}</td>
+                    <td class="px-3 py-2.5 text-right text-xs font-mono text-slate-500">{{ f.contador|default:"—" }}</td>
+                    <td class="px-3 py-2.5">
+                        {% if f.ok %}
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">COMPLETA</span>
+                        {% else %}
+                        <div class="space-y-0.5">
+                            {% if f.minimo != 1 %}
+                            <div class="text-[11px] text-red-700">Arranca en {{ f.minimo }}, no en 1.</div>
+                            {% endif %}
+                            {% if f.faltantes %}
+                            <div class="text-[11px] text-red-700">
+                                Faltan: <span class="font-mono">{{ f.faltantes|join:", "|truncatechars:80 }}</span>
+                            </div>
+                            {% endif %}
+                            {% if f.duplicados %}
+                            <div class="text-[11px] text-red-700 font-bold">
+                                Duplicados: <span class="font-mono">{{ f.duplicados|join:", " }}</span>
+                            </div>
+                            {% endif %}
+                            {% if f.contador and f.contador != f.maximo %}
+                            <div class="text-[11px] text-amber-700">
+                                El contador va en {{ f.contador }} y el último emitido es {{ f.maximo }}.
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="px-4 py-10 text-center text-xs text-slate-400 italic">
+                    Todavía no se emitió ningún documento del módulo.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

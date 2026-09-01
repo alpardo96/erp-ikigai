@@ -1,0 +1,140 @@
+<div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeModal()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full border border-gray-100">
+            <!-- Header -->
+            <div class="bg-white px-6 py-5 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
+                <div>
+                    <h3 class="text-xl leading-6 font-bold text-gray-900 flex items-center" id="modal-title">
+                        <svg class="h-6 w-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Línea de Tiempo - Serie: <span class="font-mono text-indigo-600 ml-2">{{ serie }}</span>
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">Producto: {{ subproducto_actual.producto.detalle }}</p>
+                </div>
+                <button type="button" onclick="closeModal()" class="bg-white rounded-xl p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none transition-all">
+                    <span class="sr-only">Cerrar</span>
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body - Timeline -->
+            <div class="bg-gray-50 px-6 py-8">
+                <div class="relative max-w-2xl mx-auto">
+                    <!-- Línea vertical del timeline -->
+                    <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+
+                    <div class="space-y-8">
+                        {% for mov in movimientos %}
+                            <!-- Item de Compra (Ingreso al depósito) -->
+                            <div class="relative pl-20 transition-all cursor-pointer group" 
+                                 hx-get="{% url 'subproducto_detalle_modal' mov.subpro %}" 
+                                 hx-target="#modal-container">
+                                <div class="absolute left-6 top-1.5 w-4 h-4 bg-green-500 border-4 border-green-100 rounded-full shadow-sm z-10 group-hover:scale-125 transition-transform"></div>
+                                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group-hover:border-indigo-300 group-hover:shadow-md transition-all">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                            Ingreso (Compra)
+                                        </span>
+                                        <span class="text-xs text-indigo-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                                            Ver Ficha Completa
+                                            <svg class="h-3.5 w-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                            </svg>
+                                        </span>
+                                        <span class="text-sm text-gray-500 font-medium group-hover:hidden">{{ mov.feccpra|date:"d M Y" }}</span>
+                                    </div>
+                                    <p class="text-gray-800 font-medium text-lg">
+                                        Proveedor: {{ mov.compra.proveedor.razon_social|default:"N/A" }}
+                                    </p>
+                                    <p class="text-sm text-gray-600 mt-1 font-mono">
+                                        Comprobante: {{ mov.compra.tipo.codigo }}-{{ mov.compra.punto|stringformat:"04d" }}-{{ mov.compra.numero|stringformat:"08d" }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        Costo: <span class="font-bold text-gray-800">${{ mov.cto_adq|floatformat:2 }} {{ mov.moneda }}</span> | Estado: <span class="font-semibold text-gray-700">{{ mov.get_estado_display }}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Item de Venta (Egreso), si fue vendido -->
+                            {% if mov.situacion == 'VENDIDA' and mov.venta %}
+                            <div class="relative pl-20 transition-all hover:-translate-y-0.5 cursor-pointer group"
+                                 hx-get="{% url 'subproducto_detalle_modal' mov.subpro %}" 
+                                 hx-target="#modal-container">
+                                <div class="absolute left-6 top-1.5 w-4 h-4 bg-red-500 border-4 border-red-100 rounded-full shadow-sm z-10 group-hover:scale-125 transition-transform"></div>
+                                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group-hover:border-red-300 group-hover:shadow-md transition-all">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">
+                                            Egreso (Venta)
+                                        </span>
+                                        <span class="text-xs text-red-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                                            Ver Ficha Completa
+                                            <svg class="h-3.5 w-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                            </svg>
+                                        </span>
+                                        <span class="text-sm text-gray-500 font-medium group-hover:hidden">{{ mov.fecvta|date:"d M Y" }}</span>
+                                    </div>
+                                    <p class="text-gray-800 font-medium text-lg">
+                                        Cliente: {{ mov.venta.cliente.razon_social|default:"N/A" }}
+                                    </p>
+                                    <p class="text-sm text-gray-600 mt-1 font-mono">
+                                        Comprobante: {{ mov.venta.tipo.codigo }}-{{ mov.venta.punto|stringformat:"04d" }}-{{ mov.venta.numero|stringformat:"08d" }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-2">
+                                        Precio Venta Total: <span class="font-bold text-green-700">${{ mov.precio_total|floatformat:2 }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <!-- Indicador actual si está en depósito -->
+                        {% if subproducto_actual.situacion != 'VENDIDA' %}
+                        <div class="relative pl-20 transition-all">
+                            <div class="absolute left-6 top-1.5 w-4 h-4 bg-indigo-500 border-4 border-indigo-100 rounded-full shadow-sm z-10 animate-pulse"></div>
+                            <div class="p-5">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200 shadow-sm">
+                                    En depósito actualmente
+                                </span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-white px-6 py-4 border-t border-gray-100 flex justify-between items-center rounded-b-3xl">
+                <button type="button" 
+                        hx-get="{% url 'subproducto_editar_modal' subproducto_actual.subpro %}" 
+                        hx-target="#modal-container"
+                        class="inline-flex items-center px-4 py-2 border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-semibold rounded-xl transition-colors text-sm shadow-sm">
+                    <svg class="h-4 w-4 mr-1.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    Editar SERIE / CUIM
+                </button>
+
+                <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-6 py-2.5 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-gray-900 focus:outline-none transition-all sm:w-auto sm:text-sm">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function closeModal() {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) {
+            modalContainer.innerHTML = '';
+        }
+    }
+</script>

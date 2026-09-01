@@ -1,0 +1,71 @@
+{% load l10n formato_tags %}
+<div class="h-full flex flex-col">
+    <table class="w-full text-left border-collapse bg-white">
+        <thead class="sticky top-0 shadow-sm z-10">
+            <tr class="bg-slate-800 text-white text-[9px] uppercase tracking-wider">
+                <th class="px-2 py-1.5 border-r border-slate-700">ID</th>
+                <th class="px-2 py-1.5 border-r border-slate-700">Cód Prov</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 w-1/3">Descripción</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-center">Credencial</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-center">Cant</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-right">Precio Un</th>
+                <th class="px-2 py-1.5 border-r border-slate-700 text-right">Desc %</th>
+                <th class="px-2 py-1.5 text-right">Total Línea</th>
+                <th class="px-2 py-1.5 text-center w-8"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 italic">
+            {% for item in items %}
+            <tr class="transition-colors text-[10px] group {% if item.requiere_autorizacion %}bg-red-50 hover:bg-red-100{% else %}hover:bg-slate-50{% endif %}">
+                <td class="px-2 py-1.5 font-black text-blue-600 border-r border-slate-50">{{ item.producto_id }}</td>
+                <td class="px-2 py-1.5 font-bold text-slate-400 border-r border-slate-50">{{ item.codigo }}</td>
+                <td class="px-2 py-1.5 font-bold text-slate-700 uppercase border-r border-slate-50">{{ item.detalle }}</td>
+                <td class="px-2 py-1.5 text-center text-slate-500 font-bold border-r border-slate-50">{{ item.credencial|default:"-" }}</td>
+                <td class="px-2 py-1.5 text-center font-bold text-slate-800 border-r border-slate-50">{{ item.cantidad|floatformat:1 }}</td>
+                <td class="px-2 py-1.5 text-right font-bold text-slate-600 border-r border-slate-50">
+                    {% if moneda == 'DOL' %}USD{% else %}${% endif %} {{ item.precio_unitario|formato_ar }}
+                </td>
+                <td class="px-2 py-1.5 text-right font-bold {% if item.requiere_autorizacion %}text-red-600{% else %}text-slate-600{% endif %} border-r border-slate-50">
+                    {{ item.descuento|floatformat:2 }}%
+                    {% if item.requiere_autorizacion %}
+                    <span class="text-xs ml-1 cursor-help" title="Límite: {{ item.descuento_maximo|floatformat:2 }}%">⚠️</span>
+                    {% endif %}
+                </td>
+                <td class="px-2 py-1.5 text-right font-black text-slate-900">{% if moneda == 'DOL' %}USD{% else %}${% endif %} {{ item.total|formato_ar }}</td>
+                <td class="px-2 py-1.5 text-center">
+                    <button type="button" hx-post="{% url 'preventas_item_remove' item.index %}" 
+                            hx-target="#items-tabla-container"
+                            class="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="px-6 py-10 text-center text-slate-400 italic font-medium text-xs">Aguardando lectura de artículos...</td>
+            </tr>
+            {% endfor %}
+            
+            {% if items|length < 15 %}
+                {% with ""|center:15 as range %}
+                {% for i in range %}
+                    {% if forloop.counter > items|length %}
+                    <tr class="h-8">
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1 border-r border-slate-50"></td>
+                        <td class="px-2 py-1"></td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+                {% endwith %}
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+

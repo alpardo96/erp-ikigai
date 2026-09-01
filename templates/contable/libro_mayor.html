@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Libro Mayor | ERP - Contabilidad{% endblock %}
+
+{% block content %}
+<div class="flex flex-col pt-6 gap-6 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Libro Mayor</h1>
+            <p class="mt-2 text-sm text-gray-500">Evolución de movimientos y saldos por cuenta contable.</p>
+        </div>
+        <div>
+            <a href="{% url 'contable_index' %}"
+                class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-xl shadow-sm leading-5 bg-white font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors">
+                <svg class="h-5 w-5 mr-2 text-gray-400 border-none" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Volver a Contable
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white shadow-sm border border-gray-200 rounded-3xl mb-8 p-8">
+        {% include 'contable/partials/libro_mayor.html' %}
+    </div>
+</div>
+{% endblock %}

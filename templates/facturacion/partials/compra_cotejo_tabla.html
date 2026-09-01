@@ -1,0 +1,86 @@
+{% load l10n %}
+<div class="overflow-hidden border border-amber-300 rounded shadow-sm italic">
+    <div class="bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5">
+        Cotejo con Órdenes de Compra
+    </div>
+    <table class="w-full text-left border-collapse bg-white">
+        <thead>
+            <tr class="bg-gray-900 text-white text-[10px] uppercase tracking-wider">
+                <th class="px-3 py-2 border-r border-gray-700">Cód</th>
+                <th class="px-3 py-2 border-r border-gray-700 w-1/4">Descripción</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Cant. OC</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Recepcionada</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Facturada</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-right">Precio</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-right">Total</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Pend. Recep.</th>
+                <th class="px-3 py-2 text-center columna-accion-item"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 italic">
+            {% for item in items %}
+            <tr class="hover:bg-amber-50 transition-colors text-[11px] item-row cotejo-row"
+                data-total="{{ item.total|unlocalize }}"
+                {% if item.es_candidato %}data-candidato="1" data-oc-items="{{ item.oc_item_ids|join:',' }}"{% endif %}>
+                <td class="px-3 py-2 font-bold text-blue-700">{{ item.codigo }}</td>
+                <td class="px-3 py-2 font-medium text-gray-900 uppercase">
+                    {{ item.detalle }}
+                    {% if item.es_candidato %}
+                    <div class="mt-1 flex items-center gap-2 not-italic">
+                        <span class="text-[9px] font-black text-orange-600 uppercase">Difiere de la OC:</span>
+                        <select name="decision" data-oc-items="{{ item.oc_item_ids|join:',' }}"
+                                class="cotejo-decision text-[10px] font-bold border border-orange-300 rounded px-1 py-0.5 bg-orange-50 text-orange-700"
+                                hx-post="{% url 'factura_cotejo_edit' item.index %}" hx-trigger="change"
+                                hx-include="closest tr" hx-target="#items-tabla-container">
+                            <option value="marcar" {% if item.decision == 'marcar' %}selected{% endif %}>Marcar diferencia</option>
+                            <option value="ajustar" {% if item.decision == 'ajustar' %}selected{% endif %}>Ajustar OC a lo real</option>
+                        </select>
+                    </div>
+                    {% endif %}
+                </td>
+                <td class="px-3 py-2 text-center font-bold text-slate-500">{{ item.cantidad_oc|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center font-bold text-slate-600">{{ item.cantidad_recepcionada|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center">
+                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:2 }}" onfocus="this.select()"
+                           class="w-20 bg-transparent border-b border-dashed border-blue-300 text-center focus:border-blue-500 outline-none fInputAR font-black text-blue-700"
+                           hx-post="{% url 'factura_cotejo_edit' item.index %}" hx-trigger="change"
+                           hx-include="closest tr" hx-target="#items-tabla-container">
+                </td>
+                <td class="px-3 py-2 text-right">
+                    <input type="text" name="precio" value="{{ item.precio|floatformat:2 }}" onfocus="this.select()"
+                           class="w-24 border-b border-dashed text-right outline-none fInputAR font-black {% if item.precio_readonly %}bg-gray-50 text-gray-500 border-transparent cursor-not-allowed{% else %}bg-transparent border-slate-300 focus:border-blue-500{% endif %}"
+                           {% if item.precio_readonly %}readonly{% endif %}
+                           hx-post="{% url 'factura_cotejo_edit' item.index %}" hx-trigger="change"
+                           hx-include="closest tr" hx-target="#items-tabla-container">
+                </td>
+                <td class="px-3 py-2 text-right font-black text-gray-900">$ {{ item.total|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center font-black {% if item.pendiente_recep > 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                    {{ item.pendiente_recep|floatformat:2 }}
+                </td>
+                <td class="px-3 py-2 text-center columna-accion-item">
+                    <button hx-post="{% url 'factura_cotejo_remove' item.index %}" hx-target="#items-tabla-container"
+                            class="text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay líneas de OC vinculadas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="mt-1 text-[10px] text-slate-400 italic px-1">
+    <span class="text-red-600 font-bold">Pend. Recep. en rojo</span>: unidades facturadas aún no recepcionadas (si no hubo remito, la factura generará el Informe de Recepción).
+</p>
+
+<script>
+    (function() {
+        // Alimentar el SUBTOTAL de la cabecera (igual que la grilla estándar).
+        let netoTotal = 0;
+        {% for item in items %}netoTotal += {{ item.total|unlocalize }};
+        {% endfor %}
+        const idSubtotal = document.getElementById('id_subtotal');
+        if (idSubtotal) { idSubtotal.value = netoTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 }); idSubtotal.dispatchEvent(new Event('input')); }
+    })();
+</script>

@@ -1,0 +1,46 @@
+{% load l10n %}
+<div class="overflow-hidden border border-gray-200 rounded shadow-sm italic">
+    <table class="w-full text-left border-collapse bg-white">
+        <thead>
+            <tr class="bg-gray-900 text-white text-[10px] uppercase tracking-wider">
+                <th class="px-3 py-2 border-r border-gray-700">Cód</th>
+                <th class="px-3 py-2 border-r border-gray-700 w-2/5">Descripción</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Cant. Pedida</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Cant. Recibida</th>
+                <th class="px-3 py-2 border-r border-gray-700 text-center">Pendiente</th>
+                <th class="px-3 py-2 text-center columna-accion-item"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 italic">
+            {% for item in items %}
+            <tr class="hover:bg-blue-50 transition-colors text-[11px] item-row">
+                <td class="px-3 py-2 font-bold text-blue-700">{{ item.codigo }}</td>
+                <td class="px-3 py-2 font-medium text-gray-900 uppercase">{{ item.detalle }}</td>
+                <td class="px-3 py-2 text-center font-bold text-slate-600">
+                    {% if item.fuentes %}{{ item.cantidad_pedida|floatformat:2 }}{% else %}<span class="text-slate-300">s/OC</span>{% endif %}
+                </td>
+                <td class="px-3 py-2 text-center">
+                    <input type="text" name="cantidad_recibida" value="{{ item.cantidad_recibida|floatformat:2 }}"
+                           onfocus="this.select()"
+                           class="w-24 bg-transparent border-b border-dashed border-blue-300 text-center focus:border-blue-500 outline-none fInputAR font-black text-blue-700"
+                           hx-post="{% url 'rec_item_edit' item.index %}"
+                           hx-trigger="change" hx-include="closest tr"
+                           hx-target="#rec-items-container">
+                </td>
+                <td class="px-3 py-2 text-center font-black {% if item.fuentes %}{% if item.pendiente > 0 %}text-red-600{% else %}text-green-600{% endif %}{% else %}text-slate-300{% endif %}">
+                    {% if item.fuentes %}{{ item.pendiente|floatformat:2 }}{% else %}—{% endif %}
+                </td>
+                <td class="px-3 py-2 text-center columna-accion-item">
+                    <button hx-post="{% url 'rec_item_remove' item.index %}"
+                            hx-target="#rec-items-container"
+                            class="text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="px-6 py-12 text-center text-gray-400 italic font-medium">Vincule una Orden de Compra o agregue productos manualmente.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

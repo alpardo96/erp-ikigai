@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Nueva Orden de Compra{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4" x-data="{ cargaCostos: true }">
+
+    <!-- TÍTULO -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Nueva Orden de Compra</h1>
+        <div class="flex items-center gap-3">
+            <span class="text-[11px] font-black text-slate-400 uppercase italic">Punto {{ punto|stringformat:"04d" }} · Número asignado al confirmar</span>
+            <a href="{% url 'oc_listado' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'oc_carga' %}" id="oc-form" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% csrf_token %}
+        <input type="hidden" name="carga_costos" id="id_carga_costos" :value="cargaCostos ? '1' : '0'">
+
+        <!-- BLOQUE 1: CABECERA -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 space-y-4 italic mb-4">
+            <!-- Fila 1: Fecha + Proveedor (flex; el proveedor ocupa el resto del ancho) -->
+            <div class="flex items-end gap-4">
+                <div class="w-40 shrink-0">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Fecha</label>
+                    <input type="date" name="fecha" value="{{ fecha_hoy|date:'Y-m-d' }}" required
+                           class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-bold text-slate-800 outline-none focus:bg-white shadow-inner">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Proveedor / Razón Social</label>
+                    <div class="flex gap-1">
+                        <input type="hidden" id="id_proveedor" name="proveedor" required>
+                        <input type="text" id="proveedor_nombre_display" readonly
+                               placeholder="Use la lupa para buscar el proveedor..."
+                               hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container" hx-trigger="click"
+                               title="Click para buscar el proveedor"
+                               class="flex-1 min-w-0 h-10 px-4 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-black text-slate-900 outline-none focus:bg-white shadow-inner transition-all uppercase cursor-pointer">
+                        <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container"
+                                class="w-10 h-10 shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                        <button type="button" hx-get="{% url 'cliente_add' %}?origen=compra" hx-target="#modal-container"
+                                class="w-10 h-10 shrink-0 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-all shadow-sm" title="Alta rápida de proveedor">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fila 2: Moneda / Cotización / Costos / Condiciones de pago (flex) -->
+            <div class="flex items-end gap-4">
+                <div class="w-32 shrink-0">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Moneda</label>
+                    <select name="moneda"
+                            class="w-full h-10 bg-slate-900 text-[12px] font-black text-white rounded-lg outline-none text-center shadow-lg">
+                        <option value="PES">ARS ($)</option>
+                        <option value="DOL">USD (U$S)</option>
+                    </select>
+                </div>
+                <div class="w-40 shrink-0">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-right">Cotización</label>
+                    <input type="number" name="cotizacion" step="0.0001" value="1.0000"
+                           class="w-full h-10 border border-slate-200 rounded-lg text-[13px] font-black text-right outline-none bg-slate-50 px-3 focus:bg-white shadow-inner">
+                </div>
+                <div class="w-56 shrink-0">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Costos de adquisición</label>
+                    <div class="flex items-center gap-5 h-10 bg-slate-50 border border-slate-200 rounded-lg shadow-inner px-3">
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="_carga_costos_ui" value="1" x-model="cargaCostos" :checked="cargaCostos"
+                                   @change="cargaCostos = true" class="h-4 w-4 text-blue-600">
+                            <span class="text-[11px] font-black text-slate-700 uppercase tracking-tighter">Con precios</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" name="_carga_costos_ui" value="0"
+                                   @change="cargaCostos = false" class="h-4 w-4 text-blue-600">
+                            <span class="text-[11px] font-black text-slate-700 uppercase tracking-tighter">Sin precios</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Condiciones de Pago / Plazos (informativo)</label>
+                    <input type="text" name="condiciones_pago" maxlength="500"
+                           placeholder="Ej: 50% contado + 50% a 30 días con cheque..."
+                           class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:bg-white shadow-inner">
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOQUE 2: CARGA RÁPIDA DE PRODUCTOS -->
+        <div id="bloque-carga-rapida"
+             class="bg-white rounded-xl shadow-md border border-slate-200 border-t-4 border-t-blue-600 mb-4">
+            <div class="bg-slate-50 p-4 flex items-end gap-3 italic font-bold rounded-b-xl">
+                <!-- ID / Typeahead (busca por código propio, código de proveedor y descripción) -->
+                <div class="w-36" x-data="{ open: false }">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Buscar Producto</label>
+                    <div class="relative">
+                        <input type="text" id="quick_producto_id" name="producto_id"
+                               hx-get="{% url 'typeahead_productos_compra' %}"
+                               hx-trigger="keyup changed delay:300ms, search"
+                               hx-vals='js:{q: document.getElementById("quick_producto_id").value}'
+                               hx-target="#producto_suggestions"
+                               autocomplete="off"
+                               @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                               class="w-full h-12 pl-3 pr-10 bg-white border border-slate-300 rounded-lg text-[13px] font-black text-blue-600 outline-none focus:border-blue-500 shadow-sm uppercase"
+                               placeholder="Buscar"
+                               onkeydown="if(event.key === 'Enter') { const p = new URLSearchParams({q: this.value}).toString(); htmx.ajax('GET', '{% url 'compras_producto_buscar_codigo' %}?' + p, {source: this}); open = false; event.preventDefault(); return false; }">
+                        <button type="button" hx-get="{% url 'compras_producto_buscar_modal' %}" hx-target="#modal-container"
+                                class="absolute right-3 top-3.5 text-slate-300 hover:text-blue-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                        <div x-show="open" id="producto_suggestions"
+                             class="absolute z-50 left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                             style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- Cód Prov (solo lectura): se rellena al seleccionar el producto si el proveedor es el habitual -->
+                <div class="w-28">
+                    <label class="block text-[10px] font-black text-amber-600 uppercase mb-1">Cód Prov</label>
+                    <input type="text" id="quick_cod_prov_display" readonly tabindex="-1"
+                           title="Se completa automáticamente si el producto tiene a este proveedor como habitual."
+                           class="w-full h-12 px-3 bg-amber-50/60 border border-amber-200 rounded-lg text-[13px] font-black text-amber-700 outline-none shadow-inner uppercase">
+                </div>
+
+                <!-- Detalle -->
+                <div class="flex-1">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Descripción del Artículo</label>
+                    <div id="quick_producto_detalle"
+                         class="w-full h-12 px-4 bg-slate-100 border border-slate-200 rounded-lg flex items-center text-[11px] font-black text-slate-700 uppercase italic truncate shadow-inner">
+                        <span class="opacity-30">Aguardando selección de producto...</span>
+                    </div>
+                </div>
+
+                <!-- Cantidad -->
+                <div class="w-24">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Cantidad</label>
+                    <input type="text" id="quick_cantidad" name="cantidad" value="1"
+                           class="w-full h-12 bg-white border border-slate-300 rounded-lg text-sm font-black text-center outline-none fInputAR shadow-sm">
+                </div>
+
+                <!-- Importe Neto (solo si carga costos) -->
+                <div class="w-40" x-show="cargaCostos">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-right">Neto ($)</label>
+                    <div class="relative group">
+                        <span class="absolute left-3 top-3.5 text-slate-400 font-black text-sm">$</span>
+                        <input type="text" id="quick_neto" name="neto"
+                               class="w-full h-12 pl-7 pr-4 bg-white border border-slate-300 rounded-lg text-sm font-black text-right outline-none fInputAR shadow-sm focus:border-blue-500"
+                               placeholder="0,00">
+                    </div>
+                </div>
+
+                <!-- Añadir -->
+                <div class="w-24">
+                    <button type="button" hx-post="{% url 'oc_item_add' %}" hx-target="#oc-items-container"
+                            hx-include="#bloque-carga-rapida input, #id_proveedor, [name='csrfmiddlewaretoken']"
+                            class="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow-lg transition-all active:scale-95">
+                        AÑADIR
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOQUE 3: GRILLA -->
+        <div id="oc-items-container" :class="{ 'oc-sin-costos': !cargaCostos }" class="mb-4"
+             hx-get="{% url 'oc_item_add' %}" hx-trigger="load">
+            <!-- La grilla se carga vía HTMX -->
+        </div>
+
+        <!-- BLOQUE 4: CIERRE -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 flex items-start justify-between gap-4 italic">
+            <div class="flex-1">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Observaciones</label>
+                <textarea name="observaciones" rows="2"
+                          class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:bg-white shadow-inner"></textarea>
+            </div>
+            <div class="w-72 text-right" x-show="cargaCostos">
+                <span class="block text-[10px] font-black text-slate-400 uppercase mb-1">Total Estimado</span>
+                <span id="oc_total_estimado" class="text-2xl font-black text-slate-900 tabular-nums">$ 0,00</span>
+            </div>
+            <div class="w-40 flex items-end">
+                <button type="submit"
+                        class="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-lg text-[11px] uppercase tracking-widest shadow-lg transition-all active:scale-95">
+                    Confirmar OC
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+    .oc-sin-costos .col-costo { display: none; }
+</style>
+
+<script>
+    // Selección de proveedor (reutiliza el evento del modal de compras/ventas)
+    document.body.addEventListener('clienteVentaSeleccionado', (e) => {
+        const modal = document.getElementById('modal-container');
+        if (modal) modal.innerHTML = '';
+        document.getElementById('id_proveedor').value = e.detail.id;
+        document.getElementById('proveedor_nombre_display').value = e.detail.razon_social;
+    });
+
+    // Producto seleccionado (typeahead / lupa / código). Rellena el Cód Prov SOLO si el
+    // proveedor del producto (habitual) coincide con el proveedor seleccionado en la OC.
+    function ocAplicarProducto(id, detalle, cod_prov, proveedor_id) {
+        document.getElementById('quick_producto_id').value = id;
+        document.getElementById('quick_producto_detalle').innerHTML = `<span class="text-blue-600 font-black">${detalle}</span>`;
+        const provOC = document.getElementById('id_proveedor').value;
+        const esHabitual = proveedor_id && provOC && String(proveedor_id) === String(provOC);
+        document.getElementById('quick_cod_prov_display').value = (esHabitual && cod_prov) ? cod_prov : '';
+        const modal = document.getElementById('modal-container'); if (modal) modal.innerHTML = '';
+        document.getElementById('quick_cantidad').focus();
+    }
+    document.body.addEventListener('productoEncontrado', (e) => ocAplicarProducto(e.detail.id, e.detail.detalle, e.detail.cod_prov, e.detail.proveedor_id));
+    document.body.addEventListener('productoSeleccionadoDesdeModal', (e) => {
+        ocAplicarProducto(e.detail.id, e.detail.detalle, e.detail.codProv, e.detail.provHabitual);
+    });
+
+    // Limpiar la fila de carga rápida tras añadir
+    document.body.addEventListener('limpiarInputsOC', () => {
+        document.getElementById('quick_producto_id').value = '';
+        document.getElementById('quick_cod_prov_display').value = '';
+        document.getElementById('quick_producto_detalle').innerHTML = '<span class="opacity-30">Aguardando selección de producto...</span>';
+        document.getElementById('quick_cantidad').value = '1';
+        const pr = document.getElementById('quick_neto'); if (pr) pr.value = '';
+        document.getElementById('quick_producto_id').focus();
+    });
+
+    // Limpieza de formato numérico es-AR antes de enviar (cantidad/precio)
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        ['neto', 'cantidad'].forEach(f => {
+            if (event.detail.parameters[f]) {
+                event.detail.parameters[f] = event.detail.parameters[f].toString().replace(/\./g, '').replace(',', '.');
+            }
+        });
+    });
+
+    // Validación de envío: proveedor obligatorio
+    document.getElementById('oc-form').addEventListener('submit', (e) => {
+        if (!document.getElementById('id_proveedor').value) {
+            e.preventDefault();
+            Swal.fire('Atención', 'Debe seleccionar un proveedor.', 'warning');
+        }
+    });
+</script>
+{% endblock %}

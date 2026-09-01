@@ -1,0 +1,34 @@
+{% for p in productos %}
+<tr class="hover:bg-blue-50 border-b border-gray-100 transition-colors">
+    <td class="px-2 py-1 font-black text-blue-600">{{ p.id }}</td>
+    <td class="px-2 py-1 font-bold text-slate-800 uppercase italic">{{ p.detalle }}</td>
+    <td class="px-2 py-1 text-center font-bold {% if p.moneda == 'DOL' %}text-emerald-600{% else %}text-slate-500{% endif %}">
+        {{ p.moneda }}
+    </td>
+    <td class="px-2 py-1 text-right font-black text-blue-600">
+        {% if moneda_venta == 'DOL' %}USD{% else %}${% endif %} {{ p.precio_mostrar|floatformat:2 }}
+    </td>
+    <td class="px-2 py-1 text-center whitespace-nowrap">
+        <span class="px-1.5 py-0.5 rounded font-black {% if p.stock_local > 0 %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+            {{ p.stock_local|floatformat:0 }}
+        </span>
+        {% if p.stock_otros > 0 %}
+        <span class="ml-1 px-1 py-0.5 rounded text-[8px] bg-amber-100 text-amber-700 font-bold" title="Stock en otras sucursales">
+            +{{ p.stock_otros|floatformat:0 }}
+        </span>
+        {% endif %}
+    </td>
+    <td class="px-2 py-1 text-right">
+        <button type="button" 
+                hx-get="{% url 'ventas_producto_buscar_codigo' %}?q={{ p.id }}&moneda={{ moneda_venta }}" 
+                hx-swap="none"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-black text-[9px] uppercase shadow-sm transition-all">
+            SEL
+        </button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="6" class="p-8 text-center text-gray-400 italic">No se encontraron productos.</td>
+</tr>
+{% endfor %}

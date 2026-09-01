@@ -1,0 +1,9 @@
+{% for cliente in clientes %}
+    {% include 'distribucion/partials/cartera_fila.html' %}
+{% empty %}
+<tr>
+    <td colspan="4" class="px-6 py-10 text-center text-gray-500 text-sm italic">
+        No se encontraron clientes con esos filtros.
+    </td>
+</tr>
+{% endfor %}

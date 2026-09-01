@@ -1,0 +1,22 @@
+{# Resultados de búsqueda de bancos para Cheques de Terceros #}
+<div class="divide-y divide-slate-100 bg-white">
+    {% for b in bancos %}
+    <button type="button"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-indigo-50 transition-colors"
+            onclick="document.body.dispatchEvent(new CustomEvent('bancoEmisorSeleccionado', { detail: { id: '{{ b.pk }}', codigo_bcra: '{{ b.codigo_bcra|default:""|escapejs }}', nombre: '{{ b.nombre|escapejs }}' } }))">
+        <span class="min-w-0">
+            <span class="block truncate text-xs font-bold uppercase text-slate-800">{{ b.nombre }}</span>
+            <span class="block text-[10px] font-semibold text-slate-500">BCRA: {{ b.codigo_bcra|default:"-" }}</span>
+        </span>
+        <span class="shrink-0 text-[10px] font-black text-slate-400">#{{ b.pk }}</span>
+    </button>
+    {% empty %}
+    <div class="px-6 py-8 text-center bg-white">
+        <svg class="w-9 h-9 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1-0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+        </svg>
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest">No se encontraron bancos.</p>
+        <p class="text-[10px] text-slate-400 mt-1">Pruebe con otra palabra en el nombre o código BCRA.</p>
+    </div>
+    {% endfor %}
+</div>

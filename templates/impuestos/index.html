@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Módulo de Impuestos | ERP Ikigai 2{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full">
+    <!-- Encabezado del Módulo -->
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Módulo de Impuestos y Liquidaciones</h1>
+        <p class="mt-2 text-sm text-gray-500 max-w-2xl mx-auto">
+            Gestión integral de obligaciones fiscales, libros de IVA para el Portal IVA (ARCA), conciliación de comprobantes y generación de archivos de retenciones SICORE.
+        </p>
+    </div>
+
+    <!-- Grilla de Tarjetas de Procesos Impositivos -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        
+        <!-- Tarjeta 1: Cierre Periodo IVA -->
+        <a href="{% url 'impuestos:cierre_periodo_iva' %}" 
+           class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-purple-500 transition-all duration-300 overflow-hidden flex flex-col justify-between">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-28 h-28 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                          d="M9 14l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center mb-6">
+                    <div class="p-4 bg-purple-100 rounded-2xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="ml-4 text-xl font-bold text-gray-900">Cierre Periodo IVA</h3>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    Determinación mensual de débito y crédito fiscal, cálculo del saldo a favor o a pagar de IVA y emisión del asiento de cierre correspondiente.
+                </p>
+            </div>
+            <div class="flex items-center text-purple-600 font-bold text-sm">
+                Iniciar liquidación
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta 2: Libro IVA Ventas - Portal IVA -->
+        <a href="{% url 'impuestos:libro_iva_ventas' %}" 
+           class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden flex flex-col justify-between">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-28 h-28 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                          d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center mb-6">
+                    <div class="p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                    </div>
+                    <h3 class="ml-4 text-xl font-bold text-gray-900">Libro IVA Ventas</h3>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    Generación del reporte consolidado de comprobantes emitidos y archivos de importación para el Portal IVA / Libro IVA Digital ARCA.
+                </p>
+            </div>
+            <div class="flex items-center text-blue-600 font-bold text-sm">
+                Generar Libro IVA Ventas
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta 3: Libro IVA Compras - Portal IVA -->
+        <a href="{% url 'impuestos:libro_iva_compras' %}" 
+           class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-indigo-500 transition-all duration-300 overflow-hidden flex flex-col justify-between">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-28 h-28 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center mb-6">
+                    <div class="p-4 bg-indigo-100 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="ml-4 text-xl font-bold text-gray-900">Libro IVA Compras</h3>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    Emisión de la planilla detallada de facturas recibidas de proveedores y generación de formato TXT oficial para el Portal IVA ARCA.
+                </p>
+            </div>
+            <div class="flex items-center text-indigo-600 font-bold text-sm">
+                Generar Libro IVA Compras
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta 4: Captura Mis Comprobantes ARCA -->
+        <a href="{% url 'impuestos:mis_comprobantes_arca' %}" 
+           class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-emerald-500 transition-all duration-300 overflow-hidden flex flex-col justify-between">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-28 h-28 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center mb-6">
+                    <div class="p-4 bg-emerald-100 rounded-2xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                    </div>
+                    <h3 class="ml-4 text-xl font-bold text-gray-900">Mis Comprobantes ARCA</h3>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    Captura, cotejo e importación masiva de comprobantes emitidos y recibidos directo desde el servicio Mis Comprobantes ARCA.
+                </p>
+            </div>
+            <div class="flex items-center text-emerald-600 font-bold text-sm">
+                Conciliar comprobantes
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+        <!-- Tarjeta 5: SICORE - Retencion Impuesto a las Ganancias -->
+        <a href="{% url 'impuestos:sicore_ganancias' %}" 
+           class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-amber-500 transition-all duration-300 overflow-hidden flex flex-col justify-between md:col-span-2 lg:col-span-1">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-28 h-28 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center mb-6">
+                    <div class="p-4 bg-amber-100 rounded-2xl text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="ml-4 text-xl font-bold text-gray-900">SICORE - Ganancias</h3>
+                </div>
+                <p class="text-gray-500 text-sm leading-relaxed mb-6">
+                    Exportación de retenciones del Impuesto a las Ganancias (RG 830) aplicadas en órdenes de pago para su acreditación ante SICORE.
+                </p>
+            </div>
+            <div class="flex items-center text-amber-600 font-bold text-sm">
+                Generar SICORE
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </div>
+        </a>
+
+    </div>
+</div>
+{% endblock %}

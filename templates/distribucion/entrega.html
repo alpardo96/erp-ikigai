@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Entrega Reparto {{ reparto.numero }} | Distribución{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300">
+
+    <div class="flex justify-between items-start border-b border-gray-200 pb-2">
+        <div>
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+                Entrega — Reparto {{ reparto.numero }}
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Se carga a la vuelta del camión, leyendo la Hoja de Ruta que el repartidor trae marcada.
+            </p>
+        </div>
+        <a href="{% url 'distribucion_reparto_detalle' reparto.id %}"
+           class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200">Volver al reparto</a>
+    </div>
+
+    {% if conciliacion.con_descalce or conciliacion.pendientes_de_recibir %}
+    <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 space-y-1">
+        {% if conciliacion.pendientes_de_recibir %}
+        <div><strong>{{ conciliacion.pendientes_de_recibir|length }} entrega(s) sin recepción:</strong>
+             mercadería que el cliente no recibió y que todavía nadie declaró de vuelta en el depósito.</div>
+        {% endif %}
+        {% if conciliacion.con_descalce %}
+        <div><strong>{{ conciliacion.con_descalce|length }} descalce(s) entre lo recibido y lo acreditado.</strong>
+             Revisá el cuadro de conciliación al pie.</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+            <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">Paradas del reparto</h2>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for p in paradas %}
+            <div class="px-4 py-3 flex items-start gap-4">
+                <div class="min-w-0 flex-1">
+                    <div class="text-sm font-bold text-slate-800">{{ p.cliente.razon_social }}</div>
+                    <div class="text-[11px] text-slate-500">{{ p.domicilio_entrega }}</div>
+                    <div class="text-[10px] text-slate-400 font-mono">
+{% if p.venta_id %}Pedido {{ p.pedido.numero_formateado }} · {{ p.venta.tipo.detalle }}
+                        {{ p.venta.punto|stringformat:"04d" }}-{{ p.venta.numero|stringformat:"08d" }}
+                        · $ {{ p.venta.total|formato_ar }}{% else %}SÓLO COBRANZA · saldo $ {{ p.saldo_anterior|formato_ar }}{% endif %}
+                        {% if p.cobro_minimo %} · <span class="text-red-600 font-bold">mín. $ {{ p.cobro_minimo|formato_ar }}</span>{% endif %}
+                    </div>
+                    {% if p.observacion_repartidor %}
+                    <div class="text-[11px] text-amber-700 italic mt-0.5">{{ p.observacion_repartidor }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="shrink-0 flex items-center gap-2">
+                    {% if not p.venta_id %}
+                        {% comment %}
+                        Sin mercadería no hay entrega que registrar ni devolución que
+                        recibir: la parada de cobranza sólo se resuelve cobrando.
+                        {% endcomment %}
+                        <a href="{% url 'distribucion_cobranza' p.reparto_id %}?parada={{ p.id }}"
+                           class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-700">
+                            Cargar cobranza
+                        </a>
+                    {% elif p.estado_entrega == 1 %}
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">ENTREGADA</span>
+                    {% elif p.estado_entrega == 2 %}
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-800">NO ENTREGADA</span>
+                        <a href="{% url 'distribucion_recepcion' p.id %}"
+                           class="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700">
+                            Recibir devolución
+                        </a>
+                    {% else %}
+                        <form method="post" class="inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="entregada">
+                            <input type="hidden" name="parada" value="{{ p.id }}">
+                            <button type="submit" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                                Entregada
+                            </button>
+                        </form>
+                        <form method="post" class="inline flex items-center gap-1">
+                            {% csrf_token %}
+                            <input type="hidden" name="accion" value="no_entregada">
+                            <input type="hidden" name="parada" value="{{ p.id }}">
+                            <input type="text" name="observacion" placeholder="Observación del repartidor"
+                                   class="w-52 h-8 px-2 bg-slate-50 border border-slate-200 rounded text-xs outline-none focus:border-indigo-500">
+                            <button type="submit" class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700">
+                                No entregada
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p class="px-4 py-8 text-center text-xs text-slate-400 italic">El reparto no tiene paradas.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if conciliacion.filas %}
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+            <h2 class="text-xs font-black text-slate-700 uppercase tracking-tight">
+                Conciliación — lo recibido en el depósito contra lo acreditado al cliente
+            </h2>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-white">
+                <tr>
+                    <th class="py-2.5 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recepción</th>
+                    <th class="px-3 py-2.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                    <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recibido</th>
+                    <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acreditado</th>
+                    <th class="px-3 py-2.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diferencia</th>
+                    <th class="px-3 py-2.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for f in conciliacion.filas %}
+                <tr class="{% if not f.concilia %}bg-amber-50/50{% endif %}">
+                    <td class="whitespace-nowrap py-2.5 pl-6 pr-3 text-xs font-mono font-bold text-slate-700">
+                        {{ f.recepcion.numero_formateado }}
+                    </td>
+                    <td class="px-3 py-2.5 text-sm text-slate-700">{{ f.cliente.razon_social }}</td>
+                    <td class="px-3 py-2.5 text-sm text-right font-mono">$ {{ f.recibido|formato_ar }}</td>
+                    <td class="px-3 py-2.5 text-sm text-right font-mono">
+                        {% if f.sin_nc %}<span class="text-slate-300">—</span>{% else %}$ {{ f.acreditado|formato_ar }}{% endif %}
+                    </td>
+                    <td class="px-3 py-2.5 text-sm text-right font-mono font-black {% if not f.concilia %}text-amber-700{% else %}text-slate-300{% endif %}">
+                        $ {{ f.diferencia|formato_ar }}
+                    </td>
+                    <td class="px-3 py-2.5 text-center">
+                        {% if f.sin_nc %}
+                            <a href="{% url 'distribucion_recepcion' f.recepcion.parada_id %}"
+                               class="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 hover:bg-amber-200">SIN NC</a>
+                        {% elif f.concilia %}
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">CONCILIA</span>
+                        {% else %}
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-100 text-red-800">DESCALCE</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <p class="text-[11px] text-slate-400 italic">
+        Primero se cuenta lo que volvió al depósito y recién después se acredita: así la nota de crédito nace de un hecho
+        verificado y no de una promesa.
+    </p>
+</div>
+{% endblock %}

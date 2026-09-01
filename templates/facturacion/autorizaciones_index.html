@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load l10n %}
+
+{% block title %}Bandeja de Autorizaciones | Preventas{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-6 space-y-6 animate-in fade-in duration-300">
+    <div class="flex justify-between items-center border-b border-gray-200 pb-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tighter uppercase italic">Bandeja de Autorizaciones</h1>
+            <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Preventas y Ventas Pendientes por Descuentos Excedidos</p>
+        </div>
+        <a href="{% url 'ventas_index' %}" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase hover:bg-slate-200 transition-colors">Volver</a>
+    </div>
+
+    <!-- El ID permite recargar la tabla después de autorizar -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="tabla-autorizaciones" hx-get="" hx-trigger="reloadAutorizaciones from:body" hx-swap="outerHTML">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr class="text-[10px] uppercase tracking-wider text-slate-500">
+                    <th class="px-4 py-3 font-black">N° Preventa</th>
+                    <th class="px-4 py-3 font-black">Fecha</th>
+                    <th class="px-4 py-3 font-black">Cliente</th>
+                    <th class="px-4 py-3 font-black">Vendedor</th>
+                    <th class="px-4 py-3 font-black text-right">Total</th>
+                    <th class="px-4 py-3 font-black text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 italic">
+                {% for p in preventas %}
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="px-4 py-3 text-xs font-black text-slate-900"># {{ p.preventa_id }}</td>
+                    <td class="px-4 py-3 text-xs text-slate-600">{{ p.fecha|date:"d/m/Y" }}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-700 uppercase">{{ p.cliente.razon_social }}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase">{{ p.vendedor.username }}</td>
+                    <td class="px-4 py-3 text-xs font-black text-slate-900 text-right">$ {{ p.total|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <button hx-get="{% url 'preventas_autorizacion_modal' p.preventa_id %}" hx-target="#modal-container"
+                                class="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded text-[10px] font-black uppercase tracking-widest transition-colors">
+                            Revisar
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-slate-400 text-sm font-medium italic">
+                        No hay preventas pendientes de autorización.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- TABLA VENTAS -->
+    <h2 class="text-xl font-black text-slate-800 tracking-tighter uppercase italic mt-8">Ventas Pendientes</h2>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="tabla-autorizaciones-ventas">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr class="text-[10px] uppercase tracking-wider text-slate-500">
+                    <th class="px-4 py-3 font-black">N° Venta</th>
+                    <th class="px-4 py-3 font-black">Fecha</th>
+                    <th class="px-4 py-3 font-black">Cliente</th>
+                    <th class="px-4 py-3 font-black">Usuario</th>
+                    <th class="px-4 py-3 font-black text-right">Total</th>
+                    <th class="px-4 py-3 font-black text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 italic">
+                {% for v in ventas %}
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="px-4 py-3 text-xs font-black text-slate-900"># {{ v.ventas_id }}</td>
+                    <td class="px-4 py-3 text-xs text-slate-600">{{ v.fecha|date:"d/m/Y" }}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-700 uppercase">{{ v.cliente.razon_social }}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase">{{ v.usuario.username }}</td>
+                    <td class="px-4 py-3 text-xs font-black text-slate-900 text-right">$ {{ v.total|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <button hx-get="{% url 'ventas_autorizacion_modal' v.ventas_id %}" hx-target="#modal-container"
+                                class="px-3 py-1.5 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded text-[10px] font-black uppercase tracking-widest transition-colors">
+                            Revisar
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-12 text-center text-slate-400 text-sm font-medium italic">
+                        No hay ventas pendientes de autorización.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Contenedor para modales -->
+<div id="modal-container"></div>
+<script>
+    document.body.addEventListener('cerrarModal', () => {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+        setTimeout(() => location.reload(), 100);
+    });
+</script>
+{% endblock %}

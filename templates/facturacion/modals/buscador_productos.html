@@ -1,0 +1,72 @@
+<div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-[110] backdrop-blur-sm"></div>
+<div class="fixed inset-0 flex items-center justify-center z-[120] p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden">
+        <!-- Header -->
+        <div class="bg-gray-900 text-white px-6 py-4 flex justify-between items-center">
+            <h3 class="text-lg font-bold flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                Buscador Avanzado de Productos
+            </h3>
+            <button @click="document.getElementById('modal-container').innerHTML = ''" class="text-gray-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+
+        <!-- Results Table -->
+        <div class="flex-1 overflow-auto p-0">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-white border-b border-gray-200 shadow-sm z-20">
+                    {% if solo_trazables %}<input type="hidden" name="solo_trazables" value="1">{% endif %}
+                    {% if sucursal_origen_id %}<input type="hidden" name="sucursal_origen" value="{{ sucursal_origen_id }}">{% endif %}
+                    {% if sucursal_destino_id %}<input type="hidden" name="sucursal_destino" value="{{ sucursal_destino_id }}">{% endif %}
+                    <tr class="text-xs uppercase font-bold text-gray-500 bg-gray-50">
+                        <th class="px-4 py-3">ID</th>
+                        <th class="px-4 py-3">Cód Prov</th>
+                        <th class="px-4 py-3">Proveedor Habitual</th>
+                        <th class="px-4 py-3">Detalle</th>
+                        {# Columna de stock en sucursal activa u origen #}
+                        <th class="px-4 py-3 text-center">Stk. {% if sucursal_origen_obj %}{{ sucursal_origen_obj.nombre }}{% else %}Activo{% endif %}</th>
+                        {# Columna opcional de stock en sucursal destino (Remito Interno) #}
+                        {% if sucursal_destino_id %}
+                        <th class="px-4 py-3 text-center">Stk. Destino{% if sucursal_destino_obj %} ({{ sucursal_destino_obj.nombre }}){% endif %}</th>
+                        {% endif %}
+                        <th class="px-4 py-3 text-right">Acción</th>
+                    </tr>
+                    <tr class="bg-white border-b border-gray-100">
+                        <th class="px-2 py-2">
+                            <input type="text" name="f_id" hx-get="{% url 'compras_producto_buscar_lista' %}" hx-trigger="keyup changed delay:300ms, keydown[key=='Enter']" hx-target="#productos-search-results" hx-include="closest thead"
+                                   class="w-full h-8 px-2 text-xs border border-gray-200 rounded outline-none focus:border-blue-500 font-normal filtro-modal">
+                        </th>
+                        <th class="px-2 py-2">
+                            <input type="text" name="f_prov" autofocus hx-get="{% url 'compras_producto_buscar_lista' %}" hx-trigger="keyup changed delay:300ms, keydown[key=='Enter']" hx-target="#productos-search-results" hx-include="closest thead"
+                                   class="w-full h-8 px-2 text-xs border border-gray-200 rounded outline-none focus:border-blue-500 font-normal filtro-modal">
+                        </th>
+                        <th class="px-2 py-2">
+                            <input type="text" name="f_prov_hab" hx-get="{% url 'compras_producto_buscar_lista' %}" hx-trigger="keyup changed delay:300ms, keydown[key=='Enter']" hx-target="#productos-search-results" hx-include="closest thead"
+                                   class="w-full h-8 px-2 text-xs border border-gray-200 rounded outline-none focus:border-blue-500 font-normal filtro-modal">
+                        </th>
+                        <th class="px-2 py-2">
+                            <input type="text" name="f_det" hx-get="{% url 'compras_producto_buscar_lista' %}" hx-trigger="keyup changed delay:300ms, keydown[key=='Enter']" hx-target="#productos-search-results" hx-include="closest thead"
+                                   class="w-full h-8 px-2 text-xs border border-gray-200 rounded outline-none focus:border-blue-500 font-normal filtro-modal">
+                        </th>
+                        {# Celda vacía de filtro alineada con stock activo #}
+                        <th class="px-2 py-2"></th>
+                        {# Celda vacía de filtro alineada con stock destino si existe #}
+                        {% if sucursal_destino_id %}
+                        <th class="px-2 py-2"></th>
+                        {% endif %}
+                        <th class="px-2 py-2 text-right">
+                            <button type="button" @click="document.querySelectorAll('thead input[type=text]').forEach(i => i.value = ''); htmx.trigger('thead input[type=text]', 'changed')" 
+                                    class="text-[9px] text-blue-600 font-bold uppercase hover:underline">Limpiar</button>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="productos-search-results" hx-get="{% url 'compras_producto_buscar_lista' %}?{% if solo_trazables %}solo_trazables=1&{% endif %}{% if sucursal_origen_id %}sucursal_origen={{ sucursal_origen_id }}&{% endif %}{% if sucursal_destino_id %}sucursal_destino={{ sucursal_destino_id }}{% endif %}" hx-trigger="load">
+                    <!-- Filas cargadas por HTMX -->
+                    <tr><td colspan="{% if sucursal_destino_id %}7{% else %}6{% endif %}" class="p-12 text-center text-gray-400 italic">Cargando productos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

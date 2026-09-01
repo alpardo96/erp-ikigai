@@ -1,0 +1,32 @@
+{% load l10n %}
+<tr class="hover:bg-blue-50 transition-colors {% if r.estado == 1 %}opacity-50 bg-slate-50{% endif %}">
+    <td class="px-4 py-2 font-bold text-slate-600">{{ r.fecha|date:"d/m/Y" }}</td>
+    <td class="px-4 py-2 font-black text-slate-800">{{ r.punto|stringformat:"04d" }}-{{ r.numero|stringformat:"08d" }}</td>
+    <td class="px-4 py-2 text-[10px] font-bold uppercase text-slate-500">{{ r.get_origen_display }}</td>
+    <td class="px-4 py-2 uppercase text-slate-700">{{ r.proveedor.razon_social|default:"—" }}</td>
+    <td class="px-4 py-2 text-slate-600">{{ r.sucursal.nombre }}</td>
+    <td class="px-4 py-2 text-slate-500">{{ r.remito_proveedor|default:"—" }}</td>
+    <td class="px-4 py-2 text-center">
+        {% if r.estado == 0 %}<span class="text-[9px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase">Activa</span>
+        {% else %}<span class="text-[9px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase">Anulada</span>{% endif %}
+    </td>
+    <td class="px-4 py-2 text-center whitespace-nowrap">
+        {% if r.origen == 'INTERNO' %}
+        <a href="{% url 'recepcion_interna_imprimir' r.recepcion_id %}" target="_blank" class="text-slate-400 hover:text-emerald-600 transition-colors inline-block align-middle" title="Imprimir Informe de Recepción Interna">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        </a>
+        {% else %}
+        <a href="{% url 'recepcion_imprimir' r.recepcion_id %}" target="_blank" class="text-slate-400 hover:text-blue-600 transition-colors inline-block align-middle" title="Imprimir Informe">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        </a>
+        {% endif %}
+        {% if r.estado == 0 and not r.generada_por_factura_id %}
+        <button type="button" hx-post="{% url 'recepcion_baja' r.recepcion_id %}"
+                hx-confirm="¿Anular la recepción {{ r.punto|stringformat:'04d' }}-{{ r.numero|stringformat:'08d' }}? Revierte el stock y reabre los pendientes. El número se conserva."
+                hx-target="closest tr" hx-swap="outerHTML"
+                class="text-red-400 hover:text-red-600 transition-colors align-middle ml-2" title="Anular recepción">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+        </button>
+        {% endif %}
+    </td>
+</tr>

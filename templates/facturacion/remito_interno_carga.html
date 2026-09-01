@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block title %}Nuevo Remito Interno{% endblock %}
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4">
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Nuevo Remito Interno</h1>
+        <div class="flex items-center gap-3">
+            <span class="text-[11px] font-black text-slate-400 uppercase italic">Número asignado al confirmar</span>
+            <a href="{% url 'remito_interno_listado' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <form method="post" action="{% url 'remito_interno_carga' %}" id="ri-form" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% csrf_token %}
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 mb-4 italic">
+            <div class="grid grid-cols-12 gap-4 items-end">
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Fecha</label>
+                    <input type="date" name="fecha" value="{{ fecha_hoy|date:'Y-m-d' }}" required
+                           class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-bold text-slate-800 outline-none focus:bg-white shadow-inner">
+                </div>
+                <div class="col-span-4">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Sucursal Origen (sale stock)</label>
+                    <select name="sucursal_origen" class="w-full h-10 px-2 bg-slate-900 text-[12px] font-black text-white rounded-lg outline-none shadow-lg">
+                        {% for s in sucursales %}
+                        <option value="{{ s.pk }}" {% if s.pk == sucursal_id %}selected{% endif %}>{{ s.nombre }} (Pto {{ s.punto|stringformat:"04d" }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-span-4">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Sucursal Destino (entra stock)</label>
+                    <select name="sucursal_destino" class="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:bg-white shadow-inner">
+                        {% for s in sucursales %}
+                        <option value="{{ s.pk }}">{{ s.nombre }} (Pto {{ s.punto|stringformat:"04d" }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Tipo</label>
+                    <select name="tipo" class="w-full h-10 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:bg-white shadow-inner">
+                        {% for val, txt in TIPOS %}<option value="{{ val }}">{{ txt }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carga de productos -->
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 border-t-4 border-t-blue-600 mb-4">
+            <div class="bg-slate-50 p-4 flex items-end gap-3 italic font-bold rounded-b-xl">
+                <div class="w-28" x-data="{ open: false }">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Producto</label>
+                    <div class="relative">
+                        <input type="text" id="quick_producto_id" name="producto_id"
+                               hx-get="{% url 'typeahead_productos_compra' %}" hx-trigger="keyup changed delay:300ms, search"
+                               hx-vals='js:{q: document.getElementById("quick_producto_id").value}'
+                               hx-target="#producto_suggestions" autocomplete="off"
+                               @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                               class="w-full h-12 pl-3 pr-10 bg-white border border-slate-300 rounded-lg text-[13px] font-black text-blue-600 outline-none focus:border-blue-500 shadow-sm uppercase" placeholder="Buscar">
+                        {# Botón para abrir el buscador avanzado de productos enviando la sucursal de origen y destino elegidas #}
+                        <button type="button" hx-get="{% url 'compras_producto_buscar_modal' %}" hx-include="[name='sucursal_origen'], [name='sucursal_destino']" hx-target="#modal-container"
+                                class="absolute right-3 top-3.5 text-slate-300 hover:text-blue-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                        <div x-show="open" id="producto_suggestions" class="absolute z-50 left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto" style="display: none;"></div>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Descripción</label>
+                    <div id="quick_producto_detalle" class="w-full h-12 px-4 bg-slate-100 border border-slate-200 rounded-lg flex items-center text-[11px] font-black text-slate-700 uppercase italic truncate shadow-inner">
+                        <span class="opacity-30">Aguardando selección...</span>
+                    </div>
+                </div>
+                <div class="w-48">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">N° Serie (si aplica)</label>
+                    <input type="text" id="quick_serie" name="serie" autocomplete="off"
+                           hx-get="{% url 'ri_buscar_serie' %}" hx-trigger="keyup delay:400ms changed, change, keydown[key=='Enter']"
+                           hx-include="[name='sucursal_origen']" hx-target="#serie_aviso_container"
+                           class="w-full h-12 px-3 bg-white border border-slate-300 rounded-lg text-[13px] font-black text-slate-800 outline-none focus:border-blue-500 shadow-sm uppercase" placeholder="N° Serie">
+                </div>
+                <div class="w-24">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Cantidad</label>
+                    <input type="text" id="quick_cantidad" name="cantidad" value="1" onfocus="this.select()" onclick="this.select()"
+                           class="w-full h-12 bg-white border border-slate-300 rounded-lg text-sm font-black text-center outline-none fInputAR shadow-sm">
+                </div>
+                <div class="w-24">
+                    <button type="button" id="ri_btn_add" hx-post="{% url 'ri_item_add' %}" hx-target="#ri-items-container"
+                            hx-include="#quick_producto_id, #quick_cantidad, #quick_serie, [name='sucursal_origen'], [name='csrfmiddlewaretoken']"
+                            class="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow-lg active:scale-95">AÑADIR</button>
+                </div>
+            </div>
+            <div id="serie_aviso_container" class="px-4 pb-2"></div>
+        </div>
+
+        <div id="ri-items-container" class="mb-4" hx-get="{% url 'ri_item_add' %}" hx-trigger="load"></div>
+
+        <div class="bg-white rounded-xl shadow-md border border-slate-200 p-4 flex items-start justify-between gap-4 italic">
+            <div class="flex-1">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Observaciones</label>
+                <textarea name="observaciones" rows="2" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:bg-white shadow-inner"></textarea>
+            </div>
+            <div class="w-48 flex items-end">
+                <button type="submit" class="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-lg text-[11px] uppercase tracking-widest shadow-lg active:scale-95">Emitir Remito</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    function riAplicarProducto(id, detalle) {
+        document.getElementById('quick_producto_id').value = id;
+        document.getElementById('quick_producto_detalle').innerHTML = `<span class="text-blue-600 font-black">${detalle}</span>`;
+        const modal = document.getElementById('modal-container'); if (modal) modal.innerHTML = '';
+        const qCant = document.getElementById('quick_cantidad');
+        if (qCant) {
+            qCant.value = '1';
+            qCant.focus();
+            qCant.select();
+        }
+    }
+    document.body.addEventListener('productoEncontrado', (e) => riAplicarProducto(e.detail.id, e.detail.detalle));
+    document.body.addEventListener('codprovEncontrado', (e) => riAplicarProducto(e.detail.id, e.detail.detalle));
+    document.body.addEventListener('productoSeleccionadoDesdeModal', (e) => riAplicarProducto(e.detail.id, e.detail.detalle));
+    document.body.addEventListener('serieEncontradaRI', (e) => {
+        const data = e.detail;
+        if (!data) return;
+        document.getElementById('quick_producto_id').value = data.id;
+        let html = `<span class="text-blue-600 font-black">${data.detalle}</span>`;
+        if (data.cuim) {
+            html += ` <span class="text-[9px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-black ml-2 uppercase">CUIM: ${data.cuim}</span>`;
+        }
+        document.getElementById('quick_producto_detalle').innerHTML = html;
+        document.getElementById('quick_cantidad').value = '1';
+        const btnAdd = document.getElementById('ri_btn_add');
+        if (btnAdd) btnAdd.focus();
+    });
+    document.body.addEventListener('limpiarInputsRI', () => {
+        document.getElementById('quick_producto_id').value = '';
+        document.getElementById('quick_producto_detalle').innerHTML = '<span class="opacity-30">Aguardando selección...</span>';
+        document.getElementById('quick_cantidad').value = '1';
+        if (document.getElementById('quick_serie')) document.getElementById('quick_serie').value = '';
+        const aviso = document.getElementById('serie_aviso_container'); if (aviso) aviso.innerHTML = '';
+    });
+    async function riBuscarProductoPorId(q) {
+        if (!q) return;
+        try {
+            const resp = await fetch(`{% url 'ri_buscar_producto_id' %}?q=${encodeURIComponent(q)}`);
+            if (resp.ok) {
+                const triggerHeader = resp.headers.get('HX-Trigger');
+                if (triggerHeader) {
+                    const parsed = JSON.parse(triggerHeader);
+                    if (parsed.productoEncontrado) {
+                        riAplicarProducto(parsed.productoEncontrado.id, parsed.productoEncontrado.detalle);
+                        if (parsed.productoEncontrado.subprod && document.getElementById('quick_serie')) {
+                            document.getElementById('quick_serie').focus();
+                        }
+                    }
+                }
+            }
+        } catch (err) { console.error(err); }
+    }
+    document.getElementById('quick_producto_id').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            const val = e.target.value ? e.target.value.trim() : '';
+            if (val) {
+                if (e.key === 'Enter') e.preventDefault();
+                riBuscarProductoPorId(val);
+            }
+        }
+    });
+    document.getElementById('quick_cantidad').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('ri_btn_add').click();
+        }
+    });
+    document.getElementById('quick_serie').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('ri_btn_add').click();
+        }
+    });
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        ['cantidad'].forEach(f => {
+            if (event.detail.parameters[f]) {
+                let val = event.detail.parameters[f].toString();
+                if (val.includes(',')) {
+                    val = val.replace(/\./g, '').replace(',', '.');
+                }
+                event.detail.parameters[f] = val;
+            }
+        });
+    });
+    document.getElementById('ri-form').addEventListener('submit', (e) => {
+        if (document.getElementById('ri-form').sucursal_origen.value === document.getElementById('ri-form').sucursal_destino.value) {
+            e.preventDefault(); Swal.fire('Atención', 'El origen y el destino no pueden ser la misma sucursal.', 'warning');
+        }
+    });
+</script>
+{% endblock %}

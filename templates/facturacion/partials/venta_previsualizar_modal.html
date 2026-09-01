@@ -1,0 +1,104 @@
+<div id="modal-preview" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden transform transition-all relative">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2 tracking-tight">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                Datos Fiscales del Comprobante
+            </h3>
+            <button type="button" onclick="document.getElementById('modal-preview').remove()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 bg-slate-50/50 space-y-4">
+            <div class="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Comprobante</span>
+                    <span class="text-sm font-black text-slate-800">{{ venta.tipo.detalle }} ({{ venta.tipo.codigo }})</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Número</span>
+                    <span class="text-sm font-black text-slate-800 tabular-nums">{{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Cliente</span>
+                    <span class="text-sm font-black text-slate-800">{{ venta.cliente.razon_social|default:"Consumidor Final" }}</span>
+                </div>
+                {% if venta.cliente.cuit %}
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <span class="text-xs font-bold text-slate-500 uppercase">CUIT/Doc</span>
+                    <span class="text-sm font-black text-slate-800 tabular-nums">{{ venta.cliente.cuit }}</span>
+                </div>
+                {% endif %}
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-500 uppercase">Importe Total</span>
+                    <span class="text-base font-black text-slate-900 tabular-nums">$ {{ venta.total|floatformat:2 }}</span>
+                </div>
+            </div>
+
+            {% if venta.cae %}
+            <!-- Contenido Fiscal -->
+            <div class="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-4">
+                <div class="relative group p-2 bg-slate-100 rounded-lg border border-slate-200 shadow-inner">
+                    <canvas id="qr-canvas" class="mx-auto block"></canvas>
+                </div>
+                
+                <div class="w-full text-center space-y-1">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Código de Autorización (CAE)</p>
+                    <p class="text-lg font-black text-slate-800 tracking-wider tabular-nums">{{ venta.cae }}</p>
+                    {% if venta.vto_cae %}
+                    <p class="text-[10px] text-slate-500 font-bold">Vto: <span class="text-slate-800 tabular-nums">{{ venta.vto_cae|date:"d/m/Y" }}</span></p>
+                    {% endif %}
+                </div>
+
+                {% if venta.cod_qr %}
+                <a href="{{ venta.cod_qr }}" target="_blank" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-center text-xs font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    Verificar Comprobante en AFIP
+                </a>
+                {% endif %}
+            </div>
+            {% else %}
+            <!-- Contenido No Fiscal -->
+            <div class="flex flex-col items-center justify-center p-6 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 space-y-2">
+                <svg class="w-12 h-12 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <h4 class="text-sm font-black uppercase tracking-wider">Comprobante No Fiscal</h4>
+                <p class="text-xs text-center font-bold text-amber-700">Este es un presupuesto interno (Presupuesto X) sin validez legal. No ha sido informado a la AFIP y carece de CAE/QR oficial.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end items-center gap-2">
+            <a href="{% url 'imprimir_factura' venta.ventas_id %}" target="_blank" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-lg uppercase tracking-widest shadow transition-all flex items-center gap-1.5 hover:shadow-md">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                Imprimir PDF
+            </a>
+            <button type="button" onclick="document.getElementById('modal-preview').remove()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black rounded-lg uppercase tracking-widest shadow transition-colors">
+                Cerrar
+            </button>
+        </div>
+    </div>
+    
+    {% if venta.cae and venta.cod_qr %}
+    <!-- QRious ya cargado globalmente en base.html – solo generamos el QR al abrir el modal -->
+    <script>
+        (function() {
+            // Se ejecuta cada vez que HTMX inyecta este partial (dinámico, sin persistir en servidor)
+            var canvas = document.getElementById('qr-canvas');
+            if (canvas && typeof QRious !== 'undefined') {
+                new QRious({
+                    element: canvas,
+                    value: "{{ venta.cod_qr|safe }}",
+                    size: 180,
+                    backgroundAlpha: 0,
+                    foreground: '#1e293b',
+                    level: 'M'
+                });
+            }
+        })();
+    </script>
+    {% endif %}
+</div>

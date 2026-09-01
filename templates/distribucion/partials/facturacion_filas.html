@@ -1,0 +1,64 @@
+{% load formato_tags %}
+{% for f in filas %}
+<tr class="hover:bg-slate-50 {% if f.credito.bloqueado %}bg-red-50/40{% elif f.credito.cobro_minimo %}bg-amber-50/40{% endif %}">
+    <td class="py-3 pl-6 pr-3">
+        <input type="checkbox" name="pedidos" value="{{ f.pedido.id }}" checked
+               class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-xs">
+        <div class="font-mono font-bold text-slate-800">{{ f.pedido.numero_formateado }}</div>
+        <div class="text-[10px] text-slate-400">
+            {{ f.pedido.hora_carga|date:"d/m H:i" }}
+            {% if f.pedido.vendedor %} · {{ f.pedido.vendedor.nombre }}{% endif %}
+        </div>
+    </td>
+    <td class="px-3 py-3 text-sm font-semibold text-slate-700">
+        {{ f.cliente.razon_social }}
+        <div class="text-[10px] text-slate-400 font-normal">{{ f.items }} artículo{{ f.items|pluralize }}</div>
+    </td>
+    <td class="px-3 py-3 text-xs text-slate-600">
+        {% if f.pedido.domicilio_entrega %}
+            <div class="font-semibold">{{ f.pedido.domicilio_entrega.nombre }}</div>
+            <div class="text-[10px] text-slate-400">
+                {% if f.pedido.zona %}{{ f.pedido.zona.nombre }}{% else %}<span class="text-amber-600 font-bold">Sin zona</span>{% endif %}
+            </div>
+        {% else %}
+            <span class="text-[10px] text-amber-600 font-bold">Sin domicilio</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-center">
+        {% if f.pedido.condic_destino == 1 %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800">FACTURA</span>
+        {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-200 text-slate-700">PRE</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-bold text-slate-800">
+        {{ f.total|formato_ar }}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-black {% if f.credito.saldo_disponible < 0 %}text-red-600{% else %}text-emerald-600{% endif %}">
+        {{ f.credito.saldo_disponible|formato_ar }}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-black {% if f.credito.cobro_minimo %}text-red-600{% else %}text-slate-300{% endif %}">
+        {{ f.credito.cobro_minimo|formato_ar }}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-center">
+        {% if f.credito.condicion_venta == 'CONTADO' %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-red-100 text-red-800">CONTADO</span>
+            {% if f.credito.bloqueado %}<div class="text-[9px] text-red-600 font-bold mt-0.5">bloqueado</div>{% endif %}
+        {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">CTA CTE</span>
+        {% endif %}
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="9" class="px-6 py-12 text-center">
+        <svg class="w-10 h-10 mx-auto text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        <p class="mt-2 text-sm font-bold text-slate-700">No hay pedidos por facturar</p>
+        <p class="text-xs text-slate-400 italic">Todos los pedidos tomados ya tienen su comprobante emitido.</p>
+    </td>
+</tr>
+{% endfor %}

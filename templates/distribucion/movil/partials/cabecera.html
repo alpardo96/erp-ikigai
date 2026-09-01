@@ -1,0 +1,85 @@
+{% load formato_tags %}
+{% if error %}
+<div class="mb-2 p-2 rounded-lg bg-red-50 border border-red-200 text-xs font-bold text-red-700">
+    {{ error }}
+</div>
+{% endif %}
+
+{% if cliente %}
+<div class="rounded-lg bg-slate-50 border border-slate-200 p-2.5 mb-2">
+    <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente seleccionado</div>
+    <div class="text-sm font-black text-slate-900 leading-tight">[{{ cliente.codigo_id }}] {{ cliente.razon_social }}</div>
+    {% if cliente.domicilio %}<div class="text-[11px] text-slate-500">{{ cliente.domicilio }}</div>{% endif %}
+</div>
+
+{% comment %}
+Los tres números con los que el vendedor decide la venta. Es información, no un
+bloqueo: el control vinculante ocurre al facturar.
+{% endcomment %}
+<div class="grid grid-cols-3 gap-2">
+    <div class="rounded-lg bg-white border border-slate-200 p-2 text-center">
+        <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Límite</div>
+        <div class="text-sm font-bold text-slate-700">{{ credito.limite|formato_ar }}</div>
+    </div>
+    <div class="rounded-lg bg-white border border-slate-200 p-2 text-center">
+        <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Saldo</div>
+        <div class="text-sm font-bold text-slate-700">{{ credito.saldo|formato_ar }}</div>
+    </div>
+    <div class="rounded-lg p-2 text-center {% if credito.excedido %}bg-red-50 border border-red-300{% else %}bg-emerald-50 border border-emerald-300{% endif %}">
+        <div class="text-[9px] font-black uppercase tracking-widest {% if credito.excedido %}text-red-500{% else %}text-emerald-600{% endif %}">Disponible</div>
+        <div class="text-sm font-black {% if credito.excedido %}text-red-700{% else %}text-emerald-700{% endif %}">
+            {{ credito.disponible|formato_ar }}
+        </div>
+    </div>
+</div>
+
+{% comment %}
+A DÓNDE SE ENTREGA. El sistema propone el principal, pero es responsabilidad del
+vendedor que cada pedido salga con el domicilio correcto.
+{% endcomment %}
+<div class="mt-2 rounded-lg border {% if domicilio_elegido.zona %}border-slate-200 bg-white{% else %}border-amber-300 bg-amber-50{% endif %} p-2">
+    <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Entregar en</div>
+    {% if domicilios|length > 1 %}
+    <div class="space-y-1">
+        {% for d in domicilios %}
+        <button type="button"
+                hx-post="{% url 'distribucion_movil_elegir_domicilio' d.id %}"
+                hx-target="#movil-cabecera"
+                class="w-full text-left px-2 py-2 rounded-lg border {% if domicilio_elegido and domicilio_elegido.id == d.id %}border-indigo-500 bg-indigo-50{% else %}border-slate-200 bg-white{% endif %} active:scale-[0.99] transition-transform">
+            <div class="text-xs font-black text-slate-800 leading-tight">
+                {% if domicilio_elegido and domicilio_elegido.id == d.id %}✓ {% endif %}{{ d.nombre }}
+            </div>
+            <div class="text-[11px] text-slate-500 leading-tight">{{ d.texto_completo }}</div>
+            {% if d.zona %}<div class="text-[10px] text-slate-400">Zona: {{ d.zona.nombre }}</div>{% endif %}
+        </button>
+        {% endfor %}
+    </div>
+    {% else %}
+        <div class="text-xs font-bold text-slate-800 leading-tight">{{ domicilio_elegido.nombre }}</div>
+        <div class="text-[11px] text-slate-500">{{ domicilio_elegido.texto_completo }}</div>
+    {% endif %}
+
+    {% if domicilio_elegido.horario_recepcion %}
+        <div class="mt-1 text-[11px] font-bold text-slate-600">Recibe: {{ domicilio_elegido.horario_recepcion }}</div>
+    {% endif %}
+    {% if domicilio_elegido.observaciones_entrega %}
+        <div class="mt-1 text-[11px] text-slate-500 italic">{{ domicilio_elegido.observaciones_entrega }}</div>
+    {% endif %}
+    {% if not domicilio_elegido.zona %}
+        <div class="mt-1 text-[11px] font-bold text-amber-700">Este punto no tiene zona asignada: no va a entrar en ningún reparto.</div>
+    {% endif %}
+</div>
+
+{% if credito.bloqueado %}
+    <div class="mt-2 text-[11px] font-black text-red-700 uppercase tracking-tight">Cliente bloqueado — sólo contado</div>
+{% elif credito.solo_contado %}
+    <div class="mt-2 text-[11px] font-black text-amber-700 uppercase tracking-tight">Sin límite asignado — sólo contado</div>
+{% elif credito.excedido %}
+    <div class="mt-2 text-[11px] font-bold text-red-700">
+        Excedido en {{ credito.cobro_minimo|formato_ar }}: el repartidor deberá cobrar al menos ese importe.
+    </div>
+{% endif %}
+
+{% else %}
+<div class="text-xs text-slate-400 italic">Buscá y elegí el cliente para empezar el pedido.</div>
+{% endif %}

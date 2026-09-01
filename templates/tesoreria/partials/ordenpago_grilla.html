@@ -1,0 +1,100 @@
+{% load formato_tags %}
+<table class="min-w-full divide-y divide-slate-200 text-[12px]">
+    <thead class="bg-slate-50">
+        <tr class="text-slate-400 uppercase text-[10px] font-black tracking-tighter">
+            <th class="px-3 py-2 text-left">Fecha</th>
+            <th class="px-3 py-2 text-left">Número</th>
+            <th class="px-3 py-2 text-left">Proveedor</th>
+            <th class="px-3 py-2 text-center">Tipo</th>
+            <th class="px-3 py-2 text-center">Cond.</th>
+            <th class="px-3 py-2 text-right">Total</th>
+            <th class="px-3 py-2 text-right">Aplicado</th>
+            <th class="px-3 py-2 text-right">Pendiente</th>
+            <th class="px-3 py-2 text-center">Asiento</th>
+            <th class="px-3 py-2 text-center">Acciones</th>
+        </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+        {% for fila in filas %}
+        <tr class="hover:bg-blue-50/40 transition-colors {% if fila.op.anulado %}opacity-50 line-through{% endif %}">
+            <td class="px-3 py-2 whitespace-nowrap font-bold text-slate-700">{{ fila.op.fecha|date:"d/m/Y" }}</td>
+            <td class="px-3 py-2 whitespace-nowrap font-black text-slate-900">
+                OP {{ fila.op.punto|stringformat:"04d" }}-{{ fila.op.numero|stringformat:"08d" }}
+            </td>
+            <td class="px-3 py-2 text-slate-700">{{ fila.op.proveedor.razon_social }}</td>
+            <td class="px-3 py-2 text-center">
+                <span class="px-2 py-0.5 rounded text-[10px] font-black
+                    {% if fila.op.tipo == 'P' %}bg-indigo-50 text-indigo-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                    {% if fila.op.tipo == 'P' %}Proveedor{% else %}Simple{% endif %}
+                </span>
+            </td>
+            <td class="px-3 py-2 text-center">
+                <span class="px-2 py-0.5 rounded text-[10px] font-black
+                    {% if fila.op.condic == 1 %}bg-emerald-50 text-emerald-700{% else %}bg-amber-50 text-amber-700{% endif %}">
+                    {% if fila.op.condic == 1 %}Real{% else %}Presup.{% endif %}
+                </span>
+            </td>
+            <td class="px-3 py-2 text-right font-black text-slate-900">$ {{ fila.op.total|formato_ar }}</td>
+            <td class="px-3 py-2 text-right font-bold text-slate-600">$ {{ fila.aplicado|formato_ar }}</td>
+            {# Pendiente de aplicar: lo que se pagó sin imputar a ningún comprobante. #}
+            <td class="px-3 py-2 text-right font-black {% if fila.pendiente > 0 %}text-orange-600{% else %}text-slate-300{% endif %}">
+                $ {{ fila.pendiente|formato_ar }}
+            </td>
+            <td class="px-3 py-2 text-center whitespace-nowrap">
+                {% if fila.op.asiento_id %}
+                <button type="button"
+                        hx-get="{% url 'detalle_asiento_modal' fila.op.asiento_id %}"
+                        hx-target="#modal-container"
+                        hx-swap="innerHTML"
+                        class="text-indigo-600 hover:text-indigo-900 hover:underline font-bold transition-colors cursor-pointer"
+                        title="Ver detalle del asiento contable N° {{ fila.op.asiento_id }}">
+                    {{ fila.op.asiento_id }}
+                </button>
+                {% else %}
+                <span class="text-slate-400 font-bold">—</span>
+                {% endif %}
+            </td>
+            <td class="px-3 py-2">
+                <div class="flex items-center justify-center gap-2">
+                    <a href="{% url 'ordenpago_pdf' fila.op.pk %}" target="_blank"
+                       title="Reimprimir comprobante con todo lo vinculado"
+                       class="text-slate-500 hover:text-blue-600 font-black text-[10px] uppercase">PDF</a>
+                    <button type="button"
+                            hx-get="{% url 'ordenpago_detalle' fila.op.pk %}"
+                            hx-target="#modal-container"
+                            title="Ver detalle"
+                            class="text-slate-500 hover:text-indigo-600 font-black text-[10px] uppercase">Ver</button>
+                    {% if not fila.op.anulado %}
+                        {% if user.is_superuser or user.is_staff or user.perfil.es_admin_sistema %}
+                        <button type="button"
+                                hx-post="{% url 'ordenpago_anular' fila.op.pk %}"
+                                hx-confirm="Se anulará la orden y se revertirá TODO lo vinculado: las aplicaciones a facturas, los cheques de terceros entregados (vuelven a cartera), los valores bancarios emitidos y las retenciones practicadas. ¿Confirma?"
+                                hx-swap="none"
+                                class="text-slate-500 hover:text-red-600 font-black text-[10px] uppercase">Anular</button>
+                        {% endif %}
+                    {% else %}
+                    <span class="text-red-400 font-black text-[10px] uppercase">Anulada</span>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="10" class="px-3 py-8 text-center text-slate-400 italic">
+                No hay órdenes de pago en el período seleccionado.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    {% if filas %}
+    <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+        <tr class="font-black text-slate-900">
+            <td colspan="5" class="px-3 py-2 text-right uppercase text-[10px] tracking-tighter text-slate-400">Totales (sin anuladas)</td>
+            <td class="px-3 py-2 text-right">$ {{ total_general|formato_ar }}</td>
+            <td></td>
+            <td class="px-3 py-2 text-right text-orange-600">$ {{ total_pendiente|formato_ar }}</td>
+            <td colspan="2"></td>
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>

@@ -1,0 +1,66 @@
+{% load formato_tags %}
+{% if comprobantes %}
+<table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+        <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comprobante</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Pendiente</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">A Aplicar</th>
+        </tr>
+    </thead>
+    <tbody class="bg-white divide-y divide-gray-200">
+        {% for c in comprobantes %}
+        {# Los comprobantes que RESTAN (Notas de Crédito, saldo negativo) se marcan en verde: #}
+        {# el operador carga siempre un importe positivo y el sistema le aplica el signo.      #}
+        <tr class="{% if c.saldo < 0 %}bg-emerald-50/40{% endif %}">
+            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ c.fecha|date:"d/m/Y" }}</td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                <span class="font-medium">{{ c.tipo.detalle|default:"Comprobante" }}</span>
+                <span class="text-gray-500">{{ c.punto|stringformat:"04d" }}-{{ c.numero|stringformat:"08d" }}</span>
+                {% if c.saldo < 0 %}
+                <span class="ml-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black border border-emerald-200">RESTA</span>
+                {% endif %}
+                {% if c.moneda == 'DOL' %}
+                <span class="ml-1 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px] font-black border border-green-200" title="Cotización de origen">USD @ {{ c.cotiz_factura|formato_ar }}</span>
+                {% endif %}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                {% if c.moneda == 'DOL' %}
+                    U$D {{ c.total|formato_ar }}<br><span class="text-[11px] text-gray-400">$ {{ c.total_pesificado|formato_ar }}</span>
+                {% else %}
+                    $ {{ c.total|formato_ar }}
+                {% endif %}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-right {% if c.saldo < 0 %}text-emerald-600{% else %}text-red-600{% endif %}">
+                {% if c.moneda == 'DOL' %}
+                    U$D {{ c.saldo|formato_ar }}<br><span class="text-[11px] opacity-70">$ {{ c.saldo_pesificado|formato_ar }}</span>
+                {% else %}
+                    $ {{ c.saldo|formato_ar }}
+                {% endif %}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                {# Importe SIEMPRE positivo: `data-signo` le dice al total en pantalla si suma o resta. #}
+                <input type="text" inputmode="decimal"
+                       data-id="{{ c.compras_id }}"
+                       data-signo="{% if c.saldo < 0 %}-1{% else %}1{% endif %}"
+                       data-maximo="{{ c.saldo_pesificado_abs|stringformat:'f' }}"
+                       data-cotizacion="{{ c.cotiz_factura|stringformat:'f' }}"
+                       data-moneda="{{ c.moneda }}"
+                       data-rg830="{{ c.regimen_rg830 }}"
+                       class="aplicacion-importe fInputAR block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-right"
+                       placeholder="0,00" x-on:input="onAplicacionInput($event)">
+                <div class="text-[10px] text-gray-400 mt-0.5">
+                    máx. {{ c.saldo_pesificado_abs|formato_ar }}{% if c.moneda == 'DOL' %} · en pesos (cotiz. de origen){% endif %}
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="p-4 bg-yellow-50 text-yellow-700 rounded-md">
+    El proveedor seleccionado no posee comprobantes con saldo pendiente.
+</div>
+{% endif %}

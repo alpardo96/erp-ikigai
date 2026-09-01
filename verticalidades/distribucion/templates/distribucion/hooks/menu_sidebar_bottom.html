@@ -1,0 +1,81 @@
+<div class="space-y-1" x-data="{ open: window.location.search.includes('distribucion') || ['personal_distribucion','zonas_reparto','vehiculos','motivos_devolucion'].some(t => window.location.search.includes(t)) }">
+    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+        <a href="{% url 'configuracion_index' %}?tab=personal_distribucion" class="flex items-center flex-1">
+            <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path>
+            </svg>
+            Distribución
+        </a>
+        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </button>
+    </div>
+    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+        <p class="py-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Operación</p>
+        <a href="{% url 'distribucion_movil_pedido' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_movil_pedido' %}text-amber-400 font-bold{% endif %}">
+            Tomar Pedido (Móvil)
+        </a>
+        <a href="{% url 'preventas_carga' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'preventas_carga' %}text-amber-400 font-bold{% endif %}">
+            Tomar Pedido (PC)
+        </a>
+        <a href="{% url 'distribucion_faltantes' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_faltantes' %}text-amber-400 font-bold{% endif %}">
+            Faltantes y Asignación
+        </a>
+        <a href="{% url 'distribucion_facturacion' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_facturacion' %}text-amber-400 font-bold{% endif %}">
+            Facturación Masiva
+        </a>
+        <a href="{% url 'distribucion_repartos' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_repartos' or request.resolver_match.url_name == 'distribucion_reparto_detalle' or request.resolver_match.url_name == 'distribucion_entrega' or request.resolver_match.url_name == 'distribucion_recepcion' or request.resolver_match.url_name == 'distribucion_cobranza' or request.resolver_match.url_name == 'distribucion_rendicion' %}text-amber-400 font-bold{% endif %}">
+            Repartos y Hoja de Ruta
+        </a>
+        <a href="{% url 'distribucion_cobranza_vendedor' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_cobranza_vendedor' %}text-amber-400 font-bold{% endif %}">
+            Cobranza de Vendedor
+        </a>
+        <a href="{% url 'distribucion_recepcion_rendiciones' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_recepcion_rendiciones' %}text-amber-400 font-bold{% endif %}">
+            Recibir Rendiciones
+        </a>
+        <a href="{% url 'distribucion_saldos' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_saldos' %}text-amber-400 font-bold{% endif %}">
+            Clientes a Cobrar
+        </a>
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Control</p>
+        <a href="{% url 'distribucion_reporte_devoluciones' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_reporte_devoluciones' %}text-amber-400 font-bold{% endif %}">
+            Reporte de Devoluciones
+        </a>
+        <a href="{% url 'distribucion_correlativos' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_correlativos' %}text-amber-400 font-bold{% endif %}">
+            Integridad de Numeración
+        </a>
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Gestión</p>
+        <a href="{% url 'distribucion_cartera' %}"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'distribucion_cartera' %}text-amber-400 font-bold{% endif %}">
+            Cartera y Agenda
+        </a>
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Maestros</p>
+        <a href="{% url 'configuracion_index' %}?tab=personal_distribucion"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+            Personal
+        </a>
+        <a href="{% url 'configuracion_index' %}?tab=zonas_reparto"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+            Zonas de Reparto
+        </a>
+        <a href="{% url 'configuracion_index' %}?tab=vehiculos"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+            Vehículos
+        </a>
+        <a href="{% url 'configuracion_index' %}?tab=motivos_devolucion"
+            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+            Motivos de Devolución
+        </a>
+    </div>
+</div>
