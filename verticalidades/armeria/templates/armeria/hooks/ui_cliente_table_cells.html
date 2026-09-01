@@ -1,3 +1,4 @@
+{% if empresa_actual and empresa_actual.tipo_actividad == 'ARMERIA' %}
 <td class="col-clu whitespace-nowrap px-3 py-4 text-sm font-mono text-purple-900 font-semibold">
     {{ cliente.armeria.clu|default:"--" }}
 </td>
@@ -25,3 +26,4 @@
     <span class="text-gray-400 text-xs">NO</span>
     {% endif %}
 </td>
+{% endif %}

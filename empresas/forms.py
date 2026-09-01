@@ -7,13 +7,13 @@ class EmpresaForm(forms.ModelForm):
         fields = ['nombre', 'cuit', 'logo', 'direccion', 'correo', 'telefono', 'tipo_actividad', 'pedir_fecha_nacimiento_cliente',
                   'usa_orden_compra', 'condicion_iva', 'fecha_inicio_actividades', 'condicion_iibb', 'jurisdicciones_iibb', 'entorno_afip', 'crt_afip', 'key_afip', 'vencimiento_crt_afip']
         widgets = {
-            'nombre': forms.TextInput(attrs={'required': 'required'}),
-            'cuit': forms.TextInput(attrs={'required': 'required'}),
+            'nombre': forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm', 'required': 'required'}),
+            'cuit': forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm', 'required': 'required'}),
             'logo': forms.FileInput(attrs={'class': 'file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors'}),
-            'direccion': forms.TextInput(),
-            'correo': forms.EmailInput(),
-            'telefono': forms.TextInput(),
-            'tipo_actividad': forms.Select(choices=Empresa.TIPO_ACTIVIDAD_CHOICES, attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
+            'direccion': forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
+            'correo': forms.EmailInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
+            'telefono': forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
+            'tipo_actividad': forms.Select(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
             'pedir_fecha_nacimiento_cliente': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500'}),
             'usa_orden_compra': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500'}),
             'condicion_iva': forms.Select(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
@@ -31,6 +31,19 @@ class EmpresaForm(forms.ModelForm):
         from facturacion.models import Jurisdiccion
         self.fields['jurisdicciones_iibb'].queryset = Jurisdiccion.objects.order_by('codigo')
         self.fields['jurisdicciones_iibb'].required = False
+
+        from django.apps import apps
+        opciones_permitidas = [('', 'Estándar (General)')]
+        
+        # Iterar sobre las aplicaciones instaladas y auto-descubrir las verticalidades
+        for app_config in apps.get_app_configs():
+            if app_config.name.startswith('verticalidades.'):
+                # Utilizar el tipo_actividad_code si existe, sino el label en mayúsculas
+                codigo = getattr(app_config, 'tipo_actividad_code', app_config.label.upper())
+                nombre = getattr(app_config, 'verbose_name', app_config.label.title())
+                opciones_permitidas.append((codigo, nombre))
+                
+        self.fields['tipo_actividad'].widget.choices = opciones_permitidas
 
     def save(self, commit=True):
         import os

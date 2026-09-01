@@ -13,6 +13,8 @@ def hook_menu(context, hook_name):
     """
     Escanea las aplicaciones instaladas en verticalidades y busca el template
     <app_name>/hooks/menu_<hook_name>.html para renderizarlo.
+    El filtrado por tipo_actividad se hace DENTRO de cada hook template,
+    no aquí, permitiendo que cada verticalidad decida cuándo mostrarse.
     """
     html_output = ""
     verticalidades_path = Path(settings.BASE_DIR) / 'verticalidades'
@@ -37,6 +39,7 @@ def hook_ui(context, hook_name, **kwargs):
     """
     Escanea las aplicaciones instaladas en verticalidades y busca el template
     <app_name>/hooks/ui_<hook_name>.html para inyectar componentes UI genéricos.
+    El filtrado por tipo_actividad se hace DENTRO de cada hook template.
     Permite pasar kwargs adicionales que se mezclarán con el contexto.
     """
     html_output = ""
@@ -58,4 +61,3 @@ def hook_ui(context, hook_name, **kwargs):
                 pass
 
     return mark_safe(html_output)
-

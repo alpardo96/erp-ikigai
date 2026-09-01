@@ -27,7 +27,7 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="col-span-1 md:col-span-2">
-                    <label for="{{ form.nombre.id_for_label }}">Razón Social</label>
+                    <label for="{{ form.nombre.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">Razón Social</label>
                     {{ form.nombre }}
                     {% if form.nombre.errors %}
                         <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.nombre.errors.0 }}</p>
@@ -35,7 +35,7 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.cuit.id_for_label }}">CUIT</label>
+                    <label for="{{ form.cuit.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">CUIT</label>
                     {{ form.cuit }}
                     {% if form.cuit.errors %}
                         <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.cuit.errors.0 }}</p>
@@ -43,7 +43,7 @@
                 </div>
                 
                 <div>
-                    <label for="{{ form.correo.id_for_label }}">Correo Electrónico</label>
+                    <label for="{{ form.correo.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">Correo Electrónico</label>
                     {{ form.correo }}
                     {% if form.correo.errors %}
                         <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.correo.errors.0 }}</p>
@@ -51,7 +51,7 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.telefono.id_for_label }}">Teléfono(s)</label>
+                    <label for="{{ form.telefono.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">Teléfono(s)</label>
                     {{ form.telefono }}
                     {% if form.telefono.errors %}
                         <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.telefono.errors.0 }}</p>
@@ -59,7 +59,7 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.condicion_iva.id_for_label }}">Condición frente al IVA</label>
+                    <label for="{{ form.condicion_iva.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">Condición frente al IVA</label>
                     {{ form.condicion_iva }}
                     {% if form.condicion_iva.errors %}
                         <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.condicion_iva.errors.0 }}</p>
@@ -67,7 +67,7 @@
                 </div>
 
                 <div>
-                    <label for="{{ form.fecha_inicio_actividades.id_for_label }}">Inicio de Actividades</label>
+                    <label for="{{ form.fecha_inicio_actividades.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">Inicio de Actividades</label>
                     {{ form.fecha_inicio_actividades }}
                     {% if form.fecha_inicio_actividades.errors %}
                         <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.fecha_inicio_actividades.errors.0 }}</p>
@@ -75,7 +75,7 @@
                 </div>
 
                 <div class="col-span-1 md:col-span-2">
-                    <label for="{{ form.direccion.id_for_label }}">Dirección Central</label>
+                    <label for="{{ form.direccion.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">Dirección Central</label>
                     {{ form.direccion }}
                     {% if form.direccion.errors %}
                         <p class="text-red-500 text-xs mt-1 font-semibold">{{ form.direccion.errors.0 }}</p>
@@ -83,7 +83,7 @@
                 </div>
 
                 <div class="col-span-1 md:col-span-2">
-                    <label for="{{ form.tipo_actividad.id_for_label }}">Tipo de Actividad / Operatoria Especial</label>
+                    <label for="{{ form.tipo_actividad.id_for_label }}" class="block text-sm font-semibold text-gray-700 mb-1">Tipo de Actividad / Operatoria Especial</label>
                     {{ form.tipo_actividad }}
                     <p class="mt-1 text-[11px] text-slate-400 font-medium italic">Define módulos y comportamientos especiales (ej. carga obligatoria de CUIM en Armerías).</p>
                     {% if form.tipo_actividad.errors %}

@@ -1,3 +1,4 @@
+{% if empresa_actual and empresa_actual.tipo_actividad == 'DISTRIBUIDORA' %}
 <div class="space-y-1" x-data="{ open: window.location.search.includes('distribucion') || ['personal_distribucion','zonas_reparto','vehiculos','motivos_devolucion'].some(t => window.location.search.includes(t)) }">
     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
         <a href="{% url 'configuracion_index' %}?tab=personal_distribucion" class="flex items-center flex-1">
@@ -79,3 +80,4 @@
         </a>
     </div>
 </div>
+{% endif %}

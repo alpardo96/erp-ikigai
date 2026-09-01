@@ -2,17 +2,6 @@ from django.db import models
 from core.models import AuditModel
 
 class Empresa(AuditModel):
-    # Opciones de Tipos de Actividades Especiales para la Empresa
-    TIPO_ACTIVIDAD_CHOICES = [
-        ('', 'Estándar (General)'),
-        ('ARMERIA', 'Armería (Trazabilidad)'),
-        ('AUTOMOTOR', 'Concesionaria Automotor (Trazabilidad)'),
-        ('ESTUDIO', 'Estudio Contable / Abogados'),
-        ('COLEGIO', 'Colegio / Institución Educativa'),
-        ('DISTRIBUIDORA', 'Distribuidora'),
-        ('AGRICOLA', 'Empresa Agrícola'),
-    ]
-
     nombre = models.CharField(max_length=150, verbose_name="Nombre de la Empresa")
     cuit = models.CharField(max_length=11, unique=True, verbose_name="CUIT")
     logo = models.ImageField(upload_to='logos/', null=True, blank=True, verbose_name="Logo")
@@ -21,7 +10,6 @@ class Empresa(AuditModel):
     telefono = models.CharField(max_length=255, null=True, blank=True, verbose_name="Teléfono(s)")
     tipo_actividad = models.CharField(
         max_length=100, null=True, blank=True,
-        choices=TIPO_ACTIVIDAD_CHOICES,
         verbose_name="Tipo de Actividad Especial",
         help_text="Ej: armeria, concesionaria, estudio, colegio, distribuidora, agricola"
     )

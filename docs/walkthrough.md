@@ -1,5 +1,46 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
+## Cristian - PC CASA - 31/08/2026
+**Objetivo:** Auto-descubrimiento 100% dinámico de Verticalidades en el Tipo de Actividad de Empresas.
+**Archivos creados o modificados:**
+- `empresas/models.py`
+- `empresas/forms.py`
+- `verticalidades/armeria/apps.py`
+- `verticalidades/distribucion/apps.py`
+- Nueva migración: `empresas/migrations/0003_alter_empresa_tipo_actividad.py`
+
+**Detalle Técnico:** 
+- Se eliminaron las opciones hardcodeadas (`TIPO_ACTIVIDAD_CHOICES`) del modelo `Empresa` en `empresas/models.py` y se generó la migración correspondiente para liberar la restricción en la base de datos.
+- Se agregó el atributo `tipo_actividad_code` en las clases `AppConfig` de Armería y Distribución.
+- En `empresas/forms.py` (dentro de `EmpresaForm.__init__`), el sistema ahora itera sobre `apps.get_app_configs()` y auto-descubre dinámicamente cualquier aplicación que comience con `verticalidades.`, inyectándola en el selector desplegable (asignándola al `widget.choices`).
+- **Limpieza de interfaz (UI):** Se inyectaron clases Tailwind en todos los `<label>` y `TextInput` del formulario de empresa.
+- **Corrección masiva de TemplateSyntaxError:** Se agregó `{% load vertical_tags %}` a **todos** los templates que usan `hook_ui` o `hook_menu`:
+  - `templates/facturacion/clientes_index.html`
+  - `templates/facturacion/partials/cliente_table_rows.html`
+  - `templates/facturacion/ventas_index.html`
+  - `templates/facturacion/compras_index.html`
+  - `templates/productos/stock_dashboard.html`
+  - `templates/productos/modals/producto_modal.html`
+  - `templates/configuracion/partials/hub.html` (ya lo tenía)
+  - `templates/base.html` (ya lo tenía)
+- **Restauración de `vertical_tags.py` y Aislamiento de Verticalidades:** Se reescribió `core/templatetags/vertical_tags.py` dejándolo tal como estaba originalmente (escanea todas las verticalidades sin filtrar). En su lugar, el filtrado de qué mostrar se delegó a **cada hook individual**, asegurando que los hooks de armería solo se rendericen si `empresa_actual.tipo_actividad == 'ARMERIA'` (o usa trazabilidad) y los de distribución si es `DISTRIBUIDORA`. Se agregaron los condicionales faltantes a los siguientes hooks:
+  - **Armería:** `ui_cliente_table_column_toggles.html`, `ui_cliente_table_headers.html`, `ui_cliente_table_cells.html`.
+  - **Distribución:** `menu_sidebar_bottom.html`, `ui_configuracion_hub.html`, `ui_producto_modal_campos.html`.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Sistema totalmente dinámico. Al enchufar una nueva verticalidad (creando la carpeta y el `apps.py`), el tipo de actividad aparecerá automáticamente en el selector del panel de configuración sin modificar el core.
+
+## Cristian - PC CASA - 31/08/2026
+**Objetivo:** Corrección de TemplateSyntaxError en configuración.
+**Archivos creados o modificados:**
+- `templates/configuracion/partials/hub.html`
+
+**Detalle Técnico:** 
+- Se agregó el tag `{% load vertical_tags %}` faltante al inicio del archivo `hub.html` para permitir el correcto renderizado del custom tag `hook_ui`, evitando el error `Invalid block tag`.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Error solucionado, el panel de configuración ahora renderiza correctamente.
+
 ## Antigravity (Codex) - 31/08/2026
 **Objetivo:** Refactorización de Templates con Hooks (Arquitectura)
 **Archivos creados o modificados:**
