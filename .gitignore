@@ -1,0 +1,56 @@
+# Django
+*.pyc
+*~
+__pycache__/
+myenv/
+venv/
+.venv/
+db.sqlite3
+/media/
+/staticfiles/
+.env
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+scratch/
+check_db.py
+check_migrations.py
+#.agents/
+.agent/
+.gemini/
+*.tmp
+*.log
+*.dump
+*.sql
+test_db.sqlite3
+
+# Config
+
+# Respaldo
+Respaldo*/
+
+static/
+
+# Temp Facturas, corresponde a carga compras automaticas
+*temp_facturas/
+
+# Cursor
+.cursorrules 
+ 
+# Nombre
+docs/soy.md
