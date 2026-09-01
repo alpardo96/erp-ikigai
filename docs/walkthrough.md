@@ -2828,6 +2828,52 @@ Migraciones aplicadas con respaldo previo. Las cuatro pantallas del módulo resp
 ### Estado Actual y Siguientes Pasos
 Circuito cerrado desde la toma del pedido hasta el comprobante emitido. **Siguiente: fase 5** — `Reparto`, Consolidado de Artículos y Hoja de Ruta, que es donde el `cobro_minimo` calculado acá sale impreso para el repartidor.
 
+## Día 31/08/2026 - Corrección Arquitectónica del Modo Enchufe (Modelos y Formularios)
+
+**Responsable:** Antigravity (Codex)
+
+### Objetivo
+Corregir una mala interpretación de la arquitectura "Plug & Play" (Modo Enchufe) en la que los modelos y formularios de las verticalidades habían sido ubicados de tal forma que al "desenchufar" (borrar) la carpeta, el sistema principal (`facturacion`) fallaba por errores de importación (`ModuleNotFoundError`). Se revisó cómo `erp-ikigai-armeria` resolvía este patrón y se replicó su estructura robusta hacia Distribución y Estudio.
+
+### Archivos Creados o Modificados
+- `facturacion/forms.py` [MODIFY]: Se eliminaron las definiciones e importaciones estáticas de `ExtensionArmeriaForm` y `ExtensionDistribuidoraForm`.
+- `verticalidades/armeria/forms.py` [NEW/MODIFY]: Se extrajo y mudó `ExtensionArmeriaForm` aquí.
+- `verticalidades/distribucion/forms.py` [MODIFY]: Se extrajo y anexó `ExtensionDistribuidoraForm` al final del archivo.
+- `facturacion/views_htmx.py` [MODIFY]: Se modificaron las importaciones para que consuman los modelos y los forms usando `try/except ImportError`. De este modo, si la carpeta de la verticalidad se borra, las clases simplemente quedan como `None` y la lógica base no revienta.
+- `facturacion/models.py` [RESTORED]: Se corroboró que el núcleo no depende de estas clases, ya que ahora todo está aislado condicionalmente.
+
+### Detalle Técnico
+El verdadero "Modo Enchufe" exige que si un directorio bajo `verticalidades/` se elimina, el sistema base siga funcionando sin crashear.
+Anteriormente, aunque los modelos se extrajeron a sus respectivas verticalidades, los formularios (`forms.py`) y las vistas núcleo (`views_htmx.py`) seguían tratando de hacer un `from verticalidades.X.models import Y`. Cuando la carpeta no existía, Python fallaba al arrancar.
+
+**Solución:**
+- Los modelos siguen viviendo en las verticalidades, pero su persistencia (y sus migraciones) se atan a que la `app` esté en `INSTALLED_APPS` (el cual es dinámico).
+- El núcleo (`facturacion/views_htmx.py`) ahora hace:
+```python
+try:
+    from verticalidades.armeria.models import ExtensionArmeria
+    from verticalidades.armeria.forms import ExtensionArmeriaForm
+except ImportError:
+    ExtensionArmeria = None
+    ExtensionArmeriaForm = None
+```
+Con esto, si la carpeta no existe, el módulo no crashea; la lógica condicional que ya teníamos (`if puede_armeria and ExtensionArmeria:`) se encarga de ignorar esa ejecución. 
+
+### Resultado de las Pruebas
+- El `runserver` reinició exitosamente.
+- El comando `python manage.py check` arrojó `System check identified no issues (0 silenced).` confirmando que las dependencias circulares y los módulos faltantes fueron erradicados.
+- El comando `python manage.py makemigrations` reportó `No changes detected`, lo que significa que el movimiento no alteró el esquema base.
+
+**Filtro Dinámico en EmpresaForm:**
+Se refactorizó el formulario `EmpresaForm` para alinear sus opciones de `tipo_actividad` exactamente con las carpetas de verticalidades presentes en el disco duro, replicando la lógica exacta probada en el proyecto `erp-ikigai-armeria`. Ahora las actividades "fantasmas" no aparecerán en el selector, mostrándose única y estrictamente las conectadas (junto al Estándar).
+
+### Archivos Creados o Modificados Adicionales
+- `empresas/models.py` [MODIFY]: Se añadió `TIPO_ACTIVIDAD_CHOICES` centralizado en el modelo.
+- `empresas/forms.py` [MODIFY]: Se ajustó el `__init__` para construir las opciones dinámicamente escaneando el directorio `verticalidades/`.
+
+### Estado Actual y Siguientes Pasos
+La arquitectura está purificada. Cualquier módulo bajo `verticalidades/` puede ser borrado de la carpeta física e instantáneamente los reportes, botones y vistas del mismo desaparecerán del ERP, manteniendo estable el facturador.
+
 Pendientes ofrecidos y no ejecutados: el widget de fecha en otros siete formularios, la exportación de faltantes a PDF/Excel, y la validación de la emisión real contra ARCA Homologación.
 
 

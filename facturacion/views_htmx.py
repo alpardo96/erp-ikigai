@@ -5,9 +5,21 @@ from django.db import transaction
 import json
 
 from .models import ClienteProveedor, Jurisdiccion, Compra, CompraItem, Venta, VentaItem
-from verticalidades.armeria.models import ExtensionArmeria
-from .forms import (ClienteProveedorForm, ExtensionArmeriaForm,
-                    ExtensionDistribuidoraForm, JurisdiccionForm)
+try:
+    from verticalidades.armeria.models import ExtensionArmeria
+    from verticalidades.armeria.forms import ExtensionArmeriaForm
+except ImportError:
+    ExtensionArmeria = None
+    ExtensionArmeriaForm = None
+
+try:
+    from verticalidades.distribucion.models import ExtensionDistribuidora
+    from verticalidades.distribucion.forms import ExtensionDistribuidoraForm
+except ImportError:
+    ExtensionDistribuidora = None
+    ExtensionDistribuidoraForm = None
+
+from .forms import ClienteProveedorForm, JurisdiccionForm
 
 # --- CRUD DE JURISDICCIONES (AFIP) ---
 

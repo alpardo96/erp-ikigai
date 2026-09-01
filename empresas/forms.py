@@ -32,18 +32,20 @@ class EmpresaForm(forms.ModelForm):
         self.fields['jurisdicciones_iibb'].queryset = Jurisdiccion.objects.order_by('codigo')
         self.fields['jurisdicciones_iibb'].required = False
 
-        from django.apps import apps
-        opciones_permitidas = [('', 'Estándar (General)')]
-        
-        # Iterar sobre las aplicaciones instaladas y auto-descubrir las verticalidades
-        for app_config in apps.get_app_configs():
-            if app_config.name.startswith('verticalidades.'):
-                # Utilizar el tipo_actividad_code si existe, sino el label en mayúsculas
-                codigo = getattr(app_config, 'tipo_actividad_code', app_config.label.upper())
-                nombre = getattr(app_config, 'verbose_name', app_config.label.title())
-                opciones_permitidas.append((codigo, nombre))
+        import os
+        from django.conf import settings
+        opciones_validas = [('', 'Estándar (General)')]
+        verticalidades_path = settings.BASE_DIR / 'verticalidades'
+        verticales_instaladas = []
+        if verticalidades_path.exists():
+            verticales_instaladas = [f.name.lower() for f in verticalidades_path.iterdir() if f.is_dir()]
+            
+        for key, desc in Empresa.TIPO_ACTIVIDAD_CHOICES:
+            if key == '': continue
+            if key.lower() in verticales_instaladas:
+                opciones_validas.append((key, desc))
                 
-        self.fields['tipo_actividad'].widget.choices = opciones_permitidas
+        self.fields['tipo_actividad'].choices = opciones_validas
 
     def save(self, commit=True):
         import os

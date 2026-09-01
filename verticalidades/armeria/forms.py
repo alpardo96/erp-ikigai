@@ -36,7 +36,3 @@ class ExtensionArmeriaForm(forms.ModelForm):
         for field_name, field in self.fields.items():
             clase_actual = field.widget.attrs.get('class', '')
             field.widget.attrs['class'] = f"{clase_actual} w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all".strip()
-
-
-
-

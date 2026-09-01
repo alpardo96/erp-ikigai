@@ -227,3 +227,42 @@ class DomicilioEntregaForm(_BaseDistribucionForm):
             if qs.exists():
                 raise forms.ValidationError("El cliente ya tiene un domicilio con ese nombre.")
         return nombre
+
+
+class ExtensionDistribuidoraForm(forms.ModelForm):
+    """Datos del cliente propios de la actividad DISTRIBUIDORA (Plan 074 §5.C).
+
+    El coeficiente se carga a mano cliente por cliente; la clasificación es
+    descriptiva y no interviene en el precio.
+    """
+
+    coeficiente_mayorista = DecimalARField(
+        max_digits=10, decimal_places=4, required=False, initial=1,
+        label="Coeficiente Mayorista",
+        widget=forms.TextInput(attrs={'class': 'fInputAR', 'placeholder': '1,0000'}))
+
+    class Meta:
+        from .models import ExtensionDistribuidora
+        model = ExtensionDistribuidora
+        # La zona NO está acá: vive en `DomicilioEntrega`, porque un cliente con
+        # sucursales entrega en varias zonas.
+        fields = ['clasificacion', 'coeficiente_mayorista', 'bloqueado_credito']
+        widgets = {
+            'clasificacion': forms.TextInput(attrs={'placeholder': 'Ej. A, B, C'}),
+        }
+
+    def __init__(self, *args, empresa_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['clasificacion'].required = False
+
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs['class'] = "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            else:
+                clase_actual = field.widget.attrs.get('class', '')
+                field.widget.attrs['class'] = f"{clase_actual} w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all".strip()
+
+    def clean_coeficiente_mayorista(self):
+        # Vacío significa "sin recargo ni descuento": el precio de lista tal cual.
+        return self.cleaned_data.get('coeficiente_mayorista') or 1
+

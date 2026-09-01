@@ -8,10 +8,17 @@ class Empresa(AuditModel):
     direccion = models.CharField(max_length=255, null=True, blank=True, verbose_name="Dirección")
     correo = models.EmailField(null=True, blank=True, verbose_name="Correo Electrónico")
     telefono = models.CharField(max_length=255, null=True, blank=True, verbose_name="Teléfono(s)")
+    TIPO_ACTIVIDAD_CHOICES = [
+        ('', 'Estándar (General)'),
+        ('ARMERIA', 'Armería'),
+        ('DISTRIBUCION', 'Distribución'),
+        ('ESTUDIO', 'Estudio Contable / Jurídico'),
+    ]
     tipo_actividad = models.CharField(
         max_length=100, null=True, blank=True,
+        choices=TIPO_ACTIVIDAD_CHOICES,
         verbose_name="Tipo de Actividad Especial",
-        help_text="Ej: armeria, concesionaria, estudio, colegio, distribuidora, agricola"
+        help_text="Filtro para habilitar funcionalidades específicas de una verticalidad."
     )
     pedir_fecha_nacimiento_cliente = models.BooleanField(default=False, verbose_name="Pedir Fecha Nacimiento en Clientes")
     usa_orden_compra = models.BooleanField(
