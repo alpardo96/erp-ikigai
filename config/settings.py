@@ -1,6 +1,6 @@
 """
 Django settings for config project.
-ARCHIVO DE CONFIGURACIÓN CONTABLE Y OPERATIVO - ERP IKIGAI 2
+ARCHIVO DE CONFIGURACIÓN CONTABLE Y OPERATIVO - ERP IKIGAI
 """
 
 from pathlib import Path

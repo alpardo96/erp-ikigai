@@ -11,16 +11,17 @@ from usuarios.views_htmx import usuario_modal, buscar_usuarios, eliminar_usuario
 from facturacion.views import ClientesProveedoresIndexView, ComprasIndexView, VentasIndexView, ComprasCargaView, VentasCargaView, PreventaCargaView, AutorizacionesIndexView, ComprasListView, CompraBajaView, CompraDetalleModalView, VentasListView, VentaAnularModalView, VentaEmitirNotaCreditoView, VentaPrevisualizarModalView
 from facturacion.views_procesamiento import CargaCompraAutomaticaView, ProcesarRecorteOCRView
 from facturacion.views_ia import CargaCompraIAView, ProcesarFacturaIAView
-from facturacion.views_estudio import actualizar_tarifas, api_tarifas, guardar_tarifas, facturacion_lotes, api_facturacion_lotes, generar_lote_facturacion
+from facturacion.views_ia import CargaCompraIAView, ProcesarFacturaIAView
 from facturacion.views_impresion import imprimir_factura
 from facturacion.views_reportes import (
     ReporteVentasProductoView, buscar_reporte_ventas_producto,
     exportar_ventas_producto_csv, exportar_ventas_producto_excel,
     exportar_clientes_excel
 )
-from facturacion.views_trazabilidad import (
-    VentasTrazabilidadCargaView, agregar_item_venta_trazabilidad, editar_item_venta_trazabilidad, quitar_item_venta_trazabilidad,
-    ComprasTrazabilidadCargaView, compras_trazabilidad_item_add, compras_trazabilidad_item_remove, typeahead_series_trazabilidad
+from facturacion.views_reportes import (
+    ReporteVentasProductoView, buscar_reporte_ventas_producto,
+    exportar_ventas_producto_csv, exportar_ventas_producto_excel,
+    exportar_clientes_excel
 )
 from facturacion.views_oc import (
     OrdenCompraCargaView, OrdenCompraListView, OrdenCompraBajaView, OrdenCompraImprimirView,
@@ -43,28 +44,7 @@ from facturacion.views_remito_interno import (
 )
 
 from productos.views import StockDashboardView, ProductoListView
-from verticalidades.distribucion.views_htmx import (
-    zona_modal as dist_zona_modal, buscar_zonas as dist_buscar_zonas, eliminar_zona as dist_eliminar_zona,
-    personal_modal as dist_personal_modal, buscar_personal as dist_buscar_personal, eliminar_personal as dist_eliminar_personal,
-    vehiculo_modal as dist_vehiculo_modal, buscar_vehiculos as dist_buscar_vehiculos, eliminar_vehiculo as dist_eliminar_vehiculo,
-    motivo_modal as dist_motivo_modal, buscar_motivos as dist_buscar_motivos, eliminar_motivo as dist_eliminar_motivo,
-    sembrar_motivos_iniciales as dist_sembrar_motivos,
-    asignar_vendedor as dist_asignar_vendedor,
-    domicilio_modal as dist_domicilio_modal, eliminar_domicilio as dist_eliminar_domicilio,
-    domicilio_dias as dist_domicilio_dias,
-)
-from verticalidades.distribucion.views import (DistribucionIndexView, AsignacionStockView, CarteraIndexView,
-                                CobranzaRepartoView, ConsolidadoView, EntregaView,
-                                FacturacionLoteView, FaltantesIndexView, HojaDeRutaView,
-                                CobranzaVendedorView, CorrelativosDistribucionView,
-                                DevolucionesReporteView, RecepcionDevolucionView,
-                                RecepcionRendicionesView, RendicionRepartoView,
-                                RepartoDetalleView, RepartoListView, SaldosClientesView)
-from verticalidades.distribucion.views_movil import (
-    pedido_movil as movil_pedido, movil_buscar_clientes, movil_elegir_cliente,
-    movil_buscar_productos, movil_item_add, movil_item_remove, movil_descartar,
-    movil_confirmar, movil_elegir_domicilio,
-)
+from productos.views import StockDashboardView, ProductoListView
 from facturacion.views_htmx import (
     jurisdiccion_modal, buscar_jurisdicciones, eliminar_jurisdiccion,
     cliente_modal, buscar_clientes, eliminar_cliente, buscar_cuentas_facturacion, buscador_cuentas_modal,
@@ -92,10 +72,6 @@ from productos.views_htmx import (
     exportar_productos_excel_completo, modal_exportar_seleccion,
     exportar_productos_excel_seleccion, modal_capturar_excel,
     capturar_productos_excel
-)
-from productos.views_trazabilidad import (
-    SubproductoTrazabilidadListView, trazabilidad_modal_timeline,
-    subproducto_detalle_modal, subproducto_editar_modal
 )
 from tesoreria.views_htmx import (
     buscar_mediospago, mediopago_modal, eliminar_mediopago,
@@ -158,10 +134,8 @@ urlpatterns = [
     path('clientes/', ClientesProveedoresIndexView.as_view(), name='clientes_index'),
     path('stock/', StockDashboardView.as_view(), name='stock_index'),
     path('stock/productos/', ProductoListView.as_view(), name='producto_listado'),
-    path('stock/trazabilidad/', SubproductoTrazabilidadListView.as_view(), name='subproducto_trazabilidad_listado'),
-    path('stock/trazabilidad/modal/<str:serie>/', trazabilidad_modal_timeline, name='subproducto_trazabilidad_modal'),
-    path('stock/trazabilidad/subproducto/<int:subpro_id>/detalle/', subproducto_detalle_modal, name='subproducto_detalle_modal'),
-    path('stock/trazabilidad/subproducto/<int:subpro_id>/editar/', subproducto_editar_modal, name='subproducto_editar_modal'),
+    path('stock/', StockDashboardView.as_view(), name='stock_index'),
+    path('stock/productos/', ProductoListView.as_view(), name='producto_listado'),
 
 
     # ── COMPRAS ──────────────────────────────────────────────────
@@ -225,10 +199,7 @@ urlpatterns = [
     path('compras/procesar-recorte/', ProcesarRecorteOCRView.as_view(), name='procesar_recorte_ocr'),
     path('compras/carga-ia/', CargaCompraIAView.as_view(), name='compras_carga_ia'),
     path('compras/procesar-ia/', ProcesarFacturaIAView.as_view(), name='compras_procesar_ia'),
-    path('compras/trazabilidad/carga/', ComprasTrazabilidadCargaView.as_view(), name='compras_trazabilidad_carga'),
-    path('compras/trazabilidad/item/agregar/', compras_trazabilidad_item_add, name='compras_trazabilidad_item_add'),
-    path('compras/trazabilidad/item/<int:index>/quitar/', compras_trazabilidad_item_remove, name='compras_trazabilidad_item_remove'),
-    path('series/trazabilidad/typeahead/', typeahead_series_trazabilidad, name='typeahead_series_trazabilidad'),
+    path('compras/procesar-ia/', ProcesarFacturaIAView.as_view(), name='compras_procesar_ia'),
 
     # 🔹 VENTAS 🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹
     path('ventas/', VentasIndexView.as_view(), name='ventas_index'),
@@ -237,10 +208,7 @@ urlpatterns = [
     path('ventas/<int:id>/previsualizar/modal/', VentaPrevisualizarModalView.as_view(), name='venta_previsualizar_modal'),
     path('ventas/<int:id>/anular/procesar/', VentaEmitirNotaCreditoView.as_view(), name='venta_emitir_nc'),
     path('ventas/carga/', VentasCargaView.as_view(), name='ventas_carga'),
-    path('ventas/trazabilidad/carga/', VentasTrazabilidadCargaView.as_view(), name='ventas_trazabilidad_carga'),
-    path('ventas/trazabilidad/item/agregar/', agregar_item_venta_trazabilidad, name='ventas_trazabilidad_item_add'),
-    path('ventas/trazabilidad/item/<int:index>/editar/', editar_item_venta_trazabilidad, name='ventas_trazabilidad_item_edit'),
-    path('ventas/trazabilidad/item/<int:index>/quitar/', quitar_item_venta_trazabilidad, name='ventas_trazabilidad_item_remove'),
+    path('ventas/carga/', VentasCargaView.as_view(), name='ventas_carga'),
     path('ventas/autorizaciones/', AutorizacionesIndexView.as_view(), name='autorizaciones_index'),
     path('ventas/preventas/autorizaciones/<int:id>/modal/', preventa_autorizacion_modal, name='preventas_autorizacion_modal'),
     path('ventas/preventas/carga/', PreventaCargaView.as_view(), name='preventas_carga'),
@@ -272,15 +240,6 @@ urlpatterns = [
     path('facturas-pendientes/exportar-excel/', facturas_pendientes_excel, name='facturas_pendientes_excel'),
     path('facturas-pendientes/exportar-pdf/', facturas_pendientes_pdf, name='facturas_pendientes_pdf'),
 
-    # Estudio: Actualización de Tarifas
-    path('estudio/tarifas/', actualizar_tarifas, name='estudio_actualizar_tarifas'),
-    path('estudio/tarifas/api/', api_tarifas, name='estudio_api_tarifas'),
-    path('estudio/tarifas/guardar/', guardar_tarifas, name='estudio_guardar_tarifas'),
-    
-    path('estudio/facturacion-lotes/', facturacion_lotes, name='estudio_facturacion_lotes'),
-    path('estudio/facturacion-lotes/api/', api_facturacion_lotes, name='estudio_api_facturacion_lotes'),
-    path('estudio/facturacion-lotes/generar/', generar_lote_facturacion, name='estudio_generar_lote_facturacion'),
-    
     path('facturacion/imprimir/<int:venta_id>/', imprimir_factura, name='imprimir_factura'),
 
     path('contable/', include('contable.urls')),
@@ -317,78 +276,6 @@ urlpatterns = [
     path('configuracion/mediospago/crear/', mediopago_modal, name='config_mediopago_add'),
     path('configuracion/mediospago/<int:id>/editar/', mediopago_modal, name='config_mediopago_edit'),
     path('configuracion/mediospago/<int:id>/eliminar/', eliminar_mediopago, name='config_mediopago_delete'),
-
-    path('distribucion/', DistribucionIndexView.as_view(), name='distribucion_index'),
-
-    # Distribución: toma de pedidos desde el celular del vendedor (Plan 074, fase 2)
-    path('distribucion/movil/', movil_pedido, name='distribucion_movil_pedido'),
-    path('distribucion/movil/clientes/', movil_buscar_clientes, name='distribucion_movil_clientes'),
-    path('distribucion/movil/clientes/<int:cliente_id>/elegir/', movil_elegir_cliente, name='distribucion_movil_elegir_cliente'),
-    path('distribucion/movil/domicilio/<int:domicilio_id>/elegir/', movil_elegir_domicilio, name='distribucion_movil_elegir_domicilio'),
-    path('distribucion/movil/productos/', movil_buscar_productos, name='distribucion_movil_productos'),
-    path('distribucion/movil/item/agregar/', movil_item_add, name='distribucion_movil_item_add'),
-    path('distribucion/movil/item/<int:index>/quitar/', movil_item_remove, name='distribucion_movil_item_remove'),
-    path('distribucion/movil/descartar/', movil_descartar, name='distribucion_movil_descartar'),
-    path('distribucion/movil/confirmar/', movil_confirmar, name='distribucion_movil_confirmar'),
-
-    # Distribución: repartos, hoja de ruta y consolidado (Plan 074, fase 5)
-    path('distribucion/repartos/', RepartoListView.as_view(), name='distribucion_repartos'),
-    path('distribucion/repartos/<int:reparto_id>/', RepartoDetalleView.as_view(), name='distribucion_reparto_detalle'),
-    path('distribucion/repartos/<int:reparto_id>/hoja-de-ruta/', HojaDeRutaView.as_view(), name='distribucion_hoja_de_ruta'),
-    path('distribucion/repartos/<int:reparto_id>/consolidado/', ConsolidadoView.as_view(), name='distribucion_consolidado'),
-
-    # Distribución: entrega, devoluciones y notas de crédito (Plan 074, fase 6)
-    path('distribucion/repartos/<int:reparto_id>/entrega/', EntregaView.as_view(), name='distribucion_entrega'),
-    path('distribucion/paradas/<int:parada_id>/recepcion/', RecepcionDevolucionView.as_view(), name='distribucion_recepcion'),
-
-    # Distribucion: cobranza del repartidor, rendicion y saldos (Plan 074, fase 7)
-    path('distribucion/repartos/<int:reparto_id>/cobranza/', CobranzaRepartoView.as_view(), name='distribucion_cobranza'),
-    path('distribucion/repartos/<int:reparto_id>/rendicion/', RendicionRepartoView.as_view(), name='distribucion_rendicion'),
-    path('distribucion/saldos/', SaldosClientesView.as_view(), name='distribucion_saldos'),
-    path('distribucion/rendiciones/', RecepcionRendicionesView.as_view(), name='distribucion_recepcion_rendiciones'),
-    path('distribucion/cobranza-vendedor/', CobranzaVendedorView.as_view(), name='distribucion_cobranza_vendedor'),
-
-    # Distribucion: reportes de control (Plan 074, fase 8)
-    path('distribucion/devoluciones/', DevolucionesReporteView.as_view(), name='distribucion_reporte_devoluciones'),
-    path('distribucion/correlativos/', CorrelativosDistribucionView.as_view(), name='distribucion_correlativos'),
-
-    # Distribución: facturación masiva (Plan 074, fase 4)
-    path('distribucion/facturacion/', FacturacionLoteView.as_view(), name='distribucion_facturacion'),
-
-    # Distribución: faltantes y asignación de stock escaso (Plan 074, fase 3)
-    path('distribucion/faltantes/', FaltantesIndexView.as_view(), name='distribucion_faltantes'),
-    path('distribucion/faltantes/<int:producto_id>/asignar/', AsignacionStockView.as_view(), name='distribucion_asignacion'),
-
-    # Distribución: cartera de vendedores y agenda de visitas (Plan 074)
-    path('distribucion/cartera/', CarteraIndexView.as_view(), name='distribucion_cartera'),
-    path('distribucion/cartera/<int:cliente_id>/vendedor/', dist_asignar_vendedor, name='distribucion_asignar_vendedor'),
-    path('distribucion/cartera/<int:cliente_id>/domicilio/nuevo/', dist_domicilio_modal, name='distribucion_domicilio_add'),
-    path('distribucion/domicilio/<int:id>/editar/', dist_domicilio_modal, name='distribucion_domicilio_edit'),
-    path('distribucion/domicilio/<int:id>/eliminar/', dist_eliminar_domicilio, name='distribucion_domicilio_delete'),
-    path('distribucion/domicilio/<int:id>/dias/', dist_domicilio_dias, name='distribucion_domicilio_dias'),
-
-    # Configuración: Maestros de Distribución (Plan 074)
-    path('configuracion/distribucion/zonas/buscar/', dist_buscar_zonas, name='config_zona_search'),
-    path('configuracion/distribucion/zonas/crear/', dist_zona_modal, name='config_zona_add'),
-    path('configuracion/distribucion/zonas/<int:id>/editar/', dist_zona_modal, name='config_zona_edit'),
-    path('configuracion/distribucion/zonas/<int:id>/eliminar/', dist_eliminar_zona, name='config_zona_delete'),
-
-    path('configuracion/distribucion/personal/buscar/', dist_buscar_personal, name='config_personal_search'),
-    path('configuracion/distribucion/personal/crear/', dist_personal_modal, name='config_personal_add'),
-    path('configuracion/distribucion/personal/<int:id>/editar/', dist_personal_modal, name='config_personal_edit'),
-    path('configuracion/distribucion/personal/<int:id>/eliminar/', dist_eliminar_personal, name='config_personal_delete'),
-
-    path('configuracion/distribucion/vehiculos/buscar/', dist_buscar_vehiculos, name='config_vehiculo_search'),
-    path('configuracion/distribucion/vehiculos/crear/', dist_vehiculo_modal, name='config_vehiculo_add'),
-    path('configuracion/distribucion/vehiculos/<int:id>/editar/', dist_vehiculo_modal, name='config_vehiculo_edit'),
-    path('configuracion/distribucion/vehiculos/<int:id>/eliminar/', dist_eliminar_vehiculo, name='config_vehiculo_delete'),
-
-    path('configuracion/distribucion/motivos/buscar/', dist_buscar_motivos, name='config_motivo_search'),
-    path('configuracion/distribucion/motivos/crear/', dist_motivo_modal, name='config_motivo_add'),
-    path('configuracion/distribucion/motivos/<int:id>/editar/', dist_motivo_modal, name='config_motivo_edit'),
-    path('configuracion/distribucion/motivos/<int:id>/eliminar/', dist_eliminar_motivo, name='config_motivo_delete'),
-    path('configuracion/distribucion/motivos/sembrar/', dist_sembrar_motivos, name='config_motivo_sembrar'),
-
     # Configuración: Cuentas Bancarias (Tesorería)
     path('configuracion/cuentasbancarias/buscar/', buscar_cuentas_bancarias, name='config_cuentabancaria_search'),
     path('configuracion/cuentasbancarias/crear/', cuenta_bancaria_modal, name='config_cuentabancaria_add'),

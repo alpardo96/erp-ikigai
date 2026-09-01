@@ -1,5 +1,24 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
+## Antigravity (Codex) - 31/08/2026
+**Objetivo:** Desacoplamiento de Verticalidades (Plug & Play) en urls.py
+**Archivos creados o modificados:**
+- `config/urls.py` [MODIFY]
+- `verticalidades/distribucion/urls.py` [NEW]
+- `verticalidades/estudio/urls.py` [MODIFY]
+
+**Detalle Técnico:** 
+- Se removieron todas las importaciones `hardcoded` de vistas pertenecientes a las verticalidades de `distribucion`, `estudio` y partes de `armeria` del archivo principal `config/urls.py`.
+- Se removieron las declaraciones explícitas de rutas de las mismas.
+- Se crearon/actualizaron los archivos `urls.py` correspondientes dentro de `verticalidades/distribucion/` y `verticalidades/estudio/` para albergar sus propias rutas e importaciones de forma aislada.
+- De esta manera, el núcleo `config/urls.py` depende exclusivamente de su auto-descubrimiento dinámico de aplicaciones instaladas, respetando al 100% el diseño de arquitectura Plug & Play exigido.
+
+**Resultado de las pruebas:**
+- Se comprobó mediante análisis estático que las rutas y vistas fueron trasladadas correctamente.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Desacoplamiento de rutas implementado. Se recomienda al usuario realizar la prueba de "desenchufar" (mover temporalmente la carpeta) la verticalidad de Distribución o Estudio y verificar que el ERP base (Estándar) reinicie y funcione sin colapsar por errores de importación.
+
 ## Cristian - PC CASA - 31/08/2026
 **Objetivo:** Completar y ordenar las tarjetas (cards) del Dashboard de Distribución omitiendo la sección Maestros.
 **Archivos creados o modificados:**
