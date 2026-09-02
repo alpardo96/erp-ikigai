@@ -93,16 +93,23 @@ def procesar_factura_archivo(file_path, filename, tipo_actividad=None):
                 try:
                     import importlib
                     perfil_modulo = None
+                    print(f"[DEBUG] tipo_actividad recibido: {tipo_actividad}")
                     if tipo_actividad:
+                        modulo_path = f"verticalidades.{tipo_actividad}.perfiles_lectura.cuit_{cuit_limpio}"
+                        print(f"[DEBUG] Intentando importar de la verticalidad: {modulo_path}")
                         try:
                             # Intentar buscar el perfil específico de la verticalidad
-                            perfil_modulo = importlib.import_module(f"verticalidades.{tipo_actividad}.perfiles_lectura.cuit_{cuit_limpio}")
-                        except ImportError:
+                            perfil_modulo = importlib.import_module(modulo_path)
+                            print(f"[DEBUG] Éxito importando {modulo_path}")
+                        except ImportError as e:
+                            print(f"[DEBUG] Falló importando {modulo_path}: {e}")
                             pass
                     
                     if not perfil_modulo:
+                        fallback_path = f"facturacion.services.perfiles_lectura.cuit_{cuit_limpio}"
+                        print(f"[DEBUG] Haciendo fallback a: {fallback_path}")
                         # Fallback al directorio genérico (aunque esté vacío ahora)
-                        perfil_modulo = importlib.import_module(f"facturacion.services.perfiles_lectura.cuit_{cuit_limpio}")
+                        perfil_modulo = importlib.import_module(fallback_path)
 
                     
                     texto_completo = ""

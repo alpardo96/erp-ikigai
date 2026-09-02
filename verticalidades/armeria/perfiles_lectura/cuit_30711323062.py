@@ -100,6 +100,11 @@ def procesar_perfil(texto_completo):
     if total_match: 
         total_fac = parse_monto_local(total_match.group(1))
     
+    # Tipo de Comprobante
+    tipo_comprobante_codigo = '001'  # Default a Factura A
+    if re.search(r'NOTA DE CREDITO', texto_completo, re.IGNORECASE):
+        tipo_comprobante_codigo = '003'  # Nota de Credito A 
+
     if not neto and items:
         neto = sum(it['precio_unitario'] * it['cantidad'] for it in items)
     if not iva and neto:
@@ -116,6 +121,7 @@ def procesar_perfil(texto_completo):
         'iva': iva,
         'descuento': descuento,
         'total': total_fac,
+        'tipo_comprobante_codigo': tipo_comprobante_codigo
     }
 
     return {

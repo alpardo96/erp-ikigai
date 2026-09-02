@@ -99,9 +99,9 @@ def procesar_perfil(texto_completo):
     if cot_match: cotizacion = parse_monto_local(cot_match.group(1))
     
     # Tipo de Comprobante
-    tipo_comprobante_codigo = 'FAC'  # Default a Factura
+    tipo_comprobante_codigo = '001'  # Default a Factura A
     if re.search(r'NOTA DE CREDITO', texto_completo, re.IGNORECASE):
-        tipo_comprobante_codigo = 'NCA'  # Nota de Credito A (Asumiendo que existe, o dejar vacío si no)
+        tipo_comprobante_codigo = '003'  # Nota de Credito A 
     
     # Si falta alguno, lo deducimos de la suma de los items (BOWIE tiene los items netos)
     if not neto and items:

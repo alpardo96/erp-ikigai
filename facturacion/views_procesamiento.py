@@ -50,7 +50,13 @@ class CargaCompraAutomaticaView(LoginRequiredMixin, View):
             pdf_temp_path = f"temp_facturas/{temp_filename}"
             
             # Obtener tipo_actividad para inyectar el perfil correcto
-            tipo_actividad = request.empresa_actual.tipo_actividad.lower() if getattr(request, 'empresa_actual', None) else None
+            from empresas.models import Empresa
+            empresa_id = request.session.get('empresa_id')
+            tipo_actividad = None
+            if empresa_id:
+                empresa = Empresa.objects.filter(id=empresa_id).first()
+                if empresa and empresa.tipo_actividad:
+                    tipo_actividad = empresa.tipo_actividad.lower()
             
             # Procesar el archivo pasándole la ruta, no los bytes
             resultado = procesar_factura_archivo(temp_filepath, archivo.name, tipo_actividad=tipo_actividad)
@@ -112,11 +118,17 @@ class CargaCompraAutomaticaView(LoginRequiredMixin, View):
                         resultado['datos']['proveedor_nombre'] = prov.razon_social
                         resultado['datos']['proveedor_cta_res'] = prov.cta_res or ''
                         
-                if 'tipo_comprobante_codigo' in resultado['datos']:
+                if 'tipo_comprobante_afip' in resultado['datos']:
+                    from facturacion.models import TipoComprobante
+                    codigo_buscar = str(resultado['datos']['tipo_comprobante_afip']).zfill(3)
+                    tc = TipoComprobante.objects.filter(codigo=codigo_buscar).first()
+                    if tc:
+                        resultado['datos']['tipo_comprobante_codigo'] = tc.codigo
+                        resultado['datos']['tipo_comprobante_detalle'] = tc.detalle
+                elif 'tipo_comprobante_codigo' in resultado['datos']:
                     from facturacion.models import TipoComprobante
                     tc = TipoComprobante.objects.filter(codigo=resultado['datos']['tipo_comprobante_codigo']).first()
                     if tc:
-                        resultado['datos']['tipo_comprobante_codigo'] = tc.codigo
                         resultado['datos']['tipo_comprobante_detalle'] = tc.detalle
             
             return JsonResponse({

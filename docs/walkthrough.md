@@ -3477,3 +3477,15 @@ Para mantener el extractor genérico y evitar código fuertemente acoplado (N+1 
 El extractor ahora enruta automáticamente la lógica de lectura hacia la carpeta privada de cada verticalidad, manteniendo el core limpio.
 **Estado actual y siguientes pasos sugeridos:**
 Finalizado.
+**Fecha:** 02/09/2026
+**Objetivo:** Corrección de bug en asignación automática del Tipo de Comprobante tras lectura OCR.
+**Archivos modificados:**
+- acturacion/views_procesamiento.py
+**Detalle Técnico:** 
+El extractor retornaba el código de comprobante bajo la llave 	ipo_comprobante_afip (ej: "1"), pero la vista intentaba leer la llave inexistente 	ipo_comprobante_codigo. Se corrigió la vista para leer la llave correcta y se agregó .zfill(3) para asegurar que el código concuerde con el formato de 3 dígitos de la base de datos (ej: "001" en lugar de "1"), lo que permite recuperar el detalle correctamente ("001 - Facturas A").
+**Fecha:** 02/09/2026
+**Objetivo:** Extensión de sobreescritura de Tipo de Comprobante al perfil 062.
+**Archivos modificados:**
+- erticalidades/armeria/perfiles_lectura/cuit_30711323062.py
+**Detalle Técnico:** 
+Al igual que en el perfil de Bowie, el perfil del CUIT 30-71132306-2 no estaba enviando el código explícito de AFIP al backend, por lo que el front quedaba vacío si la librería general fallaba en detectarlo con exactitud. Se agregó la lógica para inyectar 	ipo_comprobante_codigo = '001' (y '003' si es Nota de Crédito) directamente en los cabecera_overrides de este proveedor.
