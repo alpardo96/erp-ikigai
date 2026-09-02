@@ -614,12 +614,16 @@ def agregar_item_sesion(request):
     
     # BLOQUEO DE DUPLICADOS: Si ya está, no dejamos cargar
     if any(str(item['producto_id']) == str(producto_id) for item in items):
-        return HttpResponse('<div class="p-4 bg-red-100 text-red-700 font-bold">Este producto ya está en la lista.</div>', status=200)
+        html_error = '<div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)" class="p-4 bg-red-100 text-red-700 font-bold mb-2 rounded shadow-sm">Este producto ya está en la lista.</div>'
+        html_tabla = render(request, 'facturacion/partials/compra_items_tabla.html', {'items': items}).content.decode('utf-8')
+        return HttpResponse(html_error + html_tabla, status=200)
 
     try:
         producto = Producto.objects.get(id=producto_id, empresa_id=request.session.get('empresa_id'))
     except (Producto.DoesNotExist, ValueError):
-        return HttpResponse(f'<div class="p-4 bg-red-100 text-red-700 font-bold">Error: Producto ID [{producto_id}] no existe o formato inválido.</div>', status=200)
+        html_error = f'<div x-data="{{ show: true }}" x-show="show" x-init="setTimeout(() => show = false, 5000)" class="p-4 bg-red-100 text-red-700 font-bold mb-2 rounded shadow-sm">Error: Producto ID [{producto_id}] no existe o formato inválido.</div>'
+        html_tabla = render(request, 'facturacion/partials/compra_items_tabla.html', {'items': items}).content.decode('utf-8')
+        return HttpResponse(html_error + html_tabla, status=200)
 
     iva_alicuota = float(producto.alic_iva_porc)
 
