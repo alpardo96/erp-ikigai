@@ -93,7 +93,7 @@ class CuentaBancaria(AuditModel):
         verbose_name="Cta. Contable Cheques Emitidos")
 
 
-    banco_id = models.IntegerField(null=True, blank=True, verbose_name="ID Banco Extra")
+    banco_id = models.IntegerField(null=True, blank=True, verbose_name="C├│digo Banco BCRA")
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, verbose_name="Empresa")
 
     class Meta:

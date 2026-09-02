@@ -147,7 +147,7 @@ def rubro_prod_modal(request, id=None):
 def buscar_rubros_prod(request):
     empresa_id = request.session.get('empresa_id')
     q = request.GET.get('q', '').strip()
-    rubros = Rubro.objects.filter(empresa_id=empresa_id)
+    rubros = Rubro.objects.filter(empresa_id=empresa_id).select_related('cta_ventas', 'cta_compras')
     if q: rubros = rubros.filter(detalle__icontains=q)
     return render(request, 'configuracion/partials/rubros_prod_list.html', {'rubros_prod': rubros})
 

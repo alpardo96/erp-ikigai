@@ -46,9 +46,13 @@ class CuentaBancariaForm(forms.ModelForm):
     def __init__(self, empresa=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if empresa:
+            from facturacion.models import ClienteProveedor
             cuentas_imputables = Cuenta.objects.filter(empresa=empresa, imputable=1).order_by('jerarquia')
             self.fields['cuenta_contable'].queryset = cuentas_imputables
             self.fields['cuenta_contable_cheques'].queryset = cuentas_imputables
+            self.fields['cli_pro'].queryset = ClienteProveedor.objects.filter(empresa=empresa).order_by('razon_social')
+            self.fields['cli_pro'].required = False
+            self.fields['banco_id'].required = False
 
         for field_name, field in self.fields.items():
             clase_actual = field.widget.attrs.get('class', '')

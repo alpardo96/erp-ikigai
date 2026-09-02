@@ -39,11 +39,14 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         elif tab == 'jurisdicciones':
             context['jurisdicciones'] = Jurisdiccion.objects.all()
         elif tab == 'marcas':
-            context['marcas'] = Marca.objects.filter(empresa_id=empresa_id).prefetch_related('sucursales')
+            # Marca pertenece a Empresa; no tiene relación con sucursales
+            context['marcas'] = Marca.objects.filter(empresa_id=empresa_id).order_by('detalle')
         elif tab == 'rubros_prod':
-            context['rubros_prod'] = Rubro.objects.filter(empresa_id=empresa_id).prefetch_related('sucursales')
+            # Rubro pertenece a Empresa; select_related para cuentas de ventas y compras
+            context['rubros_prod'] = Rubro.objects.filter(empresa_id=empresa_id).select_related('cta_ventas', 'cta_compras').order_by('detalle')
         elif tab == 'familias':
-            context['familias'] = Familia.objects.filter(empresa_id=empresa_id).prefetch_related('sucursales')
+            # Familia pertenece a Empresa y se relaciona con Rubro
+            context['familias'] = Familia.objects.filter(empresa_id=empresa_id).select_related('rubro').order_by('rubro__detalle', 'detalle')
         elif tab == 'comprobantes':
             context['comprobantes'] = TipoComprobante.objects.all()
         # --- Maestros de Distribución (Plan 074). Sólo se muestran en el hub si la

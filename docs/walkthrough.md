@@ -3440,3 +3440,23 @@ El modelo Empresa en empresas/models.py guarda el valor constante 'DISTRIBUCION'
 Al asignar "Distribución" a una empresa, las condicionales {% if empresa_actual.tipo_actividad == 'DISTRIBUCION' %} ahora resuelven a True e inyectan correctamente el menú lateral de Distribución, los campos en el modal de productos y las configuraciones de vehículos/personal.
 **Estado actual y siguientes pasos sugeridos:**
 Menús de distribución restaurados correctamente y visibles en el frontend.
+
+### Cristian - PC CASA
+**Fecha:** 02/09/2026
+**Objetivo:** Portar y adaptar los cambios del commit (57739d1) del proyecto legacy (erp-ikigai-2) hacia la nueva arquitectura con verticalidades.
+**Archivos creados o modificados:**
+- 	emplates/tesoreria/modals/buscador_bancos.html (Nuevo modal HTMX)
+- 	esoreria/views_htmx.py, 	esoreria/urls.py, 	esoreria/forms.py, 	esoreria/models.py
+- core/views_config.py
+- 	emplates/configuracion/partials/rubros_prod_list.html
+- 	emplates/tesoreria/modals/buscador_proveedores_op.html
+**Detalle Técnico:** 
+Se migró exitosamente el parche de erp-ikigai-2 usando git apply. Esto introdujo:
+1. Modal de búsqueda en vivo HTMX para entidades bancarias según catálogo BCRA.
+2. Optimización de consultas ORM (select_related) en listados de Cuentas Bancarias para evitar N+1 con cli_pro y cuenta_contable.
+3. Ajustes en core/views_config.py para listar Rubro, Marca y Familia optimizados (quitando sucursales huérfanas y añadiendo las cuentas contables de ventas/compras).
+4. El listado visual de rubros (ubros_prod_list.html) ahora expone explícitamente las cuentas jerárquicas contables asociadas.
+**Resultado Pruebas:**
+Los parches aplicaron limpiamente (se resolvió de manera manual el conflicto en iews_config.py). Las URLs de HTMX y las dependencias de modelos son consistentes con la base de datos actual.
+**Estado Actual:**
+Commit migrado y adaptado exitosamente a la arquitectura actual.

@@ -7,6 +7,22 @@
             {{ rubro.margen }}%
         </span>
     </td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
+        {% if rubro.cta_ventas %}
+            <span class="text-xs font-mono font-semibold text-slate-700">{{ rubro.cta_ventas.jerarquia }}</span>
+            <span class="block text-[11px] text-gray-500">{{ rubro.cta_ventas.cuenta }}</span>
+        {% else %}
+            <span class="text-xs text-gray-400 italic">Por defecto</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-600">
+        {% if rubro.cta_compras %}
+            <span class="text-xs font-mono font-semibold text-slate-700">{{ rubro.cta_compras.jerarquia }}</span>
+            <span class="block text-[11px] text-gray-500">{{ rubro.cta_compras.cuenta }}</span>
+        {% else %}
+            <span class="text-xs text-gray-400 italic">Por defecto</span>
+        {% endif %}
+    </td>
     <td class="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
         <div class="flex justify-end space-x-2">
             <button hx-get="{% url 'config_rubro_prod_edit' rubro.id %}" hx-target="#modal-container"
@@ -26,7 +42,7 @@
 </tr>
 {% empty %}
 <tr>
-    <td colspan="4" class="py-12 text-center">
+    <td colspan="6" class="py-12 text-center">
         <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
         </svg>

@@ -7,7 +7,8 @@
             </h3>
             <button type="button" 
                     class="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 rounded-full"
-                    onclick="document.getElementById('modal-container').innerHTML = ''">
+                    onclick="document.getElementById('modal-container').innerHTML = ''"
+                    title="Cerrar">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
@@ -18,7 +19,7 @@
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Banco</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Nombre del Banco</label>
                         {{ form.banco }}
                         {% if form.banco.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.banco.errors.0 }}</p>{% endif %}
                     </div>
@@ -44,8 +45,22 @@
                         {% if form.moneda.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.moneda.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">ID Banco Extra</label>
-                        {{ form.banco_id }}
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">C├│digo Banco BCRA</label>
+                        <div class="flex gap-2">
+                            {{ form.banco_id }}
+                            <button type="button" 
+                                    hx-get="{% url 'tesoreria_bancos_buscar_modal' %}" 
+                                    hx-target="#modal-container-2"
+                                    class="px-3.5 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition-colors flex items-center justify-center shrink-0 shadow-sm" 
+                                    title="Buscar entidad en la tabla de bancos BCRA">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="banco_bcra_display" class="text-[11px] text-indigo-600 font-semibold mt-1 truncate">
+                            {% if banco_bcra %}{{ banco_bcra.nombre }} (BCRA: {{ banco_bcra.codigo_bcra|default:"-" }}){% endif %}
+                        </p>
                         {% if form.banco_id.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.banco_id.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
@@ -75,7 +90,31 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Cliente / Proveedor Vinculado</label>
-                        {{ form.cli_pro }}
+                        <div class="flex gap-2">
+                            <input type="hidden" id="id_cli_pro" name="cli_pro" value="{{ cuenta_bancaria.cli_pro_id|default_if_none:'' }}">
+                            <input type="text" id="cli_pro_nombre_display" readonly
+                                value="{% if cuenta_bancaria.cli_pro %}{{ cuenta_bancaria.cli_pro.razon_social }}{% if cuenta_bancaria.cli_pro.cuit %} (CUIT: {{ cuenta_bancaria.cli_pro.cuit }}){% endif %}{% endif %}"
+                                placeholder="Click en la lupa para buscar el banco como proveedor..."
+                                hx-get="{% url 'op_proveedor_buscar_modal' %}" hx-target="#modal-container-2" hx-trigger="click"
+                                class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 cursor-pointer shadow-sm">
+                            <button type="button" 
+                                    hx-get="{% url 'op_proveedor_buscar_modal' %}" 
+                                    hx-target="#modal-container-2"
+                                    class="px-3.5 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl border border-indigo-200 transition-colors flex items-center justify-center shrink-0 shadow-sm" 
+                                    title="Buscar banco como proveedor">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                            <button type="button" 
+                                    onclick="document.getElementById('id_cli_pro').value = ''; document.getElementById('cli_pro_nombre_display').value = '';"
+                                    class="px-3 py-2 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl border border-red-200 transition-colors flex items-center justify-center shrink-0 shadow-sm" 
+                                    title="Quitar v├¡nculo">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
                         {% if form.cli_pro.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.cli_pro.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
@@ -96,3 +135,47 @@
         </form>
     </div>
 </div>
+
+<script>
+    // 1. Selecci├│n desde el buscador de Bancos oficiales BCRA
+    document.body.addEventListener('bancoEmisorSeleccionado', function(e) {
+        const bancoIdInput = document.getElementById('id_banco_id');
+        const bancoBcraDisplay = document.getElementById('banco_bcra_display');
+        const bancoInput = document.getElementById('id_banco');
+
+        if (bancoIdInput) {
+            bancoIdInput.value = e.detail.id;
+        }
+        if (bancoBcraDisplay) {
+            const bcraStr = e.detail.codigo_bcra ? ` (BCRA: ${e.detail.codigo_bcra})` : '';
+            bancoBcraDisplay.innerText = `${e.detail.nombre}${bcraStr}`;
+        }
+        if (bancoInput && !bancoInput.value.trim()) {
+            bancoInput.value = e.detail.nombre;
+        }
+
+        const mc2 = document.getElementById('modal-container-2');
+        if (mc2) mc2.innerHTML = '';
+    });
+
+    // 2. Selecci├│n desde el buscador de Proveedores
+    document.body.addEventListener('ordenPagoProveedorSeleccionado', function(e) {
+        const cliProInput = document.getElementById('id_cli_pro');
+        const cliProDisplay = document.getElementById('cli_pro_nombre_display');
+        const bancoInput = document.getElementById('id_banco');
+
+        if (cliProInput) {
+            cliProInput.value = e.detail.id;
+        }
+        if (cliProDisplay) {
+            const cuitStr = e.detail.cuit ? ` (CUIT: ${e.detail.cuit})` : '';
+            cliProDisplay.value = `${e.detail.razon_social}${cuitStr}`;
+        }
+        if (bancoInput && !bancoInput.value.trim()) {
+            bancoInput.value = e.detail.razon_social;
+        }
+
+        const mc2 = document.getElementById('modal-container-2');
+        if (mc2) mc2.innerHTML = '';
+    });
+</script>

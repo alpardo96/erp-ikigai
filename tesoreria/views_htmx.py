@@ -125,7 +125,7 @@ def eliminar_mediopago(request, id):
 @login_required
 def cuenta_bancaria_modal(request, id=None):
     empresa_id = request.session.get('empresa_id')
-    cta_bc = get_object_or_404(CuentaBancaria, cta_bc_id=id, empresa_id=empresa_id) if id else None
+    cta_bc = get_object_or_404(CuentaBancaria.objects.select_related('cli_pro', 'cuenta_contable'), cta_bc_id=id, empresa_id=empresa_id) if id else None
     
     if request.method == 'POST':
         form = CuentaBancariaForm(empresa_id, request.POST, instance=cta_bc)
@@ -143,13 +143,22 @@ def cuenta_bancaria_modal(request, id=None):
     else:
         form = CuentaBancariaForm(empresa_id, instance=cta_bc)
         
-    return render(request, 'configuracion/modals/cuentabancaria_form.html', {'form': form, 'cuenta_bancaria': cta_bc})
+    banco_bcra = None
+    if cta_bc and cta_bc.banco_id:
+        from .models import Banco
+        banco_bcra = Banco.objects.filter(pk=cta_bc.banco_id).first()
+
+    return render(request, 'configuracion/modals/cuentabancaria_form.html', {
+        'form': form,
+        'cuenta_bancaria': cta_bc,
+        'banco_bcra': banco_bcra
+    })
 
 @login_required
 def buscar_cuentas_bancarias(request):
     q = request.GET.get('q', '')
     empresa_id = request.session.get('empresa_id')
-    ctas = CuentaBancaria.objects.filter(empresa_id=empresa_id)
+    ctas = CuentaBancaria.objects.filter(empresa_id=empresa_id).select_related('cuenta_contable', 'cli_pro')
     if q:
         ctas = ctas.filter(banco__icontains=q)
     return render(request, 'configuracion/partials/cuentabancaria_table_rows.html', {'cuentas_bancarias': ctas})
@@ -257,6 +266,12 @@ def lista_bancos_resultados(request):
     return render(request, 'tesoreria/partials/bancos_search_results.html', {
         'bancos': bancos.order_by('nombre')[:30],
     })
+
+
+@login_required
+def buscador_bancos_modal(request):
+    """Modal de b├║squeda de entidades bancarias seg├║n cat├ílogo del BCRA."""
+    return render(request, 'tesoreria/modals/buscador_bancos.html')
 
 
 @login_required

@@ -54,6 +54,7 @@ urlpatterns = [
     path('htmx/cuentas/buscar-modal/', views_htmx.buscador_cuentas_modal, name='tesoreria_cuentas_buscar_modal'),
     path('htmx/cuentas/buscar-lista/', views_htmx.lista_cuentas_resultados, name='tesoreria_cuentas_buscar_lista'),
 
+    path('htmx/bancos/buscar-modal/', views_htmx.buscador_bancos_modal, name='tesoreria_bancos_buscar_modal'),
     path('htmx/bancos/buscar-lista/', views_htmx.lista_bancos_resultados, name='tesoreria_bancos_buscar_lista'),
 
     path('htmx/ordenes-pago/proveedores/buscar-modal/', views_htmx.buscador_proveedores_op_modal, name='op_proveedor_buscar_modal'),
