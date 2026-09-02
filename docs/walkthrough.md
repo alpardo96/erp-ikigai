@@ -3412,3 +3412,31 @@ Un ajuste que hizo la prueba del hueco: `Reparto` está protegido por FK desde `
 **El Plan 074 está completo**: las nueve fases, de la toma del pedido al control de las devoluciones y la integridad de las series.
 
 Pendientes ofrecidos y no ejecutados: las exportaciones a PDF/Excel (faltantes, saldos por vendedor y este reporte), el widget de fecha en otros siete formularios, la validación contra ARCA Homologación, y el ajuste de inventario para la mercadería devuelta no apta —que este reporte ahora deja a la vista con su importe.
+
+### Cristian - PC CASA
+**Fecha:** 02/09/2026
+**Objetivo:** Restaurar datos desde dump SQL (db_estudio.sql) purgando la base de datos y resolviendo conflictos con migraciones de verticalidad.
+**Archivos creados o modificados:**
+- estore_db.py (nuevo script en raíz, puede ser borrado luego de validar)
+**Detalle Técnico:** 
+Se desarrolló un script en Python (ETL) para leer e insertar de forma nativa los registros de db_estudio.sql. Se eliminó el esquema public desde base de datos, se crearon las tablas vírgenes con python manage.py migrate y posteriormente se volcaron los datos en las 100 tablas usando psycopg3 (copy()).
+Para evitar fallas de dependencias foráneas durante la inyección, se deshabilitaron temporalmente los triggers mediante session_replication_role = 'replica'. Se omitió restaurar la tabla django_migrations del backup antiguo para evitar errores de historial inconsistente.
+**Resultado de las pruebas:**
+El script reportó inserciones exitosas masivas en todas las entidades (uth_user, 	esoreria, acturacion, productos, etc). Las migraciones posteriores corren sin conflictos de historial.
+**Estado actual y siguientes pasos sugeridos:**
+Base de datos 100% migrada y encuadrada con el nuevo código (sin perder registros antiguos). El sistema debe levantarse y probar si la visualización del panel administrativo respeta los roles multi-empresa.
+
+### Cristian - PC CASA
+**Fecha:** 02/09/2026
+**Objetivo:** Solucionar bug de visibilidad de las vistas del módulo Distribución al asignar el tipo de actividad a una empresa.
+**Archivos creados o modificados:**
+- erticalidades/distribucion/apps.py
+- erticalidades/distribucion/templates/distribucion/hooks/menu_sidebar_bottom.html
+- erticalidades/distribucion/templates/distribucion/hooks/ui_configuracion_hub.html
+- erticalidades/distribucion/templates/distribucion/hooks/ui_producto_modal_campos.html
+**Detalle Técnico:** 
+El modelo Empresa en empresas/models.py guarda el valor constante 'DISTRIBUCION' al seleccionar dicho rubro, pero las plantillas (hooks del menú y modales) y la configuración de la App de la verticalidad estaban evaluando la condicional esperando el valor 'DISTRIBUIDORA'. Se unificó el criterio reemplazando las condicionales y constantes a 'DISTRIBUCION' para que cuadre exactamente con la elección de base de datos de la empresa.
+**Resultado de las pruebas:**
+Al asignar "Distribución" a una empresa, las condicionales {% if empresa_actual.tipo_actividad == 'DISTRIBUCION' %} ahora resuelven a True e inyectan correctamente el menú lateral de Distribución, los campos en el modal de productos y las configuraciones de vehículos/personal.
+**Estado actual y siguientes pasos sugeridos:**
+Menús de distribución restaurados correctamente y visibles en el frontend.

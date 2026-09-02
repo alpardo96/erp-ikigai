@@ -1,4 +1,4 @@
-{% if empresa_actual and empresa_actual.tipo_actividad == 'DISTRIBUIDORA' %}
+{% if empresa_actual and empresa_actual.tipo_actividad == 'DISTRIBUCION' %}
 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/distribucion/') || ['personal_distribucion','zonas_reparto','vehiculos','motivos_devolucion'].some(t => window.location.search.includes(t)) }">
     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
         <a href="{% url 'distribucion_index' %}" class="flex items-center flex-1 {% if request.resolver_match.url_name == 'distribucion_index' %}text-amber-400 font-bold{% endif %}">
