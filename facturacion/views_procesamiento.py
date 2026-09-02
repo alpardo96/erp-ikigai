@@ -49,8 +49,11 @@ class CargaCompraAutomaticaView(LoginRequiredMixin, View):
                 
             pdf_temp_path = f"temp_facturas/{temp_filename}"
             
+            # Obtener tipo_actividad para inyectar el perfil correcto
+            tipo_actividad = request.empresa_actual.tipo_actividad.lower() if getattr(request, 'empresa_actual', None) else None
+            
             # Procesar el archivo pasándole la ruta, no los bytes
-            resultado = procesar_factura_archivo(temp_filepath, archivo.name)
+            resultado = procesar_factura_archivo(temp_filepath, archivo.name, tipo_actividad=tipo_actividad)
             
             # Borrar el archivo original PDF/Imagen ya que nos quedamos con el WEBP
             try:

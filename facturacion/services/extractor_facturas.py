@@ -58,7 +58,7 @@ def parse_monto(texto):
     except:
         return 0.0
 
-def procesar_factura_archivo(file_path, filename):
+def procesar_factura_archivo(file_path, filename, tipo_actividad=None):
     """
     Procesa un archivo PDF o Imagen desde el disco.
     Retorna un diccionario con:
@@ -92,7 +92,18 @@ def procesar_factura_archivo(file_path, filename):
                 cuit_limpio = datos_extraidos['cuit']
                 try:
                     import importlib
-                    perfil_modulo = importlib.import_module(f"facturacion.services.perfiles_lectura.cuit_{cuit_limpio}")
+                    perfil_modulo = None
+                    if tipo_actividad:
+                        try:
+                            # Intentar buscar el perfil específico de la verticalidad
+                            perfil_modulo = importlib.import_module(f"verticalidades.{tipo_actividad}.perfiles_lectura.cuit_{cuit_limpio}")
+                        except ImportError:
+                            pass
+                    
+                    if not perfil_modulo:
+                        # Fallback al directorio genérico (aunque esté vacío ahora)
+                        perfil_modulo = importlib.import_module(f"facturacion.services.perfiles_lectura.cuit_{cuit_limpio}")
+
                     
                     texto_completo = ""
                     for page in doc:

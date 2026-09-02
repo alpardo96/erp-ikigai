@@ -3460,3 +3460,20 @@ Se migró exitosamente el parche de erp-ikigai-2 usando git apply. Esto introduj
 Los parches aplicaron limpiamente (se resolvió de manera manual el conflicto en iews_config.py). Las URLs de HTMX y las dependencias de modelos son consistentes con la base de datos actual.
 **Estado Actual:**
 Commit migrado y adaptado exitosamente a la arquitectura actual.
+
+### Cristian - PC CASA
+**Fecha:** 02/09/2026
+**Objetivo:** Trasladar los perfiles de lectura PDF del core a la verticalidad de Armería y refactorizar el extractor para resolverlos dinámicamente.
+**Archivos creados o modificados:**
+- erticalidades/armeria/perfiles_lectura/ (Directorio y archivos trasladados)
+- acturacion/services/extractor_facturas.py
+- acturacion/views_procesamiento.py
+**Detalle Técnico:** 
+Se movieron los scripts de parsing específicos (cuit_30610401240.py y cuit_30711323062.py) desde el módulo genérico de acturacion hacia erticalidades/armeria/perfiles_lectura/.
+Para mantener el extractor genérico y evitar código fuertemente acoplado (N+1 ifs por cada verticalidad), se inyectó el parámetro 	ipo_actividad (capturado en iews_procesamiento.py a través de la empresa logueada) y se refactorizó procesar_factura_archivo() para utilizar importlib buscando dinámicamente:
+1. erticalidades.<tipo_actividad>.perfiles_lectura.cuit_<cuit_limpio>
+2. (Fallback) acturacion.services.perfiles_lectura.cuit_<cuit_limpio>
+**Resultado de las pruebas:**
+El extractor ahora enruta automáticamente la lógica de lectura hacia la carpeta privada de cada verticalidad, manteniendo el core limpio.
+**Estado actual y siguientes pasos sugeridos:**
+Finalizado.
