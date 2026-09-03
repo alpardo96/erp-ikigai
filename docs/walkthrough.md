@@ -1,5 +1,22 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
+## Antigravity (Codex/Gemini) - 02/09/2026
+**Objetivo:** Crear perfil de lectura OCR para el CUIT 30540938322 de Armería.
+**Archivos creados o modificados:**
+- `verticalidades/armeria/perfiles_lectura/cuit_30540938322.py` [NEW]
+
+**Detalle Técnico:** 
+- Se implementó el script `procesar_perfil` específico para analizar y extraer datos de facturas del proveedor con CUIT 30540938322.
+- La expresión regular y la lógica de extracción fueron adaptadas para manejar columnas dinámicas donde los códigos de los productos pueden aparecer al inicio o al final de la descripción.
+- Se incorporó la extracción del porcentaje de descuento (`Desc. %`).
+- Se implementó la captura de campos adicionales como "Serie:", "CUIM:" y "DIM:", agrupándolos automáticamente dentro del diccionario del último ítem escaneado bajo la clave `subproductos`, permitiendo al ERP utilizar estos datos en la pantalla de carga (desplegando los correspondientes campos según requerimiento).
+
+**Resultado de las pruebas:**
+- Se ejecutó un script de prueba (`scratch/test_parser.py`) iterando el PDF de prueba del CUIT, validando que todas las líneas de productos se parsearan correctamente, que los subproductos (series y CUIMs) se anexaran a los ítems adecuados, y que los cálculos de totales coincidieran con el documento físico.
+
+**Estado actual y siguientes pasos sugeridos:**
+- El perfil está completado y será utilizado automáticamente por el `extractor_facturas` del sistema al subir una factura de dicho CUIT en la vertical Armería.
+
 ## Antigravity (Codex) - 31/08/2026
 **Objetivo:** Desacoplamiento de Verticalidades (Plug & Play) en urls.py
 **Archivos creados o modificados:**

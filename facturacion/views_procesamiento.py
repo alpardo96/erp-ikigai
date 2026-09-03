@@ -103,6 +103,8 @@ class CargaCompraAutomaticaView(LoginRequiredMixin, View):
                             'precio_venta': float(prod.precio_total or 0.0),
                             'margen': float(prod.margen or 0.0),
                             'moneda': resultado['datos'].get('moneda') or prod.moneda,
+                            'subprod': prod.subprod,
+                            'series': it.get('subproductos', []),
                         })
                 request.session['compra_items_temp'] = items_sesion
                 request.session.modified = True

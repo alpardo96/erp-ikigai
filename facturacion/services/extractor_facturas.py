@@ -88,6 +88,12 @@ def procesar_factura_archivo(file_path, filename, tipo_actividad=None):
             # Extracción inteligente
             datos_extraidos = extraccion_inteligente_afip_doc(doc)
             
+            if 'cuit' not in datos_extraidos:
+                # Fallback: intentar extraer un CUIT de 11 digitos del nombre del archivo
+                match_cuit_file = re.search(r'(\d{11})', filename)
+                if match_cuit_file:
+                    datos_extraidos['cuit'] = match_cuit_file.group(1)
+            
             if datos_extraidos and 'cuit' in datos_extraidos:
                 cuit_limpio = datos_extraidos['cuit']
                 try:
