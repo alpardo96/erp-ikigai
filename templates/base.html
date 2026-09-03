@@ -243,7 +243,7 @@
                         </button>
                     </div>
                     <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
-                        {% if user.perfil.permiso_facturacion_compras or user.perfil.es_admin_sistema or user.is_staff %}
+                        {% if perms.usuarios.menu_compras_carga or user.perfil.es_admin_sistema or user.is_staff %}
                             {% if empresa_actual.usa_orden_compra %}
                             <a href="{% url 'oc_listado' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'oc_listado' %}text-indigo-500 font-bold{% endif %}">
@@ -265,7 +265,7 @@
                             </a>
                         {% endif %}
                         
-                        {% if user.perfil.permiso_facturacion_lista_compras or user.perfil.es_admin_sistema or user.is_staff %}
+                        {% if perms.usuarios.menu_compras_listado or user.perfil.es_admin_sistema or user.is_staff %}
                             <a href="{% url 'compras_listado' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_listado' %}text-indigo-500 font-bold{% endif %}">
                                 Listado de Compras
@@ -299,7 +299,7 @@
                         </button>
                     </div>
                     <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
-                        {% if user.perfil.permiso_facturacion_carga_ventas or user.perfil.es_admin_sistema or user.is_staff %}
+                        {% if perms.usuarios.menu_ventas_carga or user.perfil.es_admin_sistema or user.is_staff %}
                             <a href="{% url 'ventas_carga' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ventas_carga' %}text-green-400 font-bold{% endif %}">
                                 Carga de Ventas
@@ -313,7 +313,7 @@
                             {% endif %}
                         {% endif %}
                         
-                        {% if user.perfil.permiso_facturacion_lista_ventas or user.perfil.es_admin_sistema or user.is_staff %}
+                        {% if perms.usuarios.menu_ventas_listado or user.perfil.es_admin_sistema or user.is_staff %}
                             <a href="{% url 'ventas_listado' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ventas_listado' %}text-green-400 font-bold{% endif %}">
                                 Listado de Ventas

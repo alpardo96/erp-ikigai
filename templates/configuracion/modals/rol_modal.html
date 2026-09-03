@@ -1,0 +1,126 @@
+<!-- 
+    MODAL DE ROL Y PERMISOS
+-->
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl transform transition-all overflow-hidden border border-gray-100 my-auto" 
+         id="modal-content">
+        
+        <!-- Cabecera del Modal -->
+        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+            <h3 class="text-xl font-bold text-gray-900">
+                {% if is_new %}Crear Nuevo Rol{% else %}Editar Rol: {{ grupo.name }}{% endif %}
+            </h3>
+            <button type="button" 
+                    class="text-gray-400 hover:text-red-500 focus:outline-none transition-colors p-2 hover:bg-red-50 rounded-full"
+                    onclick="document.getElementById('modal-container').innerHTML = ''">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <form hx-post="{% if is_new %}{% url 'config_rol_add' %}{% else %}{% url 'config_rol_edit' grupo.id %}{% endif %}" 
+              hx-target="#modal-container" hx-swap="innerHTML"
+              class="flex flex-col h-full max-h-[75vh]">
+            {% csrf_token %}
+            
+            <div class="px-8 py-6 space-y-6 overflow-y-auto flex-1">
+                <!-- Identificación del Rol -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre del Rol (Grupo)</label>
+                    <input type="text" name="name" value="{{ grupo.name }}" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                           placeholder="Ej. Cajero, Vendedor, Administrativo">
+                </div>
+
+                <div class="mt-6">
+                    <h4 class="text-sm font-bold text-slate-800 uppercase tracking-widest mb-4 border-b border-gray-200 pb-2">Matriz de Permisos</h4>
+                    
+                    <div class="space-y-8">
+                        {% for app, modelos in agrupados.items %}
+                            <div class="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden" x-data="{ open: false }">
+                                <button type="button" @click="open = !open" class="w-full bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center hover:bg-slate-200 transition-colors">
+                                    <h5 class="text-xs font-black text-slate-500 uppercase tracking-widest">{{ app }}</h5>
+                                    <svg class="h-4 w-4 text-slate-400 transform transition-transform" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div class="divide-y divide-slate-100" x-show="open" x-transition>
+                                    {% for model, acciones in modelos.items %}
+                                        <div class="p-4 flex flex-col md:flex-row md:items-center justify-between hover:bg-white transition-colors">
+                                            <div class="mb-3 md:mb-0">
+                                                <span class="text-sm font-semibold text-slate-700">{{ model|capfirst }}</span>
+                                            </div>
+                                            <div class="flex items-center space-x-6">
+                                                <!-- View -->
+                                                <label class="flex items-center space-x-2 cursor-pointer {% if not acciones.view %}opacity-30 pointer-events-none{% endif %}">
+                                                    <input type="checkbox" name="permissions" value="{{ acciones.view.id }}" 
+                                                           {% if acciones.view.id in permisos_grupo %}checked{% endif %}
+                                                           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                    <span class="text-xs font-medium text-blue-600">Ver</span>
+                                                </label>
+                                                <!-- Add -->
+                                                <label class="flex items-center space-x-2 cursor-pointer {% if not acciones.add %}opacity-30 pointer-events-none{% endif %}">
+                                                    <input type="checkbox" name="permissions" value="{{ acciones.add.id }}" 
+                                                           {% if acciones.add.id in permisos_grupo %}checked{% endif %}
+                                                           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                    <span class="text-xs font-medium text-emerald-600">Crear</span>
+                                                </label>
+                                                <!-- Change -->
+                                                <label class="flex items-center space-x-2 cursor-pointer {% if not acciones.change %}opacity-30 pointer-events-none{% endif %}">
+                                                    <input type="checkbox" name="permissions" value="{{ acciones.change.id }}" 
+                                                           {% if acciones.change.id in permisos_grupo %}checked{% endif %}
+                                                           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                    <span class="text-xs font-medium text-amber-600">Editar</span>
+                                                </label>
+                                                <!-- Delete -->
+                                                <label class="flex items-center space-x-2 cursor-pointer {% if not acciones.delete %}opacity-30 pointer-events-none{% endif %}">
+                                                    <input type="checkbox" name="permissions" value="{{ acciones.delete.id }}" 
+                                                           {% if acciones.delete.id in permisos_grupo %}checked{% endif %}
+                                                           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                    <span class="text-xs font-medium text-red-600">Eliminar</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h4 class="text-sm font-bold text-indigo-800 uppercase tracking-widest mb-4 border-b border-indigo-100 pb-2">Permisos de Pantallas y Menús</h4>
+                    <p class="text-xs text-slate-500 mb-4">Estos permisos habilitan o bloquean el acceso visual a las pantallas y botones del sistema.</p>
+                    
+                    <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl overflow-hidden p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for p in permisos_menu %}
+                                <label class="flex items-start space-x-3 cursor-pointer p-3 rounded-lg hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-indigo-100">
+                                    <div class="flex-shrink-0 mt-0.5">
+                                        <input type="checkbox" name="permissions" value="{{ p.id }}" 
+                                               {% if p.id in permisos_grupo %}checked{% endif %}
+                                               class="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500">
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-bold text-slate-700">{{ p.name }}</span>
+                                        <span class="text-[10px] text-slate-400 font-mono mt-0.5">{{ p.codename }}</span>
+                                    </div>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones Finales -->
+            <div class="px-8 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-white">
+                <button type="button" 
+                        class="px-6 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                        onclick="document.getElementById('modal-container').innerHTML = ''">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-200 transition-transform active:scale-95">
+                    {% if is_new %}Crear Rol{% else %}Guardar Cambios{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

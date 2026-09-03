@@ -3,7 +3,7 @@
     Este modal se renderiza de forma absoluta dentro del contenedor #modal-container en base.html.
     Permite crear y editar usuarios, asignando permisos granulares por módulo.
 -->
-<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 transition-opacity px-4 py-10 overflow-y-auto" id="modal-backdrop">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl transform transition-all overflow-hidden border border-gray-100 my-auto" 
          id="modal-content">
         
@@ -69,64 +69,85 @@
                         <p class="ml-6 mt-1 text-[11px] text-red-400">Control total sobre empresas, sucursales y otros usuarios.</p>
                     </div>
 
-                    <!-- Permisos por Módulo: Clientes, Armería, Josen y Facturación -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                    <!-- Roles y Permisos (Django Native) -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Roles Asignados</label>
+                        <p class="mb-2 text-[10px] text-gray-400 italic">Selecciona los grupos de permisos que aplicarán a este usuario.</p>
+                        <div class="h-40 overflow-y-auto bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                            {% for checkbox in form.groups %}
+                                <div class="flex items-center">
+                                    {{ checkbox.tag }}
+                                    <label for="{{ checkbox.id_for_label }}" class="ml-2 text-sm font-medium text-gray-700 cursor-pointer">{{ checkbox.choice_label }}</label>
+                                </div>
+                            {% empty %}
+                                <p class="text-sm text-gray-400 italic">No hay roles creados.</p>
+                            {% endfor %}
+                        </div>
+                        {{ form.groups.errors }}
+                    </div>
+
+                    <div class="mt-4" x-data="{ showPermisos: false }">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Permisos Específicos Extra</label>
+                        <p class="mb-2 text-[10px] text-gray-400 italic">Opcional. Añadir permisos puntuales fuera de su rol.</p>
                         
-                        <!-- Caja: Clientes -->
-                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                            <h6 class="text-[10px] font-bold text-blue-500 uppercase mb-3">Módulo Clientes</h6>
-                            <div class="space-y-3">
-                                <div class="flex items-center text-xs text-gray-600">
-                                    {{ form.permiso_clientes_ver }} <span class="ml-2">Ver datos</span>
+                        <!-- Botón para abrir modal de permisos -->
+                        <button type="button" @click="showPermisos = true" class="mt-1 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                            Seleccionar Permisos Específicos
+                        </button>
+                        
+                        <!-- Modal interno de Alpine.js para Permisos -->
+                        <div x-show="showPermisos" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60" style="display: none;" x-transition>
+                            <div class="bg-white p-6 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" @click.outside="showPermisos = false">
+                                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h3 class="text-lg font-bold text-gray-900">Permisos Específicos Adicionales</h3>
+                                    <button type="button" @click="showPermisos = false" class="text-gray-400 hover:text-red-500">
+                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </button>
                                 </div>
-                                <div class="flex items-center text-xs text-gray-600">
-                                    {{ form.permiso_clientes_editar }} <span class="ml-2">Gestionar (ABM)</span>
+                                <div class="overflow-y-auto flex-1 pr-2 space-y-2">
+                                    {% for checkbox in form.user_permissions %}
+                                        <div class="flex items-center p-2 hover:bg-slate-50 rounded-lg transition-colors">
+                                            {{ checkbox.tag }}
+                                            <label for="{{ checkbox.id_for_label }}" class="ml-3 text-sm font-medium text-gray-700 cursor-pointer flex-1">{{ checkbox.choice_label }}</label>
+                                        </div>
+                                    {% endfor %}
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Caja: Facturación -->
-                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                            <h6 class="text-[10px] font-bold text-orange-500 uppercase mb-3">Módulo Facturación</h6>
-                            <div class="space-y-3">
-                                <div class="flex items-center text-xs text-gray-600">
-                                    {{ form.permiso_facturacion_compras }} <span class="ml-2">Compras</span>
-                                </div>
-                                <div class="flex items-center text-xs text-gray-600">
-                                    {{ form.permiso_facturacion_lista_compras }} <span class="ml-2">Lista de Compras</span>
-                                </div>
-                                <div class="flex items-center text-xs text-gray-600">
-                                    {{ form.permiso_facturacion_autorizaciones }} <span class="ml-2">Autorizaciones</span>
-                                </div>
-                                <div class="flex items-center text-xs text-gray-600">
-                                    {{ form.permiso_facturacion_carga_ventas }} <span class="ml-2">Carga de Ventas</span>
-                                </div>
-                                <div class="flex items-center text-xs text-gray-600">
-                                    {{ form.permiso_facturacion_lista_ventas }} <span class="ml-2">Listado de Ventas</span>
+                                <div class="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+                                    <button type="button" @click="showPermisos = false" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow hover:bg-indigo-700">Listo</button>
                                 </div>
                             </div>
                         </div>
+                        {{ form.user_permissions.errors }}
+                    </div>
 
-                        <div class="mt-4 border-t pt-4 border-slate-200">
-                            <p class="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tesorería</p>
-                            <div class="flex items-center text-sm text-slate-700">
-                                {{ form.es_cajero_mostrador }} <span class="ml-2">Sólo Caja Mostrador</span>
-                            </div>
-                            <p class="text-[11px] text-slate-400 italic mt-1">
-                                El usuario opera únicamente su caja: cobra con el botón «Emitir Recibo» de esa
-                                pantalla y rinde al cerrarla. No ve Recibos ni Órdenes de Pago de Tesorería,
-                                ni la Caja Diaria.
-                            </p>
+                    <div class="mt-4 border-t pt-4 border-slate-200">
+                        <p class="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tesorería</p>
+                        <div class="flex items-center text-sm text-slate-700">
+                            {{ form.es_cajero_mostrador }} <span class="ml-2">Sólo Caja Mostrador</span>
                         </div>
-
-
+                        <p class="text-[11px] text-slate-400 italic mt-1">
+                            El usuario opera únicamente su caja: cobra con el botón «Emitir Recibo» de esa
+                            pantalla y rinde al cerrarla. No ve Recibos ni Órdenes de Pago de Tesorería,
+                            ni la Caja Diaria.
+                        </p>
                     </div>
 
                     <!-- Asignación de Empresas: Solo relevante si no es superadmin -->
                     <div class="mt-6">
                         <label class="block text-sm font-semibold text-gray-700 mb-1">Empresas Asignadas</label>
                         <p class="mb-2 text-[10px] text-gray-400 italic">Obligatorio para que un operador pueda seleccionar empresa al entrar.</p>
-                        {{ form.empresas }}
+                        <div class="h-40 overflow-y-auto bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                            {% for checkbox in form.empresas %}
+                                <div class="flex items-center">
+                                    {{ checkbox.tag }}
+                                    <label for="{{ checkbox.id_for_label }}" class="ml-2 text-sm font-medium text-gray-700 cursor-pointer">{{ checkbox.choice_label }}</label>
+                                </div>
+                            {% empty %}
+                                <p class="text-sm text-gray-400 italic">No hay empresas creadas.</p>
+                            {% endfor %}
+                        </div>
+                        {{ form.empresas.errors }}
                     </div>
                 </div>
             </div>

@@ -47,6 +47,25 @@ class Perfil(models.Model):
     class Meta:
         verbose_name = "Perfil de Usuario"
         verbose_name_plural = "Perfiles de Usuarios"
+        permissions = [
+            # Facturación / Compras
+            ('menu_compras_carga', 'Acceso: Carga Manual de Compras'),
+            ('menu_compras_oc', 'Acceso: Órdenes de Compra'),
+            ('menu_compras_automatica', 'Acceso: Carga Automática (OCR)'),
+            ('menu_compras_ia', 'Acceso: Carga por IA'),
+            ('menu_compras_listado', 'Acceso: Listado de Compras y Facturas Pendientes'),
+            
+            # Facturación / Ventas
+            ('menu_ventas_carga', 'Acceso: Carga de Ventas'),
+            ('menu_ventas_listado', 'Acceso: Listado de Ventas'),
+            
+            # Stock y Logística
+            ('menu_stock_dashboard', 'Acceso: Mantenimiento de Productos y Stock'),
+            ('menu_stock_recepciones', 'Acceso: Recepción de Mercadería'),
+            
+            # Tesorería
+            ('menu_tesoreria_caja', 'Acceso: Operar Caja Mostrador'),
+        ]
 
     def __str__(self):
         return f"Perfil de {self.usuario.username}"

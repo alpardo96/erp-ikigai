@@ -1,5 +1,52 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
+
+## Codex - 03/09/2026
+**Objetivo:** Mejoras de UI en Modal de Roles y Modal de Usuario.
+**Archivos creados o modificados:**
+- `templates/configuracion/modals/rol_modal.html` [MODIFY]
+- `templates/configuracion/modals/usuario_form.html` [MODIFY]
+- `usuarios/forms.py` [MODIFY]
+
+**Detalle Técnico:** 
+- En el modal de Roles, se implementó Alpine.js (`x-data="{ open: false }"`) para transformar la Matriz de Permisos en un acordeón desplegable por aplicación. Por defecto vienen contraídos para no sobrecargar el DOM ni el consumo de RAM.
+- En el modal de Usuario, se cambió el renderizado nativo de `SelectMultiple` a `CheckboxSelectMultiple` para `groups`, `empresas` y `user_permissions`, mejorando drásticamente la usabilidad al no requerir mantener pulsada la tecla CTRL.
+- Se implementó un modal interno secundario usando Alpine.js para albergar la extensa lista de permisos específicos, mostrándose únicamente cuando el usuario hace clic en "Seleccionar Permisos Específicos".
+- Se añadieron contenedores con scroll vertical (`overflow-y-auto`) a las listas de empresas y roles.
+
+**Estado actual:**
+Modificaciones completadas y operativas en el servidor local.
+
+
+## Codex - 03/09/2026
+**Objetivo:** Implementación de Sistema de Permisos Nativo (Django Groups & Permissions).
+**Archivos creados o modificados:**
+- core/views_config.py [MODIFY]
+- 	emplates/configuracion/partials/hub.html [MODIFY]
+- usuarios/views_htmx.py [MODIFY]
+- config/urls.py [MODIFY]
+- 	emplates/configuracion/partials/roles.html [NEW]
+- 	emplates/configuracion/partials/rol_table_rows.html [NEW]
+- 	emplates/configuracion/modals/rol_modal.html [NEW]
+- usuarios/forms.py [MODIFY]
+- 	emplates/configuracion/modals/usuario_form.html [MODIFY]
+
+**Detalle Técnico:** 
+- Se descartó el desarrollo manual de tablas relacionales para usar django.contrib.auth.models.Group y Permission.
+- Se creó una interfaz visual atractiva con Tailwind CSS en el Hub de Configuración para administrar los roles y sus permisos.
+- Se implementó un CRUD atómico con HTMX en usuarios/views_htmx.py para crear, editar, listar y eliminar Roles.
+- El formulario de roles (
+ol_modal.html) despliega una matriz de permisos de forma automática, agrupados dinámicamente por Aplicación y Modelo, extrayendo las vistas nativas del ORM.
+- Se actualizó UsuarioForm en usuarios/forms.py para utilizar ModelMultipleChoiceField inyectando los Groups y Permisos nativos, eliminando los flags booleanos ad-hoc del Perfil heredado en las pantallas de configuración.
+- 	emplates/configuracion/modals/usuario_form.html fue modificado para usar selectores nativos en la capa de UI.
+
+**Resultado de las pruebas:**
+- La interfaz del CRUD de Roles carga correctamente y la base de datos registra cambios utilizando el motor nativo de Auth.
+- Se conserva la modularidad sin crear dependencias circulares.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Probar intensivamente la UI y validar que la limitación en ase.html y otros templates funcione inyectando los tags de control ({% if perms.app.perm %}).
+
 ## Antigravity (Codex/Gemini) - 02/09/2026
 **Objetivo:** Crear perfil de lectura OCR para el CUIT 30540938322 de Armería.
 **Archivos creados o modificados:**
@@ -2312,10 +2359,13 @@ Plan 072 **completamente ejecutado, probado y documentado**.
 Implementar un botón en el modal de Clientes/Proveedores que consulte automáticamente los datos fiscales a AFIP mediante el servicio ws_sr_padron_a13 y rellene el formulario.
 
 ### Archivos Modificados/Creados
-- acturacion/services/afip_padron.py [NEW]: Se creó el servicio AFIPPadronService que reutiliza la configuración de rca_arg para conectarse a AFIP y obtener los datos a partir de un CUIT.
-- acturacion/views_htmx.py [MODIFY]: Se agregó el endpoint consultar_padron_afip que retorna los datos consultados en formato JSON.
+- 
+acturacion/services/afip_padron.py [NEW]: Se creó el servicio AFIPPadronService que reutiliza la configuración de rca_arg para conectarse a AFIP y obtener los datos a partir de un CUIT.
+- 
+acturacion/views_htmx.py [MODIFY]: Se agregó el endpoint consultar_padron_afip que retorna los datos consultados en formato JSON.
 - config/urls.py [MODIFY]: Se expuso el endpoint htmx/consultar-afip/<cuit>/.
-- 	emplates/facturacion/modals/cliente_modal.html [MODIFY]: Se integró un botón de autocompletado junto al campo de CUIT y lógica Alpine.js para hacer la solicitud etch y distribuir la respuesta en los inputs correspondientes (Razón Social, Domicilio, IVA, etc.).
+- 	emplates/facturacion/modals/cliente_modal.html [MODIFY]: Se integró un botón de autocompletado junto al campo de CUIT y lógica Alpine.js para hacer la solicitud 
+etch y distribuir la respuesta en los inputs correspondientes (Razón Social, Domicilio, IVA, etc.).
 
 ### Detalle Técnico
 El servicio de AFIP evalúa la respuesta del WS y formatea la condición de IVA según los impuestos (30 -> Inscripto, 32 -> Exento, o si tiene Monotributo). En el Frontend, si el CUIT es válido (11 dígitos), se consulta asíncronamente y se inyectan los valores directamente en los id de los campos, disparando el evento input para reactividad HTMX/Alpine si es necesario.
@@ -2330,16 +2380,22 @@ Plan de Autocompletado finalizado. Queda pendiente probar la integración direct
 Aplicar el Plan 073 para el módulo de Armería, separando conceptualmente Persona Física (Apellido y Nombre) de Persona Jurídica (Razón Social), garantizando que en backend los datos persistan unificados en la tabla base.
 
 ### Archivos Creados o Modificados
-- acturacion/models.py [MODIFY]: Se añadió 	ipo_persona (CharField) a la ExtensionArmeria.
-- acturacion/migrations/0053_extensionarmeria_tipo_persona.py [NEW]: Migración de esquema.
-- acturacion/migrations/0054_assign_tipo_persona_armeria.py [NEW]: Migración de datos (Data Migration) que iteró los registros existentes. Asignó 'J' si el CUIT arranca con 30/33/34 y tiene 11 dígitos, y 'F' en caso contrario (además, para 'F', formateó la Razón Social dividiéndola con coma si no la tenía).
-- acturacion/forms.py [MODIFY]: Se añadió 	ipo_persona a ExtensionArmeriaForm. Se quitó la obligación estricta HTML de 
+- 
+acturacion/models.py [MODIFY]: Se añadió 	ipo_persona (CharField) a la ExtensionArmeria.
+- 
+acturacion/migrations/0053_extensionarmeria_tipo_persona.py [NEW]: Migración de esquema.
+- 
+acturacion/migrations/0054_assign_tipo_persona_armeria.py [NEW]: Migración de datos (Data Migration) que iteró los registros existentes. Asignó 'J' si el CUIT arranca con 30/33/34 y tiene 11 dígitos, y 'F' en caso contrario (además, para 'F', formateó la Razón Social dividiéndola con coma si no la tenía).
+- 
+acturacion/forms.py [MODIFY]: Se añadió 	ipo_persona a ExtensionArmeriaForm. Se quitó la obligación estricta HTML de 
 azon_social para poder alternar el formulario dinámico, pero se validó duramente en el método clean().
-- acturacion/views_htmx.py [MODIFY]: El endpoint cliente_modal fue ajustado. En POST, si el tipo de persona es Física (F), concatena Apellido y Nombre en 
+- 
+acturacion/views_htmx.py [MODIFY]: El endpoint cliente_modal fue ajustado. En POST, si el tipo de persona es Física (F), concatena Apellido y Nombre en 
 azon_social. En GET, si es F, divide 
 azon_social por la coma y expone al template variables para armar la vista.
 - 	emplates/facturacion/modals/cliente_modal.html [MODIFY]: Se incluyeron Radio Cards de UI premium para elegir entre Física o Jurídica. Se dividieron los inputs. Además, la carga por AFIP rellena estos campos de forma automática leyendo el campo oculto 	ipo_persona.
-- acturacion/services/afip_padron.py [MODIFY]: Retorna en el diccionario final 
+- 
+acturacion/services/afip_padron.py [MODIFY]: Retorna en el diccionario final 
 ombre y pellido desglosados para facilitarle la vida al frontend, además del código F o J.
 
 ### Detalle Técnico
@@ -3434,12 +3490,14 @@ Pendientes ofrecidos y no ejecutados: las exportaciones a PDF/Excel (faltantes, 
 **Fecha:** 02/09/2026
 **Objetivo:** Restaurar datos desde dump SQL (db_estudio.sql) purgando la base de datos y resolviendo conflictos con migraciones de verticalidad.
 **Archivos creados o modificados:**
-- estore_db.py (nuevo script en raíz, puede ser borrado luego de validar)
+- 
+estore_db.py (nuevo script en raíz, puede ser borrado luego de validar)
 **Detalle Técnico:** 
 Se desarrolló un script en Python (ETL) para leer e insertar de forma nativa los registros de db_estudio.sql. Se eliminó el esquema public desde base de datos, se crearon las tablas vírgenes con python manage.py migrate y posteriormente se volcaron los datos en las 100 tablas usando psycopg3 (copy()).
 Para evitar fallas de dependencias foráneas durante la inyección, se deshabilitaron temporalmente los triggers mediante session_replication_role = 'replica'. Se omitió restaurar la tabla django_migrations del backup antiguo para evitar errores de historial inconsistente.
 **Resultado de las pruebas:**
-El script reportó inserciones exitosas masivas en todas las entidades (uth_user, 	esoreria, acturacion, productos, etc). Las migraciones posteriores corren sin conflictos de historial.
+El script reportó inserciones exitosas masivas en todas las entidades (uth_user, 	esoreria, 
+acturacion, productos, etc). Las migraciones posteriores corren sin conflictos de historial.
 **Estado actual y siguientes pasos sugeridos:**
 Base de datos 100% migrada y encuadrada con el nuevo código (sin perder registros antiguos). El sistema debe levantarse y probar si la visualización del panel administrativo respeta los roles multi-empresa.
 
@@ -3447,10 +3505,14 @@ Base de datos 100% migrada y encuadrada con el nuevo código (sin perder registr
 **Fecha:** 02/09/2026
 **Objetivo:** Solucionar bug de visibilidad de las vistas del módulo Distribución al asignar el tipo de actividad a una empresa.
 **Archivos creados o modificados:**
-- erticalidades/distribucion/apps.py
-- erticalidades/distribucion/templates/distribucion/hooks/menu_sidebar_bottom.html
-- erticalidades/distribucion/templates/distribucion/hooks/ui_configuracion_hub.html
-- erticalidades/distribucion/templates/distribucion/hooks/ui_producto_modal_campos.html
+- 
+erticalidades/distribucion/apps.py
+- 
+erticalidades/distribucion/templates/distribucion/hooks/menu_sidebar_bottom.html
+- 
+erticalidades/distribucion/templates/distribucion/hooks/ui_configuracion_hub.html
+- 
+erticalidades/distribucion/templates/distribucion/hooks/ui_producto_modal_campos.html
 **Detalle Técnico:** 
 El modelo Empresa en empresas/models.py guarda el valor constante 'DISTRIBUCION' al seleccionar dicho rubro, pero las plantillas (hooks del menú y modales) y la configuración de la App de la verticalidad estaban evaluando la condicional esperando el valor 'DISTRIBUIDORA'. Se unificó el criterio reemplazando las condicionales y constantes a 'DISTRIBUCION' para que cuadre exactamente con la elección de base de datos de la empresa.
 **Resultado de las pruebas:**
@@ -3472,9 +3534,11 @@ Se migró exitosamente el parche de erp-ikigai-2 usando git apply. Esto introduj
 1. Modal de búsqueda en vivo HTMX para entidades bancarias según catálogo BCRA.
 2. Optimización de consultas ORM (select_related) en listados de Cuentas Bancarias para evitar N+1 con cli_pro y cuenta_contable.
 3. Ajustes en core/views_config.py para listar Rubro, Marca y Familia optimizados (quitando sucursales huérfanas y añadiendo las cuentas contables de ventas/compras).
-4. El listado visual de rubros (ubros_prod_list.html) ahora expone explícitamente las cuentas jerárquicas contables asociadas.
+4. El listado visual de rubros (
+ubros_prod_list.html) ahora expone explícitamente las cuentas jerárquicas contables asociadas.
 **Resultado Pruebas:**
-Los parches aplicaron limpiamente (se resolvió de manera manual el conflicto en iews_config.py). Las URLs de HTMX y las dependencias de modelos son consistentes con la base de datos actual.
+Los parches aplicaron limpiamente (se resolvió de manera manual el conflicto en 
+iews_config.py). Las URLs de HTMX y las dependencias de modelos son consistentes con la base de datos actual.
 **Estado Actual:**
 Commit migrado y adaptado exitosamente a la arquitectura actual.
 
@@ -3482,14 +3546,22 @@ Commit migrado y adaptado exitosamente a la arquitectura actual.
 **Fecha:** 02/09/2026
 **Objetivo:** Trasladar los perfiles de lectura PDF del core a la verticalidad de Armería y refactorizar el extractor para resolverlos dinámicamente.
 **Archivos creados o modificados:**
-- erticalidades/armeria/perfiles_lectura/ (Directorio y archivos trasladados)
-- acturacion/services/extractor_facturas.py
-- acturacion/views_procesamiento.py
+- 
+erticalidades/armeria/perfiles_lectura/ (Directorio y archivos trasladados)
+- 
+acturacion/services/extractor_facturas.py
+- 
+acturacion/views_procesamiento.py
 **Detalle Técnico:** 
-Se movieron los scripts de parsing específicos (cuit_30610401240.py y cuit_30711323062.py) desde el módulo genérico de acturacion hacia erticalidades/armeria/perfiles_lectura/.
-Para mantener el extractor genérico y evitar código fuertemente acoplado (N+1 ifs por cada verticalidad), se inyectó el parámetro 	ipo_actividad (capturado en iews_procesamiento.py a través de la empresa logueada) y se refactorizó procesar_factura_archivo() para utilizar importlib buscando dinámicamente:
-1. erticalidades.<tipo_actividad>.perfiles_lectura.cuit_<cuit_limpio>
-2. (Fallback) acturacion.services.perfiles_lectura.cuit_<cuit_limpio>
+Se movieron los scripts de parsing específicos (cuit_30610401240.py y cuit_30711323062.py) desde el módulo genérico de 
+acturacion hacia 
+erticalidades/armeria/perfiles_lectura/.
+Para mantener el extractor genérico y evitar código fuertemente acoplado (N+1 ifs por cada verticalidad), se inyectó el parámetro 	ipo_actividad (capturado en 
+iews_procesamiento.py a través de la empresa logueada) y se refactorizó procesar_factura_archivo() para utilizar importlib buscando dinámicamente:
+1. 
+erticalidades.<tipo_actividad>.perfiles_lectura.cuit_<cuit_limpio>
+2. (Fallback) 
+acturacion.services.perfiles_lectura.cuit_<cuit_limpio>
 **Resultado de las pruebas:**
 El extractor ahora enruta automáticamente la lógica de lectura hacia la carpeta privada de cada verticalidad, manteniendo el core limpio.
 **Estado actual y siguientes pasos sugeridos:**
@@ -3497,13 +3569,15 @@ Finalizado.
 **Fecha:** 02/09/2026
 **Objetivo:** Corrección de bug en asignación automática del Tipo de Comprobante tras lectura OCR.
 **Archivos modificados:**
-- acturacion/views_procesamiento.py
+- 
+acturacion/views_procesamiento.py
 **Detalle Técnico:** 
 El extractor retornaba el código de comprobante bajo la llave 	ipo_comprobante_afip (ej: "1"), pero la vista intentaba leer la llave inexistente 	ipo_comprobante_codigo. Se corrigió la vista para leer la llave correcta y se agregó .zfill(3) para asegurar que el código concuerde con el formato de 3 dígitos de la base de datos (ej: "001" en lugar de "1"), lo que permite recuperar el detalle correctamente ("001 - Facturas A").
 **Fecha:** 02/09/2026
 **Objetivo:** Extensión de sobreescritura de Tipo de Comprobante al perfil 062.
 **Archivos modificados:**
-- erticalidades/armeria/perfiles_lectura/cuit_30711323062.py
+- 
+erticalidades/armeria/perfiles_lectura/cuit_30711323062.py
 **Detalle Técnico:** 
 Al igual que en el perfil de Bowie, el perfil del CUIT 30-71132306-2 no estaba enviando el código explícito de AFIP al backend, por lo que el front quedaba vacío si la librería general fallaba en detectarlo con exactitud. Se agregó la lógica para inyectar 	ipo_comprobante_codigo = '001' (y '003' si es Nota de Crédito) directamente en los cabecera_overrides de este proveedor.
 
@@ -3511,8 +3585,10 @@ Al igual que en el perfil de Bowie, el perfil del CUIT 30-71132306-2 no estaba e
 **Objetivo:** Mover los accesos de Actualizar Tarifas y Facturación por Lotes al módulo Estudio.
 **Archivos modificados:**
 - 	emplates/facturacion/ventas_index.html (retirado del core)
-- erticalidades/estudio/templates/estudio/hooks/ui_ventas_index_cards.html (creado)
-- erticalidades/estudio/templates/estudio/hooks/menu_ventas.html (condicional aplicado)
+- 
+erticalidades/estudio/templates/estudio/hooks/ui_ventas_index_cards.html (creado)
+- 
+erticalidades/estudio/templates/estudio/hooks/menu_ventas.html (condicional aplicado)
 **Detalle:** Se movieron las tarjetas hardcodeadas en ventas_index al hook correspondiente del módulo estudio para que solo aparezcan cuando la empresa actual tiene tipo de actividad ESTUDIO. Además, se aplicó la misma condición a los links del menú lateral.
 **Estado:** Completado.
 
@@ -3522,3 +3598,15 @@ Al igual que en el perfil de Bowie, el perfil del CUIT 30-71132306-2 no estaba e
 - `templates/base.html`
 **Detalle:** El botón de cancelar invocaba `onclick="cerrarModal()"`, pero la función no estaba definida globalmente (solo existía el EventListener `cerrarModal`). Se agregó la declaración de la función `cerrarModal()` en `base.html` para que dispare el evento correspondiente y limpie los contenedores de modales.
 **Estado:** Completado.
+
+## Codex - 03/09/2026 - Implementaci�n de Permisos de Vista (Templates)
+
+**Objetivo:** Integrar permisos l�gicos personalizados a la tabla auth_permission para restringir men�s en base.html.
+
+**Archivos Modificados:**
+- usuarios/models.py (Agregados permisos custom en Meta)
+- usuarios/views_htmx.py (Separados permisos_menu del resto)
+- templates/configuracion/modals/rol_modal.html (Bloque 'Permisos de Pantallas y Men�s')
+- templates/base.html (Migrados chequeos legacy a perms.usuarios.menu_...)
+
+**Detalle T�cnico:** Se ejecutaron migraciones. Ahora los permisos visuales conviven con los CRUD bajo el mismo sistema nativo.

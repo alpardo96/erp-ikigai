@@ -175,8 +175,13 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=usuarios" hx-target="#config-content"
                 class="text-left group bg-red-50/50 border border-red-100 p-5 rounded-2xl hover:bg-red-100 transition-all shadow-sm">
-                <div class="text-red-700 font-semibold text-lg group-hover:text-red-800">Usuarios y Permisos</div>
-                <div class="text-sm text-red-600/80 mt-1">Control de acceso y roles al sistema.</div>
+                <div class="text-red-700 font-semibold text-lg group-hover:text-red-800">Usuarios</div>
+                <div class="text-sm text-red-600/80 mt-1">Alta y modificación de perfiles.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=roles" hx-target="#config-content"
+                class="text-left group bg-red-50/50 border border-red-100 p-5 rounded-2xl hover:bg-red-100 transition-all shadow-sm">
+                <div class="text-red-700 font-semibold text-lg group-hover:text-red-800">Roles y Permisos</div>
+                <div class="text-sm text-red-600/80 mt-1">Gestión de grupos y permisos nativos de acceso.</div>
             </button>
 
             <!-- Ir al Admin de Django directamente como tile también puede ser buena idea -->

@@ -83,6 +83,10 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
                 config_traz, _ = EmpresaTrazabilidad.objects.get_or_create(empresa=empresa)
                 context['empresa'] = empresa
                 context['config_trazabilidad'] = config_traz
+        
+        elif tab == 'roles':
+            from django.contrib.auth.models import Group
+            context['roles'] = Group.objects.all().prefetch_related('permissions')
             
         return context
 

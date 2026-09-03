@@ -7,17 +7,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from core.views_config import ConfiguracionIndexView, guardar_configuracion_trazabilidad
 from empresas.views_htmx import empresa_modal, buscar_empresas, eliminar_empresa, sucursal_modal, buscar_sucursales, eliminar_sucursal, ejercicio_modal, buscar_ejercicios, eliminar_ejercicio, cotizaciones_modal, punto_venta_modal, buscar_puntos_venta, eliminar_punto_venta
-from usuarios.views_htmx import usuario_modal, buscar_usuarios, eliminar_usuario
+from usuarios.views_htmx import usuario_modal, buscar_usuarios, eliminar_usuario, rol_modal, buscar_roles, eliminar_rol
 from facturacion.views import ClientesProveedoresIndexView, ComprasIndexView, VentasIndexView, ComprasCargaView, VentasCargaView, PreventaCargaView, AutorizacionesIndexView, ComprasListView, CompraBajaView, CompraDetalleModalView, VentasListView, VentaAnularModalView, VentaEmitirNotaCreditoView, VentaPrevisualizarModalView
 from facturacion.views_procesamiento import CargaCompraAutomaticaView, ProcesarRecorteOCRView
 from facturacion.views_ia import CargaCompraIAView, ProcesarFacturaIAView
-from facturacion.views_ia import CargaCompraIAView, ProcesarFacturaIAView
 from facturacion.views_impresion import imprimir_factura
-from facturacion.views_reportes import (
-    ReporteVentasProductoView, buscar_reporte_ventas_producto,
-    exportar_ventas_producto_csv, exportar_ventas_producto_excel,
-    exportar_clientes_excel
-)
 from facturacion.views_reportes import (
     ReporteVentasProductoView, buscar_reporte_ventas_producto,
     exportar_ventas_producto_csv, exportar_ventas_producto_excel,
@@ -43,7 +37,6 @@ from facturacion.views_remito_interno import (
     ReciItemEditView, ReciItemRemoveView, StockTransitoView, RecepcionInternaImprimirView,
 )
 
-from productos.views import StockDashboardView, ProductoListView
 from productos.views import StockDashboardView, ProductoListView
 from facturacion.views_htmx import (
     jurisdiccion_modal, buscar_jurisdicciones, eliminar_jurisdiccion,
@@ -129,6 +122,12 @@ urlpatterns = [
     path('configuracion/usuarios/crear/', usuario_modal, name='config_usuario_add'),
     path('configuracion/usuarios/<int:id>/editar/', usuario_modal, name='config_usuario_edit'),
     path('configuracion/usuarios/<int:id>/eliminar/', eliminar_usuario, name='config_usuario_delete'),
+
+    # Roles HTMX
+    path('configuracion/roles/buscar/', buscar_roles, name='config_rol_search'),
+    path('configuracion/roles/crear/', rol_modal, name='config_rol_add'),
+    path('configuracion/roles/<int:id>/editar/', rol_modal, name='config_rol_edit'),
+    path('configuracion/roles/<int:id>/eliminar/', eliminar_rol, name='config_rol_delete'),
 
     # Módulos Core
     path('clientes/', ClientesProveedoresIndexView.as_view(), name='clientes_index'),
