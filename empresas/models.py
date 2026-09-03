@@ -13,6 +13,8 @@ class Empresa(AuditModel):
         ('ARMERIA', 'Armería'),
         ('DISTRIBUCION', 'Distribución'),
         ('ESTUDIO', 'Estudio Contable / Jurídico'),
+        ('AGRICOLA', 'Empresa Agrícola'),
+        ('COLEGIO', 'Colegio'),
     ]
     tipo_actividad = models.CharField(
         max_length=100, null=True, blank=True,

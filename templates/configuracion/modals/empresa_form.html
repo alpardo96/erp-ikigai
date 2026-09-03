@@ -91,6 +91,33 @@
                     {% endif %}
                 </div>
 
+                {% if agricola_form %}
+                <div class="col-span-1 md:col-span-2 p-5 bg-emerald-50 rounded-[1.5rem] border border-emerald-200 transition-all duration-300" id="agricola_subactividades" style="display: none;">
+                    <h4 class="text-sm font-bold text-emerald-800 mb-3">Subactividades Agrícolas Habilitadas</h4>
+                    <div class="flex flex-wrap gap-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            {{ agricola_form.hace_tabaco }} <span class="text-sm text-emerald-900 font-semibold">Tabaco</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            {{ agricola_form.hace_granos }} <span class="text-sm text-emerald-900 font-semibold">Granos (Soja, Maíz, Poroto, etc.)</span>
+                        </label>
+                    </div>
+                </div>
+                <script>
+                    (function(){
+                        const select = document.getElementById('{{ form.tipo_actividad.id_for_label }}');
+                        const panel = document.getElementById('agricola_subactividades');
+                        function togglePanel() {
+                            panel.style.display = select.value === 'AGRICOLA' ? 'block' : 'none';
+                        }
+                        if(select && panel) {
+                            select.addEventListener('change', togglePanel);
+                            togglePanel(); // estado inicial
+                        }
+                    })();
+                </script>
+                {% endif %}
+
                 <div class="col-span-1 md:col-span-2 p-5 bg-slate-50 rounded-[1.5rem] border border-dashed border-slate-200 group hover:border-indigo-300 transition-colors">
                     <label class="text-indigo-900">Logo Corporativo</label>
                     <div class="mt-1">
