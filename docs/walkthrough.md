@@ -3515,3 +3515,10 @@ Al igual que en el perfil de Bowie, el perfil del CUIT 30-71132306-2 no estaba e
 - erticalidades/estudio/templates/estudio/hooks/menu_ventas.html (condicional aplicado)
 **Detalle:** Se movieron las tarjetas hardcodeadas en ventas_index al hook correspondiente del módulo estudio para que solo aparezcan cuando la empresa actual tiene tipo de actividad ESTUDIO. Además, se aplicó la misma condición a los links del menú lateral.
 **Estado:** Completado.
+
+## Cristian - PC CASA - 2026-09-03
+**Objetivo:** Arreglar el cierre del modal de Revisión de Preventa (Bandeja de Autorizaciones).
+**Archivos modificados:**
+- `templates/base.html`
+**Detalle:** El botón de cancelar invocaba `onclick="cerrarModal()"`, pero la función no estaba definida globalmente (solo existía el EventListener `cerrarModal`). Se agregó la declaración de la función `cerrarModal()` en `base.html` para que dispare el evento correspondiente y limpie los contenedores de modales.
+**Estado:** Completado.

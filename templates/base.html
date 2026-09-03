@@ -515,6 +515,11 @@
     <div id="modal-container-2" class="relative z-[110]"></div>
 
     <script>
+        // Función global para cerrar modales desde botones con onclick="cerrarModal()"
+        function cerrarModal() {
+            document.body.dispatchEvent(new Event('cerrarModal'));
+        }
+
         // Escucha el evento global 'cerrarModal' y limpia el contenedor
         document.body.addEventListener('cerrarModal', function () {
             const mc2 = document.getElementById('modal-container-2');
