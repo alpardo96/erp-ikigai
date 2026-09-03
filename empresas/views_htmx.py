@@ -15,17 +15,40 @@ def empresa_modal(request, id=None):
     - POST: Procesa el guardado. 
     - HTMX: Responde con triggers para refrescar la lista de empresas.
     """
+    try:
+        from verticalidades.agricola.core_agricola.forms import EmpresaVerticalForm
+        from verticalidades.agricola.core_agricola.models import EmpresaVertical
+    except ImportError:
+        EmpresaVerticalForm = None
+        EmpresaVertical = None
+
     if id:
         empresa = get_object_or_404(Empresa, id=id)
         is_new = False
+        agricola_vertical = EmpresaVertical.objects.filter(empresa=empresa).first() if EmpresaVertical else None
     else:
         empresa = None
         is_new = True
+        agricola_vertical = None
 
     if request.method == 'POST':
         form = EmpresaForm(request.POST, request.FILES, instance=empresa)
-        if form.is_valid():
-            form.save()
+        agricola_form = EmpresaVerticalForm(request.POST, instance=agricola_vertical) if EmpresaVerticalForm else None
+
+        valid_agricola = True
+        if agricola_form and request.POST.get('tipo_actividad') == 'AGRICOLA':
+            valid_agricola = agricola_form.is_valid()
+
+        if form.is_valid() and valid_agricola:
+            empresa_saved = form.save()
+            
+            if agricola_form and form.cleaned_data.get('tipo_actividad') == 'AGRICOLA':
+                agricola_inst = agricola_form.save(commit=False)
+                agricola_inst.empresa = empresa_saved
+                agricola_inst.save()
+            elif agricola_vertical and form.cleaned_data.get('tipo_actividad') != 'AGRICOLA':
+                agricola_vertical.delete()
+
             # Evento para cerrar modal y recargar tabla (hx-trigger)
             response = HttpResponse()
             # Primero disparamos la recarga y luego el cierre para asegurar la propagación
@@ -34,11 +57,13 @@ def empresa_modal(request, id=None):
             return response
     else:
         form = EmpresaForm(instance=empresa)
+        agricola_form = EmpresaVerticalForm(instance=agricola_vertical) if EmpresaVerticalForm else None
 
     return render(request, 'configuracion/modals/empresa_form.html', {
         'form': form, 
         'is_new': is_new, 
-        'empresa': empresa
+        'empresa': empresa,
+        'agricola_form': agricola_form
     })
 
 @login_required

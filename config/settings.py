@@ -60,9 +60,17 @@ if verticalidades_path.exists() and verticalidades_path.is_dir():
     for item in verticalidades_path.iterdir():
         if item.is_dir() and (item / '__init__.py').exists():
             # Añadir a INSTALLED_APPS si es un paquete válido
-            app_name = f'verticalidades.{item.name}'
-            if app_name not in INSTALLED_APPS:
-                INSTALLED_APPS.append(app_name)
+            if item.name == 'agricola':
+                # Módulo agrícola actúa como contenedor de sub-módulos
+                for subitem in item.iterdir():
+                    if subitem.is_dir() and (subitem / '__init__.py').exists():
+                        sub_app_name = f'verticalidades.agricola.{subitem.name}'
+                        if sub_app_name not in INSTALLED_APPS:
+                            INSTALLED_APPS.append(sub_app_name)
+            else:
+                app_name = f'verticalidades.{item.name}'
+                if app_name not in INSTALLED_APPS:
+                    INSTALLED_APPS.append(app_name)
 
 
 MIDDLEWARE = [
