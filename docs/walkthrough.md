@@ -3610,3 +3610,12 @@ erticalidades/estudio/templates/estudio/hooks/menu_ventas.html (condicional apli
 - templates/base.html (Migrados chequeos legacy a perms.usuarios.menu_...)
 
 **Detalle T閏nico:** Se ejecutaron migraciones. Ahora los permisos visuales conviven con los CRUD bajo el mismo sistema nativo.
+
+## Cristian - PC CASA - 2026-09-03
+**Objetivo:** Agregar validaci贸n estricta al formato de CUIM (6 caracteres alfanum茅ricos, sin s铆mbolos).
+**Archivos modificados:**
+- productos/models.py
+- productos/views_trazabilidad.py
+- verticalidades/armeria/views.py
+**Detalle T茅cnico:** Se implement贸 una validaci贸n regex (^[A-Z0-9]{6}$) a nivel de controlador/vista para retornar mensajes amigables si el formato del CUIM es incorrecto. Adem谩s, se sobreescribi贸 el m茅todo clean y save del modelo Subproducto garantizando la integridad de datos a nivel base.
+**Estado:** Completado.

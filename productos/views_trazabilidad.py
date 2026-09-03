@@ -156,6 +156,14 @@ def subproducto_editar_modal(request, subpro_id):
                 'error': "El número de SERIE es obligatorio."
             })
 
+        if nuevo_cuim:
+            import re
+            if not re.fullmatch(r'^[A-Z0-9]{6}$', nuevo_cuim):
+                return render(request, 'productos/partials/subproducto_editar_modal.html', {
+                    'subproducto': subproducto,
+                    'error': "El CUIM debe tener exactamente 6 caracteres alfanuméricos, sin símbolos."
+                })
+
         # Actualizamos únicamente SERIE y CUIM
         subproducto.serie = nueva_serie
         subproducto.cuim = nuevo_cuim if nuevo_cuim else None

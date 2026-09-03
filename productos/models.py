@@ -361,7 +361,17 @@ class Subproducto(AuditModel):
             models.Index(fields=['empresa', 'cuim']),
         ]
 
+    def clean(self):
+        super().clean()
+        if self.cuim:
+            self.cuim = str(self.cuim).strip().upper()
+            import re
+            if not re.fullmatch(r'^[A-Z0-9]{6}$', self.cuim):
+                from django.core.exceptions import ValidationError
+                raise ValidationError({'cuim': 'El CUIM debe tener exactamente 6 caracteres alfanuméricos, sin símbolos.'})
+
     def save(self, *args, **kwargs):
+        self.clean()
         self.empresa = self.producto.empresa
         super().save(*args, **kwargs)
 

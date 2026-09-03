@@ -635,6 +635,11 @@ def compras_trazabilidad_item_add(request):
     if config_traz and config_traz.pedir_cuim and not cuim:
         return HttpResponse("Debe ingresar el CUIM / Patente / Dominio para este subproducto.", status=400)
 
+    if cuim:
+        import re
+        if not re.fullmatch(r'^[A-Z0-9]{6}$', cuim):
+            return HttpResponse("El CUIM debe tener exactamente 6 caracteres alfanuméricos, sin símbolos.", status=400)
+
     # Verificar que la serie no exista previamente en la empresa activa (no vendida)
     if Subproducto.objects.filter(serie__iexact=serie, empresa_id=empresa_id).exclude(situacion='VENDIDA').exists():
         return HttpResponse(f"El número de serie '{serie}' ya se encuentra activo en la empresa (no ha sido vendido).", status=400)
@@ -874,6 +879,14 @@ def subproducto_editar_modal(request, subpro_id):
                 'subproducto': subproducto,
                 'error': "El número de SERIE es obligatorio."
             })
+
+        if nuevo_cuim:
+            import re
+            if not re.fullmatch(r'^[A-Z0-9]{6}$', nuevo_cuim):
+                return render(request, 'armeria/partials/subproducto_editar_modal.html', {
+                    'subproducto': subproducto,
+                    'error': "El CUIM debe tener exactamente 6 caracteres alfanuméricos, sin símbolos."
+                })
 
         # Actualizamos únicamente SERIE y CUIM
         subproducto.serie = nueva_serie
