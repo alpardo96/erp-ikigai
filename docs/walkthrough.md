@@ -3506,3 +3506,12 @@ El extractor retornaba el código de comprobante bajo la llave 	ipo_comprobante_
 - erticalidades/armeria/perfiles_lectura/cuit_30711323062.py
 **Detalle Técnico:** 
 Al igual que en el perfil de Bowie, el perfil del CUIT 30-71132306-2 no estaba enviando el código explícito de AFIP al backend, por lo que el front quedaba vacío si la librería general fallaba en detectarlo con exactitud. Se agregó la lógica para inyectar 	ipo_comprobante_codigo = '001' (y '003' si es Nota de Crédito) directamente en los cabecera_overrides de este proveedor.
+
+## Cristian - PC CASA - 2026-09-03
+**Objetivo:** Mover los accesos de Actualizar Tarifas y Facturación por Lotes al módulo Estudio.
+**Archivos modificados:**
+- 	emplates/facturacion/ventas_index.html (retirado del core)
+- erticalidades/estudio/templates/estudio/hooks/ui_ventas_index_cards.html (creado)
+- erticalidades/estudio/templates/estudio/hooks/menu_ventas.html (condicional aplicado)
+**Detalle:** Se movieron las tarjetas hardcodeadas en ventas_index al hook correspondiente del módulo estudio para que solo aparezcan cuando la empresa actual tiene tipo de actividad ESTUDIO. Además, se aplicó la misma condición a los links del menú lateral.
+**Estado:** Completado.
