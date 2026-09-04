@@ -16,4 +16,22 @@
         <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
     </div>
 </a>
+
+<!-- Tarjeta de Reservas SIGIMAC -->
+<a href="{% url 'armeria_reservas_list' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-amber-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <i class="fa-solid fa-shield text-8xl text-amber-600"></i>
+    </div>
+    <div class="flex items-center mb-6">
+        <div class="p-4 bg-amber-100 rounded-2xl text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+            <i class="fa-solid fa-shield text-2xl"></i>
+        </div>
+        <h3 class="ml-4 text-2xl font-bold text-gray-900">Reservas SIGIMAC</h3>
+    </div>
+    <p class="text-gray-500 text-sm leading-relaxed mb-6">Auditoría y panel de control de señas, trámites ante ANMaC/SIGIMAC y devoluciones por Orden de Pago.</p>
+    <div class="flex items-center text-amber-600 font-bold text-sm">
+        Ver Reservas
+        <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+    </div>
+</a>
 {% endif %}

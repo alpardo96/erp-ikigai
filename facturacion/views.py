@@ -368,6 +368,22 @@ class PreventaCargaView(LoginRequiredMixin, View):
         form = PreventaForm(request.POST)
         if form.is_valid():
             try:
+                # Validación de exclusividad para productos trazables (SIGIMAC / subprod=True)
+                tiene_subprod = False
+                for item_t in items_temp:
+                    p_obj = Producto.objects.filter(id=item_t['producto_id']).first()
+                    if p_obj and p_obj.subprod:
+                        tiene_subprod = True
+                        break
+                
+                if tiene_subprod:
+                    if len(items_temp) > 1:
+                        messages.error(request, "Las armas/artículos trazables (SIGIMAC) deben reservarse en una preventa individual exclusiva.")
+                        return redirect('preventas_carga')
+                    if float(items_temp[0].get('cantidad', 1)) != 1.0:
+                        messages.error(request, "La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.")
+                        return redirect('preventas_carga')
+
                 # Validar CLU si algún ítem requiere credencial o trazabilidad
                 from .helpers import validar_clu_cliente_armeria
                 cliente_obj = form.cleaned_data.get('cliente')

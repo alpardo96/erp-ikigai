@@ -1372,6 +1372,16 @@ def preventas_item_add(request):
     from .helpers import validar_clu_cliente_armeria
     producto = get_object_or_404(Producto, id=producto_id, empresa_id=request.session.get('empresa_id'))
 
+    # Validación de exclusividad de armas (SIGIMAC / subprod=True)
+    if producto.subprod:
+        if len(items) > 0:
+            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Las armas/artículos trazables (SIGIMAC) deben reservarse en una preventa individual exclusiva.</div>", status=200)
+        if cantidad != 1:
+            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.</div>", status=200)
+    else:
+        if any(item.get('subprod', False) for item in items):
+            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Esta preventa es exclusiva para la reserva de un arma. Para otros productos debe generar una preventa separada.</div>", status=200)
+
     if producto.creden and not credencial:
         return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Este producto requiere CREDENCIAL obligatoria.</div>", status=200)
 
@@ -1427,6 +1437,7 @@ def preventas_item_add(request):
     items.append({
         'index': len(items),
         'producto_id': producto.id,
+        'subprod': bool(producto.subprod),
         'codigo': producto.cod_prov or producto.id,
         # En distribución el código es `producto.id`, y se imprime junto al del sistema
         # anterior para que vendedores y facturadores se familiaricen con el nuevo.
@@ -1750,8 +1761,9 @@ def typeahead_productos_venta(request):
         productos_qs = productos_qs.annotate(en_trazabilidad=Exists(subproductos_con_prod)).filter(en_trazabilidad=True)
     else:
         # Multi-tenant: SIEMPRE acotado a la empresa activa.
+        # Ahora se permite visualizar subprod=True para que el vendedor pueda generar la preventa de reserva de armas (SIGIMAC).
         productos_qs = Producto.objects.filter(
-            filtros, empresa_id=request.session.get('empresa_id'), subprod=False
+            filtros, empresa_id=request.session.get('empresa_id')
         )
         
     productos_qs = productos_qs.order_by('detalle')[:20]

@@ -1,0 +1,25 @@
+{% if reservas %}
+<div class="bg-amber-50 border-2 border-amber-400 p-3 rounded-lg shadow-sm space-y-2 my-2 animate-in fade-in duration-200">
+    <div class="flex items-center justify-between">
+        <h4 class="text-xs font-black text-amber-900 flex items-center gap-1.5 uppercase">
+            <i class="fa-solid fa-shield text-amber-600"></i> Reserva SIGIMAC Pendiente Detectada
+        </h4>
+        <span class="text-[9px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full uppercase">Seña disponible para aplicar</span>
+    </div>
+    {% for r in reservas %}
+    <div class="bg-white p-2.5 rounded border border-amber-200 flex flex-wrap items-center justify-between gap-3">
+        <div class="text-xs">
+            <span class="font-black text-slate-800 uppercase">{{ r.producto.detalle }}</span>
+            <span class="text-slate-500 text-[10px] ml-2 font-bold">(Recibo #{{ r.recibo_reserva.numero }} del {{ r.fecha_reserva|date:"d/m/Y" }})</span>
+            <div class="text-[11px] text-amber-800 font-bold mt-0.5">
+                Monto Señado: <span class="font-black text-emerald-600">$ {{ r.monto_reservado|floatformat:2 }}</span> / Total Preventa: $ {{ r.monto_total|floatformat:2 }}
+            </div>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer shrink-0 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg border border-amber-300 transition-colors">
+            <input type="checkbox" name="reserva_id" value="{{ r.id }}" checked class="h-4 w-4 text-amber-600 rounded border-amber-400 focus:ring-amber-500">
+            <span class="text-xs font-black text-amber-900 uppercase">Aplicar a esta Factura</span>
+        </label>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

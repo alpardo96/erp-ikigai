@@ -863,6 +863,11 @@ def caja_mostrador_cobrar_modal(request, preventa_id):
     sucursal_id = request.session.get('sucursal_id')
     preventa = get_object_or_404(Preventa, preventa_id=preventa_id, empresa_id=empresa_id)
     
+    # Detección de armas trazables (SIGIMAC / subprod=True)
+    item_subprod = preventa.items.filter(producto__subprod=True).first()
+    es_reserva = bool(item_subprod)
+    producto_reservado = item_subprod.producto if item_subprod else None
+
     # Cotizacion
     from empresas.models import CotizacionMoneda
     from tesoreria.models import Banco, Tarjeta
@@ -878,6 +883,8 @@ def caja_mostrador_cobrar_modal(request, preventa_id):
     
     context = {
         'preventa': preventa,
+        'es_reserva': es_reserva,
+        'producto_reservado': producto_reservado,
         'dolar_cobranza': dolar_cobranza,
         'cuentas_bancarias': cuentas_bancarias,
         'bancos': bancos,
@@ -939,6 +946,199 @@ def _guardar_cobro_preventa_transaccional(
     )
     return HttpResponse(json.dumps({'status': 'success'}), content_type="application/json")
 
+@transaction.atomic
+def _guardar_reserva_preventa_transaccional(
+    request, preventa, producto_reservado, empresa_id, sucursal_id, sesion_caja,
+    efectivo, dolares, tarjetas, transferencias, valores, total_ingresado
+):
+    """
+    Registra el cobro de una Reserva de Arma (SIGIMAC).
+    Emite un Recibo oficial por el importe señado, registra los fondos en la sesión de caja mostrador,
+    crea el registro de control ReservaArma en estado PENDIENTE y marca la Preventa como cobrada.
+    """
+    from verticalidades.armeria.models import ReservaArma
+    from contable.models import ParametroContable, Cuenta
+    from tesoreria.models import (
+        Recibo, ReciboImputacion, MovimientoCaja, CobroTarjeta, 
+        TransaccionBancaria, ValorTerceros, Tarjeta, CuentaBancaria, Banco
+    )
+    
+    # 1. Obtener correlativo de Recibo
+    last_rc = Recibo.objects.filter(empresa_id=empresa_id, sucursal_id=sucursal_id).select_for_update().order_by('-numero').first()
+    nro_recibo = (last_rc.numero + 1) if (last_rc and last_rc.numero) else 1
+
+    pv_caja = getattr(sesion_caja.caja, 'punto_venta', None)
+    punto_rc = pv_caja.numero if pv_caja else 1
+
+    # 2. Crear Recibo por Reserva
+    recibo = Recibo(
+        empresa_id=empresa_id,
+        sucursal_id=sucursal_id,
+        ejercicio_id=request.session.get('ejercicio_id'),
+        sesion_caja=sesion_caja,
+        cliente=preventa.cliente,
+        fecha=timezone.localdate(),
+        punto=punto_rc,
+        numero=nro_recibo,
+        tipo='C',
+        total=total_ingresado,
+        condic=1,
+        observaciones=f"Reserva Preventa #{preventa.preventa_id} - {producto_reservado.detalle} (SIGIMAC)",
+        creado_por=request.user,
+        modificado_por=request.user
+    )
+    recibo.save()
+
+    # 3. Imputación contable a la cuenta corriente del cliente
+    param_c = ParametroContable.objects.filter(empresa_id=empresa_id).first()
+    cta_imputar = None
+    if preventa.cliente.cta_pat:
+        cta_imputar = Cuenta.objects.filter(empresa_id=empresa_id, codigo=preventa.cliente.cta_pat).first()
+    if not cta_imputar and param_c:
+        cta_imputar = param_c.cta_deudores_ventas
+
+    if cta_imputar:
+        ReciboImputacion.objects.create(
+            recibo=recibo,
+            cuenta_contable=cta_imputar,
+            importe=total_ingresado,
+            leyenda=f"Reserva SIGIMAC Prev #{preventa.preventa_id}"
+        )
+
+    concepto_cobro = f"Cobranza Reserva Recibo #{recibo.numero} (Prev #{preventa.preventa_id})"
+
+    # 4. Movimientos en Caja Mostrador
+    if efectivo > 0:
+        MovimientoCaja.objects.create(
+            sesion=sesion_caja,
+            empresa_id=empresa_id,
+            fecha=recibo.fecha,
+            tipo='I',
+            importe=efectivo,
+            concepto=concepto_cobro,
+            condic=1,
+            medio_pago='EFE',
+            recibo=recibo
+        )
+
+    if dolares > 0:
+        MovimientoCaja.objects.create(
+            sesion=sesion_caja,
+            empresa_id=empresa_id,
+            fecha=recibo.fecha,
+            tipo='I',
+            importe=dolares,
+            concepto=f"{concepto_cobro} (USD)",
+            condic=1,
+            medio_pago='EFE',
+            moneda='DOL',
+            recibo=recibo
+        )
+
+    if tarjetas:
+        for tarj in tarjetas:
+            t_imp = Decimal(str(tarj.get('importe', 0) or 0))
+            if t_imp > 0:
+                tarjeta_obj = Tarjeta.objects.filter(id=tarj.get('tarjeta_id')).first()
+                CobroTarjeta.objects.create(
+                    sesion=sesion_caja,
+                    tarjeta=tarjeta_obj,
+                    lote=tarj.get('lote', ''),
+                    cupon=tarj.get('cupon', ''),
+                    importe=t_imp,
+                    recibo=recibo
+                )
+                MovimientoCaja.objects.create(
+                    sesion=sesion_caja,
+                    empresa_id=empresa_id,
+                    fecha=recibo.fecha,
+                    tipo='I',
+                    importe=t_imp,
+                    concepto=f"{concepto_cobro} (Tarjeta {tarjeta_obj.nombre if tarjeta_obj else ''})",
+                    condic=1,
+                    medio_pago='TARJ',
+                    recibo=recibo
+                )
+
+    if transferencias:
+        for transf in transferencias:
+            tr_imp = Decimal(str(transf.get('importe', 0) or 0))
+            if tr_imp > 0:
+                cta_bc = CuentaBancaria.objects.filter(cta_bc_id=transf.get('id')).first()
+                TransaccionBancaria.objects.create(
+                    cuenta_bancaria=cta_bc,
+                    empresa_id=empresa_id,
+                    tipo='CRE',
+                    importe=tr_imp,
+                    fecha=recibo.fecha,
+                    concepto=concepto_cobro,
+                    cuit_origen=transf.get('cuit', ''),
+                    titular_origen=transf.get('titular', '')
+                )
+                MovimientoCaja.objects.create(
+                    sesion=sesion_caja,
+                    empresa_id=empresa_id,
+                    fecha=recibo.fecha,
+                    tipo='I',
+                    importe=tr_imp,
+                    concepto=f"{concepto_cobro} (Transf {cta_bc.banco if cta_bc else ''})",
+                    condic=1,
+                    medio_pago='TRANSF',
+                    recibo=recibo
+                )
+
+    if valores:
+        for ch in valores:
+            ch_imp = Decimal(str(ch.get('importe', 0) or 0))
+            if ch_imp > 0:
+                banco_id = ch.get('banco_id')
+                banco_obj = Banco.objects.filter(id=banco_id).first() if banco_id else None
+                ValorTerceros.objects.create(
+                    empresa_id=empresa_id,
+                    sucursal_id=sucursal_id,
+                    sesion_caja=sesion_caja,
+                    banco=banco_obj,
+                    banco_str=ch.get('banco_str', ''),
+                    numero=ch.get('numero', ''),
+                    fecha_vto=ch.get('vto') or recibo.fecha,
+                    importe=ch_imp,
+                    tipo_valor=ch.get('tipo_valor', 'F'),
+                    recibo=recibo,
+                    estado='CARTERA'
+                )
+                MovimientoCaja.objects.create(
+                    sesion=sesion_caja,
+                    empresa_id=empresa_id,
+                    fecha=recibo.fecha,
+                    tipo='I',
+                    importe=ch_imp,
+                    concepto=f"{concepto_cobro} (Cheque #{ch.get('numero', '')})",
+                    condic=1,
+                    medio_pago='CHEQ',
+                    recibo=recibo
+                )
+
+    # 5. Crear o actualizar registro ReservaArma
+    ReservaArma.objects.update_or_create(
+        preventa=preventa,
+        defaults={
+            'empresa_id': empresa_id,
+            'sucursal_id': sucursal_id,
+            'cliente': preventa.cliente,
+            'producto': producto_reservado,
+            'recibo_reserva': recibo,
+            'monto_reservado': total_ingresado,
+            'monto_total': preventa.total,
+            'estado': 'PENDIENTE'
+        }
+    )
+
+    # 6. Marcar la preventa como cobrada/procesada (estado 3)
+    preventa.estado = 3
+    preventa.save(update_fields=['estado'])
+
+    return HttpResponse(json.dumps({'status': 'success', 'message': f'Reserva registrada exitosamente. Recibo #{recibo.numero} emitido.'}), content_type="application/json")
+
 @login_required
 def caja_mostrador_procesar_cobro(request, preventa_id):
     if request.method == 'POST':
@@ -974,6 +1174,17 @@ def caja_mostrador_procesar_cobro(request, preventa_id):
             total_valores = sum(Decimal(str(v.get('importe', 0) or 0)) for v in valores)
             
             total_ingresado = efectivo + dolares + total_tarjetas + total_transferencias + total_valores + ctacte
+
+            # Detección de armas trazables (SIGIMAC / subprod=True)
+            item_subprod = preventa.items.filter(producto__subprod=True).first()
+            if item_subprod:
+                if total_ingresado <= Decimal("0.00"):
+                    return HttpResponse(json.dumps({'status': 'error', 'message': 'Debe ingresar un monto mayor a cero para registrar la reserva.'}), status=400)
+                
+                return _guardar_reserva_preventa_transaccional(
+                    request, preventa, item_subprod.producto, empresa_id, sucursal_id, sesion_caja,
+                    efectivo, dolares, tarjetas, transferencias, valores, total_ingresado
+                )
             
             if total_ingresado < (preventa.total - Decimal("0.05")):
                  return HttpResponse(json.dumps({'status': 'error', 'message': 'Monto insuficiente para cubrir el total de la Preventa.'}), status=400)

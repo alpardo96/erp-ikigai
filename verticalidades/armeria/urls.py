@@ -5,7 +5,9 @@ from .views import (
     ComprasTrazabilidadCargaView, compras_trazabilidad_item_add,
     compras_trazabilidad_item_remove, typeahead_series_trazabilidad,
     VentasTrazabilidadCargaView, agregar_item_venta_trazabilidad,
-    editar_item_venta_trazabilidad, quitar_item_venta_trazabilidad
+    editar_item_venta_trazabilidad, quitar_item_venta_trazabilidad,
+    verificar_reserva_cliente, ReservaArmaListView,
+    reserva_arma_anular_modal, reserva_arma_anular_procesar
 )
 
 urlpatterns = [
@@ -26,4 +28,10 @@ urlpatterns = [
     path('ventas/trazabilidad/item/agregar/', agregar_item_venta_trazabilidad, name='ventas_trazabilidad_item_add'),
     path('ventas/trazabilidad/item/<int:index>/editar/', editar_item_venta_trazabilidad, name='ventas_trazabilidad_item_edit'),
     path('ventas/trazabilidad/item/<int:index>/quitar/', quitar_item_venta_trazabilidad, name='ventas_trazabilidad_item_remove'),
+    path('ventas/trazabilidad/verificar-reserva/', verificar_reserva_cliente, name='armeria_verificar_reserva_cliente'),
+
+    # Reservas de Armas (SIGIMAC)
+    path('reservas/sigimac/', ReservaArmaListView.as_view(), name='armeria_reservas_list'),
+    path('reservas/sigimac/<int:reserva_id>/anular/modal/', reserva_arma_anular_modal, name='armeria_reserva_anular_modal'),
+    path('reservas/sigimac/<int:reserva_id>/anular/procesar/', reserva_arma_anular_procesar, name='armeria_reserva_anular_procesar'),
 ]
