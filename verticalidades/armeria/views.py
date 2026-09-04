@@ -242,6 +242,27 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
                         subproducto.precio_total = Decimal(str(item['total']))
                         subproducto.save()
 
+                    # 3. Si se aplicó una Reserva SIGIMAC, netear el recibo contra la factura
+                    reserva_id = request.POST.get('reserva_id')
+                    if reserva_id:
+                        from verticalidades.armeria.models import ReservaArma
+                        from tesoreria.models import ReciboAplicacion
+                        from contable.services.saldos import recalcular_saldo_venta
+                        reserva = ReservaArma.objects.filter(id=reserva_id, empresa_id=venta.empresa_id, estado='PENDIENTE').first()
+                        if reserva:
+                            monto_aplicar = min(reserva.monto_reservado, venta.total)
+                            ReciboAplicacion.objects.create(
+                                recibo=reserva.recibo_reserva,
+                                venta=venta,
+                                importe=monto_aplicar,
+                                importe_pesos=monto_aplicar
+                            )
+                            recalcular_saldo_venta(venta.pk)
+                            reserva.estado = 'APLICADA'
+                            reserva.venta_aplicada = venta
+                            reserva.fecha_resolucion = timezone.localdate()
+                            reserva.save()
+
                     request.session['venta_trazabilidad_items_temp'] = []
                     messages.success(request, f"¡Facturación por Trazabilidad {venta.numero} registrada con éxito! Series dadas de baja.")
                     return redirect('ventas_trazabilidad_carga')
@@ -905,4 +926,219 @@ def subproducto_editar_modal(request, subpro_id):
     return render(request, 'armeria/partials/subproducto_editar_modal.html', {
         'subproducto': subproducto
     })
+
+# ==============================================================================
+# GESTIÓN DE RESERVAS DE ARMAS (SIGIMAC)
+# ==============================================================================
+
+@login_required
+def verificar_reserva_cliente(request):
+    """
+    Consulta si el cliente seleccionado posee reservas activas de armas (SIGIMAC).
+    Devuelve un snippet HTML con la alerta y checkbox para aplicar la reserva a la venta actual.
+    """
+    cliente_id = request.GET.get('cliente_id')
+    empresa_id = request.session.get('empresa_id')
+    if not cliente_id or not empresa_id:
+        return HttpResponse("")
+    
+    from verticalidades.armeria.models import ReservaArma
+    reservas = ReservaArma.objects.filter(
+        cliente_id=cliente_id,
+        empresa_id=empresa_id,
+        estado='PENDIENTE'
+    ).select_related('producto', 'recibo_reserva')
+    
+    if not reservas.exists():
+        return HttpResponse("")
+        
+    return render(request, 'armeria/partials/reserva_cliente_alerta.html', {'reservas': reservas})
+
+class ReservaArmaListView(LoginRequiredMixin, ListView):
+    """
+    Listado y panel de control de Reservas de Armas sujetas a trámite SIGIMAC.
+    Permite auditar el estado de los trámites (Pendientes, Aplicadas, Devueltas).
+    """
+    template_name = 'armeria/reservas_list.html'
+    context_object_name = 'reservas'
+
+    def get_queryset(self):
+        empresa_id = self.request.session.get('empresa_id')
+        from verticalidades.armeria.models import ReservaArma
+        qs = ReservaArma.objects.filter(empresa_id=empresa_id).select_related(
+            'cliente', 'producto', 'recibo_reserva', 'venta_aplicada', 'orden_pago_devolucion', 'sucursal'
+        )
+
+        estado = self.request.GET.get('estado')
+        if estado and estado != 'TODAS':
+            qs = qs.filter(estado=estado)
+
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(
+                Q(cliente__razon_social__icontains=q) |
+                Q(producto__detalle__icontains=q) |
+                Q(recibo_reserva__numero__icontains=q)
+            )
+
+        f_desde = self.request.GET.get('desde')
+        f_hasta = self.request.GET.get('hasta')
+        if f_desde:
+            qs = qs.filter(fecha_reserva__gte=f_desde)
+        if f_hasta:
+            qs = qs.filter(fecha_reserva__lte=f_hasta)
+
+        return qs.order_by('-fecha_reserva', '-id')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        empresa_id = self.request.session.get('empresa_id')
+        from verticalidades.armeria.models import ReservaArma
+        from django.db.models import Sum, Count
+
+        resumen = ReservaArma.objects.filter(empresa_id=empresa_id).aggregate(
+            pendientes_count=Count('id', filter=Q(estado='PENDIENTE')),
+            pendientes_monto=Sum('monto_reservado', filter=Q(estado='PENDIENTE')),
+            aplicadas_count=Count('id', filter=Q(estado='APLICADA')),
+            devueltas_count=Count('id', filter=Q(estado='DEVUELTA'))
+        )
+        ctx['resumen'] = resumen
+        ctx['estado_actual'] = self.request.GET.get('estado', 'PENDIENTE')
+        ctx['q'] = self.request.GET.get('q', '')
+        ctx['desde'] = self.request.GET.get('desde', '')
+        ctx['hasta'] = self.request.GET.get('hasta', '')
+        return ctx
+
+@login_required
+def reserva_arma_anular_modal(request, reserva_id):
+    """
+    Despliega el modal de confirmación de anulación y devolución de una Reserva SIGIMAC.
+    Permite seleccionar el medio de pago con el que se restituyen los fondos al cliente.
+    """
+    empresa_id = request.session.get('empresa_id')
+    from verticalidades.armeria.models import ReservaArma
+    from tesoreria.models import CuentaBancaria
+    reserva = get_object_or_404(ReservaArma, id=reserva_id, empresa_id=empresa_id)
+
+    cuentas_bancarias = CuentaBancaria.objects.filter(empresa_id=empresa_id)
+
+    return render(request, 'armeria/modals/reserva_anular_modal.html', {
+        'reserva': reserva,
+        'cuentas_bancarias': cuentas_bancarias
+    })
+
+@login_required
+@transaction.atomic
+def reserva_arma_anular_procesar(request, reserva_id):
+    """
+    Procesa la anulación de la Reserva de Arma (por denegación de SIGIMAC o cancelación).
+    Genera automáticamente una Orden de Pago a favor del cliente para devolver los fondos señados
+    y netear contablemente el Recibo de Reserva en la cuenta corriente.
+    """
+    if request.method != 'POST':
+        return HttpResponse("Método no permitido", status=405)
+
+    empresa_id = request.session.get('empresa_id')
+    sucursal_id = request.session.get('sucursal_id')
+    from verticalidades.armeria.models import ReservaArma
+    from tesoreria.models import (
+        OrdenPago, OrdenPagoImputacion, Caja, CajaSesion, MovimientoCaja,
+        TransaccionBancaria, CuentaBancaria
+    )
+    from contable.models import ParametroContable, Cuenta
+    from empresas.models import Ejercicio
+
+    reserva = get_object_or_404(ReservaArma.objects.select_for_update(), id=reserva_id, empresa_id=empresa_id)
+
+    if reserva.estado != 'PENDIENTE':
+        return HttpResponse(json.dumps({'status': 'error', 'message': 'Solo se pueden anular reservas en estado Pendiente.'}), status=400, content_type="application/json")
+
+    medio_devolucion = request.POST.get('medio_devolucion', 'EFECTIVO') # EFECTIVO / TRANSFERENCIA
+    cuenta_bancaria_id = request.POST.get('cuenta_bancaria_id')
+    motivo = request.POST.get('motivo', 'Trámite SIGIMAC denegado / Cancelación').strip()
+
+    ejercicio = Ejercicio.objects.filter(
+        empresa_id=empresa_id,
+        inicio__lte=timezone.localdate(),
+        cierre__gte=timezone.localdate()
+    ).first()
+
+    # Obtener caja activa para la devolución
+    caja = Caja.objects.filter(empresa_id=empresa_id, sucursal_id=sucursal_id, tipo='M', activa=True).first()
+    sesion_caja = CajaSesion.objects.filter(caja=caja, usuario=request.user, estado='A').first()
+
+    # 1. Crear Orden de Pago para el cliente
+    last_op = OrdenPago.objects.filter(empresa_id=empresa_id, sucursal_id=sucursal_id).order_by('-numero').first()
+    nro_op = (last_op.numero + 1) if (last_op and last_op.numero) else 1
+
+    op = OrdenPago.objects.create(
+        empresa_id=empresa_id,
+        sucursal_id=sucursal_id,
+        ejercicio=ejercicio,
+        sesion_caja=sesion_caja,
+        tipo='S',
+        proveedor=reserva.cliente, # ClienteProveedor
+        fecha=timezone.localdate(),
+        punto=1,
+        numero=nro_op,
+        total=reserva.monto_reservado,
+        observaciones=f"Devolución Reserva SIGIMAC #{reserva.id} (Prev #{reserva.preventa.preventa_id}) - {motivo}",
+        condic=1
+    )
+
+    # 2. Imputación contable contra la cuenta deudores / cta corriente del cliente
+    param_c = ParametroContable.objects.filter(empresa_id=empresa_id).first()
+    cta_imputar = None
+    if reserva.cliente.cta_pat:
+        cta_imputar = Cuenta.objects.filter(empresa_id=empresa_id, codigo=reserva.cliente.cta_pat).first()
+    if not cta_imputar and param_c:
+        cta_imputar = param_c.cta_deudores_ventas
+
+    if cta_imputar:
+        OrdenPagoImputacion.objects.create(
+            orden_pago=op,
+            cuenta_contable=cta_imputar,
+            importe=reserva.monto_reservado,
+            leyenda=f"Devolución Reserva SIGIMAC #{reserva.id}"
+        )
+
+    # 3. Registrar egreso de fondos
+    concepto_egreso = f"Devolución Reserva SIGIMAC #{reserva.id} OP #{op.numero}"
+    if medio_devolucion == 'EFECTIVO' and sesion_caja:
+        mov = MovimientoCaja.objects.create(
+            sesion=sesion_caja,
+            empresa_id=empresa_id,
+            fecha=op.fecha,
+            tipo='E',
+            importe=reserva.monto_reservado,
+            concepto=concepto_egreso,
+            condic=1,
+            cli_pro=reserva.cliente,
+            orden_pago=op
+        )
+    elif medio_devolucion == 'TRANSFERENCIA' and cuenta_bancaria_id:
+        cta_bc = CuentaBancaria.objects.filter(cta_bc_id=cuenta_bancaria_id, empresa_id=empresa_id).first()
+        if cta_bc:
+            TransaccionBancaria.objects.create(
+                empresa_id=empresa_id,
+                cuenta_bancaria=cta_bc,
+                tipo_transaccion='TE',
+                importe=reserva.monto_reservado,
+                fecha_operacion=op.fecha,
+                numero_operacion=f"OP-{op.numero}"
+            )
+
+    # 4. Actualizar estado de ReservaArma y Preventa
+    reserva.estado = 'DEVUELTA'
+    reserva.orden_pago_devolucion = op
+    reserva.fecha_resolucion = timezone.localdate()
+    reserva.observaciones = f"{reserva.observaciones or ''}\nAnulada: {motivo}".strip()
+    reserva.save()
+
+    reserva.preventa.estado = 4 # Anulada
+    reserva.preventa.save(update_fields=['estado'])
+
+    messages.success(request, f"Reserva #{reserva.id} anulada con éxito. Se emitió la Orden de Pago #{op.numero} por $ {reserva.monto_reservado:,.2f}.")
+    return redirect('armeria_reservas_list')
+
 

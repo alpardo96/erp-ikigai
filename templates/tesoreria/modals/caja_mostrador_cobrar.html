@@ -5,6 +5,7 @@
      x-data="{
     preventa_id: {{ preventa.preventa_id }},
     preventa_cliente_id: {{ preventa.cliente.codigo_id|default:0 }},
+    es_reserva: {% if es_reserva %}true{% else %}false{% endif %},
     total: parseFloat(`{{ preventa.total|stringformat:'f' }}`.replace(',', '.')),
     dolar_cobranza: parseFloat(`{{ dolar_cobranza|stringformat:'f' }}`.replace(',', '.')),
     
@@ -67,10 +68,18 @@
 
     async procesarCobro(condicion = 1) {
         try {
-            if (this.restante > 0.05) {
-                this.error = 'El monto ingresado es insuficiente para cubrir la preventa.';
-                alert('Atención: ' + this.error);
-                return;
+            if (this.es_reserva) {
+                if (this.totalIngresado <= 0.00) {
+                    this.error = 'Debe ingresar un monto a cobrar como seña o reserva.';
+                    alert('Atención: ' + this.error);
+                    return;
+                }
+            } else {
+                if (this.restante > 0.05) {
+                    this.error = 'El monto ingresado es insuficiente para cubrir la preventa.';
+                    alert('Atención: ' + this.error);
+                    return;
+                }
             }
             
             for(let t of this.pagos.tarjetas){
@@ -100,7 +109,8 @@
                     banco_id: this.getBancoIdFromStr(v.banco_str),
                     tipo_valor: v.tipo_valor || 'F'
                 })).filter(v => v.importe > 0),
-                condic: condicion
+                condic: condicion,
+                es_reserva: this.es_reserva
             };
             
             let vuelto = this.totalIngresado - this.total;
@@ -198,14 +208,23 @@
             </div>
 
             <!-- HEADER -->
-            <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center flex-shrink-0 shadow-md z-20">
+            <div class="{% if es_reserva %}bg-amber-600{% else %}bg-indigo-600{% endif %} px-6 py-4 flex justify-between items-center flex-shrink-0 shadow-md z-20">
                 <div>
                     <h3 class="text-lg leading-6 font-black text-white flex items-center gap-2" id="modal-title">
-                        <i class="fa-solid fa-cash-register"></i> Cobrar Preventa #{{ preventa.preventa_id }}
+                        {% if es_reserva %}
+                            <i class="fa-solid fa-shield"></i> Cobrar Reserva SIGIMAC (Preventa #{{ preventa.preventa_id }})
+                        {% else %}
+                            <i class="fa-solid fa-cash-register"></i> Cobrar Preventa #{{ preventa.preventa_id }}
+                        {% endif %}
                     </h3>
-                    <p class="text-indigo-200 text-xs mt-1 font-bold uppercase">{{ preventa.cliente.razon_social }}</p>
+                    <p class="{% if es_reserva %}text-amber-100{% else %}text-indigo-200{% endif %} text-xs mt-1 font-bold uppercase">
+                        {{ preventa.cliente.razon_social }}
+                        {% if es_reserva and producto_reservado %}
+                            <span class="ml-2 px-2 py-0.5 bg-amber-700/80 text-white rounded text-[10px] font-black"><i class="fa-solid fa-shield mr-1"></i> {{ producto_reservado.detalle }}</span>
+                        {% endif %}
+                    </p>
                 </div>
-                <button type="button" @click="cerrarModal()" class="text-indigo-200 hover:text-white transition-colors focus:outline-none">
+                <button type="button" @click="cerrarModal()" class="text-white hover:text-slate-200 transition-colors focus:outline-none">
                     <i class="fa-solid fa-times text-2xl"></i>
                 </button>
             </div>
@@ -481,16 +500,24 @@
 
             <!-- FOOTER ACCIONES -->
             <div class="bg-slate-100 px-6 py-4 border-t border-slate-200 flex justify-end gap-3 flex-shrink-0 z-10">
+                {% if not es_reserva %}
                 <button type="button" @click="procesarCobro(2)" :disabled="cargando" class="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-lg font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
                     <i class="fa-solid fa-spinner fa-spin" x-show="cargando"></i>
                     <span x-show="!cargando"><i class="fa-solid fa-file-invoice"></i> Reserva</span>
                 </button>
+                {% endif %}
                 <button type="button" @click="cerrarModal()" :disabled="cargando" class="px-6 py-3 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg font-bold shadow-sm transition-colors">
                     Cancelar
                 </button>
-                <button type="button" @click="procesarCobro(1)" :disabled="cargando" class="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                <button type="button" @click="procesarCobro(1)" :disabled="cargando" class="px-6 py-3 {% if es_reserva %}bg-amber-600 hover:bg-amber-700{% else %}bg-green-600 hover:bg-green-700{% endif %} disabled:opacity-50 text-white rounded-lg font-black uppercase tracking-wider transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2">
                     <i class="fa-solid fa-spinner fa-spin" x-show="cargando"></i>
-                    <span x-show="!cargando"><i class="fa-solid fa-check"></i> Facturar</span>
+                    <span x-show="!cargando">
+                        {% if es_reserva %}
+                            <i class="fa-solid fa-bookmark"></i> RESERVAR
+                        {% else %}
+                            <i class="fa-solid fa-check"></i> Facturar
+                        {% endif %}
+                    </span>
                 </button>
             </div>
             

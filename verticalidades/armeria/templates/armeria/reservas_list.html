@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load l10n formato_tags %}
+
+{% block title %}Reservas de Armas (SIGIMAC) | Panel de Control{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-4 space-y-4 animate-in fade-in duration-300">
+
+    <!-- HEADER Y METRICAS -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+            <h1 class="text-xl font-black text-slate-800 tracking-tight uppercase flex items-center gap-2">
+                <i class="fa-solid fa-shield text-amber-500"></i> Reservas de Armas (SIGIMAC)
+            </h1>
+            <p class="text-xs font-semibold text-slate-500 mt-1">
+                Control de señas, trámites de dominio ANMaC/SIGIMAC y aplicaciones en ventas con trazabilidad.
+            </p>
+        </div>
+
+        <!-- TARJETAS DE RESUMEN -->
+        <div class="flex flex-wrap gap-3">
+            <div class="px-4 py-2 bg-amber-50 rounded-xl border border-amber-200">
+                <p class="text-[9px] font-black text-amber-800 uppercase tracking-widest">Pendientes SIGIMAC</p>
+                <div class="flex items-baseline gap-2">
+                    <p class="text-lg font-black text-amber-900">{{ resumen.pendientes_count|default:0 }}</p>
+                    <p class="text-xs font-bold text-amber-700">($ {{ resumen.pendientes_monto|default:0|formato_ar }})</p>
+                </div>
+            </div>
+            <div class="px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-200">
+                <p class="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Facturadas / Aplicadas</p>
+                <p class="text-lg font-black text-emerald-900">{{ resumen.aplicadas_count|default:0 }}</p>
+            </div>
+            <div class="px-4 py-2 bg-red-50 rounded-xl border border-red-200">
+                <p class="text-[9px] font-black text-red-800 uppercase tracking-widest">Devueltas / Anuladas</p>
+                <p class="text-lg font-black text-red-900">{{ resumen.devueltas_count|default:0 }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div class="md:col-span-4">
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Buscar (Cliente, Producto, Recibo)</label>
+                <input type="text" name="q" value="{{ q }}" placeholder="Escriba para filtrar..."
+                       class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:bg-white outline-none">
+            </div>
+
+            <div class="md:col-span-3">
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Estado SIGIMAC</label>
+                <select name="estado" class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 outline-none">
+                    <option value="TODAS" {% if estado_actual == 'TODAS' %}selected{% endif %}>Todos los Estados</option>
+                    <option value="PENDIENTE" {% if estado_actual == 'PENDIENTE' %}selected{% endif %}>Pendiente Autorización SIGIMAC</option>
+                    <option value="APLICADA" {% if estado_actual == 'APLICADA' %}selected{% endif %}>Aplicada en Factura</option>
+                    <option value="DEVUELTA" {% if estado_actual == 'DEVUELTA' %}selected{% endif %}>Anulada / Devuelta</option>
+                </select>
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Desde</label>
+                <input type="date" name="desde" value="{{ desde }}"
+                       class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 outline-none">
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Hasta</label>
+                <input type="date" name="hasta" value="{{ hasta }}"
+                       class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 outline-none">
+            </div>
+
+            <div class="md:col-span-1 flex gap-2">
+                <button type="submit" class="w-full h-9 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-black transition-colors flex items-center justify-center shadow-sm" title="Filtrar">
+                    <i class="fa-solid fa-filter"></i>
+                </button>
+                <a href="{% url 'armeria_reservas_list' %}" class="h-9 px-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors flex items-center justify-center" title="Limpiar">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA DE RESERVAS -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-900 text-white text-[9px] uppercase tracking-wider sticky top-0">
+                    <tr>
+                        <th class="px-3 py-2.5">ID / Fecha</th>
+                        <th class="px-3 py-2.5">Cliente</th>
+                        <th class="px-3 py-2.5">Producto Reservado</th>
+                        <th class="px-3 py-2.5">Recibo Seña</th>
+                        <th class="px-3 py-2.5 text-right">Seña Cobrada</th>
+                        <th class="px-3 py-2.5 text-right">Total Preventa</th>
+                        <th class="px-3 py-2.5 text-center">Estado</th>
+                        <th class="px-3 py-2.5">Resolución / Comprobante</th>
+                        <th class="px-3 py-2.5 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-xs">
+                    {% for r in reservas %}
+                    <tr class="hover:bg-slate-50/80 transition-colors {% if r.estado == 'PENDIENTE' %}bg-amber-50/30{% endif %}">
+                        <td class="px-3 py-2.5">
+                            <span class="font-black text-slate-800">#{{ r.id }}</span>
+                            <span class="block text-[10px] text-slate-500 font-semibold">{{ r.fecha_reserva|date:"d/m/Y" }}</span>
+                        </td>
+                        <td class="px-3 py-2.5 font-bold text-slate-800 uppercase">
+                            {{ r.cliente.razon_social }}
+                            <span class="block text-[10px] text-slate-400 font-normal">CUIT/DNI: {{ r.cliente.cuit|default:"-" }}</span>
+                        </td>
+                        <td class="px-3 py-2.5">
+                            <span class="font-bold text-slate-800 uppercase">{{ r.producto.detalle }}</span>
+                            <span class="block text-[10px] text-amber-700 font-bold">Cód: {{ r.producto.cod_prov|default:r.producto.id }}</span>
+                        </td>
+                        <td class="px-3 py-2.5 font-bold text-slate-700">
+                            RC #{{ r.recibo_reserva.numero|stringformat:"08d" }}
+                            <span class="block text-[10px] text-slate-400">{{ r.recibo_reserva.fecha|date:"d/m/Y" }}</span>
+                        </td>
+                        <td class="px-3 py-2.5 text-right font-black text-emerald-600">
+                            $ {{ r.monto_reservado|formato_ar }}
+                        </td>
+                        <td class="px-3 py-2.5 text-right font-black text-slate-700">
+                            $ {{ r.monto_total|formato_ar }}
+                        </td>
+                        <td class="px-3 py-2.5 text-center">
+                            {% if r.estado == 'PENDIENTE' %}
+                                <span class="px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-hourglass-half"></i> Pendiente SIGIMAC
+                                </span>
+                            {% elif r.estado == 'APLICADA' %}
+                                <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-check"></i> Facturada
+                                </span>
+                            {% else %}
+                                <span class="px-2.5 py-1 bg-red-100 text-red-800 border border-red-300 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-ban"></i> Anulada / Devuelta
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-2.5 text-xs font-semibold text-slate-600">
+                            {% if r.estado == 'APLICADA' and r.venta_aplicada %}
+                                <span class="text-emerald-700 font-bold">Factura {{ r.venta_aplicada.tipo.detalle }} #{{ r.venta_aplicada.numero }}</span>
+                                <span class="block text-[10px] text-slate-400">{{ r.fecha_resolucion|date:"d/m/Y" }}</span>
+                            {% elif r.estado == 'DEVUELTA' and r.orden_pago_devolucion %}
+                                <span class="text-red-700 font-bold">OP Devolución #{{ r.orden_pago_devolucion.numero }}</span>
+                                <span class="block text-[10px] text-slate-400">{{ r.fecha_resolucion|date:"d/m/Y" }}</span>
+                            {% else %}
+                                <span class="text-slate-400 italic">En trámite...</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-2.5 text-center">
+                            {% if r.estado == 'PENDIENTE' %}
+                            <div class="flex items-center justify-center gap-1.5">
+                                <a href="{% url 'ventas_trazabilidad_carga' %}" title="Facturar por Trazabilidad (Trámite Aprobado)"
+                                   class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors shadow-sm flex items-center gap-1">
+                                    <i class="fa-solid fa-file-invoice"></i> Facturar
+                                </a>
+                                <button hx-get="{% url 'armeria_reserva_anular_modal' r.id %}"
+                                        hx-target="#modal-container"
+                                        hx-swap="innerHTML"
+                                        title="Anular y Devolver Seña (Trámite Denegado)"
+                                        class="px-2.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 border border-red-200 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors shadow-sm flex items-center gap-1">
+                                    <i class="fa-solid fa-rotate-left"></i> Anular / Devolver
+                                </button>
+                            </div>
+                            {% else %}
+                            <span class="text-[10px] text-slate-400 font-bold uppercase">Cerrada</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="px-4 py-12 text-center text-slate-400">
+                            <i class="fa-solid fa-shield text-slate-300 text-3xl mb-2"></i>
+                            <p class="text-sm font-bold text-slate-600">No se encontraron reservas de armas.</p>
+                            <p class="text-xs text-slate-400 mt-1">Las preventas señadas de armas aparecerán en este panel para seguimiento de SIGIMAC.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="modal-container"></div>
+{% endblock %}

@@ -16,10 +16,17 @@
         </thead>
         <tbody class="divide-y divide-slate-100 italic">
             {% for item in items %}
-            <tr class="transition-colors text-[10px] group {% if item.requiere_autorizacion %}bg-red-50 hover:bg-red-100{% else %}hover:bg-slate-50{% endif %}">
+            <tr class="transition-colors text-[10px] group {% if item.subprod %}bg-amber-50 hover:bg-amber-100/70 border-l-2 border-amber-500{% elif item.requiere_autorizacion %}bg-red-50 hover:bg-red-100{% else %}hover:bg-slate-50{% endif %}">
                 <td class="px-2 py-1.5 font-black text-blue-600 border-r border-slate-50">{{ item.producto_id }}</td>
                 <td class="px-2 py-1.5 font-bold text-slate-400 border-r border-slate-50">{{ item.codigo }}</td>
-                <td class="px-2 py-1.5 font-bold text-slate-700 uppercase border-r border-slate-50">{{ item.detalle }}</td>
+                <td class="px-2 py-1.5 font-bold text-slate-700 uppercase border-r border-slate-50">
+                    {{ item.detalle }}
+                    {% if item.subprod %}
+                    <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-black bg-amber-200 text-amber-900 uppercase ml-1">
+                        <i class="fa-solid fa-shield mr-1"></i> RESERVA SIGIMAC
+                    </span>
+                    {% endif %}
+                </td>
                 <td class="px-2 py-1.5 text-center text-slate-500 font-bold border-r border-slate-50">{{ item.credencial|default:"-" }}</td>
                 <td class="px-2 py-1.5 text-center font-bold text-slate-800 border-r border-slate-50">{{ item.cantidad|floatformat:1 }}</td>
                 <td class="px-2 py-1.5 text-right font-bold text-slate-600 border-r border-slate-50">

@@ -27,6 +27,7 @@
         <input type="hidden" name="id_fac_rem" id="id_id_fac_rem">
 
         <!-- BLOQUE 1: CABECERA COMPACTA -->
+        <div id="reserva_cliente_container"></div>
         <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible italic">
             <div class="bg-slate-900 px-3 py-1 flex justify-between items-center rounded-t-lg">
                 <h2 class="text-[9px] font-black text-white uppercase tracking-widest">01. Identificación del
@@ -516,21 +517,17 @@
         }
     }
 
-    // Cambiar dinámicamente símbolos de moneda al cambiar select
-    const monedaSelect = document.getElementById('id_moneda');
-    if (monedaSelect) {
-        monedaSelect.addEventListener('change', function() {
-            const isDol = this.value === 'DOL';
-            const sym = isDol ? 'USD' : '$';
-            const symLabel = isDol ? 'Pcio. Lista (USD)' : 'Pcio. Lista ($)';
-            
-            const symbolTotal = document.getElementById('symbol_total');
-            if (symbolTotal) symbolTotal.innerText = sym;
-            
-            const labelQuickPrecio = document.getElementById('label_quick_precio');
-            if (labelQuickPrecio) labelQuickPrecio.innerText = symLabel;
-        });
-    }
+    // Escuchar selección de cliente para alertar reservas SIGIMAC pendientes
+    window.addEventListener('clienteVentaSeleccionado', function(e) {
+        if (e.detail && e.detail.id) {
+            fetch("{% url 'armeria_verificar_reserva_cliente' %}?cliente_id=" + e.detail.id)
+                .then(r => r.text())
+                .then(html => {
+                    const cont = document.getElementById('reserva_cliente_container');
+                    if (cont) cont.innerHTML = html;
+                });
+        }
+    });
 </script>
 {% endblock %}
 {% endblock %}

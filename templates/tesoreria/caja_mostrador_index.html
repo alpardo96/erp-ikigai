@@ -77,16 +77,23 @@
                 </thead>
                   {% for p in preventas %}
                   <tbody class="divide-y divide-slate-100" x-data="{ open: false }">
-                    <tr class="hover:bg-slate-50 transition-colors group cursor-pointer" @click="open = !open">
-                        <td class="px-4 py-3 text-sm font-black text-indigo-700 flex items-center gap-2">
+                    <tr class="{% if p.tiene_subprod %}bg-amber-50/70 hover:bg-amber-100/80 border-l-4 border-amber-500{% else %}hover:bg-slate-50{% endif %} transition-colors group cursor-pointer" @click="open = !open">
+                        <td class="px-4 py-3 text-sm font-black {% if p.tiene_subprod %}text-amber-900{% else %}text-indigo-700{% endif %} flex items-center gap-2">
                             <i class="fa-solid fa-chevron-right text-xs text-slate-400 transition-transform duration-200" :class="{'rotate-90': open}"></i>
                             # {{ p.preventa_id }}
+                            {% if p.tiene_subprod %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-200 text-amber-900 tracking-wider uppercase">
+                                <i class="fa-solid fa-shield mr-1"></i> ARMA
+                            </span>
+                            {% endif %}
                         </td>
                         <td class="px-4 py-3 text-xs text-slate-600">{{ p.fecha|date:"d/m/Y" }}</td>
                         <td class="px-4 py-3 text-xs font-bold text-slate-800 uppercase">{{ p.cliente.razon_social }}</td>
                         <td class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{{ p.vendedor.username }}</td>
                         <td class="px-4 py-3">
-                            {% if p.estado == 2 %}
+                            {% if p.tiene_subprod %}
+                                <span class="px-2 py-1 bg-amber-100 text-amber-800 border border-amber-300 rounded text-[9px] font-black uppercase tracking-wider">Reserva SIGIMAC</span>
+                            {% elif p.estado == 2 %}
                                 <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-[9px] font-black uppercase tracking-wider">Autorizada</span>
                             {% else %}
                                 <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[9px] font-black uppercase tracking-wider">Lista</span>
@@ -108,8 +115,12 @@
                                     hx-get="{% url 'htmx_caja_mostrador_cobrar_modal' p.preventa_id %}?t={% now 'U' %}"
                                     hx-target="#modal-container"
                                     hx-swap="innerHTML"
-                                    class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm">
-                                    Cobrar
+                                    class="px-4 py-1.5 {% if p.tiene_subprod %}bg-amber-600 hover:bg-amber-700{% else %}bg-emerald-500 hover:bg-emerald-600{% endif %} text-white rounded-lg text-xs font-black uppercase tracking-wider transition-colors shadow-sm flex items-center gap-1.5">
+                                    {% if p.tiene_subprod %}
+                                        <i class="fa-solid fa-bookmark text-[10px]"></i> Cobrar Reserva
+                                    {% else %}
+                                        Cobrar
+                                    {% endif %}
                                 </button>
                             </div>
                         </td>

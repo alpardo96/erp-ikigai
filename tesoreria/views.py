@@ -123,10 +123,18 @@ class CajaMostradorIndexView(LoginRequiredMixin, View):
             return render(request, 'tesoreria/caja_mostrador_abrir.html', {'caja': caja})
             
         # Si la sesión está abierta, mostramos la bandeja de cobro
+        from django.db.models import Exists, OuterRef
+        from facturacion.models import PreventaItem
+        subprod_item = PreventaItem.objects.filter(
+            preventa_id=OuterRef('pk'),
+            producto__subprod=True
+        )
         preventas = Preventa.objects.filter(
             empresa_id=empresa_id,
             sucursal_id=sucursal_id,
             estado__in=[0, 2] # 0=Borrador, 2=Autorizada
+        ).annotate(
+            tiene_subprod=Exists(subprod_item)
         ).order_by('fecha', 'preventa_id')
         
         context = {
