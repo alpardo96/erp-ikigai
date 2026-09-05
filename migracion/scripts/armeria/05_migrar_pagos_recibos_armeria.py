@@ -1,0 +1,179 @@
+import os
+import sys
+import django
+from decimal import Decimal
+from datetime import datetime
+from dbfread import DBF
+import pathlib
+
+# Configurar el entorno de Django
+sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent.parent.parent))
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+
+from empresas.models import Empresa, Sucursal, Ejercicio
+from tesoreria.models import OrdenPago, Recibo, OrdenPagoAplicacion, ReciboAplicacion, CajaSesion
+from facturacion.models import Compra, Venta, ClienteProveedor
+from contable.models import Asiento
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+def parse_decimal(value):
+    if value is None: return Decimal('0.00')
+    try:
+        return Decimal(str(value))
+    except:
+        return Decimal('0.00')
+
+def safe_int(value, default=0):
+    try:
+        if not value: return default
+        if isinstance(value, str):
+            value = ''.join(c for c in value if c.isdigit())
+        return int(value) if value else default
+    except (ValueError, TypeError):
+        return default
+
+def run():
+    print("Iniciando Fase 5: Tesorería - Órdenes de Pago y Recibos (Armería)")
+    dir_balance = r'D:\OneDrive\Escritorio\Migracion\Armeria\Balance\eje_255'
+    
+    empresa = Empresa.objects.get(id=1)
+    sucursal_central = Sucursal.objects.get(id=1)
+    sucursal_sucursal = Sucursal.objects.get(id=2)
+    ejercicio = Ejercicio.objects.get(id=1)
+    
+    valid_entidades = set(ClienteProveedor.objects.values_list('codigo_id', flat=True))
+    default_caja = CajaSesion.objects.first()
+    valid_cajas = set(CajaSesion.objects.values_list('id', flat=True))
+
+    # 1. Órdenes de Pago
+    op_dbf = os.path.join(dir_balance, 'ord_pago.dbf')
+    if os.path.exists(op_dbf):
+        table = DBF(op_dbf, ignore_missing_memofile=True, encoding='latin1')
+        ops_to_create = []
+        for row in table:
+            prov_id = row.get('ID_COD')
+            if prov_id not in valid_entidades: prov_id = list(valid_entidades)[0] if valid_entidades else None
+            
+            caja_id = row.get('CAJA')
+            if caja_id not in valid_cajas: caja_id = default_caja.id if default_caja else None
+                
+            punto = safe_int(row.get('PUNTO'), 1)
+            suc = sucursal_sucursal if punto == 6 else sucursal_central
+
+            ops_to_create.append(OrdenPago(
+                id=row['ID_OP'],
+                empresa=empresa,
+                sucursal=suc,
+                ejercicio=ejercicio,
+                sesion_caja_id=caja_id,
+                tipo='P',
+                proveedor_id=prov_id,
+                fecha=row.get('FECHA') or ejercicio.inicio,
+                punto=punto,
+                numero=safe_int(row.get('NUMERO'), row['ID_OP']),
+                total=parse_decimal(row.get('IMPORTE')),
+                observaciones=row.get('DETALLE', '')[:200],
+                condic=row.get('CONDIC', 1),
+                asiento_id=row.get('ID_ASTO') if row.get('ID_ASTO', 0) > 0 else None
+            ))
+            
+        OrdenPago.objects.bulk_create(ops_to_create, ignore_conflicts=True, batch_size=1000)
+        print(f"OK {len(ops_to_create)} Órdenes de Pago procesadas.")
+
+    # 2. Recibos (Caja Mostrador en Armeria)
+    rec_dbf = os.path.join(dir_balance, 'recibos.dbf')
+    if os.path.exists(rec_dbf):
+        table = DBF(rec_dbf, ignore_missing_memofile=True, encoding='latin1')
+        recs_to_create = []
+        for row in table:
+            cli_id = row.get('ID_COD')
+            if cli_id not in valid_entidades: cli_id = list(valid_entidades)[0] if valid_entidades else None
+            
+            caja_id = row.get('CAJA')
+            if caja_id not in valid_cajas: caja_id = default_caja.id if default_caja else None
+                
+            punto = safe_int(row.get('PUNTO'), 1)
+            suc = sucursal_sucursal if punto == 6 else sucursal_central
+
+            recs_to_create.append(Recibo(
+                id=row['ID_REC'],
+                empresa=empresa,
+                sucursal=suc,
+                ejercicio=ejercicio,
+                sesion_caja_id=caja_id,
+                tipo='C',
+                cliente_id=cli_id,
+                fecha=row.get('FECHA') or ejercicio.inicio,
+                punto=punto,
+                numero=safe_int(row.get('NUMERO'), row['ID_REC']),
+                total=parse_decimal(row.get('IMPORTE')),
+                observaciones=row.get('DETALLE', '')[:200],
+                condic=row.get('CONDIC', 1),
+                asiento_id=row.get('ID_ASTO') if row.get('ID_ASTO', 0) > 0 else None
+            ))
+            
+        Recibo.objects.bulk_create(recs_to_create, ignore_conflicts=True, batch_size=1000)
+        print(f"OK {len(recs_to_create)} Recibos procesados.")
+
+    # 3. Aplicaciones (ord_pago_facturas.dbf)
+    op_fact_dbf = os.path.join(dir_balance, 'ord_pago_facturas.dbf')
+    if os.path.exists(op_fact_dbf):
+        table = DBF(op_fact_dbf, ignore_missing_memofile=True, encoding='latin1')
+        op_aplic_to_create = []
+        rec_aplic_to_create = []
+        
+        compras_map = {c.id: c.id for c in Compra.objects.all()} # En armeria, compras_enc mapea directo al ID
+        ventas_map = {v.id: v.id for v in Venta.objects.all()} # En armeria, ventas_enc mapea directo al ID
+        
+        valid_ops = set(OrdenPago.objects.values_list('id', flat=True))
+        valid_recs = set(Recibo.objects.values_list('id', flat=True))
+        
+        for row in table:
+            id_op = row.get('ID_OP', 0)
+            id_rec = row.get('ID_REC', 0)
+            id_cpte_iva = row.get('ID_IVA', 0) # En ord_pago_facturas.dbf de armeria, ID_IVA parece apuntar al VTA o CPRA
+            id_asto = row.get('ID_ASTO', 0)
+            importe = parse_decimal(row.get('PAGA'))
+            
+            # Asumimos que ID_IVA cruza con id de Venta/Compra dependiendo si es pago o cobro.
+            # En la original usaban ID_ASTO. Intentaremos por ID_ASTO primero si existe en los mapas legacy
+            
+            if id_op > 0 and id_op in valid_ops:
+                # Buscar compra
+                c_id = None
+                if id_asto in [c.asiento_id for c in Compra.objects.filter(asiento_id__isnull=False)]:
+                    c_id = Compra.objects.get(asiento_id=id_asto).id
+                elif id_cpte_iva in compras_map:
+                    c_id = id_cpte_iva
+                    
+                if c_id:
+                    op_aplic_to_create.append(OrdenPagoAplicacion(
+                        orden_pago_id=id_op, compra_id=c_id, importe=importe, importe_pesos=importe
+                    ))
+            
+            if id_rec > 0 and id_rec in valid_recs:
+                v_id = None
+                if id_asto in [v.asiento_id for v in Venta.objects.filter(asiento_id__isnull=False)]:
+                    v_id = Venta.objects.get(asiento_id=id_asto).id
+                elif id_cpte_iva in ventas_map:
+                    v_id = id_cpte_iva
+                    
+                if v_id:
+                    rec_aplic_to_create.append(ReciboAplicacion(
+                        recibo_id=id_rec, venta_id=v_id, importe=importe, importe_pesos=importe
+                    ))
+                
+        if op_aplic_to_create:
+            OrdenPagoAplicacion.objects.bulk_create(op_aplic_to_create, ignore_conflicts=True, batch_size=2000)
+            print(f"OK {len(op_aplic_to_create)} Aplicaciones de Órdenes de Pago procesadas.")
+        if rec_aplic_to_create:
+            ReciboAplicacion.objects.bulk_create(rec_aplic_to_create, ignore_conflicts=True, batch_size=2000)
+            print(f"OK {len(rec_aplic_to_create)} Aplicaciones de Recibos procesadas.")
+
+    print("Fase 5 completada con éxito.")
+
+if __name__ == '__main__':
+    run()
