@@ -202,18 +202,24 @@
                 </div>
 
                 <!-- Precio -->
-                <div class="w-28">
-                    <label id="label_quick_precio" class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-right">Pcio. Lista ($)</label>
+                <div class="w-28 relative">
+                    <label id="label_quick_precio" class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-right">
+                        {% if modo_edicion == 'PRECIO' %}Pcio. Final ($){% else %}Pcio. Lista ($){% endif %}
+                    </label>
                     <input type="text" id="quick_precio" name="precio"
-                        class="w-full h-8 px-2 bg-white border border-slate-300 rounded text-xs font-black text-right outline-none fInputAR text-slate-900"
-                        placeholder="0,00">
+                        {% if modo_edicion == 'DESCUENTO' %}readonly tabindex="-1"{% endif %}
+                        class="w-full h-8 px-2 {% if modo_edicion == 'DESCUENTO' %}bg-slate-100 text-slate-600{% else %}bg-white text-slate-900 border-blue-300 focus:border-blue-600{% endif %} border border-slate-300 rounded text-xs font-black text-right outline-none fInputAR"
+                        placeholder="0,00"
+                        oninput="calcularDescuentoDesdePrecioVenta()">
+                    <span id="alerta_precio_doble_badge_venta" class="hidden absolute -top-3 right-0 bg-amber-500 text-white text-[8px] font-black px-1 rounded animate-pulse" title="El precio ingresado supera el doble del precio de lista base">⚠️ > 2x</span>
                 </div>
 
                 <!-- Descuento -->
                 <div class="w-20">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Desc (%)</label>
                     <input type="text" id="quick_descuento" name="descuento" value="0"
-                        class="w-full h-8 px-2 bg-white border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR"
+                        {% if modo_edicion == 'PRECIO' %}readonly tabindex="-1"{% endif %}
+                        class="w-full h-8 px-2 {% if modo_edicion == 'PRECIO' %}bg-slate-100 text-slate-600 font-bold{% else %}bg-white text-slate-900{% endif %} border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR"
                         placeholder="0">
                 </div>
 
@@ -406,8 +412,12 @@
         document.getElementById('quick_producto_id').value = data.id;
         document.getElementById('quick_producto_detalle').innerText = data.detalle;
         
-        // Seteamos el precio de lista unitario sugerido (editable por el usuario)
+        // Seteamos el precio de lista unitario sugerido
         document.getElementById('quick_precio').value = fMiles(unidadPrecioSugerido);
+        document.getElementById('quick_descuento').value = "0";
+
+        const badgeDoble = document.getElementById('alerta_precio_doble_badge_venta');
+        if (badgeDoble) badgeDoble.classList.add('hidden');
 
         const divCred = document.getElementById('div_credencial');
         const inputCred = document.getElementById('quick_credencial');
@@ -422,10 +432,38 @@
             divCred.classList.add('hidden');
             inputCred.required = false;
             inputCred.value = '';
-            // Foco al campo de cantidad
+            // Foco al campo correspondiente
+            {% if modo_edicion == 'PRECIO' %}
+            setTimeout(() => document.getElementById('quick_precio').focus(), 50);
+            {% else %}
             setTimeout(() => document.getElementById('quick_cantidad').focus(), 50);
+            {% endif %}
         }
     });
+
+    function calcularDescuentoDesdePrecioVenta() {
+        const modo = "{{ modo_edicion }}";
+        if (modo !== 'PRECIO') return;
+
+        const rawPrecio = document.getElementById('quick_precio').value.replace(/\./g, '').replace(',', '.');
+        const precioIngresado = parseFloat(rawPrecio) || 0;
+        const precioBase = parseFloat(unidadPrecioSugerido) || 0;
+
+        const badgeDoble = document.getElementById('alerta_precio_doble_badge_venta');
+        if (badgeDoble) {
+            if (precioBase > 0 && precioIngresado > (precioBase * 2)) {
+                badgeDoble.classList.remove('hidden');
+            } else {
+                badgeDoble.classList.add('hidden');
+            }
+        }
+
+        let desc = 0;
+        if (precioBase > 0 && precioIngresado < precioBase) {
+            desc = ((precioBase - precioIngresado) / precioBase) * 100;
+        }
+        document.getElementById('quick_descuento').value = desc.toFixed(2);
+    }
 
     // EVENTO CLIENTE SELECCIONADO (Desde el modal que crearemos)
     document.body.addEventListener('clienteVentaSeleccionado', (e) => {

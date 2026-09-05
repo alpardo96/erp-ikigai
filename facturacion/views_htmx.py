@@ -1105,7 +1105,7 @@ def agregar_item_venta_sesion(request):
                 return HttpResponse(msj_err, status=400)
     
     # Lógica de Pesificación (Bimonetarismo)
-    from empresas.models import CotizacionMoneda
+    from empresas.models import CotizacionMoneda, Empresa as _Empresa
     moneda_origen = producto.moneda
     cotizacion_aplicada = 1.0
     precio_origen = precio_lista  # El precio que ingresa el usuario en moneda origen
@@ -1132,9 +1132,42 @@ def agregar_item_venta_sesion(request):
             cotizacion_aplicada = 1.0
             precio_lista = round(precio_lista, 2)
 
-    subtotal = precio_lista * cantidad
-    total_final = subtotal * (1 - (descuento / 100.0))
+    # Modo de edición en facturación (PRECIO o DESCUENTO)
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
     
+    alerta_precio_duplicado = False
+    precio_base = precio_lista
+
+    if modo_edicion == 'PRECIO':
+        # En modo PRECIO se toma el precio ingresado por el usuario
+        raw_precio = str(request.POST.get('precio', '')).strip().replace('.', '').replace(',', '.')
+        if raw_precio != '':
+            try:
+                precio_ingresado = float(raw_precio)
+            except (ValueError, TypeError):
+                precio_ingresado = precio_lista
+        else:
+            precio_ingresado = precio_lista
+
+        # Validaciones de precio mayor / menor
+        if precio_ingresado < precio_lista and precio_lista > 0:
+            descuento = round(((precio_lista - precio_ingresado) / precio_lista) * 100.0, 2)
+        else:
+            descuento = 0.0
+
+        if precio_ingresado > (precio_lista * 2) and precio_lista > 0:
+            alerta_precio_duplicado = True
+
+        precio_unitario_final = precio_ingresado
+        subtotal = precio_unitario_final * cantidad
+        total_final = subtotal
+    else:
+        # En modo DESCUENTO se utiliza el descuento ingresado por el usuario
+        precio_unitario_final = precio_lista
+        subtotal = precio_lista * cantidad
+        total_final = subtotal * (1 - (descuento / 100.0))
+
     descuento_maximo = float(producto.rubro.descuento_maximo) if producto.rubro else 0.0
     requiere_autorizacion = descuento > descuento_maximo
     
@@ -1151,12 +1184,14 @@ def agregar_item_venta_sesion(request):
         'cod_prov': producto.cod_prov,
         'detalle': producto.detalle,
         'cantidad': cantidad,
-        'precio': precio_lista, # En PESOS (Unitario de Lista)
+        'precio': precio_unitario_final, # En PESOS
+        'precio_base': precio_base,
         'descuento': descuento,
         'descuento_maximo': descuento_maximo,
         'iva': iva_alicuota,
         'total': round(total_final, 2), # En PESOS
         'requiere_autorizacion': requiere_autorizacion,
+        'alerta_precio_duplicado': alerta_precio_duplicado,
         'credencial': credencial,
         'dmp': dmp,
         'alerta_stock': alerta_stock,
@@ -1169,12 +1204,14 @@ def agregar_item_venta_sesion(request):
     request.session['venta_items_temp'] = items
     response = render(request, 'facturacion/partials/venta_items_tabla.html', {
         'items': items,
-        'moneda': request.session.get('venta_moneda', 'PES')
+        'moneda': request.session.get('venta_moneda', 'PES'),
+        'modo_edicion': modo_edicion
     })
     response['HX-Trigger'] = json.dumps({
         'limpiarInputsCargaVenta': True,
         'actualizarTotalesVenta': {
-            'requiere_autorizacion': any(i.get('requiere_autorizacion', False) for i in items)
+            'requiere_autorizacion': any(i.get('requiere_autorizacion', False) for i in items),
+            'alerta_precio_duplicado': alerta_precio_duplicado
         }
     })
     return response
@@ -1184,6 +1221,10 @@ def quitar_item_venta_sesion(request, index):
     """
     Elimina un ítem de la venta en sesión.
     """
+    from empresas.models import Empresa as _Empresa
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
     items = request.session.get('venta_items_temp', [])
     if 0 <= index < len(items):
         items.pop(index)
@@ -1192,7 +1233,8 @@ def quitar_item_venta_sesion(request, index):
     request.session['venta_items_temp'] = items
     response = render(request, 'facturacion/partials/venta_items_tabla.html', {
         'items': items,
-        'moneda': request.session.get('venta_moneda', 'PES')
+        'moneda': request.session.get('venta_moneda', 'PES'),
+        'modo_edicion': modo_edicion
     })
     response['HX-Trigger'] = json.dumps({
         'actualizarTotalesVenta': {
@@ -1206,23 +1248,36 @@ def editar_item_venta_sesion(request, index):
     """
     Actualiza precio unitario, descuento o total de un ítem de venta en la sesión.
     """
+    from empresas.models import Empresa as _Empresa
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
     items = request.session.get('venta_items_temp', [])
     if 0 <= index < len(items):
         try:
             item = items[index]
-            if 'precio' in request.POST:
-                raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
-                item['precio'] = float(raw_precio or 0)
-            if 'descuento' in request.POST:
-                raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
-                item['descuento'] = float(raw_descuento or 0)
-            if 'total_linea' in request.POST and 'precio' not in request.POST:
-                raw_total = str(request.POST.get('total_linea', '0')).replace('.', '').replace(',', '.')
-                item['total'] = float(raw_total or 0)
-                if float(item.get('cantidad', 1) or 1) > 0:
-                    item['precio'] = round(item['total'] / float(item['cantidad']), 2)
+            precio_base = float(item.get('precio_base', item.get('precio', 0)) or 0)
+            cantidad = float(item.get('cantidad', 1) or 1)
+
+            if modo_edicion == 'PRECIO':
+                if 'precio' in request.POST:
+                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
+                    precio_ingresado = float(raw_precio or 0)
+                    item['precio'] = precio_ingresado
+                    if precio_ingresado < precio_base and precio_base > 0:
+                        item['descuento'] = round(((precio_base - precio_ingresado) / precio_base) * 100.0, 2)
+                    else:
+                        item['descuento'] = 0.0
+                    item['total'] = round(precio_ingresado * cantidad, 2)
+                    item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
             else:
-                cantidad = float(item.get('cantidad', 1) or 1)
+                if 'descuento' in request.POST:
+                    raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
+                    item['descuento'] = float(raw_descuento or 0)
+                if 'precio' in request.POST:
+                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
+                    item['precio'] = float(raw_precio or 0)
+                
                 precio_lista = float(item.get('precio', 0) or 0)
                 descuento = float(item.get('descuento', 0) or 0)
                 subtotal = precio_lista * cantidad
@@ -1234,7 +1289,11 @@ def editar_item_venta_sesion(request, index):
         except (ValueError, TypeError):
             pass
             
-    response = render(request, 'facturacion/partials/venta_items_tabla.html', {'items': items})
+    response = render(request, 'facturacion/partials/venta_items_tabla.html', {
+        'items': items,
+        'moneda': request.session.get('venta_moneda', 'PES'),
+        'modo_edicion': modo_edicion
+    })
     response['HX-Trigger'] = json.dumps({
         'limpiarInputsCargaVenta': False,
         'actualizarTotalesVenta': {
@@ -1428,8 +1487,41 @@ def preventas_item_add(request):
         if sucursal_id:
             disponible_producto = float(disponible_real(producto.id, sucursal_id))
 
-    subtotal = precio_lista * cantidad
-    total_final = subtotal * (1 - (descuento / 100.0))
+    # Modo de edición en facturación (PRECIO o DESCUENTO)
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+    
+    alerta_precio_duplicado = False
+    precio_base = precio_lista
+
+    if modo_edicion == 'PRECIO':
+        # En modo PRECIO se toma el precio ingresado por el usuario
+        raw_precio = str(request.POST.get('precio', '')).strip().replace('.', '').replace(',', '.')
+        if raw_precio != '':
+            try:
+                precio_ingresado = float(raw_precio)
+            except (ValueError, TypeError):
+                precio_ingresado = precio_lista
+        else:
+            precio_ingresado = precio_lista
+
+        # Validaciones de precio mayor / menor
+        if precio_ingresado < precio_lista and precio_lista > 0:
+            descuento = round(((precio_lista - precio_ingresado) / precio_lista) * 100.0, 2)
+        else:
+            descuento = 0.0
+
+        if precio_ingresado > (precio_lista * 2) and precio_lista > 0:
+            alerta_precio_duplicado = True
+
+        precio_unitario_final = precio_ingresado
+        subtotal = precio_unitario_final * cantidad
+        total_final = subtotal
+    else:
+        # En modo DESCUENTO se utiliza el descuento ingresado por el usuario
+        precio_unitario_final = precio_lista
+        subtotal = precio_lista * cantidad
+        total_final = subtotal * (1 - (descuento / 100.0))
 
     descuento_maximo = float(producto.rubro.descuento_maximo) if producto.rubro else 0.0
     requiere_autorizacion = descuento > descuento_maximo
@@ -1446,11 +1538,13 @@ def preventas_item_add(request):
         'disponible': disponible_producto,
         'detalle': producto.detalle,
         'cantidad': cantidad,
-        'precio_unitario': precio_lista, # En PESOS
+        'precio_unitario': precio_unitario_final, # En PESOS
+        'precio_base': precio_base,
         'descuento': descuento,
         'descuento_maximo': descuento_maximo,
         'total': round(total_final, 2), # En PESOS
         'requiere_autorizacion': requiere_autorizacion,
+        'alerta_precio_duplicado': alerta_precio_duplicado,
         'moneda_origen': moneda_origen,
         'cotizacion_aplicada': cotizacion_aplicada,
         'precio_origen': precio_origen,
@@ -1461,19 +1555,25 @@ def preventas_item_add(request):
     request.session['preventa_items_temp'] = items
     response = render(request, 'facturacion/partials/preventa_items_tabla.html', {
         'items': items,
-        'moneda': 'PES'
+        'moneda': 'PES',
+        'modo_edicion': modo_edicion
     })
     response['HX-Trigger'] = json.dumps({
         'limpiarInputsCargaPreventa': True,
         'actualizarTotalesPreventa': {
             'total': sum(i['total'] for i in items),
-            'requiere_autorizacion': any(i['requiere_autorizacion'] for i in items)
+            'requiere_autorizacion': any(i['requiere_autorizacion'] for i in items),
+            'alerta_precio_duplicado': alerta_precio_duplicado
         }
     })
     return response
 
 @login_required
 def preventas_item_remove(request, index):
+    from empresas.models import Empresa as _Empresa
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
     items = request.session.get('preventa_items_temp', [])
     if 0 <= index < len(items):
         items.pop(index)
@@ -1482,7 +1582,8 @@ def preventas_item_remove(request, index):
     request.session['preventa_items_temp'] = items
     response = render(request, 'facturacion/partials/preventa_items_tabla.html', {
         'items': items,
-        'moneda': 'PES'
+        'moneda': 'PES',
+        'modo_edicion': modo_edicion
     })
     response['HX-Trigger'] = json.dumps({
         'actualizarTotalesPreventa': {
@@ -1497,22 +1598,40 @@ def editar_item_preventa_sesion(request, index):
     """
     Actualiza precio unitario o descuento de un ítem de preventa en la sesión.
     """
+    from empresas.models import Empresa as _Empresa
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
     items = request.session.get('preventa_items_temp', [])
     if 0 <= index < len(items):
         try:
             item = items[index]
-            if 'precio' in request.POST:
-                raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
-                item['precio_unitario'] = float(raw_precio or 0)
-            if 'descuento' in request.POST:
-                raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
-                item['descuento'] = float(raw_descuento or 0)
-                
+            precio_base = float(item.get('precio_base', item.get('precio_unitario', 0)) or 0)
             cantidad = float(item.get('cantidad', 1) or 1)
-            precio_lista = float(item.get('precio_unitario', 0) or 0)
-            descuento = float(item.get('descuento', 0) or 0)
-            subtotal = precio_lista * cantidad
-            item['total'] = round(subtotal * (1 - (descuento / 100.0)), 2)
+
+            if modo_edicion == 'PRECIO':
+                if 'precio' in request.POST:
+                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
+                    precio_ingresado = float(raw_precio or 0)
+                    item['precio_unitario'] = precio_ingresado
+                    if precio_ingresado < precio_base and precio_base > 0:
+                        item['descuento'] = round(((precio_base - precio_ingresado) / precio_base) * 100.0, 2)
+                    else:
+                        item['descuento'] = 0.0
+                    item['total'] = round(precio_ingresado * cantidad, 2)
+                    item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
+            else:
+                if 'descuento' in request.POST:
+                    raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
+                    item['descuento'] = float(raw_descuento or 0)
+                if 'precio' in request.POST:
+                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
+                    item['precio_unitario'] = float(raw_precio or 0)
+                
+                precio_lista = float(item.get('precio_unitario', 0) or 0)
+                descuento = float(item.get('descuento', 0) or 0)
+                subtotal = precio_lista * cantidad
+                item['total'] = round(subtotal * (1 - (descuento / 100.0)), 2)
             
             descuento_maximo = float(item.get('descuento_maximo', 0))
             item['requiere_autorizacion'] = float(item.get('descuento', 0)) > descuento_maximo
@@ -1520,7 +1639,11 @@ def editar_item_preventa_sesion(request, index):
         except (ValueError, TypeError):
             pass
             
-    response = render(request, 'facturacion/partials/preventa_items_tabla.html', {'items': items})
+    response = render(request, 'facturacion/partials/preventa_items_tabla.html', {
+        'items': items,
+        'moneda': 'PES',
+        'modo_edicion': modo_edicion
+    })
     response['HX-Trigger'] = json.dumps({
         'limpiarInputsCargaPreventa': False,
         'actualizarTotalesPreventa': {

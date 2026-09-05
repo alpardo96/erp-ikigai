@@ -32,11 +32,14 @@
                 </td>
                 <td class="px-2 py-1.5 text-right font-bold text-slate-600 border-r border-slate-50">
                     {% if moneda == 'DOL' %}USD{% else %}${% endif %} {{ item.precio|formato_ar }}
+                    {% if item.alerta_precio_duplicado %}
+                    <span class="inline-block text-[8px] font-bold text-amber-700 bg-amber-100 px-1 rounded ml-1" title="Precio ingresado superior al doble del precio base">⚠️ >2x</span>
+                    {% endif %}
                 </td>
                 <td class="px-2 py-1.5 text-right font-bold {% if item.requiere_autorizacion %}text-red-600{% else %}text-slate-600{% endif %} border-r border-slate-50">
                     {{ item.descuento|floatformat:2 }}%
                     {% if item.requiere_autorizacion %}
-                    <span class="text-xs ml-1 cursor-help" title="Límite: {{ item.descuento_maximo|floatformat:2 }}%">⚠️</span>
+                    <span class="text-xs ml-1 cursor-help text-red-600" title="Superó límite de rubro ({{ item.descuento_maximo|floatformat:2 }}%) - Requiere Autorización">⚠️</span>
                     {% endif %}
                 </td>
                 <td class="px-2 py-1.5 text-right text-slate-500 border-r border-slate-50">{{ item.iva|floatformat:1 }}%</td>

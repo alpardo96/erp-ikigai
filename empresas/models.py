@@ -33,6 +33,17 @@ class Empresa(AuditModel):
         verbose_name="Usa Trazabilidad de Productos",
         help_text="Si está activo, se habilita la carga y control por número de serie en compras y ventas."
     )
+    MODO_EDICION_CHOICES = [
+        ('DESCUENTO', 'Editar Descuento (%)'),
+        ('PRECIO', 'Editar Precio Unitario'),
+    ]
+    modo_edicion_facturacion = models.CharField(
+        max_length=10,
+        choices=MODO_EDICION_CHOICES,
+        default='DESCUENTO',
+        verbose_name="Modo de Edición en Facturación",
+        help_text="Define si en Preventas, Ventas y Trazabilidad se edita el precio unitario directamente o el descuento porcentual."
+    )
 
     # Datos Impositivos de la Empresa
     CONDICION_IVA_CHOICES = [

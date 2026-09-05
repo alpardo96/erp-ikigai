@@ -142,9 +142,15 @@ class VentasCargaView(LoginRequiredMixin, View):
             'fecha': timezone.localdate()
         }
         form = VentaForm(initial=initial_data)
-        from empresas.models import PuntoVenta
+        from empresas.models import PuntoVenta, Empresa as _Empresa
         puntos_venta = PuntoVenta.objects.filter(sucursal_id=sucursal_id, activo=True)
-        return render(request, 'facturacion/ventas_carga.html', {'form': form, 'puntos_venta': puntos_venta})
+        empresa_activa = _Empresa.objects.filter(pk=empresa_id).first()
+        modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+        return render(request, 'facturacion/ventas_carga.html', {
+            'form': form,
+            'puntos_venta': puntos_venta,
+            'modo_edicion': modo_edicion
+        })
 
     def post(self, request):
         data = request.POST.copy()
@@ -349,10 +355,14 @@ class PreventaCargaView(LoginRequiredMixin, View):
                 form.fields['cliente'].queryset = form.fields['cliente'].queryset.filter(
                     codigo_id__in=cartera)
 
+        empresa_activa = Empresa.objects.filter(pk=empresa_id).first()
+        modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
         context = {
             'form': form,
             'is_armeria': Empresa.objects.filter(id=empresa_id, tipo_actividad="ARMERIA").exists(),
             'is_distribuidora': es_distribuidora,
+            'modo_edicion': modo_edicion,
         }
         return render(request, 'facturacion/preventa_carga.html', context)
 

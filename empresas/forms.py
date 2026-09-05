@@ -5,7 +5,7 @@ class EmpresaForm(forms.ModelForm):
     class Meta:
         model = Empresa
         fields = ['nombre', 'cuit', 'logo', 'direccion', 'correo', 'telefono', 'tipo_actividad', 'pedir_fecha_nacimiento_cliente',
-                  'usa_orden_compra', 'condicion_iva', 'fecha_inicio_actividades', 'condicion_iibb', 'jurisdicciones_iibb', 'entorno_afip', 'crt_afip', 'key_afip', 'vencimiento_crt_afip']
+                  'usa_orden_compra', 'modo_edicion_facturacion', 'condicion_iva', 'fecha_inicio_actividades', 'condicion_iibb', 'jurisdicciones_iibb', 'entorno_afip', 'crt_afip', 'key_afip', 'vencimiento_crt_afip']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm', 'required': 'required'}),
             'cuit': forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm', 'required': 'required'}),
@@ -16,6 +16,7 @@ class EmpresaForm(forms.ModelForm):
             'tipo_actividad': forms.Select(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
             'pedir_fecha_nacimiento_cliente': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500'}),
             'usa_orden_compra': forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500'}),
+            'modo_edicion_facturacion': forms.Select(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
             'condicion_iva': forms.Select(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),
             'fecha_inicio_actividades': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'w-full rounded-xl border-gray-200 text-sm'}),
             'condicion_iibb': forms.Select(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm'}),

@@ -42,10 +42,13 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
         except Empresa.DoesNotExist:
             pass
         
-        from empresas.models import PuntoVenta
-        puntos_venta = PuntoVenta.objects.filter(sucursal_id=sucursal_id, activo=True)
+        modo_edicion = getattr(empresa, 'modo_edicion_facturacion', 'DESCUENTO') if empresa else 'DESCUENTO'
         
-        return render(request, 'armeria/ventas_trazabilidad_carga.html', {'form': form, 'puntos_venta': puntos_venta})
+        return render(request, 'armeria/ventas_trazabilidad_carga.html', {
+            'form': form,
+            'puntos_venta': puntos_venta,
+            'modo_edicion': modo_edicion
+        })
 
     def post(self, request):
         data = request.POST.copy()
@@ -290,6 +293,10 @@ def agregar_item_venta_trazabilidad(request):
     """
     Busca el subproducto por serie y lo agrega a la grilla de ventas.
     """
+    from empresas.models import Empresa as _Empresa
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
     moneda_anterior = request.session.get('venta_trazabilidad_moneda', 'PES')
     moneda = request.POST.get('moneda') or request.GET.get('moneda') or moneda_anterior
     request.session['venta_trazabilidad_moneda'] = moneda
@@ -317,6 +324,7 @@ def agregar_item_venta_trazabilidad(request):
                     nuevo_precio = round(precio_actual, 2)
                 
                 item['precio'] = nuevo_precio
+                item['precio_base'] = nuevo_precio
                 item['total'] = nuevo_precio
                 item['cotizacion_aplicada'] = cotizacion_global
             
@@ -325,7 +333,8 @@ def agregar_item_venta_trazabilidad(request):
 
         response = render(request, 'armeria/partials/venta_trazabilidad_items_tabla.html', {
             'items': items,
-            'moneda': moneda
+            'moneda': moneda,
+            'modo_edicion': modo_edicion
         })
         response['HX-Trigger'] = json.dumps({'actualizarTotales': True})
         return response
@@ -362,6 +371,7 @@ def agregar_item_venta_trazabilidad(request):
             precio_unitario = round(precio_lista, 2)
 
     total_linea = precio_unitario
+    descuento_maximo = float(producto.rubro.descuento_maximo) if producto.rubro else 0.0
 
     items.append({
         'index': len(items),
@@ -372,9 +382,13 @@ def agregar_item_venta_trazabilidad(request):
         'cuim': subproducto.cuim,
         'cantidad': 1,
         'precio': precio_unitario,
+        'precio_base': precio_unitario,
         'iva': iva_alicuota,
         'total': total_linea,
         'descuento': 0.0,
+        'descuento_maximo': descuento_maximo,
+        'requiere_autorizacion': False,
+        'alerta_precio_duplicado': False,
         'moneda_origen': moneda_origen,
         'cotizacion_aplicada': cotizacion_global,
         'precio_origen': precio_lista,
@@ -385,7 +399,8 @@ def agregar_item_venta_trazabilidad(request):
     
     response = render(request, 'armeria/partials/venta_trazabilidad_items_tabla.html', {
         'items': items,
-        'moneda': moneda
+        'moneda': moneda,
+        'modo_edicion': modo_edicion
     })
     response['HX-Trigger'] = json.dumps({
         'limpiarInputsTrazabilidad': True,
@@ -395,27 +410,58 @@ def agregar_item_venta_trazabilidad(request):
 
 @login_required
 def editar_item_venta_trazabilidad(request, index):
+    from empresas.models import Empresa as _Empresa
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
     items = request.session.get('venta_trazabilidad_items_temp', [])
     moneda = request.session.get('venta_trazabilidad_moneda', 'PES')
     if 0 <= index < len(items):
         try:
-            total_linea = float(request.POST.get('total_linea', 0).replace('.', '').replace(',', '.') or 0)
             item = items[index]
-            item['total'] = total_linea
-            item['precio'] = total_linea
+            precio_base = float(item.get('precio_base', item.get('precio', 0)) or 0)
+            descuento_maximo = float(item.get('descuento_maximo', 0))
+
+            if modo_edicion == 'PRECIO':
+                raw_precio = str(request.POST.get('precio', request.POST.get('total_linea', '0'))).replace('.', '').replace(',', '.')
+                precio_ingresado = float(raw_precio or 0)
+                item['precio'] = precio_ingresado
+                item['total'] = precio_ingresado
+                if precio_ingresado < precio_base and precio_base > 0:
+                    item['descuento'] = round(((precio_base - precio_ingresado) / precio_base) * 100.0, 2)
+                else:
+                    item['descuento'] = 0.0
+                item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
+            else:
+                raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
+                descuento = float(raw_descuento or 0)
+                item['descuento'] = descuento
+                item['total'] = round(precio_base * (1 - (descuento / 100.0)), 2)
+
+            item['requiere_autorizacion'] = float(item.get('descuento', 0)) > descuento_maximo
             request.session['venta_trazabilidad_items_temp'] = items
             request.session.modified = True
-        except ValueError:
+        except (ValueError, TypeError):
             pass
+
     response = render(request, 'armeria/partials/venta_trazabilidad_items_tabla.html', {
         'items': items,
-        'moneda': moneda
+        'moneda': moneda,
+        'modo_edicion': modo_edicion
     })
-    response['HX-Trigger'] = json.dumps({'actualizarTotales': True})
+    response['HX-Trigger'] = json.dumps({
+        'actualizarTotales': {
+            'requiere_autorizacion': any(i.get('requiere_autorizacion', False) for i in items)
+        }
+    })
     return response
 
 @login_required
 def quitar_item_venta_trazabilidad(request, index):
+    from empresas.models import Empresa as _Empresa
+    empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
     items = request.session.get('venta_trazabilidad_items_temp', [])
     moneda = request.session.get('venta_trazabilidad_moneda', 'PES')
     if 0 <= index < len(items):
@@ -425,7 +471,8 @@ def quitar_item_venta_trazabilidad(request, index):
     request.session['venta_trazabilidad_items_temp'] = items
     response = render(request, 'armeria/partials/venta_trazabilidad_items_tabla.html', {
         'items': items,
-        'moneda': moneda
+        'moneda': moneda,
+        'modo_edicion': modo_edicion
     })
     response['HX-Trigger'] = json.dumps({'actualizarTotales': True})
     return response
