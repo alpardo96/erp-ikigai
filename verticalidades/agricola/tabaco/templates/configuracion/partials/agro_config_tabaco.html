@@ -1,0 +1,15 @@
+<button hx-push-url="{% url 'configuracion_index' %}" hx-get="{% url 'configuracion_index' %}?tab=hub" hx-target="#config-content" class="mb-6 inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 hover:text-indigo-800 rounded-xl text-sm font-bold transition-all shadow-sm">
+    <svg class="mr-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+    Volver al Panel Central
+</button>
+
+<div class="space-y-6">
+    <div>
+        <h2 class="text-xl font-bold text-gray-800">Configuración del Acopio de Tabaco</h2>
+        <p class="text-sm text-gray-500 mt-1">
+            Parámetros contables y de emisión del comprobante de liquidación.
+        </p>
+    </div>
+
+    {% include 'agricola/partials/config_tabaco_form.html' %}
+</div>

@@ -24,6 +24,7 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         empresa_id = self.request.session.get('empresa_id')
         context['active_tab'] = tab
         context['hide_sidebar'] = True
+        context['agro_hace_tabaco'] = self._hace_tabaco(empresa_id)
 
         if tab == 'empresas':
             context['empresas'] = Empresa.objects.all()
@@ -87,8 +88,72 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         elif tab == 'roles':
             from django.contrib.auth.models import Group
             context['roles'] = Group.objects.all().prefetch_related('permissions')
-            
+
+        # --- Maestros del Acopio de Tabaco (Plan 081).
+        # Import TOLERANTE: si la carpeta `verticalidades/agricola/` no está, la pestaña
+        # simplemente no trae datos y el resto de Configuración sigue funcionando (Plan 075).
+        elif tab.startswith('agro_'):
+            context.update(self._contexto_agricola(tab, empresa_id))
+
         return context
+
+    @staticmethod
+    def _hace_tabaco(empresa_id):
+        """¿La empresa activa tiene encendido el submódulo de tabaco?
+
+        Import tolerante: sin la verticalidad devuelve False y el hub no muestra el bloque.
+        """
+        try:
+            from verticalidades.agricola.core_agricola.models import EmpresaVertical
+        except ImportError:
+            return False
+        return EmpresaVertical.objects.filter(empresa_id=empresa_id, hace_tabaco=True).exists()
+
+    def _contexto_agricola(self, tab, empresa_id):
+        """Contexto de las pestañas de la verticalidad agrícola.
+
+        Devuelve `{}` si la verticalidad no está instalada: la pestaña se renderiza vacía en vez
+        de romper el panel entero.
+        """
+        try:
+            from verticalidades.agricola.core_agricola.models import Campania
+            from verticalidades.agricola.tabaco.forms import ConfiguracionTabacoForm
+            from verticalidades.agricola.tabaco.models import (
+                ClaseTabaco, ConfiguracionTabaco, ListaPrecioTabaco,
+                TipoRetencionTabaco, VariedadTabaco,
+            )
+        except ImportError:
+            return {}
+
+        if tab == 'agro_campanias':
+            return {'campanias': (Campania.objects.filter(empresa_id=empresa_id)
+                                  .select_related('ejercicio'))}
+
+        if tab == 'agro_variedades':
+            return {'variedades': (VariedadTabaco.objects.filter(empresa_id=empresa_id)
+                                   .select_related('producto'))}
+
+        if tab == 'agro_clases':
+            return {
+                'clases': (ClaseTabaco.objects.filter(empresa_id=empresa_id)
+                           .select_related('variedad')),
+                # Alimenta el combo del filtro por variedad de la pestaña.
+                'agro_variedades': VariedadTabaco.objects.filter(empresa_id=empresa_id, activa=True),
+            }
+
+        if tab == 'agro_listas_precio':
+            return {'listas': (ListaPrecioTabaco.objects.filter(empresa_id=empresa_id)
+                               .select_related('variedad', 'campania'))}
+
+        if tab == 'agro_retenciones':
+            return {'retenciones': (TipoRetencionTabaco.objects.filter(empresa_id=empresa_id)
+                                    .select_related('cuenta_contable', 'jurisdiccion'))}
+
+        if tab == 'agro_config_tabaco':
+            config = ConfiguracionTabaco.objects.filter(empresa_id=empresa_id).first()
+            return {'config': config, 'form': ConfiguracionTabacoForm(empresa_id, instance=config)}
+
+        return {}
 
 
 from django.contrib.auth.decorators import login_required, user_passes_test

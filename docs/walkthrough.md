@@ -3854,3 +3854,110 @@ desbloqueada, y con ella las Etapas 2 y 4 cuando llegue el momento.
 2. Etapa 0 — maestros de tabaco, configuración e importación idempotente de las 75 clases desde
    `docs/agricola/tabaco_clase.csv`.
 3. Etapa 1 — romaneo: recepción y clasificación por fardo.
+
+## Juan Manuel - Notebook personal - 2026-09-06 - Agrícola Etapa 0: Maestros del Acopio de Tabaco (Plan 081)
+
+**Objetivo:** dejar cargables y administrables los maestros del acopio —campañas, variedades, las
+75 clases con sus coeficientes, listas de precio ponderante, conceptos de retención y la extensión
+sectorial del productor—, sin ningún efecto contable, de stock ni de cuenta corriente.
+
+**Archivos creados o modificados:**
+- `docs/planes/081_agricola_etapa0_maestros_tabaco.md` (nuevo — plan de la etapa)
+- `verticalidades/agricola/urls.py` (nuevo — ver el hallazgo de abajo)
+- `verticalidades/agricola/core_agricola/models.py` (+ `Campania`) y su migración `0002_campania`
+- `verticalidades/agricola/tabaco/models.py` (6 modelos) y su migración `0001_initial`
+- `verticalidades/agricola/tabaco/forms.py`, `views_htmx.py`, `urls.py` (nuevos)
+- `verticalidades/agricola/tabaco/services/importacion_clases.py` y `services/precios.py` (nuevos)
+- `verticalidades/agricola/tabaco/management/commands/importar_clases_tabaco.py` (nuevo)
+- `verticalidades/agricola/tabaco/templates/` (13 plantillas nuevas, dentro de la verticalidad)
+- `verticalidades/agricola/tabaco/tests/test_plan081_maestros.py` y `test_plan081_pantallas.py` (nuevos)
+- `core/views_config.py` (pestañas agrícolas con import tolerante)
+- `templates/configuracion/partials/hub.html` (bloque "Acopio de Tabaco", condicionado)
+
+**HALLAZGO: las rutas de `agricola` no se publicaban.**
+El auto-descubrimiento de `config/urls.py` recorre `verticalidades/<app>/` e incluye la app sólo
+si encuentra un `urls.py` **en ese primer nivel**. Como `agricola` es un contenedor de sub-apps
+(`tabaco`, `granos`) y no una app en sí misma, ninguna de sus rutas llegaba a Django. Se resolvió
+creando `verticalidades/agricola/urls.py`, del lado de la verticalidad: **no se tocó
+`config/urls.py`**, el mecanismo del core ya servía y lo que faltaba era el punto de entrada.
+
+**Detalle Técnico:**
+
+*7 tablas, todas con prefijo `agricola_`*: `agricola_campania` (en `core_agricola`, porque granos
+y caña la comparten), `agricola_tabaco_configuracion`, `..._variedad`, `..._clase`,
+`..._lista_precio`, `..._tipo_retencion`, `..._productor`.
+
+*Tres decisiones de modelo que conviene tener presentes:*
+1. El **coeficiente lleva 4 decimales** aunque el maestro heredado traiga 2: multiplica un precio
+   por miles de kilos y el redondeo se nota.
+2. El **precio ponderante se versiona** por variedad, campaña y vigencia, con estado `aprobada`.
+   En el VFP era un campo suelto de `tab_variedad`: al cambiarlo se reescribía el precio de todo
+   lo ya comprado.
+3. `agricola_tabaco_tipo_retencion` **no tiene nada específico de tabaco**, a propósito.
+   `tipo_base` (NETO / IVA / ACUM_MENSUAL) y `momento` (LIQUIDACION / PAGO) son genéricos, para
+   poder promover la tabla al core cuando otra empresa sea agente de retención. El formulario
+   además impide configurar una retención de base acumulada mensual practicada al liquidar: su
+   base es el acumulado de lo PAGADO, y al liquidar daría un importe incorrecto.
+
+*Importación de las 75 clases.* Comando `importar_clases_tabaco --empresa <id> [--dry-run]`.
+Lee el CSV en UTF-8 con BOM, separador `;` y decimal con coma; busca por `codigo` y nunca por pk;
+valida el archivo entero ANTES de escribir, dentro de una transacción. Resultado verificado:
+primera corrida 75 altas y 2 variedades; segunda corrida 0 altas y 75 sin cambios. El `--dry-run`
+informa lo que haría y deja la base intacta (verificado en 0 registros).
+
+*Datos cargados y verificados contra la base:* 27 Burley + 48 Virginia, coeficientes 0,1000 a
+1,0500, `B1F` = 1,0000 en ambas variedades y `H1F` = 1,0500. El **grupo H de Virginia (3 clases)
+ahora aparece**: el sistema heredado lo perdía porque agrupaba con una lista fija de cinco letras
+(B, C, N, T, X); acá el grupo se deriva del dato.
+
+*Servicio de precios.* `precio_de_clase()` e `importe_de_linea()` implementan
+`REDONDEO(ponderante × coeficiente, 2)` y `REDONDEO(precio × kilos, 2)`. El redondeo a dos
+decimales del precio unitario es deliberado: si se redondeara recién en el importe final, el
+precio impreso en la liquidación no multiplicaría exacto por los kilos y el productor no podría
+verificar su propia liquidación con una calculadora.
+
+*Interfaz.* Seis pestañas en el panel de Configuración con búsqueda typeahead (`delay:300ms`),
+lupa, `.fInputAR` en todo importe y coeficiente y `|formato_ar` en los displays. Se usó **un modal
+genérico** para los cinco maestros en lugar de cinco plantillas casi idénticas. Las plantillas
+viven dentro de la verticalidad (`verticalidades/agricola/tabaco/templates/`) para que se
+desenchufe limpio. El bloque del hub aparece sólo si `EmpresaVertical.hace_tabaco`, y
+`core/views_config.py` importa la verticalidad con `try/except ImportError` — **no se copió** el
+patrón sin protección que ese mismo archivo usa hoy para distribución.
+
+**Resultado de las pruebas:**
+
+| Prueba | Resultado |
+|---|---|
+| `test_plan081_maestros` (importación, restricciones, precios) | **23/23** |
+| `test_plan081_pantallas` (render de pestañas, modales, buscadores, aislamiento, altas) | **14/14** |
+| Prueba de desenchufe | `check` limpio, 0 apps agrícolas, rutas inexistentes, contexto vacío |
+| `makemigrations --check` | sin cambios pendientes |
+| Suite completa | 640 tests (603 + 37 nuevos), **los mismos 15 errores preexistentes** |
+
+Los tests de precio validan contra **6 casos reales** del sistema heredado (marzo 2024, Burley,
+ponderante 2.500): `B1F → 2.500,00`, `B1FR → 2.125,00`, `B2F → 2.300,00`, `B3F → 1.950,00`,
+`C1F → 2.400,00`, `C2F → 2.150,00 × 843 kg = 1.812.450,00`. Hay además un test dedicado al caso
+`N5K`: dos códigos con la misma clase dentro de la misma variedad ahora se rechazan al importar.
+
+**Nota sobre la suite completa.** Reportó 17 errores en vez de 15. Los 2 extra fueron **un único
+evento de infraestructura**, no una regresión: el backend de PostgreSQL se cayó
+(`server closed the connection unexpectedly — server terminated abnormally`) durante
+`test_plan074_cobranzas.test_rendir_desde_la_pantalla`, arrastrando a su `tearDownClass`. Ese
+módulo re-corrido aislado da **43/43 OK y cero caídas**. Además, la Etapa 0 no registra ningún
+término en los registros del Plan 080 —verificado en runtime: los tres registros en 0 y
+`_terminos()` devolviendo los cuatro de siempre—, así que el camino de stock y cuenta corriente
+que ejecutó esta suite es idéntico al de la corrida anterior, que no tuvo ninguna caída.
+
+**Estado actual:** Etapa 0 completada y verificada. Los maestros quedan operativos y las 75 clases
+cargadas para la empresa 1.
+
+**Siguientes pasos sugeridos:**
+1. **Cargar los cinco conceptos de retención desde la pantalla.** No se sembraron por comando
+   porque cada uno necesita su cuenta de pasivo del plan de cuentas de la empresa, y eso lo define
+   el contador. Valores del sistema heredado, a confirmar: EEAOC 0,5 %, Uso de Agua 0,3 %, Salud
+   Pública 1 % (los tres sobre el neto, al liquidar), Ret. IVA 50 % del IVA (al liquidar, sólo RI)
+   y Ganancias 2 % sobre acumulado mensual con MNI 224.000 (al pagar, sólo RI).
+2. Cargar la campaña vigente y su lista de precio ponderante aprobada.
+3. **Etapa 1 — Romaneo**: recepción, pesaje y clasificación por fardo, con el precio congelado.
+4. Deuda técnica pendiente del baseline: las 6 causas de los 15 errores preexistentes, en especial
+   `facturacion/services/facturacion_lote_service.py`, que es código de producción roto.

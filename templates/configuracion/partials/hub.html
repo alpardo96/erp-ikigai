@@ -112,6 +112,56 @@
         </div>
     </div>
 
+    {% comment %}
+    Acopio de Tabaco (Plan 081). Se muestra sólo si la empresa activa tiene el submódulo
+    encendido; el contexto lo resuelve `ConfiguracionIndexView` con import tolerante, así que
+    si la verticalidad está desenchufada este bloque simplemente no aparece.
+    {% endcomment %}
+    {% if agro_hace_tabaco %}
+    <div>
+        <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <span class="bg-lime-100 text-lime-700 p-1.5 rounded-lg mr-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v18m0 0c-4 0-7-3-7-7 0-2 1-4 3-5m4 12c4 0 7-3 7-7 0-2-1-4-3-5"></path>
+                </svg>
+            </span>
+            Acopio de Tabaco
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_campanias" hx-target="#config-content"
+                class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Campañas</div>
+                <div class="text-sm text-lime-600/80 mt-1">Ordenan las listas de precio y las operaciones del ciclo.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_variedades" hx-target="#config-content"
+                class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Variedades</div>
+                <div class="text-sm text-lime-600/80 mt-1">Burley y Virginia, y su producto de stock.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_clases" hx-target="#config-content"
+                class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Clases</div>
+                <div class="text-sm text-lime-600/80 mt-1">Las 75 clases y su coeficiente sobre el ponderante.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_listas_precio" hx-target="#config-content"
+                class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Listas de Precio</div>
+                <div class="text-sm text-lime-600/80 mt-1">Precio ponderante por variedad y campaña, con vigencia.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_retenciones" hx-target="#config-content"
+                class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Retenciones</div>
+                <div class="text-sm text-lime-600/80 mt-1">Conceptos que se le practican al productor y su cuenta de pasivo.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_config_tabaco" hx-target="#config-content"
+                class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Configuración del Acopio</div>
+                <div class="text-sm text-lime-600/80 mt-1">Cuenta de bienes de cambio, punto de venta y CAI.</div>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Tesorería -->
     <div>
         <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">

@@ -1,0 +1,76 @@
+{% comment %}
+Formulario único de configuración del acopio. Se devuelve entero en cada POST para que los
+errores de validación se rendericen en su lugar, sin modal.
+{% endcomment %}
+<form hx-post="{% url 'agro_config_tabaco_guardar' %}"
+      hx-target="#agro-config-form" hx-swap="outerHTML" id="agro-config-form"
+      class="space-y-6">
+
+    {% if guardado and not form.errors %}
+        <div class="p-3 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 font-medium">
+            Configuración guardada.
+        </div>
+    {% endif %}
+    {% if form.non_field_errors %}
+        <div class="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-6">
+        <div>
+            <h3 class="text-base font-bold text-gray-900">Imputación contable</h3>
+            <p class="text-sm text-gray-500 mt-1">La cuenta que se debita al liquidar la compra al productor.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-5">
+            <div class="col-span-2">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.cuenta_bienes_cambio.label }}</label>
+                {{ form.cuenta_bienes_cambio }}
+                {% if form.cuenta_bienes_cambio.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.cuenta_bienes_cambio.errors.0 }}</p>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-6">
+        <div>
+            <h3 class="text-base font-bold text-gray-900">Comprobante de liquidación</h3>
+            <p class="text-sm text-gray-500 mt-1">
+                La liquidación es un comprobante que emite la empresa y que va al Libro IVA
+                <strong>Compras</strong> (códigos ARCA 150 y 151). En modo manual el número y el CAI
+                se cargan a mano desde el talonario o el comprobante en línea.
+            </p>
+        </div>
+        <div class="grid grid-cols-3 gap-5">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.punto_venta.label }}</label>
+                {{ form.punto_venta }}
+                {% if form.punto_venta.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.punto_venta.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.modo_autorizacion.label }}</label>
+                {{ form.modo_autorizacion }}
+                {% if form.modo_autorizacion.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.modo_autorizacion.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.tolerancia_pesaje.label }}</label>
+                {{ form.tolerancia_pesaje }}
+                {% if form.tolerancia_pesaje.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.tolerancia_pesaje.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.cai.label }}</label>
+                {{ form.cai }}
+                {% if form.cai.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.cai.errors.0 }}</p>{% endif %}
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.cai_vencimiento.label }}</label>
+                {{ form.cai_vencimiento }}
+                {% if form.cai_vencimiento.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.cai_vencimiento.errors.0 }}</p>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end">
+        <button type="submit"
+                class="px-8 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-transform active:scale-95">
+            Guardar configuración
+        </button>
+    </div>
+</form>
