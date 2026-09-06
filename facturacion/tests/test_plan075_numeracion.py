@@ -172,7 +172,7 @@ class LoteSinFallbacksTestCase(BaseNumeracionTestCase):
     def test_la_emision_real_esta_bloqueada_hasta_cablear_arca(self):
         """Mejor cortar antes de emitir que generar un número que ARCA no autorizó."""
         from productos.models import Producto
-        from facturacion.models import TarifaEstudio
+        from verticalidades.estudio.models import TarifaEstudio
         producto = Producto.objects.create(empresa=self.empresa, detalle="Servicio")
         tarifa = TarifaEstudio.objects.create(
             empresa=self.empresa, cliente=self.cliente, producto=producto,

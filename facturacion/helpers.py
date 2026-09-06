@@ -7,7 +7,8 @@ def validar_clu_cliente_armeria(cliente, empresa_id):
     Retorna (es_valido: bool, mensaje_error: str)
     """
     from empresas.models import Empresa
-    from facturacion.models import ExtensionArmeria, ClienteProveedor
+    from facturacion.models import ClienteProveedor
+    from verticalidades.armeria.models import ExtensionArmeria
     
     if not empresa_id:
         return True, ""
