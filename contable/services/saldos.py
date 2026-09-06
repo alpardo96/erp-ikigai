@@ -9,13 +9,16 @@ Por eso todos los recálculos suman DESDE CERO y nunca hacen `saldo -= importe`:
 incremental no se puede reconstruir y termina derivando (era el bug que dejaba facturas pagadas
 figurando impagas y viceversa).
 """
+import logging
 from decimal import Decimal
 
 from django.db import transaction, models
-from django.db.models import Sum, F
+from django.db.models import Q, Sum, F
 from django.db.models.functions import Coalesce
 
 from facturacion.models import ClienteProveedor, Venta, Compra
+
+logger = logging.getLogger(__name__)
 
 CERO = Decimal("0.00")
 
@@ -25,6 +28,84 @@ def _suma(queryset, campo='importe'):
     return queryset.aggregate(
         s=Coalesce(Sum(campo), Decimal('0'), output_field=models.DecimalField(max_digits=15, decimal_places=2))
     )['s']
+
+
+# ---------------------------------------------------------------------------
+# Puntos de extensión para las VERTICALIDADES (Plan 080)
+# ---------------------------------------------------------------------------
+# Una verticalidad puede tener comprobantes propios que generan deuda o crédito con un tercero
+# sin pasar por `Compra`/`Venta` —la liquidación de compra de tabaco no es un `CompraItem`: es
+# un comprobante sectorial con su propia tabla—. Este módulo NO puede importar `verticalidades.*`
+# sin romper el Modo Enchufe del Plan 075: es la verticalidad la que se anuncia desde su
+# `apps.py::ready()`.
+#
+# Si la carpeta de la verticalidad no está, su app no entra a INSTALLED_APPS, `ready()` no corre
+# y estos servicios calculan exactamente como antes del Plan 080.
+#
+# IMPORTANTE — qué importe declarar en `campo_importe`: el TOTAL del comprobante (la deuda), no
+# el neto a pagar. Es el mismo criterio del supuesto S-1 documentado más abajo: `OrdenPago.total`
+# ya incluye las retenciones practicadas como medio de pago, así que si el comprobante aportara
+# el neto de retenciones, la OP cancelaría de más y el tercero quedaría con un crédito falso.
+
+_TERMINOS_CTACTE_EXTRA = []
+_APLICACIONES_OP_EXTRA = []
+
+_CLAVES_TERMINO_CTACTE = {'nombre', 'modelo', 'campo_entidad', 'campo_empresa',
+                          'campo_importe', 'signo', 'excluir'}
+_CLAVES_APLICACION_OP = {'nombre', 'modelo', 'campo_op', 'campo_importe'}
+
+
+def _registrar(destino, item, claves, que):
+    """Alta idempotente por `nombre` en un registro de extensión.
+
+    La idempotencia no es un lujo: `ready()` puede correr más de una vez y un origen duplicado
+    haría que la deuda se contara dos veces sin que nada fallara a la vista.
+    """
+    faltan = claves - set(item)
+    if faltan:
+        raise ValueError(f"{que} incompleto, faltan claves: {sorted(faltan)}")
+
+    if any(x['nombre'] == item['nombre'] for x in destino):
+        logger.warning("%s '%s' ya estaba registrado; se ignora el alta repetida.", que, item['nombre'])
+        return
+
+    destino.append(item)
+
+
+def registrar_termino_ctacte(termino):
+    """Agrega un origen al saldo de cuenta corriente de un tercero.
+
+    `signo`: −1 si el comprobante nos genera deuda (mismo signo que una compra), +1 si nos
+    genera crédito. Ver la convención de signos en `recalcular_saldo_cliente_proveedor()`.
+
+    `excluir` acepta `None` o un `Q()` para no excluir nada. Se valida acá y no al calcular: un
+    término mal formado descubierto dentro de `recalcular_saldo_cliente_proveedor()` rompería la
+    cuenta corriente de todo el ERP en medio de una operación.
+    """
+    faltan = _CLAVES_TERMINO_CTACTE - set(termino)
+    if faltan:
+        raise ValueError(f"Término de cuenta corriente incompleto, faltan claves: {sorted(faltan)}")
+
+    if termino['excluir'] is not None and not isinstance(termino['excluir'], Q):
+        raise ValueError(
+            f"Término de cuenta corriente '{termino['nombre']}': 'excluir' debe ser un Q() "
+            f"o None, no {type(termino['excluir']).__name__}."
+        )
+    if termino['signo'] not in (1, -1):
+        raise ValueError(
+            f"Término de cuenta corriente '{termino['nombre']}': 'signo' debe ser 1 o −1."
+        )
+    _registrar(_TERMINOS_CTACTE_EXTRA, termino, _CLAVES_TERMINO_CTACTE, "Término de cuenta corriente")
+
+
+def registrar_aplicacion_op(aplicacion):
+    """Agrega una tabla de imputación de Órdenes de Pago.
+
+    `OrdenPagoAplicacion.compra` es un FK duro a `Compra`, así que una OP que cancela un
+    comprobante sectorial se imputa en una tabla de la verticalidad. Sin registrarla acá, esa OP
+    figuraría para siempre como "sin aplicar".
+    """
+    _registrar(_APLICACIONES_OP_EXTRA, aplicacion, _CLAVES_APLICACION_OP, "Aplicación de OP")
 
 
 # ---------------------------------------------------------------------------
@@ -112,6 +193,14 @@ def pendiente_de_aplicar_op(orden_pago) -> Decimal:
     if orden_pago.anulado:
         return CERO
     aplicado = _suma(OrdenPagoAplicacion.objects.filter(orden_pago=orden_pago))
+
+    # Imputaciones que aportan las verticalidades (Plan 080).
+    for extra in _APLICACIONES_OP_EXTRA:
+        aplicado += _suma(
+            extra['modelo'].objects.filter(**{extra['campo_op']: orden_pago}),
+            extra['campo_importe'],
+        )
+
     return Decimal(str(orden_pago.total)) - aplicado
 
 
@@ -178,7 +267,21 @@ def recalcular_saldo_cliente_proveedor(entidad_id: int) -> Decimal:
     recibos = _suma(Recibo.objects.filter(cliente=entidad, empresa_id=empresa_id, anulado=False), 'total')
     ordenes = _suma(OrdenPago.objects.filter(proveedor=entidad, empresa_id=empresa_id, anulado=False), 'total')
 
-    entidad.saldo = Decimal(str(entidad.saldo_inicial or 0)) + ventas - compras - recibos + ordenes
+    # Comprobantes sectoriales de las verticalidades (Plan 080). Con el registro vacío —que es
+    # el caso de cualquier empresa sin verticalidades enchufadas— este bloque no hace nada y el
+    # saldo sale de los cuatro términos de siempre.
+    extras = CERO
+    for termino in _TERMINOS_CTACTE_EXTRA:
+        qs = termino['modelo'].objects.filter(**{
+            termino['campo_entidad']: entidad,
+            termino['campo_empresa']: empresa_id,
+        })
+        if termino['excluir'] is not None:
+            qs = qs.exclude(termino['excluir'])
+        extras += termino['signo'] * _suma(qs, termino['campo_importe'])
+
+    entidad.saldo = (Decimal(str(entidad.saldo_inicial or 0))
+                     + ventas - compras - recibos + ordenes + extras)
     entidad.save(update_fields=['saldo'])
     return entidad.saldo
 

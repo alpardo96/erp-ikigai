@@ -54,11 +54,61 @@ _DEC = DecimalField(max_digits=20, decimal_places=2)
 #   signo_cbte  : ruta al `TipoComprobante.signo` (las NC invierten), o None
 #   excluir     : Q() de comprobantes que NO mueven stock
 
+# ---------------------------------------------------------------------------
+# Términos que aportan las VERTICALIDADES (Plan 080)
+# ---------------------------------------------------------------------------
+# Una verticalidad puede mover stock con comprobantes propios que no son compras ni ventas —el
+# acopio de tabaco descarga por fardo, no por `CompraItem`—. En vez de que este módulo importe
+# `verticalidades.*` (que rompería el Modo Enchufe del Plan 075 en cuanto alguien desenchufe la
+# carpeta), es la verticalidad la que se ANUNCIA desde su `apps.py::ready()`.
+#
+# Si la carpeta no está, su app no entra a INSTALLED_APPS, `ready()` no corre, no se registra
+# nada y el stock se calcula exactamente como si el Plan 080 no existiera.
+
+_TERMINOS_EXTRA = []
+
+_CLAVES_TERMINO = {'nombre', 'modelo', 'signo', 'cantidad', 'producto', 'sucursal',
+                   'signo_cbte', 'excluir'}
+
+
+def registrar_termino_stock(termino):
+    """Agrega un origen al cálculo del stock. Lo llaman las verticalidades desde `ready()`.
+
+    Es IDEMPOTENTE POR `nombre` a propósito: `ready()` puede correr más de una vez —el
+    autoreload del runserver, ciertos runners de test— y un término duplicado haría que esas
+    cantidades se contaran dos veces sin que nada fallara a la vista.
+
+    Valida acá, al arrancar, y no al calcular: un término mal formado que se descubriera dentro
+    de `recalcular_stock()` rompería el stock de TODO el ERP en medio de una operación. Es
+    preferible que el servidor no levante.
+
+    `excluir` acepta `None` o un `Q()` vacío para "no excluir nada".
+    """
+    faltan = _CLAVES_TERMINO - set(termino)
+    if faltan:
+        raise ValueError(f"Término de stock incompleto, faltan claves: {sorted(faltan)}")
+
+    if termino['excluir'] is None:
+        termino = dict(termino, excluir=Q())
+    elif not isinstance(termino['excluir'], Q):
+        raise ValueError(
+            f"Término de stock '{termino['nombre']}': 'excluir' debe ser un Q() o None, "
+            f"no {type(termino['excluir']).__name__}."
+        )
+
+    if any(t['nombre'] == termino['nombre'] for t in _TERMINOS_EXTRA):
+        logger.warning("Término de stock '%s' ya estaba registrado; se ignora el alta repetida.",
+                       termino['nombre'])
+        return
+
+    _TERMINOS_EXTRA.append(termino)
+
+
 def _terminos():
     """Se arma adentro de la función para no importar `facturacion` al cargar el módulo."""
     from facturacion.models import CompraItem, RecepcionItem, RemitoInternoItem, VentaItem
 
-    return [
+    base = [
         {
             'nombre': 'compras',
             'modelo': CompraItem,
@@ -102,6 +152,8 @@ def _terminos():
             'excluir': Q(remito__estado=3),             # 3 = Anulado
         },
     ]
+
+    return base + list(_TERMINOS_EXTRA)
 
 
 def _sumar_termino(termino, producto_id, sucursal_id) -> Decimal:

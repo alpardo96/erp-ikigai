@@ -68,6 +68,7 @@
 | 14 | GNC / Combustibles | futuro: `gnc` | ❌ Pendiente | — | Media |
 | 15 | Inmobiliaria | futuro: `inmobiliaria` | ❌ Pendiente | — | Media |
 | 16 | Peluquería | futuro: `peluqueria` | ❌ Pendiente | — | Baja |
+| 17 | Agropecuario y Acopio de Tabaco | `verticalidades/agricola` (`core_agricola`, `tabaco`, `granos`) | 🔶 Diseño aprobado (esqueleto creado) | [plan integral](agricola/plan%20inicial%20agricola.md) · [078](planes/078_arquitectura_verticalidad_agricola.md) · [080](planes/080_terminos_enchufables_saldos_stock.md) | Alta |
 
 ### Infraestructura y Operaciones
 

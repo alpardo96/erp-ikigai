@@ -3660,3 +3660,99 @@ erticalidades/estudio/templates/estudio/hooks/menu_ventas.html (condicional apli
 - `manage.py check`: `System check identified no issues (0 silenced)`.
 
 **Estado Actual:** Completado y verificado.
+
+
+## Juan Manuel - Notebook personal - 2026-09-06 - Diseño de la Verticalidad Agrícola (Acopio de Tabaco)
+
+**Objetivo:** Relevar el material de diseño externo y el sistema VFP heredado, contrastarlos contra
+el código real del ERP, y dejar documentado el plan de implementación por etapas de la verticalidad
+Agrícola, con foco en el circuito de acopio y comercialización de tabaco. **No se modificó código
+del ERP: la intervención es exclusivamente documental.**
+
+**Archivos creados o modificados:**
+- `docs/agricola/plan inicial agricola.md` (reescrito completo — plan integral v1.0)
+- `docs/planes/080_terminos_enchufables_saldos_stock.md` (nuevo)
+- `docs/GUIA_MODULAR.md` (alta de la verticalidad 17 — Agropecuario y Acopio de Tabaco)
+- `docs/walkthrough.md` (esta entrada)
+- `d:orrador	abaco_clase.csv` (corrección de dato: clase código 72 `N5K` → `N5T`)
+
+**Detalle Técnico:**
+
+*Fuentes analizadas.* Paquete de diseño externo `erp_agro_diseno_v0_1` (12 documentos),
+`tabaco_clase.csv` (75 clases), y los formularios VFP `op_romaneo.scx/.sct`,
+`compra_tabaco.scx/.sct` y `consulta_romaneo.scx/.sct` del sistema heredado, más las estructuras
+DBF y la biblioteca de clases `basico.vcx`.
+
+*Verificaciones contra el código del ERP.* Se corrigieron once afirmaciones del paquete externo
+que no se sostienen contra el repositorio (detalle en §10 del plan). Las tres de mayor impacto:
+1. El stock **no** se ajusta por delta desde signals: es un valor derivado que `recalcular_stock()`
+   reconstruye desde una lista declarativa de términos (Plan 053). Extenderlo es agregar un
+   término, no rediseñar el motor.
+2. `contable.LibroIvaCompras` y `LibroIvaAlic` **no dependen de `Compra`**: se cuelgan del asiento
+   por un `asiento_id` que ni siquiera es FK. La verticalidad puede participar del subsistema
+   fiscal sin ningún cambio en el core.
+3. `contabilizar_orden_pago()` **no lee `OrdenPagoAplicacion`**: el asiento de la OP es idéntico
+   pague una `Compra` o una liquidación de tabaco. Y la retención de Ganancias ya está resuelta
+   por el core vía `MedioPago` categoría `RET` + `cta_ret_practicada_ganancias`.
+
+*Fórmulas de cálculo extraídas del VFP y validadas.* `precio = ROUND(ponderante × coeficiente, 2)`
+e `importe = ROUND(precio × kilos, 2)`, verificadas contra **132 registros reales** de
+`cpra_clase_fec.DBF` (marzo 2024): 132/132 exactas. Retenciones: Ret. IVA 50 % del IVA,
+EEAOC 0,5 %, Uso de Agua 0,3 %, Salud Pública 1 %, todas sobre el neto; Ganancias 2 % sobre
+acumulado mensual menos MNI, régimen 78, MNI 224.000. Ninguna se calcula por kilo.
+
+*Decisión de circuito.* El VFP resolvía liquidación y pago en un solo acto (`op_romaneo`) por una
+particularidad operativa de aquel cliente. **No se replica.** El ERP separa los dos hechos:
+se liquida (nace la deuda) y después, en tesorería, se emite la Orden de Pago que la cancela.
+
+*Hallazgo en el sistema heredado.* El asiento de la Orden de Pago del VFP no balancea cuando hay
+retención de Ganancias: descuadra en 2 × Ret_gcias por tener intercambiados los importes de la
+línea del productor y la del banco. Sobrevivió porque con retención en cero cierra. `crear_asiento()`
+de Ikigai rechazaría ese asiento, que es el comportamiento correcto.
+
+*Corrección de datos.* En `tabaco_clase.csv`, el código 72 figuraba como `N5K`, duplicando al
+código 38 dentro de Virginia con distinto coeficiente (0,15 vs 0,17). Por el patrón de bloques del
+maestro corresponde al grupo T y se corrigió a `N5T`, confirmado por el usuario. Tras la
+corrección, `(variedad, detalle)` es único además de `(variedad, codigo)`.
+
+*Observación para el equipo.* Las verticalidades `distribucion` y `estudio` existen físicamente en
+`verticalidades/` pero no figuran en el índice de `docs/GUIA_MODULAR.md`. No se modificaron sus
+filas por estar fuera del alcance de esta tarea.
+
+**Resultado de las pruebas:** No aplica — no hubo cambios de código. El baseline de la suite debe
+ejecutarse y registrarse al iniciar el Plan 080, que es el primer plan con impacto en el core.
+
+**Estado actual:** Diseño documentado y aprobado en sus decisiones de fondo. Quedan **siete
+decisiones abiertas** (DA-01 a DA-07 del plan), de las cuales tres bloquean la Etapa 2:
+momento de cada retención, forma de autorización del comprobante (webservice / talonario con CAI)
+y existencia de notas de crédito de liquidación.
+
+**Siguientes pasos sugeridos:**
+1. Cerrar DA-01, DA-02 y DA-03 con el asesor impositivo.
+2. Ejecutar el Plan 080 (único cambio al core), con baseline y prueba de desenchufe.
+3. Etapa 0 — maestros y configuración, con la importación idempotente de las 75 clases.
+4. Etapa 1 — romaneo (recepción y clasificación por fardo), sin efectos contables ni de stock.
+
+### Actualización 2026-09-06 (misma jornada) — Cierre de DA-01, DA-02 y DA-03
+
+**Objetivo:** incorporar al plan las tres decisiones que bloqueaban la Etapa 2.
+
+**Archivos modificados:** `docs/agricola/plan inicial agricola.md`
+
+**Decisiones incorporadas:**
+- **DA-01 — Momento de cada retención (cerrada).** Ret. IVA, EEAOC, Uso de Agua y Salud Pública se
+  practican en la **liquidación**; Ganancias en el **pago**. Queda parametrizado en el campo
+  `momento` del maestro de retenciones, no cableado en el código.
+- **DA-02 — Autorización del comprobante (cerrada).** Se soportan **dos modos simultáneos**:
+  `MANUAL` (captura de tipo, punto, número y CAI, para talonario impreso o comprobante en línea de
+  ARCA) — el que se implementa en la Etapa 2 — y `WEBSERVICE`, que queda como punto de extensión
+  preparado y sin desarrollar (mejora MP-02). Se agregó la sección §3.6 al plan con el detalle de
+  qué se propone y qué es editable en cada modo, y la validación de unicidad
+  `(empresa, letra, punto, numero)`.
+- **DA-03 — Notas de crédito de liquidación (postergada).** Pasa a la mejora **MP-01**, fuera del
+  alcance inicial: falta definir si el comprobante 150/151 tiene su propia nota de crédito con
+  código ARCA específico o si se usan las Notas de Crédito convencionales A/B. Mientras tanto, la
+  corrección de una liquidación se hace por **anulación con contraasiento** dentro del período.
+
+**Estado actual:** la Etapa 2 queda **desbloqueada**. Las decisiones abiertas remanentes (DA-04 a
+DA-07) afectan a las Etapas 1, 4 y 5, no a la liquidación.
