@@ -3756,3 +3756,101 @@ y existencia de notas de crédito de liquidación.
 
 **Estado actual:** la Etapa 2 queda **desbloqueada**. Las decisiones abiertas remanentes (DA-04 a
 DA-07) afectan a las Etapas 1, 4 y 5, no a la liquidación.
+
+## Juan Manuel - Notebook personal - 2026-09-06 - Plan 080: términos enchufables en Stock y Cuenta Corriente
+
+**Objetivo:** implementar el único cambio al core que requiere la verticalidad Agrícola: tres
+puntos de extensión para que una verticalidad sume sus propios orígenes al cálculo del stock, al
+saldo de cuenta corriente y a la imputación de Órdenes de Pago, sin que el core la importe y sin
+romper el Modo Enchufe del Plan 075.
+
+**Archivos creados o modificados:**
+- `productos/services/stock_service.py` — `registrar_termino_stock()`; `_terminos()` ahora devuelve `base + _TERMINOS_EXTRA`
+- `contable/services/saldos.py` — `registrar_termino_ctacte()` y `registrar_aplicacion_op()`, consumidos en `recalcular_saldo_cliente_proveedor()` y `pendiente_de_aplicar_op()`
+- `productos/tests/test_plan080_terminos_stock.py` (nuevo, 12 casos)
+- `contable/tests/test_plan080_terminos_ctacte.py` (nuevo, 14 casos)
+- `verticalidades/estudio/migrations/0001_initial.py` (nuevo — reparación, ver más abajo)
+- `docs/planes/080_terminos_enchufables_saldos_stock.md`
+
+**Sin migraciones del core y sin tablas nuevas.** Los cuatro términos de stock y los cuatro
+sumandos de cuenta corriente quedaron textualmente iguales: el diff sólo agrega.
+
+**Detalle Técnico:**
+
+*Mecanismo.* Cada servicio expone un registro al que la verticalidad se suscribe desde su
+`apps.py::ready()`. La dependencia va verticalidad → core, nunca al revés. Si la carpeta de la
+verticalidad no está, su app no entra a `INSTALLED_APPS`, `ready()` no corre, no se registra nada
+y los servicios calculan como antes del plan.
+
+*Idempotencia.* El alta es idempotente por `nombre`. Sin eso, un `ready()` ejecutado dos veces
+—autoreload, ciertos runners— contaría el stock y la deuda por duplicado en silencio.
+
+*Ajuste sobre el diseño original.* La validación de los términos se hace AL REGISTRAR, no al
+calcular. Un `excluir` mal tipeado descubierto dentro de `recalcular_stock()` rompería el stock de
+todo el ERP en plena operación; así el servidor directamente no levanta. Se verificó contra la
+base que `exclude(Q())` no excluye nada y que `exclude(None)` lanza `TypeError`, de modo que
+`None` se normaliza a `Q()` al registrar. También se valida que `signo` sea 1 o −1.
+
+*Convención de importes (documentada en el código).* Un término de cuenta corriente debe declarar
+el TOTAL del comprobante, no el neto a pagar. Es el mismo criterio del supuesto S-1 ya
+documentado en `saldos.py`: `OrdenPago.total` ya incluye las retenciones practicadas como medio
+de pago, así que un comprobante que aportara el neto de retenciones haría que la OP cancelara de
+más y el tercero quedara con un crédito falso.
+
+**BLOQUEANTE PREEXISTENTE REPARADO — la suite no podía correr.**
+`verticalidades/estudio` tenía el modelo `TarifaEstudio` pero nunca se le generaron migraciones.
+Al crear la base de test, Django ejecuta `sync_apps` para las apps sin migraciones ANTES de
+aplicar las migraciones, y `TarifaEstudio` hereda de `AuditModel`, que tiene FK a `auth_user`,
+que en ese momento todavía no existe: `relation "auth_user" does not exist`. Se verificó además
+que la tabla `facturacion_tarifaestudio` tampoco existía en la base real. Se generó la migración
+faltante; es puramente aditiva y no requiere `--fake`.
+
+**Resultado de las pruebas:**
+
+| Corrida | Tests | Errores | Tiempo |
+|---|---|---|---|
+| **Baseline** (código previo al Plan 080, suite completa) | 577 | **15** | 5.454 s |
+| **Después** (con Plan 080, suite completa) | 603 | **15** | 5.568 s |
+| Tests propios del Plan 080 | 26 | 0 | 62 s |
+
+Los 603 son los 577 del baseline más los 26 nuevos. El conteo de errores no cambió.
+
+*Comparación dirigida (la prueba fuerte).* Sobre 9 módulos —`test_plan028`,
+`test_plan071_trazabilidad`, `test_totales`, `test_stock`, `test_stock_inicial`, `test_saldos`,
+`test_saldos_mensuales`, `test_contabilizacion_op`, `test_contabilizacion_recibo`, 90 tests— se
+corrió la misma suite dos veces: con los dos archivos de servicio revertidos a `7e0b322` y con
+la versión del Plan 080. Ambas dieron 8 errores y las listas de fallas son **byte a byte
+idénticas**; la única diferencia del diff es el tiempo transcurrido (319,275 s vs 317,764 s).
+
+*Prueba de fuego de desenchufe.* Con `verticalidades/agricola/` movida fuera del proyecto:
+`manage.py check` sin problemas, ninguna app con 'agricola' en `INSTALLED_APPS`, 0 términos
+registrados en los tres registros, y los términos de stock de siempre intactos
+(`['compras','recepciones','ventas','remitos_internos']`). Carpeta restaurada y `check` limpio.
+
+**Los 15 errores preexistentes, clasificados** (ninguno relacionado con este plan; ninguno en los
+módulos de stock ni de saldos):
+
+| Causa | Módulos afectados |
+|---|---|
+| `ValidationError` de CUIM al crear `Subproducto` — la validación estricta agregada el 2026-09-03 rompió tests que crean subproductos sin CUIM válido | `test_plan028` (5), `test_plan071_trazabilidad` (3) |
+| `ImportError: cannot import name 'TarifaEstudio' from 'facturacion.models'` — el modelo se mudó a `verticalidades/estudio` y quedaron referencias viejas | `test_lote_condic`, `test_plan075_numeracion` |
+| `ImportError: cannot import name 'ExtensionArmeria' from 'facturacion.models'` | `test_armeria_credencial_clu` |
+| `ImportError: cannot import name 'ExtensionDistribuidoraForm' from 'facturacion.forms'` | `test_plan074_maestros` |
+| `SyntaxError` — un `from ... import` quedó inyectado en medio de otro import multilínea, dejando el paréntesis sin cerrar | `test_plan074_facturacion` (línea 22), `test_plan074_pedidos` (línea 20) |
+| `ModuleNotFoundError: No module named 'contable.migrations.0019_renumerar_condic'` — el test importa una migración eliminada en la consolidación del 2026-09-04 | `test_condic_renumeracion` |
+
+**HALLAZGO QUE NO ES SÓLO DE TESTS:** `facturacion/services/facturacion_lote_service.py` línea 6
+importa `TarifaEstudio` desde `facturacion.models`. **Es código de producción, no un test**: el
+servicio de facturación por lote está roto en tiempo de importación. Es la misma clase de
+violación del Modo Enchufe que el Plan 075 prohíbe. **No se corrigió**: queda fuera del alcance de
+este plan y necesita decisión.
+
+**Estado actual:** Plan 080 completado y verificado. La Etapa 0 de la verticalidad Agrícola queda
+desbloqueada, y con ella las Etapas 2 y 4 cuando llegue el momento.
+
+**Siguientes pasos sugeridos:**
+1. **Deuda técnica preexistente** (fuera del alcance agrícola, pero conviene atacarla): las 6
+   causas de arriba. La del `facturacion_lote_service.py` es la urgente porque es producción.
+2. Etapa 0 — maestros de tabaco, configuración e importación idempotente de las 75 clases desde
+   `docs/agricola/tabaco_clase.csv`.
+3. Etapa 1 — romaneo: recepción y clasificación por fardo.

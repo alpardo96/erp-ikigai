@@ -1,6 +1,6 @@
 # Plan 080 — Términos enchufables en Stock y Cuenta Corriente
 
-## Estado: ❌ Pendiente
+## Estado: ✅ Completado (2026-09-06)
 
 **Fecha:** 2026-09-06
 **Origen:** requisito de la verticalidad Agrícola — ver [`docs/agricola/plan inicial agricola.md`](../agricola/plan%20inicial%20agricola.md)
@@ -268,12 +268,30 @@ no tuviera el punto de extensión (despliegue escalonado).
 
 ## 8. Criterio de Hecho
 
-- [ ] Suite completa ejecutada **antes** del cambio y registrada como baseline.
-- [ ] Los tres puntos de extensión implementados, documentados y con docstring que explique el porqué.
-- [ ] Ningún cálculo existente modificado: los cuatro términos de stock y los cuatro de cuenta
+- [x] Suite completa ejecutada **antes** del cambio y registrada como baseline — **577 tests, 15 errores, 5.454 s**.
+- [x] Los tres puntos de extensión implementados, documentados y con docstring que explique el porqué.
+- [x] Ningún cálculo existente modificado: los cuatro términos de stock y los cuatro de cuenta
       corriente quedan textualmente iguales.
-- [ ] Tests de no regresión y de mecanismo en verde.
-- [ ] Prueba de fuego de desenchufe ejecutada y documentada.
-- [ ] Suite completa ejecutada **después**, comparada contra el baseline, sin fallas nuevas.
-- [ ] Sin migraciones: el plan **no crea ni altera tablas**.
-- [ ] `docs/walkthrough.md` actualizado.
+- [x] Tests de no regresión y de mecanismo en verde — **26/26**.
+- [x] Prueba de fuego de desenchufe ejecutada y documentada.
+- [x] Suite completa ejecutada **después** — **603 tests (577 + 26), 15 errores, 5.568 s**: mismo
+      conteo que el baseline, sin fallas nuevas.
+- [x] **Comparación dirigida**: 9 módulos / 90 tests corridos con los servicios revertidos a
+      `7e0b322` y con el Plan 080. Ambos 8 errores, listas **idénticas** (el diff sólo difiere en
+      el tiempo transcurrido).
+- [x] Sin migraciones del core: el plan **no crea ni altera tablas**.
+- [x] `docs/walkthrough.md` actualizado.
+
+### Nota de ejecución
+
+Para poder obtener el baseline hubo que reparar un bloqueante preexistente: la suite **no podía
+correr** porque `verticalidades/estudio` no tenía migraciones y su modelo, que hereda de
+`AuditModel`, choca con `auth_user` durante el `sync_apps` previo a las migraciones. Se generó
+`verticalidades/estudio/migrations/0001_initial.py` (aditiva, sin `--fake`).
+
+El baseline dejó al descubierto **15 errores preexistentes** ajenos a este plan, clasificados en
+`docs/walkthrough.md`. Uno de ellos no es sólo de tests:
+`facturacion/services/facturacion_lote_service.py` importa `TarifaEstudio` desde
+`facturacion.models`, de donde ese modelo ya no existe — **código de producción roto en tiempo de
+importación**, y la misma clase de violación del Modo Enchufe que el Plan 075 prohíbe. Queda
+señalado, sin corregir, por estar fuera del alcance.
