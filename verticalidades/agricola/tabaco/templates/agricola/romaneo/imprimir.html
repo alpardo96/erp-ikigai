@@ -1,0 +1,90 @@
+{% load formato_tags %}<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Romaneo {% if romaneo.numero %}{{ romaneo.punto|stringformat:"04d" }}-{{ romaneo.numero|stringformat:"08d" }}{% else %}borrador{% endif %}</title>
+    <style>
+        /* Impresión: hoja limpia, sin dependencias externas. */
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; margin: 24px; }
+        h1 { font-size: 18px; margin: 0 0 4px; }
+        .sub { color: #555; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th { background: #f1f5f9; text-align: left; font-size: 9px; text-transform: uppercase;
+             letter-spacing: .05em; color: #64748b; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; }
+        td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; }
+        .der { text-align: right; }
+        .cen { text-align: center; }
+        .totales { margin-top: 16px; display: flex; gap: 28px; flex-wrap: wrap; }
+        .totales div span { display: block; font-size: 9px; text-transform: uppercase;
+                            letter-spacing: .05em; color: #64748b; }
+        .totales div strong { font-size: 15px; }
+        .grupos { margin-top: 14px; font-size: 11px; }
+        .anulado { color: #b91c1c; font-weight: bold; border: 2px solid #b91c1c;
+                   display: inline-block; padding: 2px 10px; border-radius: 4px; }
+        @media print { .noprint { display: none; } }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <button class="noprint" onclick="window.print()">Imprimir</button>
+
+    <h1>
+        Romaneo de Tabaco
+        {% if romaneo.numero %}Nº {{ romaneo.punto|stringformat:"04d" }}-{{ romaneo.numero|stringformat:"08d" }}{% else %}(borrador){% endif %}
+        {% if romaneo.estado == 9 %}<span class="anulado">ANULADO</span>{% endif %}
+    </h1>
+    <div class="sub">
+        <strong>{{ romaneo.empresa.nombre }}</strong><br>
+        Productor: {{ romaneo.productor.razon_social }}
+        {% if romaneo.productor.cuit %}(CUIT {{ romaneo.productor.cuit }}){% endif %}<br>
+        Variedad: {{ romaneo.variedad.detalle }} ·
+        Campaña: {{ romaneo.campania.codigo }} ·
+        Fecha: {{ romaneo.fecha|date:"d/m/Y" }}<br>
+        Ponderante aplicado: $ {{ romaneo.ponderante_aplicado|formato_ar }}
+        {% if romaneo.transporte %} · Transporte: {{ romaneo.transporte }}{% endif %}
+        {% if romaneo.remito %} · Remito: {{ romaneo.remito }}{% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nº</th><th>Clase</th><th class="cen">Grupo</th>
+                <th class="der">Coef.</th><th class="der">Precio</th>
+                <th class="der">Kilos</th><th class="der">Importe</th><th>Etiqueta</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in fardos %}
+            <tr>
+                <td>{{ f.numero_fardo }}</td>
+                <td><strong>{{ f.clase.detalle }}</strong></td>
+                <td class="cen">{{ f.clase.grupo }}</td>
+                <td class="der">{{ f.coeficiente_aplicado|formato_ar:4 }}</td>
+                <td class="der">{{ f.precio_aplicado|formato_ar }}</td>
+                <td class="der">{{ f.kilos|formato_ar }}</td>
+                <td class="der">{{ f.importe|formato_ar }}</td>
+                <td>{{ f.etiqueta|default:"" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totales">
+        <div><span>Fardos</span><strong>{{ romaneo.total_fardos }}</strong></div>
+        <div><span>Kilos</span><strong>{{ romaneo.total_kilos|formato_ar }}</strong></div>
+        <div><span>Importe</span><strong>$ {{ romaneo.total_importe|formato_ar }}</strong></div>
+        <div><span>Precio promedio</span><strong>$ {{ romaneo.precio_promedio|formato_ar }}</strong></div>
+        <div><span>% sobre ponderante</span><strong>{{ romaneo.porcentaje_ponderante|formato_ar }} %</strong></div>
+    </div>
+
+    {% if grupos %}
+    <div class="grupos">
+        <strong>Composición por grupo:</strong>
+        {% for g in grupos %}
+            {{ g.grupo }}: {{ g.kilos|formato_ar }} kg ({{ g.fardos }} f · {{ g.porcentaje|formato_ar }} %){% if not forloop.last %} · {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</body>
+</html>

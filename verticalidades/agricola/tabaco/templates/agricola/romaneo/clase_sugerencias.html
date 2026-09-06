@@ -1,0 +1,22 @@
+{% comment %}
+Sugerencias del typeahead de clase. Cada opción setea el hidden `clase` y el texto visible por
+Alpine, y cierra el desplegable.
+{% endcomment %}
+{% load formato_tags %}
+{% for c in clases %}
+<button type="button"
+        class="w-full text-left px-4 py-2 hover:bg-indigo-50 transition-colors flex items-center justify-between"
+        @click="claseId = '{{ c.id }}'; claseDetalle = '{{ c.detalle }}'; sugerencias = false;
+                document.getElementById('busca-clase').value = '{{ c.detalle }}';
+                htmx.trigger(document.querySelector('[name=kilos]'), 'keyup')">
+    <span>
+        <span class="font-bold text-gray-900">{{ c.detalle }}</span>
+        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">{{ c.grupo }}</span>
+    </span>
+    <span class="text-xs text-gray-500 font-mono">coef. {{ c.coeficiente|formato_ar:4 }}</span>
+</button>
+{% empty %}
+<div class="px-4 py-3 text-sm text-gray-500 italic">
+    No hay clases que coincidan para {{ romaneo.variedad.detalle }}.
+</div>
+{% endfor %}

@@ -1,0 +1,25 @@
+{% load formato_tags %}
+{% if clase and precio is not None %}
+<div class="flex flex-wrap items-center gap-6 px-5 py-3 rounded-xl bg-lime-50 border border-lime-200">
+    <div>
+        <span class="text-[10px] font-bold text-lime-700/70 uppercase tracking-widest">Clase</span>
+        <div class="text-sm font-bold text-lime-900">{{ clase.detalle }}</div>
+    </div>
+    <div>
+        <span class="text-[10px] font-bold text-lime-700/70 uppercase tracking-widest">Coeficiente</span>
+        <div class="text-sm font-mono text-lime-900">{{ clase.coeficiente|formato_ar:4 }}</div>
+    </div>
+    <div>
+        <span class="text-[10px] font-bold text-lime-700/70 uppercase tracking-widest">Precio unitario</span>
+        <div class="text-sm font-mono font-bold text-lime-900">$ {{ precio|formato_ar }}</div>
+    </div>
+    <div>
+        <span class="text-[10px] font-bold text-lime-700/70 uppercase tracking-widest">Kilos</span>
+        <div class="text-sm font-mono text-lime-900">{{ kilos|formato_ar }}</div>
+    </div>
+    <div class="ml-auto">
+        <span class="text-[10px] font-bold text-lime-700/70 uppercase tracking-widest">Importe</span>
+        <div class="text-xl font-mono font-bold text-lime-800">$ {{ importe|formato_ar }}</div>
+    </div>
+</div>
+{% endif %}

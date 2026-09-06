@@ -1,0 +1,92 @@
+{% comment %}
+Detalle de fardos + totales + estadística por grupo. Es lo único que cambia con cada alta o baja,
+así que se devuelve entero en cada operación HTMX: recalcular a mano en el navegador duplicaría
+la fórmula del servidor, que es exactamente lo que el proyecto prohíbe.
+{% endcomment %}
+{% load formato_tags %}
+<div id="panel-fardos" class="space-y-4">
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</div>
+            <div class="text-2xl font-bold text-gray-900">{{ romaneo.total_fardos }}</div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</div>
+            <div class="text-2xl font-bold text-gray-900">{{ romaneo.total_kilos|formato_ar }}</div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</div>
+            <div class="text-2xl font-bold text-lime-700">$ {{ romaneo.total_importe|formato_ar }}</div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Precio prom.</div>
+            <div class="text-2xl font-bold text-gray-900">$ {{ romaneo.precio_promedio|formato_ar }}</div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">% s/ponderante</div>
+            <div class="text-2xl font-bold text-gray-900">{{ romaneo.porcentaje_ponderante|formato_ar }} %</div>
+        </div>
+    </div>
+
+    {% if grupos %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Composición por grupo</div>
+        <div class="flex flex-wrap gap-4">
+            {% for g in grupos %}
+            <div class="flex items-baseline gap-2">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-slate-100 text-slate-700">{{ g.grupo }}</span>
+                <span class="text-sm text-gray-700">{{ g.kilos|formato_ar }} kg</span>
+                <span class="text-xs text-gray-400">({{ g.fardos }} f · {{ g.porcentaje|formato_ar }} %)</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nº</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clase</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grupo</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coef.</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Precio</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Etiqueta</th>
+                    <th class="relative py-3 pl-3 pr-6"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for f in fardos %}
+                <tr>
+                    <td class="whitespace-nowrap py-2.5 pl-6 pr-3 text-sm text-gray-500">{{ f.numero_fardo }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm font-bold text-gray-900">{{ f.clase.detalle }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-center">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600">{{ f.clase.grupo }}</span>
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-right font-mono">{{ f.coeficiente_aplicado|formato_ar:4 }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right font-mono">{{ f.precio_aplicado|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right font-mono">{{ f.kilos|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-900 text-right font-mono font-bold">{{ f.importe|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-xs text-gray-400">{{ f.etiqueta|default:"—" }}</td>
+                    <td class="relative whitespace-nowrap py-2.5 pl-3 pr-6 text-right">
+                        {% if romaneo.editable %}
+                        <button hx-post="{% url 'agro_fardo_quitar' f.id %}"
+                                hx-target="#panel-fardos" hx-swap="outerHTML"
+                                hx-confirm="¿Quitar el fardo {{ f.numero_fardo }}?"
+                                class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="px-6 py-10 text-center text-gray-500 text-sm italic">Todavía no cargaste ningún fardo.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -30,6 +30,9 @@ class ContadorDocumento(models.Model):
     # no se llama a ARCA, y sirve de control cruzado contra `FECompUltimoAutorizado`.
     # Nunca reemplaza al número autorizado: en emisión real, ARCA lo pisa.
     VENTA_FISCAL = 'VENTA_FISCAL'
+    # Acopio de tabaco (Plan 082). El romaneo es un documento que emitimos nosotros y cuya
+    # correlatividad no gobierna nadie más, igual que los tres de Distribución de arriba.
+    ROMANEO_TABACO = 'ROMANEO_TABACO'
     TIPOS_DOCUMENTO = [
         (ORDEN_COMPRA, 'Orden de Compra'),
         (INFORME_RECEPCION, 'Informe de Recepción'),
@@ -40,6 +43,7 @@ class ContadorDocumento(models.Model):
         (VENTA_PRE, 'Presupuesto / PRE (no fiscal)'),
         (VENTA_NCI, 'Nota de Crédito Interna (no fiscal)'),
         (VENTA_FISCAL, 'Serie fiscal (espejo local / modo prueba)'),
+        (ROMANEO_TABACO, 'Romaneo de Tabaco'),
     ]
 
     empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='contadores')

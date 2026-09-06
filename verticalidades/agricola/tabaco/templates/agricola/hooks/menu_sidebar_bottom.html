@@ -1,0 +1,45 @@
+{% comment %}
+Entrada de menú del Acopio de Tabaco (Plan 082).
+
+Se inyecta por el hook `sidebar_bottom` de `base.html` en lugar de escribir el enlace ahí: el
+templatetag `hook_menu` sólo renderiza este archivo si la carpeta de la verticalidad existe, así
+que al desenchufarla el menú se acomoda solo y `base.html` nunca ve un `{% url 'agro_...' %}`
+que no resuelve —que rompería TODAS las pantallas del ERP, no sólo las agrícolas—.
+
+El gate es `hace_tabaco` y no `tipo_actividad == 'AGRICOLA'`: una empresa agrícola puede hacer
+sólo granos. Si no existe la fila de `EmpresaVertical`, el acceso a la relación falla en silencio
+(Django trata `ObjectDoesNotExist` como fallo silencioso en plantillas) y el bloque no se muestra.
+{% endcomment %}
+{% if empresa_actual.agricola_vertical.hace_tabaco %}
+<div x-data="{ open: {% if request.resolver_match.url_name and 'agro_' in request.resolver_match.url_name %}true{% else %}false{% endif %} }" class="mt-1">
+    <div @click="open = !open"
+         class="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-slate-800/60 transition-colors rounded-lg">
+        <span class="flex items-center text-sm font-semibold text-gray-300">
+            <svg class="w-5 h-5 mr-3 text-lime-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 3v18m0 0c-4 0-7-3-7-7 0-2 1-4 3-5m4 12c4 0 7-3 7-7 0-2-1-4-3-5"></path>
+            </svg>
+            Acopio de Tabaco
+        </span>
+        <svg class="w-4 h-4 text-gray-500 transition-transform" :class="open ? 'rotate-180' : ''"
+             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+    </div>
+
+    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+        <a href="{% url 'agro_romaneo_listado' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_listado' %}text-lime-400 font-bold{% endif %}">
+            Romaneos
+        </a>
+        <a href="{% url 'agro_romaneo_nuevo' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_nuevo' %}text-lime-400 font-bold{% endif %}">
+            Nuevo Romaneo
+        </a>
+        <a href="{% url 'configuracion_index' %}?tab=agro_clases"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+            Maestros de Tabaco
+        </a>
+    </div>
+</div>
+{% endif %}

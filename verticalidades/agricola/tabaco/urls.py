@@ -7,6 +7,7 @@ compartidas del panel de Configuración, que resuelven las URL por nombre.
 from django.urls import path
 
 from . import views_htmx as htmx
+from . import views_romaneo as rom
 
 urlpatterns = [
     # Campañas
@@ -41,4 +42,21 @@ urlpatterns = [
 
     # Configuración del acopio
     path('agro/config-tabaco/', htmx.configuracion_tabaco, name='agro_config_tabaco_guardar'),
+
+    # --- ROMANEO (Plan 082) -------------------------------------------------
+    path('agro/romaneos/', rom.romaneo_listado, name='agro_romaneo_listado'),
+    path('agro/romaneos/grilla/', rom.romaneo_grilla, name='agro_romaneo_grilla'),
+    path('agro/romaneos/nuevo/', rom.romaneo_nuevo, name='agro_romaneo_nuevo'),
+    path('agro/romaneos/<int:pk>/carga/', rom.romaneo_carga, name='agro_romaneo_carga'),
+    path('agro/romaneos/<int:pk>/', rom.romaneo_detalle, name='agro_romaneo_detalle'),
+    path('agro/romaneos/<int:pk>/imprimir/', rom.romaneo_imprimir, name='agro_romaneo_imprimir'),
+    path('agro/romaneos/<int:pk>/confirmar/', rom.romaneo_confirmar, name='agro_romaneo_confirmar'),
+    path('agro/romaneos/<int:pk>/anular/', rom.romaneo_anular, name='agro_romaneo_anular'),
+
+    # Fardos
+    path('agro/romaneos/<int:pk>/fardos/cotizar/', rom.fardo_cotizar, name='agro_fardo_cotizar'),
+    path('agro/romaneos/<int:pk>/fardos/agregar/', rom.fardo_agregar, name='agro_fardo_agregar'),
+    path('agro/romaneos/<int:pk>/clases/typeahead/', rom.clase_typeahead, name='agro_clase_typeahead'),
+    path('agro/fardos/<int:pk>/quitar/', rom.fardo_quitar, name='agro_fardo_quitar'),
+    path('agro/fardos/<int:pk>/reclasificar/', rom.fardo_reclasificar, name='agro_fardo_reclasificar'),
 ]

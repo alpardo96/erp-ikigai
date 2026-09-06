@@ -1,0 +1,44 @@
+{% load formato_tags %}
+{% for r in romaneos %}
+<tr>
+    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">
+        {% if r.numero %}{{ r.punto|stringformat:"04d" }}-{{ r.numero|stringformat:"08d" }}
+        {% else %}<span class="text-amber-600 italic">borrador</span>{% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ r.fecha|date:"d/m/Y" }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ r.productor.razon_social }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ r.variedad.detalle }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ r.campania.codigo }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right">{{ r.total_fardos }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ r.total_kilos|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ r.total_importe|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-center">
+        {% if r.estado == 1 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Borrador</span>
+        {% elif r.estado == 2 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Confirmado</span>
+        {% elif r.estado == 3 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">Liquidado</span>
+        {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
+                  title="{{ r.motivo_anulacion }}">Anulado</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-400">
+        {% if r.condic == 1 %}Real{% elif r.condic == 2 %}Presup.{% elif r.condic == 3 %}Ajuste{% else %}Auditoría{% endif %}
+    </td>
+    <td class="relative whitespace-nowrap py-3 pl-3 pr-6 text-right text-sm">
+        <div class="flex items-center justify-end gap-2">
+            {% if r.estado == 1 %}
+            <a href="{% url 'agro_romaneo_carga' r.id %}"
+               class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded text-xs font-bold transition-colors">Continuar</a>
+            {% else %}
+            <a href="{% url 'agro_romaneo_detalle' r.id %}"
+               class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded text-xs font-bold transition-colors">Ver</a>
+            {% endif %}
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="11" class="px-6 py-10 text-center text-gray-500 text-sm italic">No hay romaneos que coincidan con el filtro.</td></tr>
+{% endfor %}

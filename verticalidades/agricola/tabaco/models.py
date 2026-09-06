@@ -320,3 +320,210 @@ class ProductorTabaco(AuditModel):
 
     def __str__(self):
         return f"{self.cliente_proveedor.razon_social}"
+
+
+# ==============================================================================
+# ROMANEO — recepción y clasificación por fardo (Plan 082, Etapa 1)
+# ==============================================================================
+# El romaneo es un hecho FÍSICO y COMERCIAL: entra la mercadería del productor, se pesa y se
+# clasifica fardo por fardo. NO genera deuda, ni asiento, ni movimiento de stock. Eso llega al
+# liquidar (Etapa 2) y al registrar el término de stock (Etapa 4).
+#
+# Separar el romaneo de la liquidación no es prolijidad: son hechos que ocurren en momentos
+# distintos, los hacen personas distintas y se corrigen por separado. Un fardo mal clasificado se
+# reclasifica sin tocar la deuda; una liquidación mal hecha se anula sin borrar la recepción.
+
+
+class RomaneoTabaco(AuditModel):
+    """Recepción y clasificación de una entrega del productor.
+
+    Se abre en BORRADOR y se cargan los fardos como filas —no en sesión: un romaneo real tiene
+    cientos de fardos, y si el navegador se cae no se puede perder el trabajo—. Al confirmar toma
+    número de la serie correlativa y queda bloqueado para edición.
+    """
+    BORRADOR, CONFIRMADO, LIQUIDADO, ANULADO = 1, 2, 3, 9
+    ESTADOS = [
+        (BORRADOR, 'Borrador'),
+        (CONFIRMADO, 'Confirmado'),
+        (LIQUIDADO, 'Liquidado'),
+        (ANULADO, 'Anulado'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='romaneos_tabaco')
+    sucursal = models.ForeignKey('empresas.Sucursal', on_delete=models.PROTECT,
+                                 related_name='romaneos_tabaco')
+
+    punto = models.IntegerField(default=1, verbose_name="Punto")
+    # Nulo mientras es borrador: el número se toma al confirmar para no dejar huecos en la serie.
+    numero = models.BigIntegerField(null=True, blank=True, db_index=True, verbose_name="Número")
+
+    fecha = models.DateField(db_index=True, verbose_name="Fecha")
+    productor = models.ForeignKey('facturacion.ClienteProveedor', on_delete=models.PROTECT,
+                                  related_name='romaneos_tabaco', verbose_name="Productor")
+    variedad = models.ForeignKey(VariedadTabaco, on_delete=models.PROTECT, related_name='romaneos')
+    campania = models.ForeignKey(Campania, on_delete=models.PROTECT, related_name='romaneos_tabaco')
+
+    # LA LISTA Y EL PONDERANTE SE CONGELAN. Guardar sólo la FK no alcanza: alguien podría corregir
+    # el precio de la lista y cambiar en silencio el importe de un romaneo ya cerrado.
+    lista_precio = models.ForeignKey(ListaPrecioTabaco, on_delete=models.PROTECT,
+                                     related_name='romaneos', verbose_name="Lista aplicada")
+    ponderante_aplicado = models.DecimalField(max_digits=15, decimal_places=2,
+                                              verbose_name="Ponderante aplicado")
+    coeficiente_productor = models.DecimalField(
+        max_digits=6, decimal_places=4, default=Decimal('1'),
+        verbose_name="Coeficiente del productor",
+        help_text="Dato informativo del productor. NO interviene en el cálculo del precio.")
+
+    transporte = models.CharField(max_length=120, blank=True, verbose_name="Transporte / Vehículo")
+    remito = models.CharField(max_length=40, blank=True, verbose_name="Remito o guía")
+    observaciones = models.TextField(blank=True)
+
+    # Derivados del detalle. Se materializan porque se leen en todo listado, pero la fuente de
+    # verdad son los fardos: `recalcular_totales()` los reconstruye enteros, nunca por delta.
+    total_kilos = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    total_fardos = models.IntegerField(default=0)
+    total_importe = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    adicional = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    precio_promedio = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                          verbose_name="Precio promedio ponderado")
+    porcentaje_ponderante = models.DecimalField(max_digits=7, decimal_places=2, default=Decimal('0'),
+                                                verbose_name="% sobre el ponderante")
+
+    estado = models.IntegerField(choices=ESTADOS, default=BORRADOR, db_index=True)
+    # 1=Real, 2=Presupuestado, 3=Ajuste, 4=Auditoría. Lo hereda la liquidación y, con ella, el
+    # asiento. Tabla completa en `.cursorrules`.
+    condic = models.IntegerField(default=1, verbose_name="Condición")
+
+    motivo_anulacion = models.CharField(max_length=200, blank=True)
+    anulado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    anulado_el = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_romaneo"
+        verbose_name = "Romaneo de Tabaco"
+        verbose_name_plural = "Romaneos de Tabaco"
+        ordering = ['-fecha', '-numero']
+        constraints = [
+            # Condicional: los borradores todavía no tienen número y no deben chocar entre sí.
+            models.UniqueConstraint(fields=['empresa', 'punto', 'numero'],
+                                    condition=models.Q(numero__isnull=False),
+                                    name='agro_tab_romaneo_numero_unico'),
+            models.CheckConstraint(condition=models.Q(total_kilos__gte=0),
+                                   name='agro_tab_romaneo_kilos_no_neg'),
+            models.CheckConstraint(condition=models.Q(total_fardos__gte=0),
+                                   name='agro_tab_romaneo_fardos_no_neg'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'estado', '-fecha']),
+            models.Index(fields=['empresa', 'productor', '-fecha']),
+            models.Index(fields=['empresa', 'campania', 'variedad']),
+        ]
+
+    def __str__(self):
+        numero = f"{self.punto:04d}-{self.numero:08d}" if self.numero else "BORRADOR"
+        return f"Romaneo {numero} - {self.productor.razon_social}"
+
+    @property
+    def editable(self):
+        return self.estado == self.BORRADOR
+
+
+class FardoTabaco(AuditModel):
+    """Un fardo del romaneo. Cada fila del detalle es un fardo físico.
+
+    Guarda el coeficiente y el precio con los que se valorizó, no sólo la FK a la clase: es lo que
+    permite reconstruir el importe años después aunque el maestro haya cambiado, y lo que hace
+    verificable la liquidación que se le entrega al productor.
+    """
+    RECIBIDO, CLASIFICADO, EN_LOTE, ACONDICIONADO, VENDIDO = 1, 2, 3, 4, 5
+    ESTADOS = [
+        (RECIBIDO, 'Recibido'),
+        (CLASIFICADO, 'Clasificado'),
+        (EN_LOTE, 'En lote de acopio'),
+        (ACONDICIONADO, 'Acondicionado'),
+        (VENDIDO, 'Vendido'),
+    ]
+
+    romaneo = models.ForeignKey(RomaneoTabaco, on_delete=models.CASCADE, related_name='fardos')
+    numero_fardo = models.IntegerField(verbose_name="Nro de fardo")
+    etiqueta = models.CharField(max_length=40, blank=True, db_index=True,
+                                verbose_name="Etiqueta / código de barras")
+
+    clase = models.ForeignKey(ClaseTabaco, on_delete=models.PROTECT, related_name='fardos')
+    coeficiente_aplicado = models.DecimalField(max_digits=6, decimal_places=4,
+                                               verbose_name="Coeficiente aplicado")
+    precio_aplicado = models.DecimalField(max_digits=15, decimal_places=2,
+                                          verbose_name="Precio unitario aplicado")
+
+    kilos = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Kilos")
+    importe = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    adicional = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    precio_final = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                       verbose_name="Precio final (con adicional)")
+
+    estado = models.IntegerField(choices=ESTADOS, default=CLASIFICADO, db_index=True)
+    clasificado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True,
+                                        blank=True, related_name='+')
+    clasificado_el = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_fardo"
+        verbose_name = "Fardo de Tabaco"
+        verbose_name_plural = "Fardos de Tabaco"
+        ordering = ['romaneo', 'numero_fardo']
+        constraints = [
+            models.UniqueConstraint(fields=['romaneo', 'numero_fardo'],
+                                    name='agro_tab_fardo_numero_unico'),
+            models.CheckConstraint(condition=models.Q(kilos__gt=0),
+                                   name='agro_tab_fardo_kilos_positivos'),
+            models.CheckConstraint(condition=models.Q(importe__gte=0),
+                                   name='agro_tab_fardo_importe_no_neg'),
+            models.CheckConstraint(condition=models.Q(coeficiente_aplicado__gt=0),
+                                   name='agro_tab_fardo_coeficiente_positivo'),
+        ]
+        indexes = [
+            models.Index(fields=['romaneo', 'clase']),
+            models.Index(fields=['estado']),
+        ]
+
+    def __str__(self):
+        return f"Fardo {self.numero_fardo} - {self.clase.detalle} - {self.kilos} kg"
+
+
+class ReclasificacionFardo(models.Model):
+    """Versión anterior de la clasificación de un fardo.
+
+    LA CLASIFICACIÓN ORIGINAL NO SE SOBRESCRIBE. Reclasificar deja acá la clase, el coeficiente y
+    el precio que tenía antes, con motivo y usuario. El fardo queda con los valores nuevos, pero
+    la historia es reconstruible: es la diferencia entre corregir un error y borrar la evidencia
+    de que existió.
+    """
+    fardo = models.ForeignKey(FardoTabaco, on_delete=models.CASCADE,
+                              related_name='reclasificaciones')
+
+    clase_anterior = models.ForeignKey(ClaseTabaco, on_delete=models.PROTECT, related_name='+')
+    coeficiente_anterior = models.DecimalField(max_digits=6, decimal_places=4)
+    precio_anterior = models.DecimalField(max_digits=15, decimal_places=2)
+    importe_anterior = models.DecimalField(max_digits=15, decimal_places=2)
+
+    clase_nueva = models.ForeignKey(ClaseTabaco, on_delete=models.PROTECT, related_name='+')
+    coeficiente_nuevo = models.DecimalField(max_digits=6, decimal_places=4)
+    precio_nuevo = models.DecimalField(max_digits=15, decimal_places=2)
+    importe_nuevo = models.DecimalField(max_digits=15, decimal_places=2)
+
+    kilos = models.DecimalField(max_digits=12, decimal_places=2)
+    motivo = models.CharField(max_length=200, verbose_name="Motivo")
+    usuario = models.ForeignKey('auth.User', on_delete=models.PROTECT, related_name='+')
+    fecha = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_reclasificacion"
+        verbose_name = "Reclasificación de Fardo"
+        verbose_name_plural = "Reclasificaciones de Fardos"
+        ordering = ['-fecha']
+        indexes = [models.Index(fields=['fardo', '-fecha'])]
+
+    def __str__(self):
+        return (f"Fardo {self.fardo.numero_fardo}: "
+                f"{self.clase_anterior.detalle} -> {self.clase_nueva.detalle}")

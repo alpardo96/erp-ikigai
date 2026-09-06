@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Romaneo {{ romaneo.numero|default:"borrador" }}{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                Romaneo
+                {% if romaneo.numero %}{{ romaneo.punto|stringformat:"04d" }}-{{ romaneo.numero|stringformat:"08d" }}{% endif %}
+                {% if romaneo.estado == 9 %}
+                <span class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-800">ANULADO</span>
+                {% elif romaneo.estado == 3 %}
+                <span class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-sky-100 text-sky-800">LIQUIDADO</span>
+                {% endif %}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ romaneo.productor.razon_social }} · {{ romaneo.variedad.detalle }} ·
+                Campaña {{ romaneo.campania.codigo }} · {{ romaneo.fecha|date:"d/m/Y" }}
+            </p>
+            {% if romaneo.estado == 9 %}
+            <p class="text-xs text-red-600 mt-1">
+                Anulado por {{ romaneo.anulado_por }} el {{ romaneo.anulado_el|date:"d/m/Y H:i" }} —
+                {{ romaneo.motivo_anulacion }}
+            </p>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_romaneo_listado' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Volver</a>
+            <a href="{% url 'agro_romaneo_imprimir' romaneo.id %}" target="_blank"
+               class="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors">
+                Imprimir
+            </a>
+            {% if romaneo.estado == 2 %}
+            <button hx-get="{% url 'agro_romaneo_anular' romaneo.id %}" hx-target="#modal-container"
+                    class="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors">
+                Anular
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Ponderante aplicado</span>$ {{ romaneo.ponderante_aplicado|formato_ar }}</div>
+        <div><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Lista</span>{{ romaneo.lista_precio.vigencia_desde|date:"d/m/Y" }}</div>
+        <div><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Transporte</span>{{ romaneo.transporte|default:"—" }}</div>
+        <div><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Remito</span>{{ romaneo.remito|default:"—" }}</div>
+    </div>
+
+    {% include 'agricola/romaneo/panel_fardos.html' %}
+
+    {# Historial de reclasificaciones: la clasificación original nunca se pierde. #}
+    {% if reclasificaciones %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Reclasificaciones</div>
+        {% for r in reclasificaciones %}
+        <div class="text-sm text-gray-600 py-1 border-b border-gray-50 last:border-0">
+            Fardo <strong>{{ r.fardo.numero_fardo }}</strong>:
+            {{ r.clase_anterior.detalle }} (${{ r.precio_anterior|formato_ar }}) &rarr;
+            <strong>{{ r.clase_nueva.detalle }}</strong> (${{ r.precio_nuevo|formato_ar }})
+            — {{ r.motivo }}
+            <span class="text-xs text-gray-400">· {{ r.usuario }} · {{ r.fecha|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if romaneo.estado == 2 %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Reclasificar un fardo</div>
+        <div class="flex flex-wrap gap-2">
+            {% for f in fardos %}
+            <button hx-get="{% url 'agro_fardo_reclasificar' f.id %}" hx-target="#modal-container"
+                    class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-700 transition-colors">
+                {{ f.numero_fardo }} · {{ f.clase.detalle }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
