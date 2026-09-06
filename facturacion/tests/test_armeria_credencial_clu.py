@@ -93,7 +93,7 @@ class ArmeriaCredencialCLUTestCase(TestCase):
         self.assertEqual(item.dmp, Decimal("1.00"))
 
     def test_extension_armeria_form_es_policia_select(self):
-        from facturacion.forms import ExtensionArmeriaForm
+        from verticalidades.armeria.forms import ExtensionArmeriaForm
         # Test con es_policia = True
         form_true = ExtensionArmeriaForm(data={'tipo_persona': 'F', 'clu': 'CLU-POLICIA', 'clu_vto': '2028-12-31', 'es_policia': 'true'})
         self.assertTrue(form_true.is_valid())

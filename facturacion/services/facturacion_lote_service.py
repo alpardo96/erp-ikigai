@@ -3,7 +3,8 @@ from decimal import Decimal
 from core.services.numeracion import siguiente_numero_pre
 from django.db import transaction
 from django.utils import timezone
-from facturacion.models import Venta, VentaItem, VentaAlicuotaIva, TarifaEstudio, ClienteProveedor, TipoComprobante
+from facturacion.models import Venta, VentaItem, VentaAlicuotaIva, ClienteProveedor, TipoComprobante
+from verticalidades.estudio.models import TarifaEstudio
 from productos.models import Producto, MovimientoStock, Sucursal
 from contable.models import Asiento, AsientoLinea, Cuenta, ParametrosContables
 

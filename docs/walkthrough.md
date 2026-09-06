@@ -1,5 +1,24 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
+## Cristian - PC CASA - 06/09/2026
+**Objetivo:** Solución de deudas técnicas urgentes e importaciones huérfanas en verticalidades.
+**Archivos creados o modificados:**
+- `facturacion/services/facturacion_lote_service.py` [MODIFY]
+- `facturacion/tests/test_lote_condic.py` [MODIFY]
+- `facturacion/tests/test_plan075_numeracion.py` [MODIFY]
+- `migracion/management/commands/migrar_tarifas.py` [MODIFY]
+- `facturacion/helpers.py` [MODIFY]
+- `facturacion/tests/test_armeria_credencial_clu.py` [MODIFY]
+
+**Detalle Técnico:**
+- Se corrigió el error bloqueante en producción y tests provocado por la importación del modelo `TarifaEstudio` desde `facturacion.models`. Ahora se importa correctamente desde su nueva ubicación en `verticalidades.estudio.models`.
+- Se revisó el estado de las verticalidades `armeria` y `estudio` en búsqueda de dependencias huérfanas tras su refactorización.
+- Se detectó y corrigió la importación huérfana de `ExtensionArmeria` y `ExtensionArmeriaForm` (seguían siendo requeridos desde `facturacion` en lugar de `verticalidades.armeria`) en `facturacion/helpers.py` y `facturacion/tests/test_armeria_credencial_clu.py`.
+- Se verificó mediante búsqueda global (grep) que otros modelos migrados (ej. `ReservaArma`) están correctamente referenciados en el resto del proyecto.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Los problemas de importación (código roto en tiempo de importación) para las verticalidades evaluadas están resueltos. La suite y el servidor local pueden inicializarse sin fallos. Quedo a la espera de la siguiente deuda o tarea a abordar.
+
 ## Antigravity - 04/09/2026
 **Objetivo:** Migración Fase 0 a 5 de Armería (Scripts y Base de Datos).
 **Archivos creados o modificados:**

@@ -13,7 +13,8 @@ from django.test import TestCase
 from contable.models import (Asiento, AsientoLinea, Cuenta, Ejercicio,
                              LibroIvaVentas, ParametrosContables)
 from empresas.models import Empresa, PuntoVenta, Sucursal
-from facturacion.models import ClienteProveedor, TarifaEstudio, TipoComprobante, Venta
+from facturacion.models import ClienteProveedor, TipoComprobante, Venta
+from verticalidades.estudio.models import TarifaEstudio
 from facturacion.services.facturacion_lote_service import FacturacionLoteService
 from productos.models import Producto, Rubro
 

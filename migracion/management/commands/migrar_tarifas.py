@@ -4,7 +4,7 @@ from decimal import Decimal
 from datetime import datetime
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from facturacion.models import TarifaEstudio
+from verticalidades.estudio.models import TarifaEstudio
 from django.contrib.auth import get_user_model
 
 class Command(BaseCommand):
