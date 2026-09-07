@@ -8,6 +8,7 @@ from django.urls import path
 
 from . import views_htmx as htmx
 from . import views_liquidacion as liq
+from . import views_pago as pag
 from . import views_romaneo as rom
 
 urlpatterns = [
@@ -69,4 +70,13 @@ urlpatterns = [
     path('agro/liquidaciones/<int:pk>/', liq.liquidacion_detalle, name='agro_liquidacion_detalle'),
     path('agro/liquidaciones/<int:pk>/imprimir/', liq.liquidacion_imprimir, name='agro_liquidacion_imprimir'),
     path('agro/liquidaciones/<int:pk>/anular/', liq.liquidacion_anular, name='agro_liquidacion_anular'),
+
+    # --- PAGO AL PRODUCTOR (Plan 084) ---------------------------------------
+    path('agro/pagos/', pag.pago_listado, name='agro_pago_listado'),
+    path('agro/pagos/grilla/', pag.pago_grilla, name='agro_pago_grilla'),
+    path('agro/pagos/nuevo/', pag.pago_nuevo, name='agro_pago_nuevo'),
+    path('agro/pagos/pendientes/', pag.pago_pendientes, name='agro_pago_pendientes'),
+    path('agro/pagos/<int:pk>/', pag.pago_detalle, name='agro_pago_detalle'),
+    path('agro/pagos/<int:pk>/anular/', pag.pago_anular, name='agro_pago_anular'),
+    path('agro/certificados/<int:pk>/', pag.pago_certificado, name='agro_pago_certificado'),
 ]

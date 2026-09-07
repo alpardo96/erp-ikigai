@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Pago OP {{ op.numero }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                Orden de Pago {{ op.punto|stringformat:"04d" }}-{{ op.numero|stringformat:"08d" }}
+                {% if op.anulado %}
+                <span class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-800">ANULADA</span>
+                {% endif %}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ op.proveedor.razon_social }} · {{ op.fecha|date:"d/m/Y" }}
+                {% if op.asiento_id %}· Asiento #{{ op.asiento_id }}{% endif %}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_pago_listado' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Volver</a>
+            {% if not op.anulado %}
+            <button hx-get="{% url 'agro_pago_anular' op.id %}" hx-target="#modal-container"
+                    class="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors">
+                Anular
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Liquidaciones canceladas</div>
+            <div class="space-y-2 text-sm">
+                {% for i in imputaciones %}
+                <div class="flex justify-between {% if i.anulado %}line-through text-gray-400{% endif %}">
+                    <a href="{% url 'agro_liquidacion_detalle' i.liquidacion_id %}" class="text-indigo-600 hover:underline">
+                        {{ i.liquidacion.letra }} {{ i.liquidacion.punto|stringformat:"04d" }}-{{ i.liquidacion.numero|stringformat:"08d" }}
+                    </a>
+                    <span class="font-mono">$ {{ i.importe|formato_ar }}</span>
+                </div>
+                {% empty %}
+                <p class="text-gray-400 italic">Sin imputaciones.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Cómo se pagó</div>
+            <div class="space-y-1.5 text-sm">
+                {% for d in detalles %}
+                <div class="flex justify-between {% if d.medio_pago.categoria == 'RET' %}text-red-600{% endif %}">
+                    <span>{% if d.medio_pago.categoria == 'RET' %}− {% endif %}{{ d.medio_pago.nombre }}</span>
+                    <span class="font-mono">$ {{ d.importe|formato_ar }}</span>
+                </div>
+                {% endfor %}
+                <div class="flex justify-between pt-2 mt-2 border-t border-gray-200 text-base">
+                    <span class="font-bold text-gray-900">Total de la orden</span>
+                    <span class="font-mono font-bold text-lime-700">$ {{ op.total|formato_ar }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if retenciones %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Certificados de retención</div>
+        <div class="space-y-2">
+            {% for r in retenciones %}
+            <div class="flex items-center justify-between text-sm {% if r.anulado %}line-through text-gray-400{% endif %}">
+                <span>
+                    <strong>{{ r.detalle }}</strong> — certificado Nº {{ r.nro_certificado }}
+                    {% if r.regimen %}· régimen {{ r.regimen }}{% endif %}
+                    · período {{ r.periodo }}
+                </span>
+                <span class="flex items-center gap-3">
+                    <span class="font-mono font-bold">$ {{ r.importe|formato_ar }}</span>
+                    <a href="{% url 'agro_pago_certificado' r.id %}" target="_blank"
+                       class="px-3 py-1 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded transition-colors">Imprimir</a>
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

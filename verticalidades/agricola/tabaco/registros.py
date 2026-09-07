@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 def registrar_todo():
     """Registra los orígenes que la verticalidad aporta a los servicios del core."""
     _registrar_cuenta_corriente()
+    _registrar_imputacion_de_pagos()
 
 
 def _registrar_cuenta_corriente():
@@ -46,4 +47,28 @@ def _registrar_cuenta_corriente():
         # Sólo las confirmadas son deuda: un borrador todavía no es un comprobante y una anulada
         # dejó de serlo.
         'excluir': ~Q(estado=LiquidacionTabaco.CONFIRMADA),
+    })
+
+
+def _registrar_imputacion_de_pagos():
+    """Las Órdenes de Pago que cancelan liquidaciones de tabaco (Plan 084).
+
+    `tesoreria.OrdenPagoAplicacion.compra` es un FK duro a `Compra`, así que la imputación a una
+    liquidación vive en una tabla de esta verticalidad. Sin registrarla, `pendiente_de_aplicar_op()`
+    no la vería y esa OP figuraría PARA SIEMPRE como "sin aplicar" en el listado de tesorería.
+    """
+    try:
+        from contable.services.saldos import registrar_aplicacion_op
+    except ImportError:
+        logger.warning("El core no expone `registrar_aplicacion_op`: las Órdenes de Pago que "
+                       "cancelen liquidaciones de tabaco figurarán como no imputadas.")
+        return
+
+    from .models import LiquidacionPago
+
+    registrar_aplicacion_op({
+        'nombre': 'agricola_tabaco_liquidacion_pago',
+        'modelo': LiquidacionPago,
+        'campo_op': 'orden_pago',
+        'campo_importe': 'importe',
     })

@@ -1,0 +1,106 @@
+{% comment %}
+Liquidaciones con saldo + previsualización de la retención de Ganancias.
+
+El cálculo lo hace el SERVICIO, con la misma función que usa el pago real. Replicarlo en
+JavaScript haría que la pantalla y el certificado terminen discrepando, y el certificado es un
+papel que el productor presenta ante ARCA.
+{% endcomment %}
+{% load formato_tags %}
+
+{% if not productor %}
+    <div class="px-6 py-10 text-center text-gray-500 text-sm italic bg-white rounded-2xl border border-gray-100">
+        Elegí un productor para ver sus liquidaciones con saldo.
+    </div>
+{% elif not liquidaciones %}
+    <div class="px-6 py-10 text-center text-gray-500 text-sm italic bg-white rounded-2xl border border-gray-100">
+        {{ productor.razon_social }} no tiene liquidaciones pendientes de pago.
+    </div>
+{% else %}
+<div class="space-y-5">
+    <div class="overflow-hidden rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pagar</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comprobante</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Neto</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pagado</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for l in liquidaciones %}
+                <tr>
+                    <td class="py-2.5 pl-6 pr-3">
+                        <input type="checkbox" name="liquidaciones" value="{{ l.id }}" checked
+                               class="h-4 w-4 text-lime-600 focus:ring-lime-500 border-gray-300 rounded"
+                               hx-get="{% url 'agro_pago_pendientes' %}"
+                               hx-trigger="change"
+                               hx-target="#pendientes"
+                               hx-include="[name='productor'], [name='liquidaciones'], [name='fecha']">
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm font-bold text-gray-900">
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black mr-1
+                                     {% if l.letra == 'A' %}bg-sky-100 text-sky-800{% else %}bg-amber-100 text-amber-800{% endif %}">{{ l.letra }}</span>
+                        {{ l.punto|stringformat:"04d" }}-{{ l.numero|stringformat:"08d" }}
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500">{{ l.fecha|date:"d/m/Y" }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-right font-mono">{{ l.neto|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right font-mono">{{ l.total|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-right font-mono">{{ l.pagado|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-900 text-right font-mono font-bold">{{ l.saldo|formato_ar }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if saldo %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h3 class="text-base font-bold text-gray-900 mb-4">Cómo queda el pago</h3>
+
+        <div class="space-y-1.5 text-sm max-w-xl">
+            <div class="flex justify-between">
+                <span class="text-gray-600">Saldo a cancelar</span>
+                <span class="font-mono font-bold">$ {{ saldo|formato_ar }}</span>
+            </div>
+
+            {% if retencion and retencion.importe %}
+            <div class="flex justify-between text-red-600">
+                <span>− {{ retencion.concepto.detalle }} ({{ retencion.concepto.alicuota|formato_ar }} %)</span>
+                <span class="font-mono">$ {{ retencion.importe|formato_ar }}</span>
+            </div>
+            {% elif retencion %}
+            <div class="flex justify-between text-gray-400 italic text-xs">
+                <span>Sin retención: el acumulado del mes no supera el mínimo no imponible</span>
+                <span class="font-mono">$ 0,00</span>
+            </div>
+            {% endif %}
+
+            <div class="flex justify-between pt-2 mt-2 border-t border-gray-200 text-base">
+                <span class="font-bold text-gray-900">A entregar al productor</span>
+                <span class="font-mono font-bold text-lime-700">$ {{ a_entregar|formato_ar }}</span>
+            </div>
+        </div>
+
+        {% if retencion %}
+        <div class="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 space-y-1">
+            <div class="font-bold text-slate-700 uppercase tracking-widest text-[10px] mb-2">
+                Cálculo del acumulado — período {{ retencion.periodo }}
+            </div>
+            <div class="flex justify-between"><span>Neto de este pago</span><span class="font-mono">$ {{ retencion.base_del_pago|formato_ar }}</span></div>
+            <div class="flex justify-between"><span>Acumulado del mes</span><span class="font-mono">$ {{ retencion.base_acumulada|formato_ar }}</span></div>
+            <div class="flex justify-between"><span>Mínimo no imponible</span><span class="font-mono">− $ {{ retencion.minimo_no_imponible|formato_ar }}</span></div>
+            <div class="flex justify-between"><span>Retención total del mes</span><span class="font-mono">$ {{ retencion.retencion_del_mes|formato_ar }}</span></div>
+            <div class="flex justify-between"><span>Ya retenido en el mes</span><span class="font-mono">− $ {{ retencion.retenido_previo|formato_ar }}</span></div>
+            <div class="flex justify-between font-bold text-slate-800 pt-1 border-t border-slate-200">
+                <span>A retener ahora</span><span class="font-mono">$ {{ retencion.importe|formato_ar }}</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}

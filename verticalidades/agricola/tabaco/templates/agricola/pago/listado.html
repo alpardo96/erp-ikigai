@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Pagos a Productores{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Pagos a Productores</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Órdenes de Pago que cancelan liquidaciones de tabaco, con su retención de Ganancias.
+            </p>
+        </div>
+        <a href="{% url 'agro_pago_nuevo' %}"
+           class="inline-flex items-center px-4 py-2 bg-lime-600 text-white rounded-xl hover:bg-lime-700 transition-all font-medium shadow-sm">
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Nuevo Pago
+        </a>
+    </div>
+
+    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-4 gap-4"
+          hx-get="{% url 'agro_pago_grilla' %}"
+          hx-trigger="change"
+          hx-target="#pago-rows">
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Productor</label>{{ filtros.productor }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Desde</label>{{ filtros.desde }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>{{ filtros.hasta }}</div>
+    </form>
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orden de Pago</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Productor</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condic.</th>
+                    <th class="relative py-3 pl-3 pr-6"></th>
+                </tr>
+            </thead>
+            <tbody id="pago-rows" class="divide-y divide-gray-100 bg-white"
+                   hx-get="{% url 'agro_pago_grilla' %}" hx-trigger="reloadPago from:body">
+                {% include 'agricola/pago/listado_filas.html' %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

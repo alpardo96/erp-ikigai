@@ -4175,3 +4175,79 @@ maestros → romaneo → liquidación → asiento → Libro IVA → cuenta corri
 2. Confirmar con el contador el tratamiento de la letra B en el Libro IVA (hoy: importe a
    `no_gravado`, sin filas de alícuota).
 3. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.
+
+## Juan Manuel - Notebook personal - 2026-09-07 - Agrícola Etapa 3: Pago al Productor (Plan 084)
+
+**Objetivo:** cancelar las liquidaciones del productor con una Orden de Pago, practicando la
+retención de Ganancias sobre el acumulado mensual y emitiendo su certificado. **Cierra el
+circuito del acopio: romaneo → liquidación → pago.**
+
+**Archivos creados o modificados:**
+- `docs/planes/084_agricola_etapa3_pago.md` (nuevo)
+- `verticalidades/agricola/tabaco/models.py` (+ `LiquidacionPago`, `RetencionPago`) y su
+  migración `0004_pago`
+- `verticalidades/agricola/tabaco/services/pago.py` (nuevo)
+- `verticalidades/agricola/tabaco/registros.py` (+ `registrar_aplicacion_op`)
+- `verticalidades/agricola/tabaco/views_pago.py` (nuevo) y `urls.py` (7 rutas)
+- `verticalidades/agricola/tabaco/templates/agricola/pago/` (7 plantillas nuevas)
+- `verticalidades/agricola/tabaco/templates/agricola/hooks/menu_sidebar_bottom.html` (2 entradas)
+- `verticalidades/agricola/tabaco/tests/test_plan084_pago.py` y `test_plan084_pantallas.py`
+
+**CERO CAMBIOS AL CORE.** Con esta etapa **los tres puntos de extensión del Plan 080 quedan en
+uso**: término de stock (pendiente para la Etapa 4), término de cuenta corriente (Plan 083) y
+ahora la imputación de Órdenes de Pago.
+
+**Detalle Técnico:**
+
+*La decisión que ordena todo: la retención es un medio de pago.* Ikigai ya sabe practicarlas —un
+`MedioPago` de categoría RET que `contabilizar_orden_pago()` acredita contra su cuenta—. No se
+construyó un mecanismo nuevo. De ahí sale la ecuación: `OrdenPago.total = Σ medios entregados +
+retención`, y `Σ imputaciones = OrdenPago.total`. El asiento lo arma el core sin saber nada de
+tabaco, y el término de cuenta corriente del Plan 083 cierra exacto porque la liquidación aportó
+su TOTAL y la OP lo cancela entero, retención incluida (supuesto S-1 de `saldos.py`).
+
+*El medio de pago de la retención se resuelve con `get_or_create` por concepto*, tomando la cuenta
+contable del propio maestro. Así el contador define la cuenta una sola vez y no hay dos lugares
+que puedan discrepar.
+
+*El acumulado mensual se DERIVA, no se almacena.* Se reconstruye sumando los certificados
+vigentes del productor en el período. Consecuencia deliberada: al anular un pago se anula su
+certificado y el acumulado del mes baja SOLO, sin ningún contador que corregir a mano. El sistema
+heredado hacía lo mismo: `liq_mes_ret_gcia` era una vista, no una tabla.
+
+*Alcance de los medios de pago:* efectivo, transferencia, billetera y otros. Los CHEQUES quedan
+fuera —arrastran vencimiento, cuenta bancaria, cartera y conciliación— y se avisa en pantalla en
+vez de dejar cargar algo a medias.
+
+**Resultado de las pruebas:**
+
+| Prueba | Resultado |
+|---|---|
+| `test_plan084_pago` (acumulado, asiento, saldos, anulación) | **29/29** |
+| `test_plan084_pantallas` (circuito completo + certificado) | **20/20** |
+| Prueba de desenchufe | los 3 registros en 0; saldo y pendiente de OP siguen calculando |
+| `makemigrations --check` | sin cambios pendientes |
+| **Suite completa** | **846 tests, 13 errores** — lista **idéntica** al baseline, cero fallas nuevas y cero caídas de conexión |
+
+*Prueba de humo del circuito completo contra datos reales* (empresa 1, transacción revertida):
+liquidación A 0002-00000001 por $ 3.532.750 → retención de Ganancias $ 60.520 sobre base
+acumulada $ 3.250.000 menos MNI $ 224.000 → Orden de Pago 0001-00010002 con asiento balanceado
+(211001 D 3.532.750 · 111001 H 3.472.230 · 214005 H 60.520), certificado Nº 1 régimen 78 período
+202609, **saldo de la liquidación $ 0, saldo del productor $ 0 y pendiente de aplicar de la OP
+$ 0**. Esas tres últimas líneas son el cierre del negocio.
+
+**OBSERVACIÓN DE ENTORNO — resuelta.** El backend de PostgreSQL se cayó varias veces durante las
+Etapas 0, 2 y 3 (`server closed the connection unexpectedly`). La causa NO era el servidor sino la
+CONCURRENCIA: esas corridas competían contra otras suites ejecutándose en paralelo sobre la misma
+instancia. La corrida final, con la máquina sola, lo confirma: 846 tests en 1.156 s y cero caídas,
+contra 793 tests en 6.415 s con una caída cuando había competencia. Cinco veces más rápido. La
+recomendación es no correr suites concurrentes contra la misma instancia.
+
+**Estado actual:** el circuito comercial y financiero del acopio está cerrado de punta a punta.
+
+**Siguientes pasos sugeridos:**
+1. **Etapa 4 — Stock del tabaco**: registrar el término de stock del fardo (el único punto de
+   extensión del Plan 080 que falta consumir), con el `Producto` por variedad y los kilos.
+2. Etapa 5 — lotes de acopio, acondicionamiento, venta y margen por fardo.
+3. Etapa 6 — reportes FET / Secretaría de la Producción y libro de retenciones practicadas.
+4. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.
