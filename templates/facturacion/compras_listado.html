@@ -21,50 +21,81 @@
     </div>
 
     <!-- BARRA DE FILTROS -->
-    <form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-wrap items-end gap-3 italic">
-        <div>
-            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Desde</label>
-            <input type="date" name="desde" value="{{ desde }}"
-                   class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+    <form method="get" class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 space-y-3 italic" autocomplete="off">
+        <div class="flex flex-wrap items-end gap-3">
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Desde</label>
+                <input type="date" name="desde" value="{{ desde }}"
+                       class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Hasta</label>
+                <input type="date" name="hasta" value="{{ hasta }}"
+                       class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+            </div>
+            <div class="min-w-[280px]" x-data="{ open: false }" @clienteventaseleccionado.window="open = false">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Proveedor</label>
+                <input type="hidden" name="proveedor" id="id_proveedor" value="{{ proveedor_id }}">
+                <div class="relative flex gap-1">
+                    <input type="text" id="proveedor_nombre_display" name="q_proveedor"
+                           class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500 placeholder:text-slate-400 truncate"
+                           placeholder="Todos los proveedores..."
+                           value="{{ proveedor_display|default:'' }}"
+                           hx-get="{% url 'typeahead_clientes' %}"
+                           hx-trigger="keyup changed delay:300ms, search, focus"
+                           hx-target="#proveedor_suggestions"
+                           autocomplete="off"
+                           @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+                           oninput="if(this.value === '') { document.getElementById('id_proveedor').value = ''; }">
+                </div>
+                <div x-show="open" id="proveedor_suggestions"
+                     class="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
+                     style="display: none;">
+                </div>
+            </div>
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">ID Compra</label>
+                <input type="text" name="compra_id" value="{{ compra_id_q }}" placeholder="Buscar por ID..."
+                       class="h-9 px-3 w-28 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500 placeholder:text-slate-400">
+            </div>
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Condición</label>
+                <select name="condic"
+                        class="w-full h-9 px-1 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none cursor-pointer shadow-inner py-0 leading-8">
+                    <option value="">Todas</option>
+                    <option value="1" {% if condic == '1' %}selected{% endif %}>Real</option>
+                    <option value="2" {% if condic == '2' %}selected{% endif %}>Presupuesto</option>
+                </select>
+            </div>
+            <button type="submit"
+                    class="h-9 px-5 bg-slate-900 hover:bg-slate-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow transition-all">
+                Filtrar
+            </button>
+            <a href="{% url 'compras_listado' %}"
+               class="h-9 flex items-center px-4 text-slate-400 hover:text-slate-700 font-black text-[10px] uppercase tracking-widest">
+                Limpiar
+            </a>
+            <button type="submit" name="export" value="excel"
+                    class="h-9 px-5 ml-auto bg-green-600 hover:bg-green-500 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow transition-all flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Exportar Excel
+            </button>
         </div>
-        <div>
-            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Hasta</label>
-            <input type="date" name="hasta" value="{{ hasta }}"
-                   class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
-        </div>
-        <div class="min-w-[240px]">
-            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Proveedor</label>
-            <select name="proveedor"
-                    class="w-full h-8 px-1 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none cursor-pointer shadow-inner py-0 leading-8">
-                <option value="">Todos los proveedores</option>
-                {% for p in proveedores %}
-                <option value="{{ p.pk }}" {% if p.pk|stringformat:'s' == proveedor_id %}selected{% endif %}>{{ p.razon_social }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Condición</label>
-            <select name="condic"
-                    class="w-full h-8 px-1 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none cursor-pointer shadow-inner py-0 leading-8">
-                <option value="">Todas</option>
-                <option value="1" {% if condic == '1' %}selected{% endif %}>Real</option>
-                <option value="2" {% if condic == '2' %}selected{% endif %}>Presupuesto</option>
-            </select>
-        </div>
-        <button type="submit"
-                class="h-9 px-5 bg-slate-900 hover:bg-slate-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow transition-all">
-            Filtrar
-        </button>
-        <a href="{% url 'compras_listado' %}"
-           class="h-9 flex items-center px-4 text-slate-400 hover:text-slate-700 font-black text-[10px] uppercase tracking-widest">
-            Limpiar
-        </a>
-        <button type="submit" name="export" value="excel"
-                class="h-9 px-5 ml-auto bg-green-600 hover:bg-green-500 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow transition-all flex items-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            Exportar Excel
-        </button>
     </form>
+
+    <script>
+    document.body.addEventListener('clienteVentaSeleccionado', (e) => {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) modalContainer.innerHTML = '';
+
+        const idProv = document.getElementById('id_proveedor');
+        const nameProv = document.getElementById('proveedor_nombre_display');
+        if (idProv && nameProv) {
+            idProv.value = e.detail.id;
+            nameProv.value = e.detail.razon_social;
+        }
+    });
+    </script>
 
     <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic"
          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
@@ -138,4 +169,5 @@
         </table>
     </div>
 </div>
+<div id="modal-container"></div>
 {% endblock %}

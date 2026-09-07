@@ -125,8 +125,8 @@ def run():
         op_aplic_to_create = []
         rec_aplic_to_create = []
         
-        compras_map = {c.id: c.id for c in Compra.objects.all()} # En armeria, compras_enc mapea directo al ID
-        ventas_map = {v.id: v.id for v in Venta.objects.all()} # En armeria, ventas_enc mapea directo al ID
+        compras_map = {c.compras_id: c.compras_id for c in Compra.objects.all()} # En armeria, compras_enc mapea directo al ID
+        ventas_map = {v.ventas_id: v.ventas_id for v in Venta.objects.all()} # En armeria, ventas_enc mapea directo al ID
         
         valid_ops = set(OrdenPago.objects.values_list('id', flat=True))
         valid_recs = set(Recibo.objects.values_list('id', flat=True))
@@ -145,7 +145,7 @@ def run():
                 # Buscar compra
                 c_id = None
                 if id_asto in [c.asiento_id for c in Compra.objects.filter(asiento_id__isnull=False)]:
-                    c_id = Compra.objects.get(asiento_id=id_asto).id
+                    c_id = Compra.objects.get(asiento_id=id_asto).compras_id
                 elif id_cpte_iva in compras_map:
                     c_id = id_cpte_iva
                     
@@ -157,7 +157,7 @@ def run():
             if id_rec > 0 and id_rec in valid_recs:
                 v_id = None
                 if id_asto in [v.asiento_id for v in Venta.objects.filter(asiento_id__isnull=False)]:
-                    v_id = Venta.objects.get(asiento_id=id_asto).id
+                    v_id = Venta.objects.get(asiento_id=id_asto).ventas_id
                 elif id_cpte_iva in ventas_map:
                     v_id = id_cpte_iva
                     

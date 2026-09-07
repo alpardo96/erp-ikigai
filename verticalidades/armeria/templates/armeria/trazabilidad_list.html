@@ -95,6 +95,7 @@
 
         <!-- Botón Limpiar (Ancho Mínimo Compacto w-20) -->
         <div class="relative w-20 flex-shrink-0 flex items-end">
+            <input type="hidden" name="sort" id="sort_input" value="-fecha">
             <button type="button" 
                     onclick="document.getElementById('form-filtros-trazabilidad').reset(); htmx.trigger('#form-filtros-trazabilidad', 'submit');" 
                     title="Restablecer Filtros"
@@ -128,6 +129,15 @@
             htmx.trigger('#form-filtros-trazabilidad', 'submit');
         }
 
+        function toggleSort(field) {
+            const input = document.getElementById('sort_input');
+            if (input.value === field) {
+                input.value = '-' + field;
+            } else {
+                input.value = field;
+            }
+            htmx.trigger('#form-filtros-trazabilidad', 'submit');
+        }
 
     </script>
 
@@ -137,12 +147,12 @@
             <table class="min-w-full divide-y divide-gray-200" id="tabla-trazabilidad">
                 <thead class="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                        <th class="py-2.5 pl-4 pr-2 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Producto</th>
-                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Serie</th>
-                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">CUIM</th>
-                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Sucursal</th>
-                        <th class="px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Estado Actual</th>
-                        <th class="px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Últ. Movimiento</th>
+                        <th onclick="toggleSort('producto')" class="cursor-pointer py-2.5 pl-4 pr-2 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Producto">Producto</th>
+                        <th onclick="toggleSort('serie')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Serie">Serie</th>
+                        <th onclick="toggleSort('cuim')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por CUIM">CUIM</th>
+                        <th onclick="toggleSort('sucursal')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Sucursal">Sucursal</th>
+                        <th onclick="toggleSort('situacion')" class="cursor-pointer px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Estado">Estado Actual</th>
+                        <th onclick="toggleSort('fecha')" class="cursor-pointer px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Fecha">Últ. Movimiento</th>
                         <th class="relative py-2.5 pl-2 pr-4 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Acciones</th>
                     </tr>
                 </thead>

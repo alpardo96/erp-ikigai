@@ -77,7 +77,12 @@
 
         <!-- Fila 2: El resto y botones a la derecha -->
         <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end pt-1 border-t border-slate-100">
-            <div class="md:col-span-3">
+            <div class="md:col-span-2">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">ID Venta</label>
+                <input type="text" name="venta_id" value="{{ venta_id_q }}" placeholder="Buscar por ID..."
+                       class="w-full h-10 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 outline-none focus:border-blue-500 placeholder:text-slate-400">
+            </div>
+            <div class="md:col-span-2">
                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Vendedor</label>
                 <select name="vendedor" class="w-full h-10 px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 outline-none cursor-pointer">
                     <option value="">Todos</option>
@@ -86,7 +91,7 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="md:col-span-3">
+            <div class="md:col-span-2">
                 <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Comprobante</label>
                 <select name="tipo" class="w-full h-10 px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 outline-none cursor-pointer truncate">
                     <option value="">Todos</option>

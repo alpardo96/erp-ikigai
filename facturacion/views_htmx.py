@@ -1828,7 +1828,7 @@ def typeahead_clientes(request):
     """
     Autocompletado inline de Clientes/Proveedores
     """
-    q = request.GET.get('q', '').strip()
+    q = (request.GET.get('q') or request.GET.get('q_cliente') or request.GET.get('q_proveedor') or '').strip()
     empresa_id = request.session.get('empresa_id')
     
     filtros = Q(empresa_id=empresa_id) 

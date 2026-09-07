@@ -538,20 +538,24 @@ class ComprasListView(LoginRequiredMixin, View):
         hasta = (request.GET.get('hasta') or hoy).strip()
         proveedor_id = (request.GET.get('proveedor') or '').strip()
         condic = (request.GET.get('condic') or '').strip()
+        compra_id_q = (request.GET.get('compra_id') or '').strip()
 
         compras = (Compra.objects.filter(empresa_id=empresa_id)
                    .select_related('tipo', 'proveedor'))
-        if desde:
-            compras = compras.filter(fecha__gte=desde)
-        if hasta:
-            compras = compras.filter(fecha__lte=hasta)
-        if proveedor_id:
-            compras = compras.filter(proveedor_id=proveedor_id)
-        if condic in ('1', '2'):
-            compras = compras.filter(condic=condic)
+        if compra_id_q:
+            compras = compras.filter(compras_id=compra_id_q)
+        else:
+            if desde:
+                compras = compras.filter(fecha__gte=desde)
+            if hasta:
+                compras = compras.filter(fecha__lte=hasta)
+            if proveedor_id:
+                compras = compras.filter(proveedor_id=proveedor_id)
+            if condic in ('1', '2'):
+                compras = compras.filter(condic=condic)
         compras = compras.order_by('-fecha', '-compras_id')
 
-        # ExportaciÃ³n a Excel: respeta los filtros, sin lÃ­mite de filas.
+        # Exportación a Excel: respeta los filtros, sin límite de filas.
         if request.GET.get('export') == 'excel':
             from facturacion.services.compras_excel import exportar_compras_excel
             empresa = Empresa.objects.filter(pk=empresa_id).first()
@@ -569,10 +573,19 @@ class ComprasListView(LoginRequiredMixin, View):
         proveedores = (ClienteProveedor.objects
                        .filter(compra__empresa_id=empresa_id).distinct()
                        .order_by('razon_social'))
+
+        proveedor_display = ''
+        if proveedor_id:
+            prov_obj = ClienteProveedor.objects.filter(pk=proveedor_id, empresa_id=empresa_id).first()
+            if prov_obj:
+                proveedor_display = prov_obj.razon_social
+
         return render(request, 'facturacion/compras_listado.html', {
             'compras': compras[:500],
             'proveedores': proveedores,
             'desde': desde, 'hasta': hasta, 'proveedor_id': proveedor_id, 'condic': condic,
+            'proveedor_display': proveedor_display,
+            'compra_id_q': compra_id_q,
             'totales': totales,
         })
 
@@ -1112,23 +1125,28 @@ class VentasListView(LoginRequiredMixin, View):
         tipo_id = (request.GET.get('tipo') or '').strip()
         condic = (request.GET.get('condic') or '').strip()
 
+        venta_id_q = (request.GET.get('venta_id') or '').strip()
+
         ventas = (Venta.objects.filter(empresa_id=empresa_id)
                    .select_related('tipo', 'cliente', 'sucursal', 'vendedor'))
         
-        if desde:
-            ventas = ventas.filter(fecha__gte=desde)
-        if hasta:
-            ventas = ventas.filter(fecha__lte=hasta)
-        if cliente_id:
-            ventas = ventas.filter(cliente_id=cliente_id)
-        if sucursal_id:
-            ventas = ventas.filter(sucursal_id=sucursal_id)
-        if vendedor_id:
-            ventas = ventas.filter(vendedor_id=vendedor_id)
-        if tipo_id:
-            ventas = ventas.filter(tipo_id=tipo_id)
-        if condic in ('1', '2'):
-            ventas = ventas.filter(condic=condic)
+        if venta_id_q:
+            ventas = ventas.filter(ventas_id=venta_id_q)
+        else:
+            if desde:
+                ventas = ventas.filter(fecha__gte=desde)
+            if hasta:
+                ventas = ventas.filter(fecha__lte=hasta)
+            if cliente_id:
+                ventas = ventas.filter(cliente_id=cliente_id)
+            if sucursal_id:
+                ventas = ventas.filter(sucursal_id=sucursal_id)
+            if vendedor_id:
+                ventas = ventas.filter(vendedor_id=vendedor_id)
+            if tipo_id:
+                ventas = ventas.filter(tipo_id=tipo_id)
+            if condic in ('1', '2'):
+                ventas = ventas.filter(condic=condic)
             
         ventas = ventas.order_by('-fecha', '-ventas_id')
 
@@ -1159,6 +1177,7 @@ class VentasListView(LoginRequiredMixin, View):
             'cliente_display': cliente_display,
             'vendedor_id': vendedor_id, 'tipo_id': tipo_id,
             'condic': condic,
+            'venta_id_q': venta_id_q,
             'totales': totales,
         })
 

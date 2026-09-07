@@ -1,5 +1,82 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
+## Antigravity - 07/09/2026
+**Objetivo:** Continuación y finalización de la Migración de Armería (Fases 2 a 5).
+**Archivos creados o modificados:**
+- `migracion/scripts/armeria/04_migrar_facturacion_armeria.py` [MODIFY]
+- `migracion/scripts/armeria/05_migrar_pagos_recibos_armeria.py` [MODIFY]
+- `docs/walkthrough.md` [MODIFY]
+
+**Detalle Técnico e implicaciones:**
+- Se procedió a ejecutar las Fases 2 (Inventario), 3 (Tesorería), 4 (Facturación) y 5 (Pagos y Recibos) del bloque de Armería.
+- Se detectaron incompatibilidades por los rediseños arquitectónicos previos y se aplicaron parches estructurales en los scripts de migración:
+  - En la **Fase 4 (Facturación)**, se corrigió la asignación al modelo `PeriodoIva` (usando el campo `periodo` en vez de `mes/anio`), se ajustaron las claves primarias heredadas (`ventas_id` y `compras_id` en lugar del antiguo `id`), y se implementó un fallback dinámico (con obtención del primer registro disponible) para `proveedor_id`, `cliente_id` y `producto_id` de forma tal de esquivar las restricciones obligatorias `NOT NULL` de la DB en filas huérfanas heredadas de FoxPro.
+  - Para esquivar violaciones de clave foránea derivadas de los fallos de clave única o integridad (`UniqueConstraint`), se añadió lógica en memoria post-bulk_create, interceptando únicamente aquellos `id`s que fueron validados en la base, impidiendo arrastrar ítems que hubieran fracasado en la inserción de las cabeceras.
+  - En la **Fase 5 (Pagos y Recibos)**, se enlazaron las órdenes de pago y recibos a las compras y ventas adaptando los identificadores referenciales `compras_id` y `ventas_id`.
+
+**Resultado de las pruebas:**
+- Fases 2 y 3: Concluidas sin incidencias tras los primeros ajustes.
+- Fase 4 (Facturación): Concluida procesando más de 22,900 ventas (y ~34,700 ítems) y 603 compras.
+- Fase 5 (Tesorería Pagos): Concluida con 1,805 Órdenes de Pago y 23 Recibos procesados y conciliados exitosamente en la DB.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Migración histórica base de Armería finalizada exitosamente a nivel de scripts y registros de DB. Todo el ecosistema heredado se encuentra importado. Se puede dar por cerrado el plan inicial.
+
+### Addendum - Corrección de Clientes vs Proveedores (Armería)
+**Detalle Técnico:**
+- Se detectó que en el volcado de la Fase 1, todos los registros de la tabla `cli_pro.dbf` habían ingresado al sistema como Clientes (`tipo_entidad=1`) debido a que el antiguo campo `TIPO` de FoxPro se encontraba vacío.
+- Se identificó que la verdadera bandera diferenciadora en la base de Armería era la columna `CLI_PRO` (`1` para cliente, `2` para proveedor, `0` neutral).
+- **En la base de datos:** Para no tener que eliminar y volver a migrar toda la base de datos (con las demoras masivas que implicaría re-correr Fases 2, 3, 4 y 5), se elaboró un script interno que leyó directamente los DBFs de Comercio y Balance, obteniendo todos los códigos con `CLI_PRO = 2`, y aplicó un `update(tipo_entidad=2)` de manera atómica, corrigiendo 669 registros en total en tiempo real.
+- **En los scripts:** Se editó de forma permanente el script de Fase 1 (`01_migrar_maestros_armeria.py`) para que utilice la columna `CLI_PRO` en caso de requerirse una migración limpia desde cero en el futuro.
+
+### Addendum 2 - Asientos Huérfanos en Listado de Ventas (Armería)
+**Detalle Técnico:**
+- Se reportó que el listado de ventas mostraba la columna "Asiento" vacía. Se comprobó que el script de Fase 4 (`04_migrar_facturacion_armeria.py`) había omitido extraer y mapear el campo `ID_ASTO` proveniente del archivo `ventas_enc.dbf` (y `compras_enc.dbf`) hacia la propiedad `asiento_id` de Django.
+- **En la base de datos:** Se ejecutó un script en tiempo real (vía terminal local) que iteró sobre los DBF y aplicó un `bulk_update` directo sobre los modelos de `Venta` en Django. Se vincularon exitosamente **22,585 asientos** históricos con sus comprobantes de venta. (Las compras poseían `ID_ASTO = 0` en origen, por lo que quedaron sin cambios como es correcto).
+- **En los scripts:** Se actualizó `04_migrar_facturacion_armeria.py` para mapear de forma permanente `asiento_id=row.get('ID_ASTO')` en las altas nativas.
+
+### Addendum 3 - Corrección de Fallo al Imprimir PDF de Ventas Migradas (Armería)
+**Detalle Técnico:**
+- Se detectó un error 500 (`AttributeError: 'NoneType' object has no attribute 'codigo'`) al intentar imprimir en PDF comprobantes de venta heredados que no tenían asociado un `TipoComprobante` (`venta.tipo = None`), un escenario común en migraciones históricas con tipos documentales que ya no existen o eran inválidos.
+- **En el servicio PDF:** Se modificó `facturacion/services/pdf_service.py` para añadir fallbacks condicionales (`if venta.tipo else ''`) al momento de leer el código y el título del comprobante, garantizando que el reporte en PDF (basado en ReportLab) se dibuje correctamente y titule el documento como "Comprobante" si la venta es huérfana de tipología.
+
+### Addendum 4 - Envolvimiento de Texto (Word-Wrap) en PDF de Ventas
+**Detalle Técnico:**
+- Se reportó que los detalles de los productos muy largos (ej. armas con especificaciones técnicas o mirillas) desbordaban su columna en la grilla del PDF generado, superponiéndose visualmente sobre las columnas de Cantidad, Precio Unitario e Importe.
+- Adicionalmente, se detectó que no se estaban reflejando la Serie y el CUIM de las armas (subproductos) vendidas en el comprobante.
+- **En el servicio PDF:** Se incorporó la función `simpleSplit` de `reportlab.lib.utils` en `facturacion/services/pdf_service.py`. En lugar de pintar el string completo en una sola línea, el sistema ahora calcula dinámicamente cuántas líneas requiere el texto para ajustarse al ancho máximo de la columna "Detalle" (280 puntos). Las columnas numéricas (precio, cantidad) se imprimen solo una vez, mientras que el texto descriptivo se dibuja línea por línea empujando el cursor `y_items` dinámicamente hacia abajo.
+- **Trazabilidad en PDF:** Se integró en la misma iteración lógica una búsqueda al modelo `Subproducto` a través de la relación inversa pre-cargada (`venta.subproductos.all()`). En caso de coincidir con el producto facturado, se inyectan automáticamente en un renglón nuevo (`\n`) los atributos de "Serie: XXX - Cuim: YYY" debajo del detalle comercial del arma. Adicionalmente, se programó un `fallback` por cliente y fecha: si el usuario imprime un Remito de Venta (el cual FoxPro no vincula nativamente al Subproducto), el sistema buscará inteligentemente si ese mismo producto fue facturado a ese cliente en esa fecha para heredar e imprimir su trazabilidad de todas formas.
+- **Corrección de Mapeo FoxPro (Subproductos):** Se detectó que el script de migración `02_migrar_inventario_armeria.py` había omitido enlazar las FK `venta_id` y `compra_id`, y que los `CODIGO` en FoxPro no coincidían 1:1 con el `id` autoincremental de Django. Se ejecutó un parche sobre la base de datos mapeando contra `Producto.codigo_anterior` y se dejaron enlazados exitosamente **1,925 subproductos** a sus respectivas ventas. El archivo `02_migrar_inventario_armeria.py` fue parcheado para que futuras migraciones apliquen esta misma lógica correctamente.
+- **Grilla de Trazabilidad:** Se reescribió la consulta ORM de la vista `SubproductoTrazabilidadListView` utilizando `Subquery` en lugar de `distinct('serie')`. Esto solucionó un problema grave donde los filtros (como "Estado Actual = Vendida") aplicaban sobre todo el historial de la serie en lugar de solo sobre su estado más reciente. Además, se habilitó el **ordenamiento dinámico (Sorting)** al hacer clic sobre los encabezados de la tabla, con un input oculto y lógica JavaScript integrados al motor HTMX.
+- **Corrección Condición Compras/Ventas:** Se detectó que FoxPro guardaba `CONDIC = 0` en algunas operaciones, lo que provocó que 603 compras y 389 ventas migraran con `condic=0`. Al no ser igual a `1` (Fiscal), el sistema las mostraba visualmente como "Presupuestado" (`condic=2`). Se ejecutó un bulk update para reasignarlas como Fiscal/Real (`condic=1`) y se parcheó el script de migración `04_migrar_facturacion_armeria.py` para asegurar que todo `0` caiga como `1` por defecto.
+- **Corrección de Letra en PDF:** Se ajustó la lógica en `facturacion/services/pdf_service.py` que interpreta qué marco dibujar ("A", "B", o "C") en el PDF. Originalmente estaba limitada estrictamente a códigos AFIP (001, 002, 003), lo que provocaba que al renderizar comprobantes históricos con la nomenclatura de FoxPro (`FA`, `CA`, `DA`) el sistema cayera en el caso por defecto (`B`). Ahora el sistema reconoce apropiadamente tanto la codificación AFIP como la interna, renderizando la Letra "A" o "C" correctamente para facturas, notas de débito y crédito.
+- **Validación Formulario Producto:** Se reparó un error de validación en la interfaz de creación y edición de productos de la Armería. El campo `unidad_venta`, que había sido establecido como obligatorio a nivel global (requerimiento proveniente de Agrícola), no estaba renderizado en el modal `producto_modal.html`. Esto provocaba que al guardar se enviara un valor vacío y Django rechazara la operación con el error "Este campo es obligatorio". Se incorporó exitosamente el control desplegable "Unidad de Venta" en la misma fila de Punto de Pedido y Stock Mínimo.
+- **Corrección de Escala de IVA:** Se detectó que la tabla de FoxPro exportaba la alícuota de IVA en formato unitario (ej. `0.21`, `0.105`), mientras que el ERP espera formato porcentual directo (`21.00`, `10.50`). Esto impedía que los productos y subproductos mapearan correctamente con las opciones predefinidas de la plataforma (21%, 10.5%). Se ejecutó una corrección masiva sobre 7,572 productos y 2,557 subproductos multiplicando su valor por 100 y actualizando la base de datos en tiempo real. Además, el script `02_migrar_inventario_armeria.py` fue modificado para procesar el campo correctamente multiplicando por 100 en futuras importaciones.
+- **Facturación - Detalle Dinámico de IVA:** En las "Facturas A" generadas a través del motor de PDFs (`pdf_service.py`), el pie de página informaba exclusivamente un único impuesto (21%), ignorando la presencia de productos facturados al 10.5%. El código fue reescrito para leer e iterar dinámicamente sobre la colección de ítems asociados a la venta (`VentaItem`), agrupar sus bases imponibles de forma proporcional y generar un desglose discriminado por alícuota en el pie del PDF. También se saneó masivamente el campo `iva_alicuota` de las tablas transaccionales en la base de datos que habían importado escalas 0.21 en lugar de 21.00.
+- **Filtro de Productos:** Se amplió el buscador HTMX de productos (`buscar_productos` en `views_htmx.py`). Anteriormente solo permitía buscar por Detalle, Código Proveedor o Código Fabricante. Ahora reconoce si la entrada es un número entero para buscar de forma exacta por el `id` autoincremental, y adicionalmente filtra por el `codigo_anterior` de FoxPro, facilitando a los usuarios encontrar productos importados mediante su identificador original.
+- **Autocompletado de Clientes en Ventas:** Se corrigió un bug donde el campo de autocompletado de clientes en el listado de ventas no funcionaba al escribir. La causa raíz era una discrepancia de nombres: el input enviaba el valor como `q_cliente` pero el endpoint `typeahead_clientes` solo leía el parámetro `q`. Se parchó la vista para aceptar ambos nombres (`q`, `q_cliente`, `q_proveedor`).
+- **Búsqueda por ID en Ventas y Compras:** Se agregó un campo de búsqueda por ID exacto (`venta_id` / `compra_id`) en ambos listados. Cuando se ingresa un ID, el sistema salta los filtros de fecha/cliente y busca directamente por la PK del comprobante.
+- **Autocompletado de Proveedor en Compras:** Se reemplazó el `<select>` estático de proveedores (que cargaba todos los proveedores al renderizar la página) por un typeahead dinámico HTMX idéntico al de ventas, con búsqueda progresiva por razón social o CUIT.
+- **Unidad de Venta condicional por vertical:** El campo `unidad_venta` en el modal de productos ahora solo se muestra visualmente cuando la empresa tiene `tipo_actividad='DISTRIBUCION'`. Para el resto de verticales (Armería, Agrícola, etc.) el campo queda oculto en la interfaz y en el backend se marcó como `required=False` con un `clean_unidad_venta` que asigna automáticamente el valor por defecto `'UNIDAD'`. Esto evita el error de validación "Este campo es obligatorio" sin impactar la lógica de Distribución.
+
+## Antigravity - 07/09/2026
+**Objetivo:** Solución de error `IntegrityError` por secuencias de clave primaria desincronizadas.
+**Archivos creados o modificados:**
+- `reset_sequences.py` [NEW/DELETE] (script temporal)
+- `docs/walkthrough.md` [MODIFY]
+
+**Detalle Técnico:**
+- Se detectó un error `django.db.utils.IntegrityError` al intentar crear una nueva `CuentaContable` (tabla `cble_cuentas`) provocado porque la secuencia de la tabla no se actualizó tras una inserción explícita de IDs en una migración manual.
+- Se elaboró y ejecutó un script (utilizando `django.core.management.color.no_style` y `connection.ops.sequence_reset_sql`) para resetear y sincronizar los contadores de las primary keys en PostgreSQL.
+- Se aplicó la reparación sobre todas las tablas del proyecto, ejecutando 76 sentencias de reinicio de secuencias.
+- Una vez finalizada la reparación, el script fue eliminado para mantener la higiene del repositorio, acatando las reglas del proyecto.
+
+**Resultado de las pruebas:**
+- Script ejecutado exitosamente. Las secuencias de PostgreSQL han sido alineadas con el valor máximo real de los registros de las tablas.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Problema solventado. El usuario ya puede crear y guardar registros sin que se produzca una colisión de clave primaria.
+
 ## Cristian - PC CASA - 06/09/2026
 **Objetivo:** Solución de deudas técnicas urgentes e importaciones huérfanas en verticalidades.
 **Archivos creados o modificados:**

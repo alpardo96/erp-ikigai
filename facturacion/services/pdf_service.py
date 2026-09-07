@@ -88,14 +88,16 @@ def generar_pdf_venta(venta_id):
     """
     Genera un PDF de la venta dibujando el comprobante completo usando ReportLab.
     """
-    venta = Venta.objects.select_related('tipo', 'cliente', 'empresa', 'sucursal', 'cliente__jurisdiccion').prefetch_related('items', 'alicuotas_iva').get(ventas_id=venta_id)
+    venta = Venta.objects.select_related('tipo', 'cliente', 'empresa', 'sucursal', 'cliente__jurisdiccion').prefetch_related('items', 'alicuotas_iva', 'subproductos').get(ventas_id=venta_id)
     
-    codigo = venta.tipo.codigo
+    codigo = venta.tipo.codigo if venta.tipo else ''
     
     if codigo == 'PRE' or venta.condic == 2:
         layout_style = 'PRE'
-    elif codigo in ['001', '002', '003']:
+    elif codigo in ['001', '002', '003', '051', '052', '053', 'FA', 'CA', 'DA', 'FMA']:
         layout_style = 'A'
+    elif codigo in ['011', '012', '013', 'FC', 'CC', 'DC']:
+        layout_style = 'C'
     else:
         layout_style = 'B'
         
@@ -142,6 +144,7 @@ def generar_pdf_venta(venta_id):
     letra = "X"
     if layout_style == 'A': letra = "A"
     elif layout_style == 'B': letra = "B"
+    elif layout_style == 'C': letra = "C"
     builder.draw_text(letra, 297.5, 75, font_name="Helvetica-Bold", font_size=28, align="center")
     
     if layout_style != 'PRE':
@@ -186,7 +189,7 @@ def generar_pdf_venta(venta_id):
         builder.draw_text(iva_emisor, 162.5, y_emisor + 45, font_name="Helvetica-Bold", font_size=9, align="center")
 
     # COMPROBANTE (Right)
-    titulo_cbte = get_titulo_comprobante(codigo, venta.tipo.detalle)
+    titulo_cbte = get_titulo_comprobante(codigo, venta.tipo.detalle if venta.tipo else 'Comprobante')
     if layout_style == 'PRE': titulo_cbte = "PRESUPUESTO"
     
     builder.draw_text(titulo_cbte, 431.25, 65, font_name="Helvetica-Bold", font_size=18, align="center")
@@ -259,22 +262,53 @@ def generar_pdf_venta(venta_id):
     builder.draw_text("Precio Unit.", 475, 270, font_name="Helvetica-Bold", font_size=9, align="right")
     builder.draw_text("Importe", 565, 270, font_name="Helvetica-Bold", font_size=9, align="right")
     
+    from reportlab.lib.utils import simpleSplit
     # === ITEMS ROWS ===
     y_items = 290
     for item in venta.items.all():
         codigo_str = str(item.producto_id) if item.producto_id else ""
         concepto_str = item.concepto or (item.producto.detalle if hasattr(item, 'producto') and item.producto else "")
+        
+        if hasattr(item, 'producto') and item.producto:
+            item_subproductos = [sp for sp in venta.subproductos.all() if sp.producto_id == item.producto_id]
+            
+            # Fallback para comprobantes sin trazabilidad directa (ej. Remitos) pero facturados el mismo día al mismo cliente
+            if not item_subproductos:
+                from productos.models import Subproducto
+                item_subproductos = Subproducto.objects.filter(
+                    producto_id=item.producto_id,
+                    venta__cliente_id=venta.cliente_id,
+                    venta__fecha=venta.fecha
+                )
+                
+            for sp in item_subproductos:
+                extras = []
+                if sp.serie: extras.append(f"Serie: {sp.serie.strip()}")
+                if sp.cuim: extras.append(f"Cuim: {sp.cuim.strip()}")
+                if extras:
+                    concepto_str += f"\n{' - '.join(extras)}"
+                    
         cant_str = format_arg(item.cantidad)
         precio_str = format_arg(item.precio_unitario)
         total_str = format_arg(item.total)
         
+        # Envolvemos el concepto_str en varias líneas para que no pise columnas.
+        # Ancho disponible: aprox 280 puntos (desde 85 hasta 365)
+        lines = simpleSplit(concepto_str, "Helvetica", 9, 270)
+        
+        # Dibujamos las columnas de valor una sola vez en la primera línea
         builder.draw_text(codigo_str, 25, y_items, font_size=9)
-        builder.draw_text(concepto_str, 85, y_items, font_size=9)
         builder.draw_text(cant_str, 385, y_items, font_size=9, align="right")
         builder.draw_text(precio_str, 475, y_items, font_size=9, align="right")
         builder.draw_text(total_str, 565, y_items, font_size=9, align="right")
         
-        y_items += 15
+        if not lines:
+            y_items += 15
+        else:
+            for line in lines:
+                builder.draw_text(line, 85, y_items, font_size=9)
+                y_items += 12
+            y_items += 3  # Espaciado extra al final del ítem
 
     # === FOOTER (TOTALES) ===
     if layout_style == 'A':
@@ -284,9 +318,29 @@ def generar_pdf_venta(venta_id):
         active_alics = [a for a in venta.alicuotas_iva.all() if a.base_imponible > 0 or a.importe_iva > 0]
         if not active_alics and venta.iva > 0:
             class FakeAlic:
-                alicuota = Decimal('21.00')
-                importe_iva = venta.iva
-            active_alics = [FakeAlic()]
+                def __init__(self, alic, iva_val):
+                    self.alicuota = alic
+                    self.importe_iva = iva_val
+
+            alicuotas_dict = {}
+            for item in venta.items.all():
+                alic = item.iva_alicuota or Decimal('0.00')
+                if alic > 0:
+                    alicuotas_dict[alic] = alicuotas_dict.get(alic, Decimal('0.00')) + item.total
+
+            active_alics = []
+            if alicuotas_dict:
+                for alic, gross_total in sorted(alicuotas_dict.items(), reverse=True):
+                    base = gross_total / (Decimal('1') + alic / Decimal('100'))
+                    active_alics.append(FakeAlic(alic, gross_total - base))
+                
+                # Ajuste de redondeo contra el total de IVA real de la factura
+                sum_iva = sum(a.importe_iva for a in active_alics)
+                diff = venta.iva - sum_iva
+                if abs(diff) > Decimal('0.00') and abs(diff) < Decimal('2.00'):
+                    active_alics[0].importe_iva += diff
+            else:
+                active_alics = [FakeAlic(Decimal('21.00'), venta.iva)]
             
         y_iva = 730
         if active_alics:
