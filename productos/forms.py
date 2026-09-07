@@ -144,8 +144,15 @@ class ProductoForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
+        self._empresa = empresa
         if self.instance and self.instance.pk and hasattr(self.instance, 'alic_iva_porc'):
             self.initial['alic_iva'] = self.instance.alic_iva_porc
+
+        # Unidad de Venta: solo es relevante para Distribución.
+        # En otras verticales lo hacemos no-obligatorio para que el form no rompa.
+        if not empresa or empresa.tipo_actividad != 'DISTRIBUCION':
+            self.fields['unidad_venta'].required = False
+
         if empresa:
             self.fields['marca'].queryset = Marca.objects.filter(empresa=empresa).order_by('detalle')
             self.fields['rubro'].queryset = Rubro.objects.filter(empresa=empresa).order_by('detalle')
@@ -159,3 +166,6 @@ class ProductoForm(forms.ModelForm):
             if self.instance and self.instance.proveedor_id:
                 qs_proveedor = qs_proveedor | ClienteProveedor.objects.filter(pk=self.instance.proveedor_id)
             self.fields['proveedor'].queryset = qs_proveedor.distinct().order_by('razon_social')
+
+    def clean_unidad_venta(self):
+        return self.cleaned_data.get('unidad_venta') or 'UNIDAD'

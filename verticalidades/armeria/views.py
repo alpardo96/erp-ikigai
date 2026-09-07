@@ -42,6 +42,7 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
         except Empresa.DoesNotExist:
             pass
         
+        puntos_venta = PuntoVenta.objects.filter(sucursal_id=sucursal_id, activo=True)
         modo_edicion = getattr(empresa, 'modo_edicion_facturacion', 'DESCUENTO') if empresa else 'DESCUENTO'
         
         return render(request, 'armeria/ventas_trazabilidad_carga.html', {
@@ -827,6 +828,8 @@ class SubproductoTrazabilidadListView(LoginRequiredMixin, ListView):
         search_situacion = self.request.GET.get('situacion', '').strip()
         search_sucursal = self.request.GET.get('sucursal', '').strip()
 
+        from django.db.models import Subquery, Q
+        
         qs = Subproducto.objects.filter(empresa_id=empresa_id)
 
         # Si se busca por CliPro, primero encontramos las series que tienen ese CliPro en su historia
@@ -845,17 +848,40 @@ class SubproductoTrazabilidadListView(LoginRequiredMixin, ListView):
             qs = qs.filter(cuim__icontains=search_cuim)
         if search_producto:
             qs = qs.filter(producto__detalle__icontains=search_producto)
-        if search_situacion:
-            qs = qs.filter(situacion=search_situacion)
         if search_sucursal:
             qs = qs.filter(sucursal_id=search_sucursal)
 
-        # Obtenemos solo el estado más reciente de cada serie utilizando DISTINCT ON
-        # Para usar distinct() con order_by, los campos del distinct deben ser los primeros en el order_by
-        qs = qs.select_related('producto', 'compra', 'compra__proveedor', 'venta', 'venta__cliente')
-        qs = qs.order_by('serie', '-feccpra', '-subpro').distinct('serie')
+        # Filtramos para obtener SÓLO el estado más reciente de cada serie
+        latest_ids = qs.order_by('serie', '-feccpra', '-subpro').distinct('serie').values('subpro')
         
-        # Limitamos a 50 registros para optimizar carga (evitando el COUNT(*) de paginate_by)
+        # Ahora trabajamos sobre un queryset limpio con solo los últimos estados
+        qs = Subproducto.objects.filter(subpro__in=Subquery(latest_ids))
+
+        # Aplicamos el filtro de situación AL ESTADO ACTUAL (antes fallaba porque filtraba toda la historia)
+        if search_situacion:
+            qs = qs.filter(situacion=search_situacion)
+
+        # Ordenamiento dinámico
+        sort = self.request.GET.get('sort', '-fecha')
+        sort_map = {
+            'producto': 'producto__detalle',
+            '-producto': '-producto__detalle',
+            'serie': 'serie',
+            '-serie': '-serie',
+            'cuim': 'cuim',
+            '-cuim': '-cuim',
+            'sucursal': 'sucursal__nombre',
+            '-sucursal': '-sucursal__nombre',
+            'situacion': 'situacion',
+            '-situacion': '-situacion',
+            'fecha': 'feccpra',
+            '-fecha': '-feccpra',
+        }
+        
+        qs = qs.select_related('producto', 'compra', 'compra__proveedor', 'venta', 'venta__cliente')
+        qs = qs.order_by(sort_map.get(sort, '-feccpra'))
+        
+        # Limitamos a 50 registros para optimizar carga
         return qs[:50]
 
     def get_template_names(self):

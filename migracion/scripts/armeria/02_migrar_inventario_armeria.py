@@ -2,6 +2,7 @@ import os
 import sys
 import django
 from decimal import Decimal
+from datetime import date
 from dbfread import DBF
 import pathlib
 
@@ -111,7 +112,7 @@ def run():
                 minimo=parse_decimal(row.get('MINIMO')),
                 ptopedir=parse_decimal(row.get('PTOPEDIR')),
                 creden=bool(row.get('CREDEN', False)),
-                alic_iva=parse_decimal(row.get('ALIC_IVA')),
+                alic_iva=(parse_decimal(row.get('ALIC_IVA')) * 100) if row.get('ALIC_IVA') else parse_decimal('0'),
                 marca=marcas_dict.get(str(row.get('ID_MARCA', '')).strip()),
                 rubro=rubros_dict.get(str(row.get('ID_RUBRO', '')).strip()),
                 familia=fam_dict.get(str(row.get('ID_FLIA', '')).strip()),
@@ -181,15 +182,18 @@ def run():
             situacion = 'VENDIDA' if row.get('ID_VTA') and row.get('ID_VTA') > 0 else 'DEPOSITO'
                 
             sub_to_create.append(Subproducto(
+                empresa=empresa,
                 producto=p_obj,
                 sucursal=sucursal_sub,
                 serie=str(row.get('SERIE', ''))[:30] or "SIN SERIE",
                 cuim=cuim_val,
                 feccpra=row.get('FECCPRA') or date.today(),
+                compra_id=row.get('ID_CPRA') or None,
                 cto_adq=parse_decimal(row.get('CTO_ADQ')),
                 cotizadq=parse_decimal(row.get('COTIZADQ')),
-                alic_iva=parse_decimal(row.get('ALIC_IVA')),
+                alic_iva=(parse_decimal(row.get('ALIC_IVA')) * 100) if row.get('ALIC_IVA') else parse_decimal('0'),
                 margen=parse_decimal(row.get('MARGEN')),
+                venta_id=row.get('ID_VTA') or None,
                 fecvta=row.get('FECVTA') if str(row.get('FECVTA')) != 'None' else None,
                 precio_total=parse_decimal(row.get('PCIOT')),
                 estado='NUEVO' if str(row.get('COND', '')) == '1' else 'USADO',

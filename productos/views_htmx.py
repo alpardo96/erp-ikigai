@@ -56,6 +56,7 @@ def producto_modal(request, id=None):
         'form': form,
         'producto': producto,
         'origen': request.GET.get('origen') or request.POST.get('origen') or '',
+        'tipo_actividad': empresa.tipo_actividad or '',
     })
 
 def buscar_productos(request):
@@ -67,7 +68,11 @@ def buscar_productos(request):
     productos = Producto.objects.filter(empresa_id=empresa_id)
 
     if q:
-        productos = productos.filter(detalle__icontains=q) | productos.filter(cod_prov__icontains=q) | productos.filter(cod_fab__icontains=q)
+        from django.db.models import Q
+        query = Q(detalle__icontains=q) | Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(codigo_anterior__icontains=q)
+        if q.isdigit():
+            query |= Q(id=q)
+        productos = productos.filter(query)
 
     productos = productos.order_by('detalle')
 

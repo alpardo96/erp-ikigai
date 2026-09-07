@@ -89,7 +89,7 @@
         <div>
             <span class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Estado</span>
             <select name="estado"
-                    class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500 cursor-pointer">
+                    class="h-9 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500 cursor-pointer">
                 {% for valor, nombre in estados %}
                 <option value="{{ valor }}" {% if filtro.estado == valor %}selected{% endif %}>{{ nombre }}</option>
                 {% endfor %}

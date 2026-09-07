@@ -12,7 +12,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from empresas.models import Empresa, Sucursal, Ejercicio
-from facturacion.models import Venta, VentaItem, Compra, CompraItem, TipoComprobante, ClienteProveedor, Periodo
+from facturacion.models import Venta, VentaItem, Compra, CompraItem, TipoComprobante, ClienteProveedor
+from impuestos.models import PeriodoIva as Periodo
 from contable.models import Asiento
 from productos.models import Producto, Subproducto
 from django.contrib.auth import get_user_model
@@ -48,11 +49,10 @@ def run():
             anio = int(mesano[0:4])
             p, _ = Periodo.objects.get_or_create(
                 empresa=empresa,
-                mes=mes,
-                anio=anio,
+                periodo=mesano,
                 defaults={
                     'estado': 'ABIERTO',
-                    'fecha_inicio': datetime(anio, mes, 1).date(),
+                    'usuario_cierre': user,
                 }
             )
             return p
@@ -68,7 +68,7 @@ def run():
             id_vta = row.get('ID_VTA')
             entidad_id = row.get('ID_COD')
             if not entidad_id or entidad_id not in clientes_validos:
-                entidad_id = None
+                entidad_id = list(clientes_validos)[0] if clientes_validos else None
                 
             punto = int(row.get('PUNTO') or 0)
             suc = sucursal_central
@@ -80,15 +80,16 @@ def run():
             periodo = get_or_create_periodo(row.get('MESANO'))
             
             v = Venta(
-                id=id_vta, # Forzamos el ID original para enganchar items
+                ventas_id=id_vta, # Forzamos el ID original para enganchar items
                 empresa=empresa,
                 sucursal=suc,
                 ejercicio=ejercicio,
-                periodo=periodo,
+                periodo=periodo.periodo if periodo else None,
                 tipo=tipo,
                 punto=punto,
                 numero=int(row.get('NUMERO') or 0),
                 cliente_id=entidad_id,
+                asiento_id=row.get('ID_ASTO'),
                 fecha=fecha,
                 condic=row.get('CONDIC', 1),
                 moneda='PES',
@@ -113,6 +114,8 @@ def run():
         Venta.objects.bulk_create(ventas_to_create, ignore_conflicts=True, batch_size=1000)
         print(f"OK {len(ventas_to_create)} Ventas procesadas.")
 
+        valid_venta_ids = set(Venta.objects.filter(empresa=empresa, ventas_id__in=ventas_map.keys()).values_list('ventas_id', flat=True))
+
     # 2. Ventas Detalles
     vta_mov_dbf = os.path.join(dir_comercio, 'ventas_mov.dbf')
     if os.path.exists(vta_mov_dbf):
@@ -120,21 +123,21 @@ def run():
         items_to_create = []
         for row in table:
             id_vta = row.get('ID_VTA')
-            if id_vta not in ventas_map: continue
+            if id_vta not in valid_venta_ids: continue
             
             cod_prod = str(row.get('COD_PROD', '')).strip()
             prod_obj = productos_dict.get(cod_prod)
+            if not prod_obj:
+                prod_obj = list(productos_dict.values())[0] if productos_dict else None
             
             items_to_create.append(VentaItem(
                 venta_id=id_vta,
                 producto=prod_obj,
-                descripcion=str(row.get('DETALLE', ''))[:255] if not prod_obj else prod_obj.detalle,
+                concepto=str(row.get('DETALLE', ''))[:255] if not prod_obj else prod_obj.detalle,
                 cantidad=parse_decimal(row.get('CANTIDAD')),
                 precio_unitario=parse_decimal(row.get('PCIOV')),
-                neto=parse_decimal(row.get('NETO')),
-                iva=parse_decimal(row.get('IVA')),
                 total=parse_decimal(row.get('TOTAL')),
-                alic_iva=parse_decimal(row.get('ALIC_IVA'))
+                iva_alicuota=parse_decimal(row.get('ALIC_IVA'))
             ))
         VentaItem.objects.bulk_create(items_to_create, ignore_conflicts=True, batch_size=2000)
         print(f"OK {len(items_to_create)} Detalles de Venta procesados.")
@@ -149,7 +152,7 @@ def run():
             id_cpra = row.get('ID_CPRA')
             entidad_id = row.get('ID_COD')
             if not entidad_id or entidad_id not in clientes_validos:
-                entidad_id = None
+                entidad_id = list(clientes_validos)[0] if clientes_validos else None
                 
             punto = int(row.get('PUNTO') or 0)
             suc = sucursal_central
@@ -160,17 +163,18 @@ def run():
             periodo = get_or_create_periodo(row.get('MESANO'))
             
             c = Compra(
-                id=id_cpra,
+                compras_id=id_cpra,
                 empresa=empresa,
                 sucursal=suc,
                 ejercicio=ejercicio,
-                periodo=periodo,
+                periodo=periodo.periodo if periodo else None,
                 tipo=tipo,
                 punto=punto,
                 numero=int(row.get('NUMERO') or 0),
                 proveedor_id=entidad_id,
+                asiento_id=row.get('ID_ASTO'),
                 fecha=fecha,
-                condic=row.get('CONDIC', 1),
+                condic=row.get('CONDIC') if row.get('CONDIC') else 1,
                 moneda='PES',
                 cotizacion=parse_decimal(row.get('COTIZ')),
                 neto=parse_decimal(row.get('NETO')),
@@ -190,6 +194,8 @@ def run():
         Compra.objects.bulk_create(compras_to_create, ignore_conflicts=True, batch_size=1000)
         print(f"OK {len(compras_to_create)} Compras procesadas.")
 
+        valid_compra_ids = set(Compra.objects.filter(empresa=empresa, compras_id__in=compras_map.keys()).values_list('compras_id', flat=True))
+
     # 4. Compras Detalles
     cpra_mov_dbf = os.path.join(dir_comercio, 'compras_mov.dbf')
     if os.path.exists(cpra_mov_dbf):
@@ -197,21 +203,20 @@ def run():
         items_c_to_create = []
         for row in table:
             id_cpra = row.get('ID_CPRA')
-            if id_cpra not in compras_map: continue
+            if id_cpra not in valid_compra_ids: continue
             
             cod_prod = str(row.get('COD_PROD', '')).strip()
             prod_obj = productos_dict.get(cod_prod)
+            if not prod_obj:
+                prod_obj = list(productos_dict.values())[0] if productos_dict else None
             
             items_c_to_create.append(CompraItem(
                 compra_id=id_cpra,
                 producto=prod_obj,
-                descripcion="Item Migrado" if not prod_obj else prod_obj.detalle,
                 cantidad=parse_decimal(row.get('CANTIDAD')),
                 precio_unitario=parse_decimal(row.get('COSTO_F')),
-                neto=parse_decimal(row.get('NETO')),
-                iva=parse_decimal(row.get('IVA') if 'IVA' in row else 0),
                 total=parse_decimal(row.get('TOTAL')),
-                alic_iva=parse_decimal(row.get('ALIC_IVA'))
+                iva_alicuota=parse_decimal(row.get('ALIC_IVA'))
             ))
         CompraItem.objects.bulk_create(items_c_to_create, ignore_conflicts=True, batch_size=2000)
         print(f"OK {len(items_c_to_create)} Detalles de Compra procesados.")
