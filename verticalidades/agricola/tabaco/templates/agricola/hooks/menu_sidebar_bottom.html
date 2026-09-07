@@ -36,6 +36,14 @@ sólo granos. Si no existe la fila de `EmpresaVertical`, el acceso a la relació
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_nuevo' %}text-lime-400 font-bold{% endif %}">
             Nuevo Romaneo
         </a>
+        <a href="{% url 'agro_liquidacion_listado' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_liquidacion_listado' %}text-lime-400 font-bold{% endif %}">
+            Liquidaciones
+        </a>
+        <a href="{% url 'agro_liquidacion_nueva' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_liquidacion_nueva' %}text-lime-400 font-bold{% endif %}">
+            Nueva Liquidación
+        </a>
         <a href="{% url 'configuracion_index' %}?tab=agro_clases"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors">
             Maestros de Tabaco

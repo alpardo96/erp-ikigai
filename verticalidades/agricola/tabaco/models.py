@@ -58,6 +58,13 @@ class ConfiguracionTabaco(AuditModel):
         verbose_name="Tolerancia de pesaje (kg)",
         help_text="Diferencia admitida entre el peso declarado y el pesado en balanza.",
     )
+    # Parámetro y no constante: la alícuota puede cambiar por norma, y una liquidación ya emitida
+    # conserva la que le aplicó (se copia en `LiquidacionTabaco.alicuota_iva`).
+    alicuota_iva = models.DecimalField(
+        max_digits=6, decimal_places=2, default=Decimal('21.00'),
+        verbose_name="Alícuota de IVA (%)",
+        help_text="Se aplica al liquidar a productores Responsables Inscriptos.",
+    )
 
     class Meta:
         db_table = "agricola_tabaco_configuracion"
@@ -394,6 +401,13 @@ class RomaneoTabaco(AuditModel):
     # asiento. Tabla completa en `.cursorrules`.
     condic = models.IntegerField(default=1, verbose_name="Condición")
 
+    # La relación con la liquidación vive de ESTE lado a propósito: al ser una FK simple, un
+    # romaneo pertenece a lo sumo a una liquidación, y "no liquidar dos veces los mismos kilos"
+    # queda garantizado por el modelo en vez de por una validación que alguien puede olvidar.
+    liquidacion = models.ForeignKey('LiquidacionTabaco', on_delete=models.PROTECT,
+                                    null=True, blank=True, related_name='romaneos',
+                                    verbose_name="Liquidación")
+
     motivo_anulacion = models.CharField(max_length=200, blank=True)
     anulado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='+')
@@ -527,3 +541,211 @@ class ReclasificacionFardo(models.Model):
     def __str__(self):
         return (f"Fardo {self.fardo.numero_fardo}: "
                 f"{self.clase_anterior.detalle} -> {self.clase_nueva.detalle}")
+
+
+# ==============================================================================
+# LIQUIDACIÓN DE COMPRA — el comprobante que emitimos al productor (Plan 083, Etapa 2)
+# ==============================================================================
+# Es la primera pieza con EFECTOS CONTABLES: genera asiento, alimenta el Libro IVA y hace nacer
+# la deuda con el productor en la cuenta corriente.
+#
+# NO se apoya en `facturacion.Compra`. La liquidación tabacalera tiene su propia estructura —el
+# detalle es por clase de tabaco, no por producto— y se engancha al subsistema fiscal por
+# `asiento_id`, que es como `LibroIvaCompras` y `LibroIvaAlic` se cuelgan de cualquier asiento sin
+# conocer al comprobante que lo originó.
+#
+# EL PAGO NO ESTÁ ACÁ. La Orden de Pago y la retención de Ganancias son la Etapa 3: liquidar y
+# pagar son dos hechos distintos, en momentos distintos y hechos por personas distintas.
+
+
+class LiquidacionTabaco(AuditModel):
+    """Comprobante de compra de tabaco emitido al productor.
+
+    Agrupa uno o varios romaneos confirmados del MISMO productor. La relación vive del lado del
+    romaneo (`RomaneoTabaco.liquidacion`), lo que impide por construcción —y no por convención—
+    liquidar dos veces los mismos kilos.
+    """
+    BORRADOR, CONFIRMADA, ANULADA = 1, 2, 9
+    ESTADOS = [(BORRADOR, 'Borrador'), (CONFIRMADA, 'Confirmada'), (ANULADA, 'Anulada')]
+
+    A, B = 'A', 'B'
+    LETRAS = [(A, 'A'), (B, 'B')]
+
+    # Códigos de comprobante ARCA de la liquidación de compra.
+    CODIVA_POR_LETRA = {A: '150', B: '151'}
+
+    MANUAL, WEBSERVICE = 'MANUAL', 'WEBSERVICE'
+    ORIGENES = [(MANUAL, 'Manual (talonario con CAI o comprobante en línea)'),
+                (WEBSERVICE, 'Webservice ARCA')]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT,
+                                related_name='liquidaciones_tabaco')
+    sucursal = models.ForeignKey('empresas.Sucursal', on_delete=models.PROTECT,
+                                 related_name='liquidaciones_tabaco')
+    productor = models.ForeignKey('facturacion.ClienteProveedor', on_delete=models.PROTECT,
+                                  related_name='liquidaciones_tabaco', verbose_name="Productor")
+
+    # Identificación del comprobante. La letra sale de la condición de IVA del productor y el
+    # código ARCA de la letra; se guardan ambos porque el comprobante ya emitido no puede cambiar
+    # si mañana el productor cambia de categoría.
+    letra = models.CharField(max_length=1, choices=LETRAS, default=A)
+    codiva = models.CharField(max_length=3, default='150', verbose_name="Cód. Comprobante ARCA")
+    punto = models.IntegerField(default=1, verbose_name="Punto de Venta")
+    numero = models.BigIntegerField(null=True, blank=True, db_index=True, verbose_name="Número")
+
+    fecha = models.DateField(db_index=True, verbose_name="Fecha")
+    periodo = models.CharField(max_length=6, blank=True, db_index=True, verbose_name="Período YYYYMM")
+
+    # Autorización: hoy se carga a mano desde talonario o comprobante en línea; el webservice
+    # (WSLTV) queda previsto y se implementa más adelante.
+    origen_autorizacion = models.CharField(max_length=12, choices=ORIGENES, default=MANUAL)
+    cai = models.CharField(max_length=20, blank=True, verbose_name="CAI")
+    cae = models.CharField(max_length=20, blank=True, verbose_name="CAE")
+    vencimiento_autorizacion = models.DateField(null=True, blank=True, verbose_name="Vto. CAI/CAE")
+
+    # Importes. Todos se derivan del detalle y de las reglas vigentes al confirmar.
+    neto = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    alicuota_iva = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal('0'),
+                                       verbose_name="Alícuota IVA aplicada")
+    iva = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    retenciones = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                      verbose_name="Retenciones practicadas al liquidar")
+    total = models.DecimalField(
+        max_digits=15, decimal_places=2, default=Decimal('0'),
+        verbose_name="Total (deuda con el productor)",
+        help_text="neto + IVA − retenciones de liquidación. Es lo que suma la cuenta corriente y "
+                  "lo que cancela la Orden de Pago; NO es el neto a pagar, porque Ganancias se "
+                  "retiene recién al pagar.")
+
+    # Caché del estado financiero. La fuente de verdad son las imputaciones de pago (Etapa 3);
+    # no existe un booleano `pagado` a propósito.
+    pagado = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    saldo = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+
+    asiento_id = models.IntegerField(null=True, blank=True, db_index=True,
+                                     verbose_name="ID Asiento Contable")
+    # 1=Real, 2=Presupuestado, 3=Ajuste, 4=Auditoría. Se hereda del romaneo y lo hereda el asiento.
+    condic = models.IntegerField(default=1, verbose_name="Condición")
+
+    estado = models.IntegerField(choices=ESTADOS, default=BORRADOR, db_index=True)
+    motivo_anulacion = models.CharField(max_length=200, blank=True)
+    anulada_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    anulada_el = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_liquidacion"
+        verbose_name = "Liquidación de Compra de Tabaco"
+        verbose_name_plural = "Liquidaciones de Compra de Tabaco"
+        ordering = ['-fecha', '-numero']
+        constraints = [
+            # Condicional: los borradores todavía no tienen número.
+            models.UniqueConstraint(fields=['empresa', 'letra', 'punto', 'numero'],
+                                    condition=models.Q(numero__isnull=False),
+                                    name='agro_tab_liq_numero_unico'),
+            models.CheckConstraint(condition=models.Q(neto__gte=0),
+                                   name='agro_tab_liq_neto_no_neg'),
+            models.CheckConstraint(condition=models.Q(iva__gte=0),
+                                   name='agro_tab_liq_iva_no_neg'),
+            models.CheckConstraint(condition=models.Q(retenciones__gte=0),
+                                   name='agro_tab_liq_ret_no_neg'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'estado', '-fecha']),
+            models.Index(fields=['empresa', 'productor', '-fecha']),
+            models.Index(fields=['empresa', 'periodo']),
+        ]
+
+    def __str__(self):
+        numero = f"{self.punto:04d}-{self.numero:08d}" if self.numero else "BORRADOR"
+        return f"Liquidación {self.letra} {numero} — {self.productor.razon_social}"
+
+    @property
+    def editable(self):
+        return self.estado == self.BORRADOR
+
+    @property
+    def neto_a_pagar_estimado(self):
+        """Informativo: el total menos lo que se retendrá al pagar.
+
+        No se persiste porque depende del acumulado mensual de Ganancias, que sólo se conoce en el
+        momento del pago. Lo calcula la Etapa 3.
+        """
+        return self.total
+
+
+class LiquidacionDetalle(models.Model):
+    """Renglón de la liquidación: kilos y precio de una clase dentro de un romaneo.
+
+    Se agrupa por (romaneo, clase) y no por fardo porque es lo que se imprime y lo que el
+    productor verifica con una calculadora. La trazabilidad al fardo no se pierde: el fardo apunta
+    al romaneo y el romaneo a la liquidación.
+    """
+    liquidacion = models.ForeignKey(LiquidacionTabaco, on_delete=models.CASCADE,
+                                    related_name='detalles')
+    romaneo = models.ForeignKey('RomaneoTabaco', on_delete=models.PROTECT,
+                                related_name='detalles_liquidacion')
+    clase = models.ForeignKey(ClaseTabaco, on_delete=models.PROTECT, related_name='+')
+
+    fardos = models.IntegerField(default=0)
+    kilos = models.DecimalField(max_digits=15, decimal_places=2)
+    coeficiente = models.DecimalField(max_digits=6, decimal_places=4)
+    precio = models.DecimalField(max_digits=15, decimal_places=2)
+    importe = models.DecimalField(max_digits=15, decimal_places=2)
+
+    class Meta:
+        db_table = "agricola_tabaco_liquidacion_detalle"
+        verbose_name = "Detalle de Liquidación"
+        verbose_name_plural = "Detalles de Liquidación"
+        ordering = ['romaneo', 'clase']
+        constraints = [
+            models.UniqueConstraint(fields=['liquidacion', 'romaneo', 'clase'],
+                                    name='agro_tab_liqdet_unico'),
+            models.CheckConstraint(condition=models.Q(kilos__gt=0),
+                                   name='agro_tab_liqdet_kilos_positivos'),
+        ]
+
+    def __str__(self):
+        return f"{self.clase.detalle} — {self.kilos} kg"
+
+
+class LiquidacionRetencion(models.Model):
+    """Retención practicada al productor en la liquidación.
+
+    Guarda una COPIA de la regla aplicada, no sólo la FK al concepto: alícuota, tipo de base,
+    mínimo y cuenta contable. Si mañana cambia la alícuota, esta liquidación sigue siendo
+    reconstruible y la conciliación contra el pasivo contable cierra.
+    """
+    liquidacion = models.ForeignKey(LiquidacionTabaco, on_delete=models.CASCADE,
+                                    related_name='retenciones_aplicadas')
+    tipo_retencion = models.ForeignKey(TipoRetencionTabaco, on_delete=models.PROTECT,
+                                       related_name='+')
+
+    # Copia congelada de la regla.
+    codigo = models.CharField(max_length=15)
+    detalle = models.CharField(max_length=80)
+    tipo_base = models.CharField(max_length=12)
+    alicuota = models.DecimalField(max_digits=7, decimal_places=4)
+    minimo_no_imponible = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    cuenta_contable = models.ForeignKey('contable.Cuenta', on_delete=models.PROTECT,
+                                        related_name='+')
+
+    base = models.DecimalField(max_digits=15, decimal_places=2,
+                               verbose_name="Base sobre la que se calculó")
+    importe = models.DecimalField(max_digits=15, decimal_places=2)
+    nro_certificado = models.CharField(max_length=30, blank=True, verbose_name="Nro. Certificado")
+
+    class Meta:
+        db_table = "agricola_tabaco_liquidacion_retencion"
+        verbose_name = "Retención de Liquidación"
+        verbose_name_plural = "Retenciones de Liquidación"
+        ordering = ['codigo']
+        constraints = [
+            models.UniqueConstraint(fields=['liquidacion', 'tipo_retencion'],
+                                    name='agro_tab_liqret_unica'),
+            models.CheckConstraint(condition=models.Q(importe__gte=0),
+                                   name='agro_tab_liqret_importe_no_neg'),
+        ]
+
+    def __str__(self):
+        return f"{self.codigo}: {self.importe}"

@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Liquidaciones de Compra de Tabaco{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Liquidaciones de Compra</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Comprobantes 150 (A) y 151 (B) emitidos al productor. Generan asiento, Libro IVA y
+                deuda en la cuenta corriente.
+            </p>
+        </div>
+        <a href="{% url 'agro_liquidacion_nueva' %}"
+           class="inline-flex items-center px-4 py-2 bg-lime-600 text-white rounded-xl hover:bg-lime-700 transition-all font-medium shadow-sm">
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Nueva Liquidación
+        </a>
+    </div>
+
+    {# Filtro de condición: regla del proyecto para todo listado con importes. #}
+    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-7 gap-4"
+          hx-get="{% url 'agro_liquidacion_grilla' %}"
+          hx-trigger="change, keyup changed delay:300ms from:input[name='q']"
+          hx-target="#liquidacion-rows">
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Buscar</label>{{ filtros.q }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Productor</label>{{ filtros.productor }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Letra</label>{{ filtros.letra }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Estado</label>{{ filtros.estado }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Desde</label>{{ filtros.desde }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>{{ filtros.hasta }}</div>
+    </form>
+
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comprobante</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Productor</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Neto</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">IVA</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Retenciones</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condic.</th>
+                    <th class="relative py-3 pl-3 pr-6"></th>
+                </tr>
+            </thead>
+            <tbody id="liquidacion-rows" class="divide-y divide-gray-100 bg-white"
+                   hx-get="{% url 'agro_liquidacion_grilla' %}" hx-trigger="reloadLiquidacion from:body">
+                {% include 'agricola/liquidacion/listado_filas.html' %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

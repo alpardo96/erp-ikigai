@@ -7,6 +7,7 @@ compartidas del panel de Configuración, que resuelven las URL por nombre.
 from django.urls import path
 
 from . import views_htmx as htmx
+from . import views_liquidacion as liq
 from . import views_romaneo as rom
 
 urlpatterns = [
@@ -59,4 +60,13 @@ urlpatterns = [
     path('agro/romaneos/<int:pk>/clases/typeahead/', rom.clase_typeahead, name='agro_clase_typeahead'),
     path('agro/fardos/<int:pk>/quitar/', rom.fardo_quitar, name='agro_fardo_quitar'),
     path('agro/fardos/<int:pk>/reclasificar/', rom.fardo_reclasificar, name='agro_fardo_reclasificar'),
+
+    # --- LIQUIDACIÓN DE COMPRA (Plan 083) -----------------------------------
+    path('agro/liquidaciones/', liq.liquidacion_listado, name='agro_liquidacion_listado'),
+    path('agro/liquidaciones/grilla/', liq.liquidacion_grilla, name='agro_liquidacion_grilla'),
+    path('agro/liquidaciones/nueva/', liq.liquidacion_nueva, name='agro_liquidacion_nueva'),
+    path('agro/liquidaciones/pendientes/', liq.liquidacion_pendientes, name='agro_liquidacion_pendientes'),
+    path('agro/liquidaciones/<int:pk>/', liq.liquidacion_detalle, name='agro_liquidacion_detalle'),
+    path('agro/liquidaciones/<int:pk>/imprimir/', liq.liquidacion_imprimir, name='agro_liquidacion_imprimir'),
+    path('agro/liquidaciones/<int:pk>/anular/', liq.liquidacion_anular, name='agro_liquidacion_anular'),
 ]

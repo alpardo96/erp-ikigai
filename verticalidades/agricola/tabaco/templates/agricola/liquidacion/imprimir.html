@@ -1,0 +1,93 @@
+{% load formato_tags %}<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Liquidación {{ liquidacion.letra }} {{ liquidacion.punto|stringformat:"04d" }}-{{ liquidacion.numero|stringformat:"08d" }}</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; margin: 24px; }
+        h1 { font-size: 18px; margin: 0 0 4px; }
+        .letra { display: inline-block; border: 2px solid #111; padding: 2px 12px;
+                 font-size: 22px; font-weight: bold; margin-right: 10px; }
+        .sub { color: #555; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th { background: #f1f5f9; text-align: left; font-size: 9px; text-transform: uppercase;
+             letter-spacing: .05em; color: #64748b; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; }
+        td { padding: 4px 8px; border-bottom: 1px solid #f1f5f9; }
+        .der { text-align: right; }
+        .totales { margin-top: 18px; margin-left: auto; width: 340px; }
+        .totales tr td { border: 0; padding: 3px 0; }
+        .totales .final td { border-top: 1px solid #111; font-size: 14px; font-weight: bold; padding-top: 6px; }
+        .ret { color: #b91c1c; }
+        .anulada { color: #b91c1c; font-weight: bold; border: 2px solid #b91c1c;
+                   display: inline-block; padding: 2px 10px; border-radius: 4px; }
+        .pie { margin-top: 22px; font-size: 10px; color: #555; }
+        @media print { .noprint { display: none; } }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <button class="noprint" onclick="window.print()">Imprimir</button>
+
+    <h1>
+        <span class="letra">{{ liquidacion.letra }}</span>
+        Liquidación de Compra de Tabaco
+        Nº {{ liquidacion.punto|stringformat:"04d" }}-{{ liquidacion.numero|stringformat:"08d" }}
+        {% if liquidacion.estado == 9 %}<span class="anulada">ANULADA</span>{% endif %}
+    </h1>
+    <div class="sub">
+        <strong>{{ liquidacion.empresa.nombre }}</strong>
+        {% if liquidacion.empresa.cuit %}— CUIT {{ liquidacion.empresa.cuit }}{% endif %}<br>
+        Productor: {{ liquidacion.productor.razon_social }}
+        {% if liquidacion.productor.cuit %}(CUIT {{ liquidacion.productor.cuit }}){% endif %}
+        — {{ liquidacion.productor.condicion_iva }}<br>
+        Fecha: {{ liquidacion.fecha|date:"d/m/Y" }} ·
+        Cód. comprobante ARCA: {{ liquidacion.codiva }}
+        {% if liquidacion.cai %} · CAI {{ liquidacion.cai }}{% endif %}
+        {% if liquidacion.cae %} · CAE {{ liquidacion.cae }}{% endif %}
+        {% if liquidacion.vencimiento_autorizacion %} (vto. {{ liquidacion.vencimiento_autorizacion|date:"d/m/Y" }}){% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Romaneo</th><th>Clase</th>
+                <th class="der">Fardos</th><th class="der">Kilos</th>
+                <th class="der">Coef.</th><th class="der">Precio</th><th class="der">Importe</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in detalles %}
+            <tr>
+                <td>{{ d.romaneo.punto|stringformat:"04d" }}-{{ d.romaneo.numero|stringformat:"08d" }}</td>
+                <td><strong>{{ d.clase.detalle }}</strong></td>
+                <td class="der">{{ d.fardos }}</td>
+                <td class="der">{{ d.kilos|formato_ar }}</td>
+                <td class="der">{{ d.coeficiente|formato_ar:4 }}</td>
+                <td class="der">{{ d.precio|formato_ar }}</td>
+                <td class="der">{{ d.importe|formato_ar }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="totales">
+        <tr><td>Neto</td><td class="der">$ {{ liquidacion.neto|formato_ar }}</td></tr>
+        {% if liquidacion.iva %}
+        <tr><td>IVA {{ liquidacion.alicuota_iva|formato_ar }} %</td><td class="der">$ {{ liquidacion.iva|formato_ar }}</td></tr>
+        {% endif %}
+        {% for r in retenciones %}
+        <tr class="ret">
+            <td>− {{ r.detalle }} ({{ r.alicuota|formato_ar }} %)</td>
+            <td class="der">$ {{ r.importe|formato_ar }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="final"><td>TOTAL</td><td class="der">$ {{ liquidacion.total|formato_ar }}</td></tr>
+    </table>
+
+    <div class="pie">
+        El total es la deuda a favor del productor. La retención del Impuesto a las Ganancias, si
+        correspondiere, se practica en el momento del pago sobre el acumulado mensual.
+    </div>
+
+</body>
+</html>

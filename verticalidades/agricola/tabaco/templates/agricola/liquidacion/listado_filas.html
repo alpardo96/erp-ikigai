@@ -1,0 +1,36 @@
+{% load formato_tags %}
+{% for l in liquidaciones %}
+<tr>
+    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black mr-1
+                     {% if l.letra == 'A' %}bg-sky-100 text-sky-800{% else %}bg-amber-100 text-amber-800{% endif %}">{{ l.letra }}</span>
+        {% if l.numero %}{{ l.punto|stringformat:"04d" }}-{{ l.numero|stringformat:"08d" }}
+        {% else %}<span class="text-amber-600 italic">borrador</span>{% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ l.fecha|date:"d/m/Y" }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ l.productor.razon_social }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ l.neto|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ l.iva|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-red-600 text-right font-mono">{{ l.retenciones|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ l.total|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-center">
+        {% if l.estado == 1 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Borrador</span>
+        {% elif l.estado == 2 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Confirmada</span>
+        {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
+                  title="{{ l.motivo_anulacion }}">Anulada</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-400">
+        {% if l.condic == 1 %}Real{% elif l.condic == 2 %}Presup.{% elif l.condic == 3 %}Ajuste{% else %}Auditoría{% endif %}
+    </td>
+    <td class="relative whitespace-nowrap py-3 pl-3 pr-6 text-right text-sm">
+        <a href="{% url 'agro_liquidacion_detalle' l.id %}"
+           class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded text-xs font-bold transition-colors">Ver</a>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="10" class="px-6 py-10 text-center text-gray-500 text-sm italic">No hay liquidaciones que coincidan con el filtro.</td></tr>
+{% endfor %}

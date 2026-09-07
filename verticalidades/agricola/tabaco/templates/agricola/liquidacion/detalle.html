@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Liquidación {{ liquidacion.letra }} {{ liquidacion.numero }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                Liquidación
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-base font-black
+                             {% if liquidacion.letra == 'A' %}bg-sky-100 text-sky-800{% else %}bg-amber-100 text-amber-800{% endif %}">{{ liquidacion.letra }}</span>
+                {% if liquidacion.numero %}{{ liquidacion.punto|stringformat:"04d" }}-{{ liquidacion.numero|stringformat:"08d" }}{% endif %}
+                {% if liquidacion.estado == 9 %}
+                <span class="ml-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-800">ANULADA</span>
+                {% endif %}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ liquidacion.productor.razon_social }}
+                {% if liquidacion.productor.cuit %}· CUIT {{ liquidacion.productor.cuit }}{% endif %}
+                · {{ liquidacion.productor.condicion_iva }}
+                · {{ liquidacion.fecha|date:"d/m/Y" }}
+                · cód. ARCA {{ liquidacion.codiva }}
+            </p>
+            {% if liquidacion.estado == 9 %}
+            <p class="text-xs text-red-600 mt-1">
+                Anulada por {{ liquidacion.anulada_por }} el {{ liquidacion.anulada_el|date:"d/m/Y H:i" }} —
+                {{ liquidacion.motivo_anulacion }}
+            </p>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_liquidacion_listado' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Volver</a>
+            <a href="{% url 'agro_liquidacion_imprimir' liquidacion.id %}" target="_blank"
+               class="px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors">
+                Imprimir
+            </a>
+            {% if liquidacion.estado == 2 %}
+            <button hx-get="{% url 'agro_liquidacion_anular' liquidacion.id %}" hx-target="#modal-container"
+                    class="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors">
+                Anular
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {# --- Detalle por clase --- #}
+        <div class="lg:col-span-2 space-y-5">
+            <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Romaneo</th>
+                            <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clase</th>
+                            <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</th>
+                            <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                            <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Precio</th>
+                            <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        {% for d in detalles %}
+                        <tr>
+                            <td class="whitespace-nowrap py-2.5 pl-6 pr-3 text-sm text-gray-500">
+                                {{ d.romaneo.punto|stringformat:"04d" }}-{{ d.romaneo.numero|stringformat:"08d" }}
+                            </td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-sm font-bold text-gray-900">{{ d.clase.detalle }}</td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right">{{ d.fardos }}</td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right font-mono">{{ d.kilos|formato_ar }}</td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right font-mono">{{ d.precio|formato_ar }}</td>
+                            <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-900 text-right font-mono font-bold">{{ d.importe|formato_ar }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# --- Liquidación --- #}
+        <div class="space-y-5">
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Importes</div>
+                <div class="space-y-1.5 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Neto</span>
+                        <span class="font-mono font-bold">$ {{ liquidacion.neto|formato_ar }}</span>
+                    </div>
+                    {% if liquidacion.iva %}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">IVA {{ liquidacion.alicuota_iva|formato_ar }} %</span>
+                        <span class="font-mono">$ {{ liquidacion.iva|formato_ar }}</span>
+                    </div>
+                    {% endif %}
+                    {% for r in retenciones %}
+                    <div class="flex justify-between text-red-600" title="{{ r.alicuota|formato_ar }} % sobre {{ r.base|formato_ar }}">
+                        <span>− {{ r.detalle }}</span>
+                        <span class="font-mono">$ {{ r.importe|formato_ar }}</span>
+                    </div>
+                    {% endfor %}
+                    <div class="flex justify-between pt-2 mt-2 border-t border-gray-200 text-base">
+                        <span class="font-bold text-gray-900">Total</span>
+                        <span class="font-mono font-bold text-lime-700">$ {{ liquidacion.total|formato_ar }}</span>
+                    </div>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-4 italic">
+                    Deuda con el productor. La retención de Ganancias se practica al pagar.
+                </p>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-sm space-y-2">
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Comprobante</div>
+                <div class="flex justify-between"><span class="text-gray-500">Autorización</span><span>{{ liquidacion.get_origen_autorizacion_display }}</span></div>
+                {% if liquidacion.cai %}<div class="flex justify-between"><span class="text-gray-500">CAI</span><span class="font-mono">{{ liquidacion.cai }}</span></div>{% endif %}
+                {% if liquidacion.cae %}<div class="flex justify-between"><span class="text-gray-500">CAE</span><span class="font-mono">{{ liquidacion.cae }}</span></div>{% endif %}
+                {% if liquidacion.vencimiento_autorizacion %}<div class="flex justify-between"><span class="text-gray-500">Vencimiento</span><span>{{ liquidacion.vencimiento_autorizacion|date:"d/m/Y" }}</span></div>{% endif %}
+                <div class="flex justify-between"><span class="text-gray-500">Período</span><span>{{ liquidacion.periodo }}</span></div>
+                {% if liquidacion.asiento_id %}
+                <div class="flex justify-between"><span class="text-gray-500">Asiento</span><span class="font-mono">#{{ liquidacion.asiento_id }}</span></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

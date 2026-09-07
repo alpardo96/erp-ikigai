@@ -1,0 +1,98 @@
+{% comment %}
+Romaneos pendientes del productor + previsualización de importes.
+
+Los números los calcula el SERVICIO, con la misma función que usa la confirmación. Replicar la
+fórmula en JavaScript haría que tarde o temprano la pantalla y el comprobante discrepen, que es
+justo lo que no puede pasar en un documento que el productor verifica con una calculadora.
+{% endcomment %}
+{% load formato_tags %}
+
+{% if not productor %}
+    <div class="px-6 py-10 text-center text-gray-500 text-sm italic">
+        Elegí un productor para ver sus romaneos pendientes de liquidar.
+    </div>
+{% elif not romaneos %}
+    <div class="px-6 py-10 text-center text-gray-500 text-sm italic">
+        {{ productor.razon_social }} no tiene romaneos confirmados sin liquidar.
+    </div>
+{% else %}
+<div class="space-y-5">
+    <div class="overflow-hidden rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Incluir</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Romaneo</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variedad</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for r in romaneos %}
+                <tr>
+                    <td class="py-2.5 pl-6 pr-3">
+                        <input type="checkbox" name="romaneos" value="{{ r.id }}" checked
+                               class="h-4 w-4 text-lime-600 focus:ring-lime-500 border-gray-300 rounded"
+                               hx-get="{% url 'agro_liquidacion_pendientes' %}"
+                               hx-trigger="change"
+                               hx-target="#pendientes"
+                               hx-include="[name='productor'], [name='romaneos']">
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm font-bold text-gray-900">
+                        {{ r.punto|stringformat:"04d" }}-{{ r.numero|stringformat:"08d" }}
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500">{{ r.fecha|date:"d/m/Y" }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500">{{ r.variedad.detalle }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right">{{ r.total_fardos }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-700 text-right font-mono">{{ r.total_kilos|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-2.5 text-sm text-gray-900 text-right font-mono font-bold">{{ r.total_importe|formato_ar }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if calculo %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-gray-900">Previsualización del comprobante</h3>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold
+                         {% if calculo.letra == 'A' %}bg-sky-100 text-sky-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+                Liquidación {{ calculo.letra }} · cód. ARCA {{ calculo.codiva }}
+            </span>
+        </div>
+
+        <div class="space-y-1.5 text-sm max-w-lg">
+            <div class="flex justify-between">
+                <span class="text-gray-600">Neto</span>
+                <span class="font-mono font-bold">$ {{ neto|formato_ar }}</span>
+            </div>
+            {% if calculo.iva %}
+            <div class="flex justify-between">
+                <span class="text-gray-600">IVA {{ calculo.alicuota_iva|formato_ar }} %</span>
+                <span class="font-mono">$ {{ calculo.iva|formato_ar }}</span>
+            </div>
+            {% endif %}
+            {% for r in calculo.retenciones %}
+            <div class="flex justify-between text-red-600">
+                <span>− {{ r.regla.detalle }} ({{ r.regla.alicuota|formato_ar }} % s/ {% if r.regla.tipo_base == 'IVA' %}IVA{% else %}neto{% endif %})</span>
+                <span class="font-mono">$ {{ r.importe|formato_ar }}</span>
+            </div>
+            {% endfor %}
+            <div class="flex justify-between pt-2 mt-2 border-t border-gray-200 text-base">
+                <span class="font-bold text-gray-900">Total (deuda con el productor)</span>
+                <span class="font-mono font-bold text-lime-700">$ {{ calculo.total|formato_ar }}</span>
+            </div>
+        </div>
+
+        <p class="text-[11px] text-gray-400 mt-4 italic">
+            La retención de Ganancias no se practica acá: su base es el acumulado mensual de lo
+            pagado, así que se calcula al emitir la Orden de Pago.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
