@@ -10,7 +10,7 @@
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Conciliación de Stock</h1>
             <p class="text-sm text-gray-500 mt-1">
-                Kilos recibidos en romaneos vigentes menos vendidos, contra el stock del ERP.
+                Kilos recibidos en romaneos vigentes, menos las bajas de acondicionamiento y lo vendido, contra el stock del ERP.
                 La diferencia debe ser cero.
             </p>
         </div>
@@ -64,6 +64,7 @@
                     <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Producto</th>
                     <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Inicial</th>
                     <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recibidos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acondicion.</th>
                     <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vendidos</th>
                     <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Esperado</th>
                     <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Stock ERP</th>
@@ -84,6 +85,7 @@
                     </td>
                     <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.stock_inicial|formato_ar }}</td>
                     <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.recibidos|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.acondicionados|formato_ar }}</td>
                     <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.vendidos|formato_ar }}</td>
                     <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ f.esperado|formato_ar }}</td>
                     <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ f.en_erp|formato_ar }}</td>
@@ -93,7 +95,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="9" class="px-6 py-10 text-center text-gray-500 text-sm italic">No hay variedades de tabaco cargadas.</td></tr>
+                <tr><td colspan="10" class="px-6 py-10 text-center text-gray-500 text-sm italic">No hay variedades de tabaco cargadas.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

@@ -52,6 +52,18 @@ sólo granos. Si no existe la fila de `EmpresaVertical`, el acceso a la relació
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_pago_nuevo' %}text-lime-400 font-bold{% endif %}">
             Nuevo Pago
         </a>
+        <a href="{% url 'agro_lote_listado' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_lote_listado' %}text-lime-400 font-bold{% endif %}">
+            Lotes de Acopio
+        </a>
+        <a href="{% url 'agro_lote_nuevo' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_lote_nuevo' %}text-lime-400 font-bold{% endif %}">
+            Nuevo Lote
+        </a>
+        <a href="{% url 'agro_margen' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_margen' %}text-lime-400 font-bold{% endif %}">
+            Margen del Acopio
+        </a>
         <a href="{% url 'agro_stock_conciliacion' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_stock_conciliacion' %}text-lime-400 font-bold{% endif %}">
             Conciliación de Stock

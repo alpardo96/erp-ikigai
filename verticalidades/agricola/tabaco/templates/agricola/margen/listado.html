@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Margen del Acopio{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Margen del Acopio</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Venta más lo recuperado en coproductos, menos la compra y el acondicionamiento.
+                Entrá a un lote para ver el <strong>margen fardo por fardo</strong>.
+            </p>
+        </div>
+        <a href="{% url 'agro_lote_listado' %}"
+           class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Lotes</a>
+    </div>
+
+    {# Todo reporte con importes ofrece el filtro de condición: regla del proyecto.
+       Acá la condición es la del ROMANEO de origen — el lote no tiene una propia. #}
+    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-5 gap-4 items-end"
+          hx-get="{% url 'agro_margen_grilla' %}"
+          hx-trigger="change"
+          hx-target="#margen-cuerpo">
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Sucursal</label>{{ filtros.sucursal }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Variedad</label>{{ filtros.variedad }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Campaña</label>{{ filtros.campania }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
+        <label class="flex items-center gap-2 text-sm text-gray-600 pb-2">
+            {{ filtros.solo_vendidos }} Sólo lotes vendidos
+        </label>
+    </form>
+
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lote</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variedad</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Campaña</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Compra</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acond.</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo total</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">$/kg</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coproductos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Venta</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Margen</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">%</th>
+                </tr>
+            </thead>
+            <tbody id="margen-cuerpo" class="divide-y divide-gray-100 bg-white">
+                {% include 'agricola/margen/listado_filas.html' %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

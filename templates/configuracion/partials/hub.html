@@ -153,6 +153,11 @@
                 <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Retenciones</div>
                 <div class="text-sm text-lime-600/80 mt-1">Conceptos que se le practican al productor y su cuenta de pasivo.</div>
             </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_procesos" hx-target="#config-content"
+                class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Procesos de Acondicionamiento</div>
+                <div class="text-sm text-lime-600/80 mt-1">Qué le hace la planta al tabaco y cuánta merma es normal.</div>
+            </button>
             <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=agro_config_tabaco" hx-target="#config-content"
                 class="text-left group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
                 <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Configuración del Acopio</div>

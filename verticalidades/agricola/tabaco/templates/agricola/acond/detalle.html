@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Acondicionamiento{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5"
+     x-data="{ prodId: '', prodTexto: '', sugProd: false }">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                Acondicionamiento {{ acond.numero }} — {{ acond.proceso.detalle }}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Lote {% if lote.numero %}{{ lote.punto|stringformat:"04d" }}-{{ lote.numero|stringformat:"08d" }}{% else %}borrador{% endif %} ·
+                {{ lote.variedad.detalle }} · {{ acond.fecha|date:"d/m/Y" }}
+            </p>
+            {% if acond.estado == 9 %}
+            <p class="text-xs text-red-600 mt-1 font-semibold">Anulado: {{ acond.motivo_anulacion }}</p>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_lote_detalle' lote.pk %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Volver al lote</a>
+            {% if acond.estado == 1 %}
+            <a href="{% url 'agro_acond_cerrar' acond.pk %}"
+               class="px-6 py-2.5 text-sm font-bold text-white bg-lime-600 hover:bg-lime-700 rounded-xl shadow-lg transition-transform active:scale-95">
+                Cerrar acondicionamiento
+            </a>
+            {% endif %}
+            {% if acond.estado != 9 %}
+            <button hx-get="{% url 'agro_acond_anular' acond.pk %}" hx-target="#modal-container"
+                    class="px-4 py-2.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors">
+                Anular
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{{ error }}</div>
+    {% endif %}
+
+    {% if acond.estado == 1 %}
+    <div class="p-4 rounded-xl bg-sky-50 border border-sky-200 text-sm text-sky-800">
+        Está en <strong>borrador</strong>: todavía no movió stock. Cargá los costos y los
+        coproductos y después cerralo. El stock no puede bailar mientras se está tipeando.
+    </div>
+    {% endif %}
+
+    {# ---------------- Alta de costo y de coproducto ---------------- #}
+    {% if acond.estado == 1 %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h2 class="text-sm font-bold text-gray-800">Costo directo</h2>
+            <p class="text-xs text-gray-500 mt-0.5 mb-4">
+                Se <strong>imputa</strong> al lote para medir el margen. La factura del insumo ya se
+                contabilizó por el circuito de compras: registrarla de nuevo duplicaría el gasto.
+            </p>
+            <form hx-post="{% url 'agro_acond_costo_agregar' acond.pk %}"
+                  hx-target="#panel-acond" hx-swap="outerHTML"
+                  hx-on::after-request="if(event.detail.successful){ this.reset(); }"
+                  class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                {% csrf_token %}
+                <div class="md:col-span-3">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Concepto</label>
+                    {{ form_costo.concepto }}
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Importe</label>
+                    {{ form_costo.importe }}
+                </div>
+                <div>
+                    <button type="submit"
+                            class="w-full px-4 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow transition-transform active:scale-95">
+                        Agregar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <h2 class="text-sm font-bold text-gray-800">Coproducto</h2>
+            <p class="text-xs text-gray-500 mt-0.5 mb-4">
+                Kilos que <strong>dejan de ser tabaco de esta variedad</strong> pero siguen valiendo:
+                el palo, el descarte. Entran al stock de su propio producto.
+            </p>
+            <form hx-post="{% url 'agro_acond_coproducto_agregar' acond.pk %}"
+                  hx-target="#panel-acond" hx-swap="outerHTML"
+                  hx-on::after-request="if(event.detail.successful){ this.reset(); prodId=''; prodTexto=''; }"
+                  class="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
+                {% csrf_token %}
+                <div class="md:col-span-3 relative">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Producto</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="busca-producto" autocomplete="off" name="q"
+                               placeholder="Buscar producto"
+                               class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                               x-model="prodTexto" @focus="sugProd = true"
+                               hx-get="{% url 'agro_producto_typeahead' %}"
+                               hx-trigger="keyup changed delay:250ms, search, focus"
+                               hx-target="#producto_suggestions">
+                        {# Lupa: la lista completa, para cuando no se recuerda el nombre. #}
+                        <button type="button" title="Ver todos los productos"
+                                class="shrink-0 px-3 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50"
+                                @click="sugProd = true"
+                                hx-get="{% url 'agro_producto_typeahead' %}"
+                                hx-target="#producto_suggestions">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </button>
+                    </div>
+                    <div id="producto_suggestions"
+                         x-show="sugProd" @click.outside="sugProd = false"
+                         class="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-y-auto"></div>
+                    <input type="hidden" name="producto" x-model="prodId">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Kilos</label>
+                    {{ form_coproducto.kilos }}
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Valor est.</label>
+                    {{ form_coproducto.valor_estimado }}
+                </div>
+                <div>
+                    <button type="submit"
+                            class="w-full px-4 py-2.5 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow transition-transform active:scale-95">
+                        Agregar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% include 'agricola/acond/panel.html' %}
+</div>
+{% endblock %}

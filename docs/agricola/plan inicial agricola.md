@@ -511,12 +511,21 @@ Debe estar aprobado y probado **antes** de la Etapa 2.
 - *Puerta de salida:* compras, ventas, recepciones y remitos internos **siguen dando idéntico**
   (no regresión); el stock se reconstruye solo con `recalcular_stock`; prueba de desenchufe.
 
-### Etapa 5 — Lotes de acopio, acondicionamiento y venta
+### Etapa 5 — Lotes de acopio, acondicionamiento y venta ✅
 
-- Agrupación de fardos en lotes comerciales sin perder trazabilidad de componentes.
-- Procesos de acondicionamiento: entradas, insumos, mermas normales y extraordinarias, salidas.
-- Venta por el circuito existente (`Venta` / `VentaItem`) con descarga de fardos y costo.
-- **Margen por fardo** = venta − (compra + costos directos de acondicionamiento).
+Ver [`docs/planes/086_agricola_etapa5_lotes_acondicionamiento_venta.md`](../planes/086_agricola_etapa5_lotes_acondicionamiento_venta.md).
+
+- Agrupación de fardos en lotes comerciales sin perder trazabilidad: la pertenencia vive en
+  `FardoTabaco.lote`, así que **un fardo está en un lote a lo sumo** por garantía del modelo.
+- Procesos de acondicionamiento **configurables** (resuelve DA-07): entradas, insumos, mermas
+  normales y extraordinarias, coproductos y salidas.
+- Dos términos de stock nuevos: la baja de la variedad y el alta del coproducto.
+- Venta por el circuito existente (`Venta` / `VentaItem`): el lote **se vincula** a la factura ya
+  emitida; el asiento y el Libro IVA los genera `facturacion`, no esta etapa.
+- **Margen por fardo** = venta − (compra + costos directos de acondicionamiento), con el costo de
+  compra **exacto** y el resto prorrateado por kilos.
+- **Sin efectos contables propios**: el insumo ya se contabilizó al comprarlo; imputarlo al lote
+  es gerencial. Contabilizarlo de nuevo duplicaría el gasto en el balance.
 
 ### Etapa 6 — Reportes oficiales y gerenciales
 
@@ -559,6 +568,7 @@ hasta que el circuito de acopio esté estabilizado en producción.
 | **Momento de cada retención** *(DA-01)* | IVA, EEAOC, Uso de Agua y Salud Pública en la **liquidación**; Ganancias en el **pago**. Parametrizado en el campo `momento`, no hardcodeado |
 | **Autorización del comprobante** *(DA-02)* | **Dos modos válidos y simultáneos**: `MANUAL` (captura de tipo, punto, número y CAI, para talonario impreso o comprobante en línea de ARCA) y `WEBSERVICE` (en estudio, se desarrolla más adelante). Ver §3.6 |
 | **Notas de crédito de liquidación** *(DA-03)* | **Fuera del alcance inicial.** Queda como mejora posterior a la Etapa 2. Ver §9.3 |
+| **Procesos de acondicionamiento, mermas y coproductos** *(DA-07)* | **Se resuelve por configuración, no por código.** `ProcesoAcondicionamiento` es un maestro que carga el usuario: el sistema sabe que *un proceso toma kilos, devuelve kilos, consume plata y pierde peso*, y no presupone ninguno. La **merma** son kilos que desaparecen; el **coproducto** deja de ser tabaco de la variedad y reaparece en su propio producto de stock. Sólo la merma que excede la normal del proceso exige un motivo. Ver [Plan 086](../planes/086_agricola_etapa5_lotes_acondicionamiento_venta.md) |
 
 ### 9.2 Abiertas — requieren definición antes de la etapa indicada
 
@@ -567,7 +577,6 @@ hasta que el circuito de acopio esté estabilizado en producción.
 | **DA-04** | **Propiedad del tabaco recibido.** ¿El dominio se transfiere al recibir, al clasificar o al liquidar? Define si lo recibido y no liquidado es stock propio o mercadería de terceros. | 4 |
 | **DA-05** | **Adicionales.** El VFP tiene `adic` y `pcio_f` por línea y `adicional` por romaneo. Falta definir su naturaleza: ¿bonificación por calidad, flete, premio por volumen? ¿Integra la base de IVA y de retenciones? | 2 |
 | **DA-06** | **Coeficiente del productor.** El VFP guarda un `coefic` por productor en la cabecera del romaneo pero **no lo usa en el precio**. ¿Es un dato histórico, o debería afectar el cálculo? | 1 |
-| **DA-07** | Procesos reales de acondicionamiento, mermas normales y coproductos. | 5 |
 
 ### 9.3 Mejoras posteriores — fuera del alcance inicial
 

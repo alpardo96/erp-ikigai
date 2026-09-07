@@ -76,11 +76,17 @@ def _registrar_imputacion_de_pagos():
 
 
 def _registrar_stock():
-    """Los kilos de los fardos entran al stock del ERP (Plan 085).
+    """Los kilos del acopio y del acondicionamiento se reflejan en el stock (Planes 085 y 086).
 
-    Es el tercer y último punto de extensión del Plan 080. Sólo aporta la ENTRADA: la salida ya la
-    resuelve el término `ventas` de siempre, porque al vender tabaco se factura el `Producto` de la
-    variedad. Un segundo término de egreso duplicaría la baja.
+    El tercer y último punto de extensión del Plan 080, con tres términos:
+
+        + `agricola_tabaco_fardos`             los kilos comprados entran (Plan 085)
+        − `agricola_tabaco_acond_bajas`        lo que sale de la variedad al acondicionar (086)
+        + `agricola_tabaco_acond_coproductos`  lo que reaparece como palo o descarte (086)
+
+    La VENTA no aporta término propio: la resuelve el `ventas` del core de siempre, porque al
+    vender tabaco se factura el `Producto` de la variedad. Un término de egreso propio duplicaría
+    la baja.
     """
     try:
         from productos.services.stock_service import registrar_termino_stock
@@ -90,5 +96,12 @@ def _registrar_stock():
         return
 
     from .services.stock import termino_de_stock
+    from .services.stock_acondicionamiento import termino_de_bajas, termino_de_coproductos
 
     registrar_termino_stock(termino_de_stock())
+
+    # Plan 086: el acondicionamiento saca kilos de la variedad y los devuelve —los que no se
+    # perdieron— como coproductos en su propio producto. Van como dos términos y no como uno
+    # neto, porque impactan a PRODUCTOS DISTINTOS.
+    registrar_termino_stock(termino_de_bajas())
+    registrar_termino_stock(termino_de_coproductos())

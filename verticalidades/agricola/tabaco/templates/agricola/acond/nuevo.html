@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Acondicionar lote{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto w-full px-4 py-2 space-y-5">
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Acondicionar el lote</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            {{ lote.variedad.detalle }} · {{ lote.sucursal.nombre }} ·
+            <strong>{{ lote.kilos_actuales|formato_ar }} kg disponibles</strong>
+        </p>
+        <p class="text-xs text-gray-400 mt-1">
+            Se abre en borrador: <strong>no mueve stock hasta que lo cierres</strong>. Los costos y
+            los coproductos se cargan en el paso siguiente.
+        </p>
+    </div>
+
+    <form method="post" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {% for campo in form %}
+            <div class="{% if campo.name == 'observaciones' or campo.name == 'motivo_merma' %}md:col-span-2{% endif %}">
+                <label class="block text-xs font-semibold text-gray-500 mb-1">{{ campo.label }}</label>
+                {{ campo }}
+                {% if campo.help_text %}<p class="mt-1 text-[11px] text-gray-400">{{ campo.help_text }}</p>{% endif %}
+                {% if campo.errors %}<p class="mt-1 text-xs text-red-600">{{ campo.errors|striptags }}</p>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+            El <strong>motivo</strong> sólo hace falta si la merma supera la normal del proceso.
+            Esa es la única que el sistema obliga a explicar: lo demás es el desperdicio esperado.
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <a href="{% url 'agro_lote_detalle' lote.pk %}"
+               class="px-5 py-2 text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="px-6 py-2 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition-colors">
+                Crear y cargar costos
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Lote de Acopio{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5"
+     x-data="{ fardoId: '', fardoTexto: '', sugerencias: false }"
+     >
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                Lote {% if lote.numero %}{{ lote.punto|stringformat:"04d" }}-{{ lote.numero|stringformat:"08d" }}{% else %}en borrador{% endif %}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ lote.variedad.detalle }} · {{ lote.sucursal.nombre }} ·
+                Campaña {{ lote.campania.codigo }} · {{ lote.fecha|date:"d/m/Y" }}
+                {% if lote.descripcion %} · {{ lote.descripcion }}{% endif %}
+            </p>
+            {% if lote.estado == 9 %}
+            <p class="text-xs text-red-600 mt-1 font-semibold">
+                Anulado: {{ lote.motivo_anulacion }}
+            </p>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_lote_listado' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Volver</a>
+            {% if lote.total_fardos %}
+            <a href="{% url 'agro_margen_lote' lote.pk %}"
+               class="px-4 py-2 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors">
+                Margen por fardo
+            </a>
+            {% endif %}
+            {% if lote.estado == 1 and lote.total_fardos %}
+            <a href="{% url 'agro_lote_armar' lote.pk %}"
+               class="px-6 py-2.5 text-sm font-bold text-white bg-lime-600 hover:bg-lime-700 rounded-xl shadow-lg transition-transform active:scale-95">
+                Armar lote
+            </a>
+            {% endif %}
+            {% if lote.estado == 2 or lote.estado == 3 %}
+            <a href="{% url 'agro_acond_nuevo' lote.pk %}"
+               class="px-5 py-2.5 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition-colors">
+                Acondicionar
+            </a>
+            <button hx-get="{% url 'agro_lote_venta' lote.pk %}" hx-target="#modal-container"
+                    class="px-5 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors">
+                Asignar venta
+            </button>
+            {% endif %}
+            {% if lote.estado != 9 and lote.estado != 4 %}
+            <button hx-get="{% url 'agro_lote_anular' lote.pk %}" hx-target="#modal-container"
+                    class="px-4 py-2.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors">
+                Anular
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{{ error }}</div>
+    {% endif %}
+
+    {# ---------------- Resumen económico ---------------- #}
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Kilos de compra" valor=lote.total_kilos %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Kilos actuales" valor=lote.kilos_actuales %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Costo de compra" valor=lote.costo_compra pesos=1 %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Acondicionamiento" valor=lote.costo_acondicionamiento pesos=1 %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Venta" valor=lote.importe_venta pesos=1 %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Margen" valor=lote.margen pesos=1 destacar=1 %}
+    </div>
+
+    {% if lote.venta_id %}
+    <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-sm text-green-800 flex items-center justify-between">
+        <span>
+            Vendido con el comprobante <strong>{{ lote.venta.tipo.codigo }}
+            {{ lote.venta.punto|stringformat:"04d" }}-{{ lote.venta.numero|stringformat:"08d" }}</strong>
+            a {{ lote.venta.cliente.razon_social }} el {{ lote.venta.fecha|date:"d/m/Y" }}.
+            El asiento y el Libro IVA los generó el circuito de ventas, no esta pantalla.
+        </span>
+        <a href="{% url 'agro_lote_venta_quitar' lote.pk %}"
+           class="ml-4 shrink-0 px-3 py-1.5 text-xs font-bold text-green-700 bg-white border border-green-300 rounded-lg hover:bg-green-100">
+            Desvincular
+        </a>
+    </div>
+    {% endif %}
+
+    {# ---------------- Alta de fardo: Typeahead + Lupa ---------------- #}
+    {% if lote.editable and not hay_cerrados %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <form hx-post="{% url 'agro_lote_fardo_agregar' lote.pk %}"
+              hx-target="#panel-fardos" hx-swap="outerHTML"
+              hx-on::after-request="if(event.detail.successful){ this.reset(); fardoId=''; fardoTexto=''; document.getElementById('busca-fardo').focus(); }"
+              class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+            {% csrf_token %}
+
+            <div class="md:col-span-9 relative">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Fardo disponible</label>
+                <div class="flex gap-2">
+                    <input type="text" id="busca-fardo" autocomplete="off" autofocus
+                           placeholder="Número de fardo, romaneo, etiqueta o clase"
+                           class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                           x-model="fardoTexto"
+                           @focus="sugerencias = true"
+                           hx-get="{% url 'agro_lote_fardo_typeahead' lote.pk %}"
+                           hx-trigger="keyup changed delay:250ms, search, focus"
+                           hx-target="#fardo_suggestions"
+                           name="q">
+                    {# Lupa: abre la lista completa sin filtro, para cuando no se recuerda el dato. #}
+                    <button type="button" title="Ver todos los fardos disponibles"
+                            class="shrink-0 px-3 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50"
+                            @click="sugerencias = true"
+                            hx-get="{% url 'agro_lote_fardo_typeahead' lote.pk %}"
+                            hx-target="#fardo_suggestions">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                </div>
+                <div id="fardo_suggestions"
+                     x-show="sugerencias" @click.outside="sugerencias = false"
+                     class="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-y-auto"></div>
+                <input type="hidden" name="fardo" x-model="fardoId">
+            </div>
+
+            <div class="md:col-span-3">
+                <button type="submit"
+                        class="w-full px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-transform active:scale-95">
+                    Agregar al lote
+                </button>
+            </div>
+        </form>
+    </div>
+    {% elif hay_cerrados and lote.estado != 9 %}
+    <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
+        El lote ya tiene acondicionamientos cerrados. Los costos y las mermas se prorratean por
+        kilos, así que <strong>mover un fardo ahora reescribiría el margen de todos los demás</strong>.
+        Anulá el acondicionamiento si necesitás rearmarlo.
+    </div>
+    {% endif %}
+
+    {% include 'agricola/lote/panel_fardos.html' %}
+</div>
+{% endblock %}

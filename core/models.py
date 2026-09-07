@@ -33,6 +33,7 @@ class ContadorDocumento(models.Model):
     # Acopio de tabaco (Plan 082). El romaneo es un documento que emitimos nosotros y cuya
     # correlatividad no gobierna nadie más, igual que los tres de Distribución de arriba.
     ROMANEO_TABACO = 'ROMANEO_TABACO'
+    LOTE_TABACO = 'LOTE_TABACO'
     TIPOS_DOCUMENTO = [
         (ORDEN_COMPRA, 'Orden de Compra'),
         (INFORME_RECEPCION, 'Informe de Recepción'),
@@ -44,6 +45,7 @@ class ContadorDocumento(models.Model):
         (VENTA_NCI, 'Nota de Crédito Interna (no fiscal)'),
         (VENTA_FISCAL, 'Serie fiscal (espejo local / modo prueba)'),
         (ROMANEO_TABACO, 'Romaneo de Tabaco'),
+        (LOTE_TABACO, 'Lote de Acopio de Tabaco'),
     ]
 
     empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='contadores')

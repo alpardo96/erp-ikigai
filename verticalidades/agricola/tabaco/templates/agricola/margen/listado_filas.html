@@ -1,0 +1,55 @@
+{% load formato_tags %}
+{% comment %}
+Filas del reporte de margen. Los totales van dentro del mismo `<tbody>` —y no en un `<tfoot>`—
+porque HTMX reemplaza este bloque entero al cambiar un filtro: si los totales vivieran afuera,
+quedarían mostrando la suma del filtro anterior.
+{% endcomment %}
+{% for f in filas %}
+<tr class="hover:bg-slate-50 transition-colors">
+    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold">
+        <a href="{% url 'agro_margen_lote' f.lote.pk %}" class="text-indigo-600 hover:text-indigo-800">
+            {% if f.lote.numero %}{{ f.lote.punto|stringformat:"04d" }}-{{ f.lote.numero|stringformat:"08d" }}{% else %}Borrador{% endif %}
+        </a>
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ f.lote.variedad.detalle }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ f.lote.campania.codigo }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.kilos|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.costo_compra|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.costo_acondicionamiento|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ f.costo_total|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.costo_por_kilo|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.valor_coproductos|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ f.importe_venta|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-bold
+               {% if f.margen < 0 %}text-red-600{% elif f.importe_venta %}text-green-600{% else %}text-gray-400{% endif %}">
+        {{ f.margen|formato_ar }}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono
+               {% if f.margen < 0 %}text-red-600{% else %}text-gray-500{% endif %}">
+        {{ f.margen_porcentaje|formato_ar }} %
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="12" class="px-6 py-10 text-center text-gray-500 text-sm italic">No hay lotes que coincidan con el filtro.</td></tr>
+{% endfor %}
+
+{% if filas %}
+<tr class="bg-slate-50 border-t-2 border-slate-200">
+    <td colspan="3" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">Totales</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.kilos|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.costo_compra|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.costo_acondicionamiento|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.costo_total|formato_ar }}</td>
+    <td></td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.valor_coproductos|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.importe_venta|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold {% if totales.margen < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+        {{ totales.margen|formato_ar }}
+    </td>
+    {# El porcentaje se recalcula sobre los totales: promediar los porcentajes de cada lote daría
+       un número que no significa nada. #}
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold {% if totales.margen < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+        {{ totales.margen_porcentaje|formato_ar }} %
+    </td>
+</tr>
+{% endif %}

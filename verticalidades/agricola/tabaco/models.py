@@ -476,6 +476,13 @@ class FardoTabaco(AuditModel):
     precio_final = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
                                        verbose_name="Precio final (con adicional)")
 
+    # La pertenencia al lote vive de ESTE lado, igual que `RomaneoTabaco.liquidacion` y por la
+    # misma razon: siendo un FK simple, un fardo pertenece a lo sumo a un lote, y "no vender dos
+    # veces los mismos kilos" queda garantizado por el modelo en vez de por una validacion que
+    # alguien puede olvidar. Se declara por nombre porque `LoteAcopio` se define mas abajo.
+    lote = models.ForeignKey('LoteAcopio', on_delete=models.PROTECT, null=True, blank=True,
+                             related_name='fardos', verbose_name="Lote de acopio")
+
     estado = models.IntegerField(choices=ESTADOS, default=CLASIFICADO, db_index=True)
     clasificado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True,
                                         blank=True, related_name='+')
@@ -499,6 +506,8 @@ class FardoTabaco(AuditModel):
         indexes = [
             models.Index(fields=['romaneo', 'clase']),
             models.Index(fields=['estado']),
+            # Alimenta el armado del lote y el reporte de margen por fardo.
+            models.Index(fields=['lote', 'estado']),
         ]
 
     def __str__(self):
@@ -862,3 +871,335 @@ class RetencionPago(models.Model):
 
     def __str__(self):
         return f"Cert. {self.nro_certificado or 's/n'} — {self.codigo} — {self.importe}"
+
+
+# ==============================================================================
+# LOTES, ACONDICIONAMIENTO Y VENTA (Plan 086, Etapa 5)
+# ==============================================================================
+# Qué pasa con los kilos DESPUÉS de comprarlos: se agrupan en lotes comerciales, se acondicionan
+# —perdiendo peso y consumiendo insumos— y se venden por el circuito de siempre.
+#
+# ESTA ETAPA NO GENERA UN SOLO ASIENTO, Y ES A PROPÓSITO.
+# El ERP no contabiliza el stock: `StockSucursal` lleva cantidades y `VentaItem.cto_rep` guarda el
+# costo sólo para análisis. Los insumos del acondicionamiento se compran con una `Compra` normal,
+# que YA generó su asiento, su Libro IVA y su deuda con el proveedor. Lo que falta no es
+# contabilizar de nuevo —eso duplicaría el gasto en el balance— sino IMPUTAR ese costo ya
+# contabilizado a un lote para poder medir el margen. Por eso `AcondicionamientoCosto.compra` es
+# un respaldo opcional y no un disparador contable.
+#
+# La venta sí genera asiento, pero por `facturacion`, sin una línea de código de esta etapa.
+
+
+class LoteAcopio(AuditModel):
+    """Agrupación comercial de fardos ya comprados.
+
+    Un lote es de UNA variedad y UNA sucursal: el stock se lleva por variedad y por sucursal, así
+    que un lote que mezclara cualquiera de las dos no se podría imputar a ningún producto.
+
+    Se arma con fardos de romaneos ya confirmados —un borrador no existe físicamente y un anulado
+    no ocurrió— y se vende entero.
+    """
+    BORRADOR, ARMADO, ACONDICIONADO, VENDIDO, ANULADO = 1, 2, 3, 4, 9
+    ESTADOS = [
+        (BORRADOR, 'Borrador'),
+        (ARMADO, 'Armado'),
+        (ACONDICIONADO, 'Acondicionado'),
+        (VENDIDO, 'Vendido'),
+        (ANULADO, 'Anulado'),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name='lotes_tabaco')
+    sucursal = models.ForeignKey('empresas.Sucursal', on_delete=models.PROTECT,
+                                 related_name='lotes_tabaco')
+
+    punto = models.IntegerField(default=1, verbose_name="Punto")
+    # Nulo en borrador: el número se toma al armar, para no dejar huecos en la serie.
+    numero = models.BigIntegerField(null=True, blank=True, db_index=True, verbose_name="Número")
+
+    fecha = models.DateField(db_index=True, verbose_name="Fecha")
+    campania = models.ForeignKey(Campania, on_delete=models.PROTECT, related_name='lotes_tabaco')
+    variedad = models.ForeignKey(VariedadTabaco, on_delete=models.PROTECT, related_name='lotes')
+    descripcion = models.CharField(max_length=160, blank=True, verbose_name="Descripción")
+    observaciones = models.TextField(blank=True)
+
+    estado = models.IntegerField(choices=ESTADOS, default=BORRADOR, db_index=True)
+
+    # UN LOTE, UNA VENTA. Siendo un FK simple, el modelo garantiza que los mismos kilos no se
+    # vendan dos veces —igual que `RomaneoTabaco.liquidacion` garantiza no liquidarlos dos veces—.
+    # Para vender la mitad se arman dos lotes; los fardos se pueden mover mientras el lote no
+    # tenga un acondicionamiento cerrado.
+    venta = models.ForeignKey('facturacion.Venta', on_delete=models.PROTECT, null=True, blank=True,
+                              related_name='lotes_tabaco', verbose_name="Venta")
+
+    # Derivados del detalle. Se materializan porque se leen en todo listado, pero la fuente de
+    # verdad son los fardos y los acondicionamientos: `recalcular_lote()` los reconstruye
+    # enteros, nunca por delta.
+    total_fardos = models.IntegerField(default=0)
+    total_kilos = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                      verbose_name="Kilos de compra")
+    kilos_actuales = models.DecimalField(
+        max_digits=15, decimal_places=2, default=Decimal('0'), verbose_name="Kilos actuales",
+        help_text="Kilos de compra menos las bajas de acondicionamiento.")
+    costo_compra = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                       verbose_name="Costo de compra")
+    costo_acondicionamiento = models.DecimalField(max_digits=15, decimal_places=2,
+                                                  default=Decimal('0'),
+                                                  verbose_name="Costo de acondicionamiento")
+    valor_coproductos = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                            verbose_name="Valor de coproductos")
+    importe_venta = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                        verbose_name="Importe de venta")
+
+    motivo_anulacion = models.CharField(max_length=200, blank=True)
+    anulado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    anulado_el = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_lote"
+        verbose_name = "Lote de Acopio"
+        verbose_name_plural = "Lotes de Acopio"
+        ordering = ['-fecha', '-numero']
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'punto', 'numero'],
+                                    condition=models.Q(numero__isnull=False),
+                                    name='agro_tab_lote_numero_unico'),
+            models.CheckConstraint(condition=models.Q(total_kilos__gte=0),
+                                   name='agro_tab_lote_kilos_no_neg'),
+            models.CheckConstraint(condition=models.Q(total_fardos__gte=0),
+                                   name='agro_tab_lote_fardos_no_neg'),
+            models.CheckConstraint(condition=models.Q(costo_compra__gte=0),
+                                   name='agro_tab_lote_costo_no_neg'),
+        ]
+        indexes = [
+            models.Index(fields=['empresa', 'estado', '-fecha']),
+            models.Index(fields=['empresa', 'campania', 'variedad']),
+            models.Index(fields=['empresa', 'sucursal', 'estado']),
+        ]
+
+    def __str__(self):
+        numero = f"{self.punto:04d}-{self.numero:08d}" if self.numero else "BORRADOR"
+        return f"Lote {numero} - {self.variedad.detalle}"
+
+    @property
+    def editable(self):
+        """Sólo se tocan los fardos mientras el lote no se vendió ni se anuló.
+
+        El bloqueo fino —"no sacar un fardo si ya hay un acondicionamiento cerrado"— lo hace el
+        servicio, porque depende de una consulta y no de un campo.
+        """
+        return self.estado in (self.BORRADOR, self.ARMADO, self.ACONDICIONADO)
+
+    @property
+    def costo_total(self):
+        return self.costo_compra + self.costo_acondicionamiento
+
+    @property
+    def margen(self):
+        """Venta más lo recuperado en coproductos, menos todo lo que costó."""
+        return self.importe_venta + self.valor_coproductos - self.costo_total
+
+    @property
+    def margen_porcentaje(self):
+        base = self.costo_total
+        if not base:
+            return Decimal('0')
+        return (self.margen / base * Decimal('100')).quantize(Decimal('0.01'))
+
+
+class ProcesoAcondicionamiento(AuditModel):
+    """Maestro de procesos de planta — es la respuesta a la decisión abierta DA-07.
+
+    El plan no adivina si la planta despalilla, seca o reenfarda: sabe que UN PROCESO TOMA KILOS,
+    DEVUELVE KILOS, CONSUME PLATA Y PIERDE PESO. El resto es un alta en esta tabla, no una
+    migración.
+
+    `merma_normal_porcentaje` es la merma esperada del proceso. Lo que la excede es merma
+    EXTRAORDINARIA y hay que explicarla: es la única que el modelo obliga a justificar.
+    """
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE,
+                                related_name='procesos_acondicionamiento')
+    codigo = models.CharField(max_length=12, verbose_name="Código")
+    detalle = models.CharField(max_length=120, verbose_name="Detalle")
+    merma_normal_porcentaje = models.DecimalField(
+        max_digits=6, decimal_places=3, default=Decimal('0'),
+        verbose_name="% de merma normal",
+        help_text="Merma esperada del proceso. Lo que la exceda se marca como extraordinaria.")
+    orden = models.IntegerField(default=0, verbose_name="Orden")
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_proceso_acond"
+        verbose_name = "Proceso de Acondicionamiento"
+        verbose_name_plural = "Procesos de Acondicionamiento"
+        ordering = ['orden', 'codigo']
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'codigo'],
+                                    name='agro_tab_proceso_codigo_unico'),
+            models.CheckConstraint(
+                condition=models.Q(merma_normal_porcentaje__gte=0,
+                                   merma_normal_porcentaje__lte=100),
+                name='agro_tab_proceso_merma_0_100'),
+        ]
+
+    def __str__(self):
+        return f"{self.codigo} - {self.detalle}"
+
+
+class Acondicionamiento(AuditModel):
+    """Una corrida de un proceso sobre un lote.
+
+    LA DISTINCIÓN QUE JUSTIFICA EL MODELO
+    Merma es lo que DESAPARECE. Coproducto es lo que deja de ser tabaco de esta variedad y pasa a
+    ser otra cosa vendible —el palo, el descarte—. Sin separarlos, el usuario registraría el palo
+    como merma y perdería un activo real.
+
+    Por eso el stock se mueve así:
+        stock(variedad)   = Σ fardos − Σ kilos_baja      # baja = entrada − salida
+        stock(coproducto) = Σ coproducto.kilos           # reaparece en su propio producto
+
+    `kilos_baja` incluye los coproductos justamente porque ya no son tabaco de esta variedad.
+    """
+    BORRADOR, CERRADO, ANULADO = 1, 2, 9
+    ESTADOS = [(BORRADOR, 'Borrador'), (CERRADO, 'Cerrado'), (ANULADO, 'Anulado')]
+
+    lote = models.ForeignKey(LoteAcopio, on_delete=models.PROTECT,
+                             related_name='acondicionamientos')
+    proceso = models.ForeignKey(ProcesoAcondicionamiento, on_delete=models.PROTECT,
+                                related_name='acondicionamientos')
+    # Correlativo DENTRO del lote: un proceso de planta no merece una serie global.
+    numero = models.IntegerField(default=1, verbose_name="Nro")
+    fecha = models.DateField(db_index=True, verbose_name="Fecha")
+
+    kilos_entrada = models.DecimalField(max_digits=15, decimal_places=2,
+                                        verbose_name="Kilos de entrada")
+    kilos_salida = models.DecimalField(max_digits=15, decimal_places=2,
+                                       verbose_name="Kilos de salida")
+
+    # Derivados. `recalcular_acondicionamiento()` los reconstruye enteros.
+    kilos_coproductos = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    kilos_baja = models.DecimalField(
+        max_digits=15, decimal_places=2, default=Decimal('0'),
+        verbose_name="Kilos dados de baja",
+        help_text="Entrada menos salida. Es lo que el término de stock resta de la variedad.")
+    kilos_merma = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                      verbose_name="Merma")
+    merma_normal_esperada = models.DecimalField(max_digits=15, decimal_places=2,
+                                                default=Decimal('0'))
+    merma_extraordinaria = models.DecimalField(max_digits=15, decimal_places=2,
+                                               default=Decimal('0'))
+    # Congelado del maestro: si mañana se corrige el % del proceso, esta corrida no cambia.
+    porcentaje_merma_normal_aplicado = models.DecimalField(max_digits=6, decimal_places=3,
+                                                           default=Decimal('0'))
+
+    costo_total = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    valor_coproductos = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+
+    motivo_merma = models.CharField(max_length=200, blank=True,
+                                    verbose_name="Motivo de la merma extraordinaria")
+    observaciones = models.TextField(blank=True)
+    estado = models.IntegerField(choices=ESTADOS, default=BORRADOR, db_index=True)
+
+    motivo_anulacion = models.CharField(max_length=200, blank=True)
+    anulado_por = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+    anulado_el = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_acondicionamiento"
+        verbose_name = "Acondicionamiento"
+        verbose_name_plural = "Acondicionamientos"
+        ordering = ['lote', 'numero']
+        constraints = [
+            models.UniqueConstraint(fields=['lote', 'numero'],
+                                    name='agro_tab_acond_numero_unico'),
+            models.CheckConstraint(condition=models.Q(kilos_entrada__gt=0),
+                                   name='agro_tab_acond_entrada_positiva'),
+            models.CheckConstraint(condition=models.Q(kilos_salida__gte=0),
+                                   name='agro_tab_acond_salida_no_neg'),
+            # Del proceso no puede salir más de lo que entró: sería crear materia.
+            models.CheckConstraint(condition=models.Q(kilos_salida__lte=models.F('kilos_entrada')),
+                                   name='agro_tab_acond_salida_menor_entrada'),
+        ]
+        indexes = [
+            models.Index(fields=['lote', 'estado']),
+            models.Index(fields=['estado', '-fecha']),
+        ]
+
+    def __str__(self):
+        return f"Acond. {self.numero} - {self.proceso.detalle} - Lote {self.lote_id}"
+
+    @property
+    def editable(self):
+        return self.estado == self.BORRADOR
+
+    @property
+    def porcentaje_merma_real(self):
+        if not self.kilos_entrada:
+            return Decimal('0')
+        return (self.kilos_merma / self.kilos_entrada * Decimal('100')).quantize(Decimal('0.001'))
+
+
+class AcondicionamientoCoproducto(models.Model):
+    """Lo que sale del proceso y NO es tabaco de la variedad, pero sigue valiendo.
+
+    Entra al stock de su propio `Producto` por un término de stock aparte. `valor_estimado` es
+    gerencial: mejora el margen del lote sin generar ningún asiento —el ingreso real aparecerá
+    cuando ese coproducto se venda—.
+    """
+    acondicionamiento = models.ForeignKey(Acondicionamiento, on_delete=models.CASCADE,
+                                          related_name='coproductos')
+    producto = models.ForeignKey('productos.Producto', on_delete=models.PROTECT,
+                                 related_name='coproductos_tabaco')
+    kilos = models.DecimalField(max_digits=15, decimal_places=2, verbose_name="Kilos")
+    valor_estimado = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                         verbose_name="Valor estimado")
+    observaciones = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_acond_coproducto"
+        verbose_name = "Coproducto de Acondicionamiento"
+        verbose_name_plural = "Coproductos de Acondicionamiento"
+        ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(fields=['acondicionamiento', 'producto'],
+                                    name='agro_tab_coproducto_unico'),
+            models.CheckConstraint(condition=models.Q(kilos__gt=0),
+                                   name='agro_tab_coproducto_kilos_positivos'),
+            models.CheckConstraint(condition=models.Q(valor_estimado__gte=0),
+                                   name='agro_tab_coproducto_valor_no_neg'),
+        ]
+        indexes = [models.Index(fields=['acondicionamiento'])]
+
+    def __str__(self):
+        return f"{self.producto.detalle} - {self.kilos} kg"
+
+
+class AcondicionamientoCosto(models.Model):
+    """Costo directo imputado al lote a través del acondicionamiento.
+
+    `compra` ES UN RESPALDO, NO UN DISPARADOR CONTABLE. La factura del insumo ya generó su asiento
+    y su Libro IVA por el circuito de compras; acá sólo se dice a qué lote se le imputa ese gasto
+    para poder medir el margen. Contabilizarlo de nuevo duplicaría el gasto en el balance.
+    """
+    acondicionamiento = models.ForeignKey(Acondicionamiento, on_delete=models.CASCADE,
+                                          related_name='costos')
+    concepto = models.CharField(max_length=160, verbose_name="Concepto")
+    importe = models.DecimalField(max_digits=15, decimal_places=2, verbose_name="Importe")
+    compra = models.ForeignKey('facturacion.Compra', on_delete=models.SET_NULL, null=True,
+                               blank=True, related_name='costos_acondicionamiento',
+                               verbose_name="Compra de respaldo")
+
+    class Meta:
+        db_table = "agricola_tabaco_acond_costo"
+        verbose_name = "Costo de Acondicionamiento"
+        verbose_name_plural = "Costos de Acondicionamiento"
+        ordering = ['id']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(importe__gte=0),
+                                   name='agro_tab_acond_costo_no_neg'),
+        ]
+        indexes = [models.Index(fields=['acondicionamiento'])]
+
+    def __str__(self):
+        return f"{self.concepto} - {self.importe}"

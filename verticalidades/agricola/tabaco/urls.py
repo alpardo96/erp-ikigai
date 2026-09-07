@@ -8,6 +8,7 @@ from django.urls import path
 
 from . import views_htmx as htmx
 from . import views_liquidacion as liq
+from . import views_lotes as lot
 from . import views_pago as pag
 from . import views_romaneo as rom
 
@@ -83,4 +84,52 @@ urlpatterns = [
     # --- STOCK (Plan 085) ---------------------------------------------------
     path('agro/stock/conciliacion/', pag.stock_conciliacion, name='agro_stock_conciliacion'),
     path('agro/stock/recalcular/', pag.stock_recalcular, name='agro_stock_recalcular'),
+
+    # --- LOTES DE ACOPIO (Plan 086) -----------------------------------------
+    path('agro/lotes/', lot.lote_listado, name='agro_lote_listado'),
+    path('agro/lotes/grilla/', lot.lote_grilla, name='agro_lote_grilla'),
+    path('agro/lotes/nuevo/', lot.lote_nuevo, name='agro_lote_nuevo'),
+    path('agro/lotes/<int:pk>/', lot.lote_detalle, name='agro_lote_detalle'),
+    path('agro/lotes/<int:pk>/panel/', lot.lote_panel_fardos, name='agro_lote_panel'),
+    path('agro/lotes/<int:pk>/armar/', lot.lote_armar, name='agro_lote_armar'),
+    path('agro/lotes/<int:pk>/anular/', lot.lote_anular, name='agro_lote_anular'),
+
+    # Armado: Typeahead + Lupa sobre los fardos comprados sin lote
+    path('agro/lotes/<int:pk>/fardos/typeahead/', lot.fardo_typeahead,
+         name='agro_lote_fardo_typeahead'),
+    path('agro/lotes/<int:pk>/fardos/agregar/', lot.fardo_agregar, name='agro_lote_fardo_agregar'),
+    path('agro/lotes/<int:pk>/fardos/<int:fardo_pk>/quitar/', lot.fardo_quitar,
+         name='agro_lote_fardo_quitar'),
+
+    # Venta: vincula la factura ya emitida por el circuito de siempre
+    path('agro/lotes/<int:pk>/venta/', lot.lote_venta, name='agro_lote_venta'),
+    path('agro/lotes/<int:pk>/venta/quitar/', lot.lote_venta_quitar,
+         name='agro_lote_venta_quitar'),
+
+    # --- ACONDICIONAMIENTO (Plan 086) ---------------------------------------
+    path('agro/lotes/<int:pk>/acondicionar/', lot.acond_nuevo, name='agro_acond_nuevo'),
+    path('agro/acondicionamientos/<int:pk>/', lot.acond_detalle, name='agro_acond_detalle'),
+    path('agro/acondicionamientos/<int:pk>/panel/', lot.acond_panel, name='agro_acond_panel'),
+    path('agro/acondicionamientos/<int:pk>/cerrar/', lot.acond_cerrar, name='agro_acond_cerrar'),
+    path('agro/acondicionamientos/<int:pk>/anular/', lot.acond_anular, name='agro_acond_anular'),
+    path('agro/acondicionamientos/<int:pk>/costos/agregar/', lot.acond_costo_agregar,
+         name='agro_acond_costo_agregar'),
+    path('agro/acondicionamientos/<int:pk>/costos/<int:linea_pk>/quitar/', lot.acond_costo_quitar,
+         name='agro_acond_costo_quitar'),
+    path('agro/acondicionamientos/<int:pk>/coproductos/agregar/', lot.acond_coproducto_agregar,
+         name='agro_acond_coproducto_agregar'),
+    path('agro/acondicionamientos/<int:pk>/coproductos/<int:linea_pk>/quitar/',
+         lot.acond_coproducto_quitar, name='agro_acond_coproducto_quitar'),
+    path('agro/productos/typeahead/', lot.producto_typeahead, name='agro_producto_typeahead'),
+
+    # --- MARGEN (Plan 086) --------------------------------------------------
+    path('agro/margen/', lot.margen_listado, name='agro_margen'),
+    path('agro/margen/grilla/', lot.margen_grilla, name='agro_margen_grilla'),
+    path('agro/margen/lote/<int:pk>/', lot.margen_del_lote, name='agro_margen_lote'),
+
+    # Procesos de acondicionamiento (maestro — resuelve DA-07 por configuración)
+    path('agro/procesos/nuevo/', htmx.proceso_modal, name='agro_proceso_add'),
+    path('agro/procesos/<int:id>/editar/', htmx.proceso_modal, name='agro_proceso_edit'),
+    path('agro/procesos/buscar/', htmx.buscar_procesos, name='agro_proceso_buscar'),
+    path('agro/procesos/<int:id>/eliminar/', htmx.eliminar_proceso, name='agro_proceso_del'),
 ]

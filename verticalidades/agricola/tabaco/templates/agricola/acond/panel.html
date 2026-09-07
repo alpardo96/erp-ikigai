@@ -1,0 +1,106 @@
+{% load formato_tags %}
+{% comment %}
+Panel de kilos, costos y coproductos del acondicionamiento. Se devuelve entero por HTMX al cargar
+o quitar una línea: los kilos derivados (merma, extraordinaria) los recalcula el servidor, y
+replicarlos en JavaScript garantizaría que tarde o temprano las dos versiones discrepen.
+{% endcomment %}
+<div id="panel-acond" class="space-y-5">
+
+    {# ---------------- Balance de kilos ---------------- #}
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Entrada" valor=acond.kilos_entrada %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Salida" valor=acond.kilos_salida %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Coproductos" valor=acond.kilos_coproductos %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Merma" valor=acond.kilos_merma %}
+        {% include 'agricola/lote/tarjeta.html' with rotulo="Merma normal" valor=acond.merma_normal_esperada %}
+        <div class="bg-white rounded-2xl border shadow-sm p-4 {% if acond.merma_extraordinaria %}border-red-200 bg-red-50/40{% else %}border-gray-100{% endif %}">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Extraordinaria</p>
+            <p class="mt-1 text-lg font-mono font-bold {% if acond.merma_extraordinaria %}text-red-600{% else %}text-gray-400{% endif %}">
+                {{ acond.merma_extraordinaria|formato_ar }}
+            </p>
+        </div>
+    </div>
+
+    {% if acond.merma_extraordinaria %}
+    <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+        La merma supera en <strong>{{ acond.merma_extraordinaria|formato_ar }} kg</strong> la normal
+        del proceso ({{ acond.porcentaje_merma_normal_aplicado|formato_ar:3 }} %).
+        {% if acond.motivo_merma %}
+            Motivo declarado: <strong>{{ acond.motivo_merma }}</strong>.
+        {% else %}
+            <strong>Falta el motivo</strong>: sin él no se puede cerrar.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+        {# ---------------- Costos ---------------- #}
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-sm font-bold text-gray-800">Costos directos</h2>
+                <span class="text-sm font-mono font-bold text-gray-900">$ {{ acond.costo_total|formato_ar }}</span>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="divide-y divide-gray-100 bg-white">
+                    {% for c in costos %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 pl-6 pr-3 text-sm text-gray-700">
+                            {{ c.concepto }}
+                            {% if c.compra_id %}
+                            <span class="ml-2 text-[11px] text-gray-400">respaldo: compra #{{ c.compra_id }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ c.importe|formato_ar }}</td>
+                        <td class="py-3 pl-3 pr-6 text-right">
+                            {% if acond.estado == 1 %}
+                            <button hx-post="{% url 'agro_acond_costo_quitar' acond.pk c.pk %}"
+                                    hx-target="#panel-acond" hx-swap="outerHTML"
+                                    class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="px-6 py-8 text-center text-gray-500 text-sm italic">Sin costos imputados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# ---------------- Coproductos ---------------- #}
+        <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+            <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 class="text-sm font-bold text-gray-800">Coproductos</h2>
+                <span class="text-sm font-mono font-bold text-gray-900">
+                    {{ acond.kilos_coproductos|formato_ar }} kg · $ {{ acond.valor_coproductos|formato_ar }}
+                </span>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <tbody class="divide-y divide-gray-100 bg-white">
+                    {% for c in coproductos %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 pl-6 pr-3 text-sm text-gray-700">{{ c.producto.detalle }}</td>
+                        <td class="px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ c.kilos|formato_ar }} kg</td>
+                        <td class="px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ c.valor_estimado|formato_ar }}</td>
+                        <td class="py-3 pl-3 pr-6 text-right">
+                            {% if acond.estado == 1 %}
+                            <button hx-post="{% url 'agro_acond_coproducto_quitar' acond.pk c.pk %}"
+                                    hx-target="#panel-acond" hx-swap="outerHTML"
+                                    class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="px-6 py-8 text-center text-gray-500 text-sm italic">
+                        Sin coproductos: todo lo que salió del proceso es tabaco de la variedad o merma.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

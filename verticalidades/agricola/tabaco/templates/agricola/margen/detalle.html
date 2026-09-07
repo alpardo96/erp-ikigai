@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Margen por fardo{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+                Margen por fardo — Lote
+                {% if lote.numero %}{{ lote.punto|stringformat:"04d" }}-{{ lote.numero|stringformat:"08d" }}{% else %}borrador{% endif %}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ lote.variedad.detalle }} · {{ lote.sucursal.nombre }} ·
+                Campaña {{ lote.campania.codigo }}
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_lote_detalle' lote.pk %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Volver al lote</a>
+            <a href="{% url 'agro_margen' %}"
+               class="px-4 py-2 text-sm font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors">
+                Margen por lote
+            </a>
+        </div>
+    </div>
+
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+        El <strong>costo de compra es exacto por fardo</strong>: es lo que se le pagó al productor
+        por ese fardo, con su clase y su precio congelados desde el romaneo. El acondicionamiento y
+        el ingreso <strong>se prorratean por kilos</strong>, porque una merma de proceso no es
+        atribuible a un fardo individual: los fardos se mezclan en la máquina.
+    </div>
+
+    {# ---------------- Resumen por clase ---------------- #}
+    {% if por_clase %}
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-6 py-3 border-b border-gray-100">
+            <h2 class="text-sm font-bold text-gray-800">Resumen por clase</h2>
+            <p class="text-xs text-gray-500 mt-0.5">
+                Qué clases dejaron plata y cuáles se pagaron de más. Es la lectura que sirve para
+                comprar mejor el año que viene.
+            </p>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clase</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ingreso</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Margen</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">%</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for g in por_clase %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">{{ g.clase.detalle }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ g.fardos }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ g.kilos|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ g.costo_total|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ g.ingreso|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-bold
+                               {% if g.margen < 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ g.margen|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono
+                               {% if g.margen < 0 %}text-red-600{% else %}text-gray-500{% endif %}">{{ g.margen_porcentaje|formato_ar }} %</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {# ---------------- Fardo por fardo ---------------- #}
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardo</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Romaneo</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Productor</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clase</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Compra</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acond.</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">$/kg</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ingreso</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Margen</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">%</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for f in filas %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">{{ f.fardo.numero_fardo }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">
+                        {{ f.fardo.romaneo.punto|stringformat:"04d" }}-{{ f.fardo.romaneo.numero|stringformat:"08d" }}
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ f.fardo.romaneo.productor.razon_social }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ f.fardo.clase.detalle }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.kilos|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.costo_compra|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.costo_acondicionamiento|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ f.costo_total|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.costo_por_kilo|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ f.ingreso|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-bold
+                               {% if f.margen < 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ f.margen|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono
+                               {% if f.margen < 0 %}text-red-600{% else %}text-gray-500{% endif %}">{{ f.margen_porcentaje|formato_ar }} %</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="12" class="px-6 py-10 text-center text-gray-500 text-sm italic">El lote no tiene fardos.</td></tr>
+                {% endfor %}
+            </tbody>
+            {% if filas %}
+            <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+                <tr>
+                    <td colspan="4" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">Totales del lote</td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ lote.total_kilos|formato_ar }}</td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ lote.costo_compra|formato_ar }}</td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ lote.costo_acondicionamiento|formato_ar }}</td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ lote.costo_total|formato_ar }}</td>
+                    <td></td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ lote.importe_venta|formato_ar }}</td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold {% if lote.margen < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+                        {{ lote.margen|formato_ar }}
+                    </td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold {% if lote.margen < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+                        {{ lote.margen_porcentaje|formato_ar }} %
+                    </td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}

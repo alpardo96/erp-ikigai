@@ -77,6 +77,20 @@ class ProductoForm(forms.ModelForm):
     def clean_unidades_por_bulto(self):
         return self.cleaned_data.get('unidades_por_bulto') or 0
 
+    def clean_unidad_venta(self):
+        """Conserva el valor cuando el campo no viaja en el POST.
+
+        Sólo se renderiza para DISTRIBUCION, así que en el resto de las actividades llega vacío.
+        Con `blank=True` el form ya no lo rechaza, pero guardaría `''` y rompería el choice: acá
+        se repone lo que tenía el producto o, si es un alta, el default del modelo.
+        """
+        valor = self.cleaned_data.get('unidad_venta')
+        if valor:
+            return valor
+        if self.instance and self.instance.pk and self.instance.unidad_venta:
+            return self.instance.unidad_venta
+        return Producto._meta.get_field('unidad_venta').default
+
     class Meta:
         model = Producto
         fields = [

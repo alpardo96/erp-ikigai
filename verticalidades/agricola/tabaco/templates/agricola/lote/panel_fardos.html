@@ -1,0 +1,134 @@
+{% load formato_tags %}
+{% comment %}
+Panel de fardos y acondicionamientos del lote. Se devuelve entero por HTMX al agregar o quitar un
+fardo: es más barato que mantener sincronizados los totales por JavaScript, y no se puede
+desincronizar de lo que hay en la base.
+{% endcomment %}
+<div id="panel-fardos" class="space-y-5">
+
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardo</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Romaneo</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Productor</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clase</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Precio</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo de compra</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                    <th class="relative py-3 pl-3 pr-6"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for f in fardos %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">{{ f.numero_fardo }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">
+                        {{ f.romaneo.punto|stringformat:"04d" }}-{{ f.romaneo.numero|stringformat:"08d" }}
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ f.romaneo.productor.razon_social }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ f.clase.detalle }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.kilos|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.precio_aplicado|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ f.importe|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+                            {{ f.get_estado_display }}
+                        </span>
+                    </td>
+                    <td class="relative whitespace-nowrap py-3 pl-3 pr-6 text-right">
+                        {% if lote.editable and not hay_cerrados %}
+                        <button hx-post="{% url 'agro_lote_fardo_quitar' lote.pk f.pk %}"
+                                hx-target="#panel-fardos" hx-swap="outerHTML"
+                                hx-confirm="¿Sacar el fardo {{ f.numero_fardo }} del lote?"
+                                class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-2 rounded transition-colors">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="px-6 py-10 text-center text-gray-500 text-sm italic">
+                    El lote todavía no tiene fardos. Se agrupan fardos de romaneos confirmados de
+                    {{ lote.variedad.detalle }} en {{ lote.sucursal.nombre }}.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+            {% if fardos %}
+            <tfoot class="bg-slate-50">
+                <tr>
+                    <td colspan="4" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">
+                        {{ lote.total_fardos }} fardo{{ lote.total_fardos|pluralize }}
+                    </td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ lote.total_kilos|formato_ar }}</td>
+                    <td></td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ lote.costo_compra|formato_ar }}</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+
+    {# ---------------- Acondicionamientos ---------------- #}
+    {% if acondicionamientos %}
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100">
+            <h2 class="text-sm font-bold text-gray-800">Acondicionamientos</h2>
+            <p class="text-xs text-gray-500 mt-0.5">
+                La <strong>merma</strong> son kilos que desaparecen; el <strong>coproducto</strong>
+                deja de ser tabaco de esta variedad y reaparece en su propio producto.
+            </p>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nro</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                        <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proceso</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Entrada</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Salida</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coproductos</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Merma</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Extraord.</th>
+                        <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo</th>
+                        <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 bg-white">
+                    {% for a in acondicionamientos %}
+                    <tr class="hover:bg-slate-50 transition-colors {% if a.estado == 9 %}opacity-50{% endif %}">
+                        <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold">
+                            <a href="{% url 'agro_acond_detalle' a.pk %}" class="text-indigo-600 hover:text-indigo-800">{{ a.numero }}</a>
+                        </td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ a.fecha|date:"d/m/Y" }}</td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ a.proceso.detalle }}</td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ a.kilos_entrada|formato_ar }}</td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ a.kilos_salida|formato_ar }}</td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ a.kilos_coproductos|formato_ar }}</td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ a.kilos_merma|formato_ar }}</td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono
+                                   {% if a.merma_extraordinaria %}text-red-600 font-bold{% else %}text-gray-400{% endif %}">
+                            {{ a.merma_extraordinaria|formato_ar }}
+                        </td>
+                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ a.costo_total|formato_ar }}</td>
+                        <td class="whitespace-nowrap px-3 py-3 text-center">
+                            {% if a.estado == 1 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">Borrador</span>
+                            {% elif a.estado == 2 %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Cerrado</span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Anulado</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -1,0 +1,17 @@
+{% comment %}
+Sugerencias del typeahead de productos para el coproducto (palo, descarte). Setea el hidden
+`producto` y el texto visible por Alpine.
+{% endcomment %}
+{% for p in productos %}
+<button type="button"
+        class="w-full text-left px-4 py-2 hover:bg-indigo-50 transition-colors flex items-center justify-between"
+        @click="prodId = '{{ p.id }}'; prodTexto = '{{ p.detalle|escapejs }}'; sugProd = false;
+                document.getElementById('busca-producto').value = '{{ p.detalle|escapejs }}'">
+    <span class="font-bold text-gray-900">{{ p.detalle }}</span>
+    <span class="text-xs text-gray-500 font-mono">{{ p.get_unidad_venta_display }}</span>
+</button>
+{% empty %}
+<div class="px-4 py-3 text-sm text-gray-500 italic">
+    No hay productos que coincidan. El coproducto necesita su propio producto de stock.
+</div>
+{% endfor %}

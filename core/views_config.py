@@ -120,7 +120,7 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
             from verticalidades.agricola.tabaco.forms import ConfiguracionTabacoForm
             from verticalidades.agricola.tabaco.models import (
                 ClaseTabaco, ConfiguracionTabaco, ListaPrecioTabaco,
-                TipoRetencionTabaco, VariedadTabaco,
+                ProcesoAcondicionamiento, TipoRetencionTabaco, VariedadTabaco,
             )
         except ImportError:
             return {}
@@ -148,6 +148,11 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         if tab == 'agro_retenciones':
             return {'retenciones': (TipoRetencionTabaco.objects.filter(empresa_id=empresa_id)
                                     .select_related('cuenta_contable', 'jurisdiccion'))}
+
+        if tab == 'agro_procesos':
+            # Maestro del Plan 086: que procesos existen en la planta es un dato del usuario, no
+            # una decision cableada en el codigo.
+            return {'procesos': ProcesoAcondicionamiento.objects.filter(empresa_id=empresa_id)}
 
         if tab == 'agro_config_tabaco':
             config = ConfiguracionTabaco.objects.filter(empresa_id=empresa_id).first()

@@ -20,8 +20,9 @@ from verticalidades.agricola.core_agricola.models import Campania
 
 from .forms import (CampaniaForm, ClaseTabacoForm, ConfiguracionTabacoForm,
                     ListaPrecioTabacoForm, TipoRetencionTabacoForm, VariedadTabacoForm)
+from .forms_lotes import ProcesoForm
 from .models import (ClaseTabaco, ConfiguracionTabaco, ListaPrecioTabaco,
-                     TipoRetencionTabaco, VariedadTabaco)
+                     ProcesoAcondicionamiento, TipoRetencionTabaco, VariedadTabaco)
 
 
 def _trigger(*eventos, cerrar_modal=False):
@@ -354,3 +355,50 @@ def configuracion_tabaco(request):
 
     return render(request, 'agricola/partials/config_tabaco_form.html',
                   {'form': form, 'config': config, 'guardado': request.method == 'POST'})
+
+
+# ------------------------------------------- Procesos de acondicionamiento (Plan 086)
+# Es el maestro que resuelve la decision abierta DA-07: que procesos existen en la planta es un
+# dato que carga el usuario, no una decision cableada en el codigo.
+
+@login_required
+def proceso_modal(request, id=None):
+    empresa_id = request.session.get('empresa_id')
+    proceso = (get_object_or_404(ProcesoAcondicionamiento, id=id, empresa_id=empresa_id)
+               if id else None)
+
+    if request.method == 'POST':
+        form = ProcesoForm(empresa_id, request.POST, instance=proceso)
+        if form.is_valid():
+            return _guardar(request, form, 'reloadProcesos')
+    else:
+        form = ProcesoForm(empresa_id, instance=proceso)
+
+    return _modal(request, form,
+                  'Editar Proceso' if proceso else 'Nuevo Proceso de Acondicionamiento',
+                  reverse('agro_proceso_edit', args=[proceso.id]) if proceso
+                  else reverse('agro_proceso_add'),
+                  proceso)
+
+
+@login_required
+def buscar_procesos(request):
+    q = (request.GET.get('q') or '').strip()
+    qs = ProcesoAcondicionamiento.objects.filter(empresa_id=request.session.get('empresa_id'))
+    if q:
+        qs = qs.filter(Q(codigo__icontains=q) | Q(detalle__icontains=q))
+    return render(request, 'agricola/partials/proceso_table_rows.html', {'procesos': qs})
+
+
+@login_required
+def eliminar_proceso(request, id):
+    if request.method != 'POST':
+        return HttpResponse(status=400)
+    proceso = get_object_or_404(ProcesoAcondicionamiento, id=id,
+                                empresa_id=request.session.get('empresa_id'))
+    try:
+        proceso.delete()
+    except ProtectedError:
+        return _error("No se puede eliminar el proceso: ya se usó en acondicionamientos. "
+                      "Desactivalo en lugar de borrarlo.")
+    return _trigger('reloadProcesos')

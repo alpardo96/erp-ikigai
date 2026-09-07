@@ -1,0 +1,24 @@
+{% comment %}
+Sugerencias del typeahead de fardos disponibles. Cada opción setea el hidden `fardo` y el texto
+visible por Alpine, y cierra el desplegable.
+{% endcomment %}
+{% load formato_tags %}
+{% for f in fardos %}
+<button type="button"
+        class="w-full text-left px-4 py-2 hover:bg-indigo-50 transition-colors flex items-center justify-between"
+        @click="fardoId = '{{ f.id }}'; fardoTexto = 'Fardo {{ f.numero_fardo }} — {{ f.clase.detalle }}'; sugerencias = false;
+                document.getElementById('busca-fardo').value = 'Fardo {{ f.numero_fardo }} — {{ f.clase.detalle }}'">
+    <span>
+        <span class="font-bold text-gray-900">Fardo {{ f.numero_fardo }}</span>
+        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">{{ f.clase.detalle }}</span>
+        <span class="ml-2 text-xs text-gray-500">Romaneo {{ f.romaneo.numero|default:"s/n" }} · {{ f.romaneo.productor.razon_social }}</span>
+        {% if f.etiqueta %}<span class="ml-2 text-xs text-gray-400">{{ f.etiqueta }}</span>{% endif %}
+    </span>
+    <span class="text-xs text-gray-600 font-mono">{{ f.kilos|formato_ar }} kg · $ {{ f.importe|formato_ar }}</span>
+</button>
+{% empty %}
+<div class="px-4 py-3 text-sm text-gray-500 italic">
+    No hay fardos disponibles de {{ lote.variedad.detalle }} en {{ lote.sucursal.nombre }}.
+    Sólo se agrupan fardos de romaneos confirmados que todavía no estén en otro lote.
+</div>
+{% endfor %}

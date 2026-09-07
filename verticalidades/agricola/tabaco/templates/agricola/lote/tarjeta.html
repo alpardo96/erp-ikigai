@@ -1,0 +1,12 @@
+{% load formato_tags %}
+{% comment %}
+Tarjeta de un indicador del lote. Existe para no repetir doce veces el mismo bloque y que
+cambiar el estilo signifique tocar un archivo.
+{% endcomment %}
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ rotulo }}</p>
+    <p class="mt-1 text-lg font-mono font-bold
+              {% if destacar %}{% if valor < 0 %}text-red-600{% else %}text-green-600{% endif %}{% else %}text-gray-900{% endif %}">
+        {% if pesos %}$ {% endif %}{{ valor|formato_ar }}
+    </p>
+</div>

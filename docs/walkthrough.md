@@ -4330,3 +4330,198 @@ liquidación, pago y stock— sin una sola modificación funcional al core.
 3. Antes de operar: correr `manage.py crear_productos_tabaco --empresa 1` para que las variedades
    tengan su producto de stock, o asignarlo desde el ABM de variedades.
 4. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.
+
+---
+
+## 2026-09-07 — Juan Manuel - Notebook personal
+
+### Corrección: `unidad_venta` bloqueaba el alta de productos fuera de DISTRIBUCION
+
+**Objetivo:** el usuario reportó que dar de alta un producto en la actividad **ARMERIA** fallaba
+por el campo `unidad_venta`.
+
+**Diagnóstico.** El campo no es de las etapas agrícolas: viene del **Plan 074 (Distribución)** y
+está en el repositorio desde el commit inicial (`git log -S "unidad_venta" -- productos/models.py`
+devuelve sólo `1614a03 Initial commit`; lo crea `productos/migrations/0001_initial.py`). El
+problema es una combinación de tres cosas que por separado son correctas:
+
+1. `unidad_venta` está en `ProductoForm.Meta.fields`.
+2. En el modelo tenía `default='UNIDAD'` y `choices`, pero **no `blank=True`** → el form lo
+   marcaba `required=True`.
+3. Sólo se **dibuja** dentro de
+   `verticalidades/distribucion/templates/distribucion/hooks/ui_producto_modal_campos.html`, que
+   abre con `{% if empresa_actual.tipo_actividad == 'DISTRIBUCION' %}`.
+
+En ARMERIA (y ESTUDIO, AGRICOLA…) el campo nunca llega al POST, el formulario queda inválido y el
+producto no se guarda — y el usuario **no puede ver dónde está el error**, porque el campo no está
+en pantalla. Reproducido con un POST realista de ARMERIA:
+`ERROR en unidad_venta: Este campo es obligatorio.`
+
+De los cuatro campos que inyecta el hook de Distribución, era el **único** que fallaba:
+`codigo_anterior`, `peso_unitario_kg` y `unidades_por_bulto` ya eran opcionales.
+
+**Archivos modificados:**
+- `productos/models.py` [MODIFY]: `blank=True` en `unidad_venta`, con el comentario del porqué.
+- `productos/migrations/0002_unidad_venta_opcional.py` [NEW]: `AlterField`. **No toca el esquema**
+  — `blank` es validación a nivel Django, la columna sigue igual.
+- `productos/forms.py` [MODIFY]: `clean_unidad_venta()` — si no viaja en el POST, repone el valor
+  del producto que se edita o, en un alta, el default del modelo. Sin esto `blank=True` guardaría
+  `''` y rompería el `choice`.
+- `productos/tests/test_unidad_venta_opcional.py` [NEW]: 5 tests de regresión.
+
+**Por qué el `clean_` y no sólo `blank=True`:** editar un producto de Distribución desde una
+pantalla que no dibuja el campo le habría borrado la unidad. El `clean_` la conserva.
+
+**Resultado de las pruebas:**
+- `manage.py test productos.tests.test_unidad_venta_opcional` → **5/5 OK** (0,53 s).
+- `manage.py test productos` → **41/41 OK** (34,9 s).
+- `manage.py makemigrations --check --dry-run` → `No changes detected`.
+- Verificación funcional: ARMERIA sin el campo → válido, queda `'UNIDAD'`; DISTRIBUCION con
+  `'BULTO'` → válido y respeta `'BULTO'`.
+
+**Estado y siguientes pasos:** corregido. Sin cambios pendientes para las etapas agrícolas; siguen
+en pie la Etapa 5 (lotes, acondicionamiento, margen) y la Etapa 6 (reportes FET y libro de
+retenciones practicadas).
+
+---
+
+## 2026-09-07 — Juan Manuel - Notebook personal
+
+### Agrícola · Etapa 5 — Lotes de acopio, acondicionamiento, venta y margen (Plan 086)
+
+**Objetivo:** cerrar el circuito comercial del acopio. Hasta acá el tabaco entraba (romaneo), se
+facturaba al productor (liquidación), se pagaba (orden de pago) y sumaba kilos al stock. Faltaba
+qué pasa con esos kilos **después**: agruparlos, acondicionarlos, venderlos y medir el margen.
+
+Plan: [`docs/planes/086_agricola_etapa5_lotes_acondicionamiento_venta.md`](planes/086_agricola_etapa5_lotes_acondicionamiento_venta.md).
+
+#### Las tres decisiones de fondo
+
+**1. DA-07 se resuelve por configuración, no por código.** El plan integral dejaba abierta la
+decisión *"procesos reales de acondicionamiento, mermas normales y coproductos"* para esta etapa.
+No la resolví adivinando qué hace la planta: la convertí en un maestro que carga el usuario.
+`ProcesoAcondicionamiento` guarda el nombre del proceso y su merma normal esperada. El sistema
+sabe que **un proceso toma kilos, devuelve kilos, consume plata y pierde peso**; si mañana aparece
+un proceso nuevo, es un alta en una pantalla y no una migración.
+
+**2. La etapa NO genera un solo asiento, y es a propósito.** Es la decisión más importante y la
+más contraintuitiva. El ERP no contabiliza el stock: `StockSucursal` lleva cantidades y
+`VentaItem.cto_rep` guarda el costo sólo para análisis. Los insumos del acondicionamiento se
+compran con una `Compra` normal —*"por ahí irán todas las compras de insumos, agroquímicos"*— que
+**ya generó su asiento, su Libro IVA y su deuda con el proveedor**. Lo que faltaba no era
+contabilizar de nuevo —eso duplicaría el gasto en el balance— sino **imputar** ese costo ya
+contabilizado a un lote para poder medir el margen. Por eso `AcondicionamientoCosto.compra` es un
+respaldo opcional y no un disparador contable. Hay un test que lo fija:
+`test_el_acondicionamiento_no_genera_asientos`.
+
+**3. Merma y coproducto no son lo mismo.** Merma son kilos que **desaparecen**; coproducto son
+kilos que dejan de ser tabaco de la variedad y pasan a ser **otra cosa vendible** (el palo, el
+descarte). Sin separarlos, el usuario registraría el palo como merma y perdería un activo real.
+Por eso el stock se mueve así:
+
+```
+stock(variedad)   = Σ fardos − Σ kilos_baja        # baja = entrada − salida
+stock(coproducto) = Σ coproducto.kilos             # reaparece en su propio producto
+```
+
+`kilos_baja` incluye los coproductos justamente porque ya no son tabaco de esa variedad. Si acá se
+restara sólo la merma, los kilos del palo quedarían contados dos veces.
+
+#### Archivos creados
+
+- `verticalidades/agricola/tabaco/services/lotes.py` [NEW]: armado, venta y derivados del lote.
+- `verticalidades/agricola/tabaco/services/acondicionamiento.py` [NEW]: corridas de proceso,
+  costos, coproductos, cierre y anulación.
+- `verticalidades/agricola/tabaco/services/stock_acondicionamiento.py` [NEW]: los dos términos de
+  stock nuevos.
+- `verticalidades/agricola/tabaco/services/margen.py` [NEW]: margen por lote, por fardo y por clase.
+- `verticalidades/agricola/tabaco/forms_lotes.py` [NEW] · `views_lotes.py` [NEW].
+- 16 plantillas nuevas en `templates/agricola/{lote,acond,margen,partials}/` y
+  `templates/configuracion/partials/agro_procesos.html`.
+- `verticalidades/agricola/tabaco/tests/test_plan086_lotes.py` [NEW] — 43 tests de servicio.
+- `verticalidades/agricola/tabaco/tests/test_plan086_pantallas.py` [NEW] — 34 tests de pantalla.
+
+#### Archivos modificados
+
+- `verticalidades/agricola/tabaco/models.py` [MODIFY]: `LoteAcopio`, `ProcesoAcondicionamiento`,
+  `Acondicionamiento`, `AcondicionamientoCoproducto`, `AcondicionamientoCosto`, y el FK
+  `FardoTabaco.lote`.
+- `verticalidades/agricola/tabaco/registros.py` [MODIFY]: se suman los dos términos de stock
+  nuevos al tercer punto de extensión del Plan 080.
+- `verticalidades/agricola/tabaco/services/stock.py` [MODIFY]: la conciliación contempla las bajas
+  de acondicionamiento; `recalcular_stock_del_acondicionamiento()`.
+- `verticalidades/agricola/tabaco/urls.py`, `views_htmx.py` (ABM de procesos),
+  `templates/agricola/hooks/menu_sidebar_bottom.html`, `templates/agricola/stock/conciliacion.html`.
+- `core/models.py` [MODIFY]: `ContadorDocumento.LOTE_TABACO`. **Es el único cambio al core**, y es
+  aditivo, igual que `ROMANEO_TABACO` en la Etapa 0.
+- `core/views_config.py` y `templates/configuracion/partials/hub.html`: pestaña `agro_procesos`.
+- `docs/agricola/plan inicial agricola.md`: DA-07 pasa de abierta a cerrada; Etapa 5 marcada.
+- `docs/GUIA_MODULAR.md`: estado del módulo 17.
+
+#### Garantías que da el modelo, no una validación
+
+- `FardoTabaco.lote` es un FK simple, así que **un fardo está en un lote a lo sumo** — igual que
+  `RomaneoTabaco.liquidacion` garantiza no liquidar dos veces los mismos kilos.
+- `LoteAcopio.venta` es un FK simple: **un lote se vende entero**. Para vender la mitad se arman
+  dos lotes; los fardos se mueven mientras no haya un acondicionamiento cerrado.
+- CheckConstraint `kilos_salida <= kilos_entrada`: del proceso no puede salir más de lo que entró.
+
+#### El margen: qué se prorratea y qué no
+
+| Componente | Cómo |
+|---|---|
+| Costo de compra | **Exacto por fardo**: es lo que se le pagó al productor por ese fardo |
+| Costo de acondicionamiento | Prorrateado por kilos |
+| Ingreso de la venta | Prorrateado por kilos |
+
+Prorratear el costo de compra cuando existe el dato exacto sería perder información: dos fardos
+del mismo peso pueden haberse pagado a precios muy distintos según su clase, y esa diferencia es
+justamente lo que el reporte tiene que mostrar. Lo de acondicionar se prorratea porque una merma
+de proceso no es atribuible a un fardo individual: los fardos se mezclan en la máquina.
+
+El ingreso se mide **sólo sobre las líneas del producto de la variedad**: si en la misma factura
+se cobró un flete, ese importe no es ingreso del tabaco y contarlo inflaría el margen.
+
+#### Dos correcciones durante el desarrollo
+
+1. **Dos borradores podían sumar más kilos de los que el lote tenía.** Al abrir el segundo, el
+   primero todavía no descontaba nada —un borrador no mueve stock—, así que la validación de
+   apertura no podía detectarlo. Ahora `cerrar_acondicionamiento()` revalida los kilos. Test:
+   `test_no_se_cierran_dos_borradores_que_suman_mas_que_el_lote`.
+2. **Armar y cerrar llegan por enlace, no por HTMX.** Devolver un fragmento en el error habría
+   reemplazado la página entera por un pedazo de tabla. Ahora el motivo viaja por `?error=` y lo
+   muestra el detalle completo.
+
+#### Base de datos
+
+- `core/migrations/0004_etapa5_lotes.py`: sólo el `choices` de `ContadorDocumento`.
+- `verticalidades/agricola/tabaco/migrations/0005_etapa5_lotes.py`: 5 tablas nuevas, el FK
+  `fardo.lote`, 6 índices y 12 constraints.
+
+#### Resultado de las pruebas
+
+- `test_plan086_lotes` + `test_plan086_pantallas` → **77/77 OK** (99,1 s).
+- `manage.py test verticalidades` → **611 tests, 3 errores**, los tres preexistentes de
+  distribución (994,6 s).
+- **Suite completa: 954 tests, 13 errores** — lista **idéntica** al baseline, cero fallas nuevas
+  (1.288,9 s, corriendo sola). El baseline tenía 872 tests con los mismos 13 errores; los 82 de
+  diferencia son los 77 de esta etapa más los 5 de la corrección de `unidad_venta`.
+- `manage.py makemigrations --check --dry-run` → `No changes detected`.
+- **Prueba de desenchufe** (carpeta `verticalidades/agricola` movida):
+  - `manage.py check` → sin problemas;
+  - términos de stock: exactamente los cuatro de siempre (`compras`, `recepciones`, `ventas`,
+    `remitos_internos`), los tres extras en cero;
+  - términos de cuenta corriente y aplicaciones de OP: ninguno;
+  - `recalcular_stock()` sigue funcionando sobre un producto real;
+  - al reenchufar, `manage.py check` vuelve a pasar.
+
+#### Estado actual y siguientes pasos
+
+Etapa 5 cerrada. Los tres puntos de extensión del Plan 080 siguen siendo los únicos ganchos usados
+y el core sólo recibió un `choices` nuevo.
+
+1. **Cargar los procesos reales de la planta** en Configuración → Procesos de Acondicionamiento.
+   Es lo único que queda de DA-07 y es dato operativo, no desarrollo.
+2. **Etapa 6** — reportes FET / Secretaría de la Producción y libro de retenciones practicadas.
+3. Limitación conocida y documentada: un lote se vende entero; para vender parcial se arman dos.
+4. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.

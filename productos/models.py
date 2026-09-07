@@ -160,8 +160,13 @@ class Producto(AuditModel):
     ]
     peso_unitario_kg = models.DecimalField(
         max_digits=10, decimal_places=3, default=0, verbose_name="Peso por Unidad de Venta (kg)")
+    # `blank=True` porque el campo SÓLO se dibuja en el modal cuando la empresa es DISTRIBUCION
+    # (lo inyecta el hook `ui_producto_modal_campos`). Sin esto el form lo exigía igual en
+    # ARMERIA, ESTUDIO o AGRICOLA, donde no está en pantalla: el alta de producto fallaba con
+    # "Este campo es obligatorio" y el usuario no tenía dónde verlo. El default cubre el valor.
     unidad_venta = models.CharField(
-        max_length=10, choices=UNIDAD_VENTA_CHOICES, default='UNIDAD', verbose_name="Unidad de Venta")
+        max_length=10, choices=UNIDAD_VENTA_CHOICES, default='UNIDAD', blank=True,
+        verbose_name="Unidad de Venta")
     unidades_por_bulto = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, verbose_name="Unidades por Bulto",
         help_text="Cuántas unidades trae un bulto. El vendedor pide '3 cajones', no '36 unidades'.")

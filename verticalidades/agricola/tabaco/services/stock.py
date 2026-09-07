@@ -110,7 +110,8 @@ def _fila_sin_producto(variedad, empresa_id):
                  .aggregate(s=Sum('kilos'))['s'] or CERO)
     return {
         'variedad': variedad, 'sucursal': None, 'sin_producto': True,
-        'recibidos': recibidos, 'vendidos': CERO, 'stock_inicial': CERO,
+        'recibidos': recibidos, 'acondicionados': CERO, 'vendidos': CERO,
+        'stock_inicial': CERO,
         'esperado': CERO, 'en_erp': CERO, 'diferencia': CERO,
     }
 
@@ -120,10 +121,19 @@ def _fila(variedad, sucursal_id):
     from facturacion.models import VentaItem
     from productos.models import StockSucursal
 
+    from ..models import Acondicionamiento
+
     recibidos = (FardoTabaco.objects
                  .filter(romaneo__variedad=variedad, romaneo__sucursal_id=sucursal_id)
                  .exclude(romaneo__estado__in=ESTADOS_SIN_STOCK)
                  .aggregate(s=Sum('kilos'))['s'] or CERO)
+
+    # Plan 086: lo que sale de la variedad al acondicionar. `kilos_baja` incluye los coproductos
+    # porque ya no son tabaco de esta variedad: reaparecen en su propio producto, no acá.
+    acondicionados = (Acondicionamiento.objects
+                      .filter(lote__variedad=variedad, lote__sucursal_id=sucursal_id,
+                              estado=Acondicionamiento.CERRADO)
+                      .aggregate(s=Sum('kilos_baja'))['s'] or CERO)
 
     # La salida se mide con el mismo criterio que usa el motor de stock: ventas vigentes del
     # producto en esa sucursal. Si acá se contara de otra forma, la conciliación mentiría.
@@ -138,16 +148,45 @@ def _fila(variedad, sucursal_id):
                   .first())
     inicial = (existencia.stock_inicial if existencia else CERO) or CERO
     en_erp = (existencia.cantidad if existencia else CERO) or CERO
-    esperado = inicial + recibidos - vendidos
+    esperado = inicial + recibidos - acondicionados - vendidos
 
     return {
         'variedad': variedad,
         'sucursal': Sucursal.objects.filter(pk=sucursal_id).first(),
         'sin_producto': False,
         'recibidos': recibidos,
+        'acondicionados': acondicionados,
         'vendidos': vendidos,
         'stock_inicial': inicial,
         'esperado': esperado,
         'en_erp': en_erp,
         'diferencia': esperado - en_erp,
     }
+
+
+# ---------------------------------------------------------------------------
+# Acondicionamiento (Plan 086)
+# ---------------------------------------------------------------------------
+
+def recalcular_stock_del_acondicionamiento(acond):
+    """Recalcula la variedad del lote y cada producto coproducto de la corrida.
+
+    Se llama al CERRAR y al ANULAR, que son los dos únicos momentos en que un acondicionamiento
+    cruza el umbral de contar o no contar. Agregar líneas ocurre en borrador, que no cuenta.
+
+    Recalcula también los coproductos ANULADOS: si no se tocaran, al anular la corrida sus kilos
+    quedarían para siempre en el stock del palo.
+    """
+    from productos.services.stock_service import recalcular_stock
+
+    lote = acond.lote
+    afectados = set()
+
+    if lote.variedad.producto_id:
+        afectados.add(lote.variedad.producto_id)
+    afectados |= set(acond.coproductos.values_list('producto_id', flat=True))
+
+    for producto_id in afectados:
+        recalcular_stock(producto_id, lote.sucursal_id)
+
+    return afectados

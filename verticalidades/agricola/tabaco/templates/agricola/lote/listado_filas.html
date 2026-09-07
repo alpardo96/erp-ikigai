@@ -1,0 +1,38 @@
+{% load formato_tags %}
+{% for l in lotes %}
+<tr class="hover:bg-slate-50 transition-colors">
+    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">
+        <a href="{% url 'agro_lote_detalle' l.pk %}" class="text-indigo-600 hover:text-indigo-800">
+            {% if l.numero %}{{ l.punto|stringformat:"04d" }}-{{ l.numero|stringformat:"08d" }}{% else %}Borrador{% endif %}
+        </a>
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ l.fecha|date:"d/m/Y" }}</td>
+    <td class="px-3 py-3 text-sm text-gray-700">{{ l.descripcion|default:"—" }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ l.variedad.detalle }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ l.sucursal.nombre }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ l.total_fardos }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ l.total_kilos|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ l.kilos_actuales|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ l.costo_total|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ l.importe_venta|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-bold
+               {% if l.margen < 0 %}text-red-600{% elif l.importe_venta %}text-green-600{% else %}text-gray-400{% endif %}">
+        {% if l.importe_venta or l.valor_coproductos %}{{ l.margen|formato_ar }}{% else %}—{% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-center">
+        {% if l.estado == 1 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">Borrador</span>
+        {% elif l.estado == 2 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">Armado</span>
+        {% elif l.estado == 3 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Acondicionado</span>
+        {% elif l.estado == 4 %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Vendido</span>
+        {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Anulado</span>
+        {% endif %}
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="12" class="px-6 py-10 text-center text-gray-500 text-sm italic">No hay lotes que coincidan con el filtro.</td></tr>
+{% endfor %}
