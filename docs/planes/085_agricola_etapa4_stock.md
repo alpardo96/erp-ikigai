@@ -130,6 +130,8 @@ kilos no aparezcan.
       (`compras`, `recepciones`, `ventas`, `remitos_internos`), los tres registros en 0 y
       `recalcular_stock()` sigue funcionando.
 - [x] `makemigrations --check` sin cambios pendientes. **Esta etapa no crea ni altera tablas.**
+- [x] Suite completa: **872 tests, 13 errores** — lista **idéntica** al baseline, cero fallas
+      nuevas y cero caídas de conexión (1.136 s, corriendo sola).
 - [x] `docs/walkthrough.md` actualizado.
 
 ### Los tres puntos de extensión del Plan 080, todos en uso

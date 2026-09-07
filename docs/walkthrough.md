@@ -4251,3 +4251,82 @@ recomendación es no correr suites concurrentes contra la misma instancia.
 2. Etapa 5 — lotes de acopio, acondicionamiento, venta y margen por fardo.
 3. Etapa 6 — reportes FET / Secretaría de la Producción y libro de retenciones practicadas.
 4. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.
+
+## Juan Manuel - Notebook personal - 2026-09-07 - Agrícola Etapa 4: Stock del Tabaco (Plan 085)
+
+**Objetivo:** que los kilos recibidos entren al stock del ERP y salgan al venderse, usando el
+motor existente. Consume el **último punto de extensión del Plan 080 que quedaba sin estrenar**.
+
+**Archivos creados o modificados:**
+- `docs/planes/085_agricola_etapa4_stock.md` (nuevo)
+- `verticalidades/agricola/tabaco/services/stock.py` (nuevo — término y conciliación)
+- `verticalidades/agricola/tabaco/services/romaneo.py` (dispara el recálculo al confirmar/anular)
+- `verticalidades/agricola/tabaco/registros.py` (+ `registrar_termino_stock`)
+- `verticalidades/agricola/tabaco/management/commands/crear_productos_tabaco.py` (nuevo)
+- `verticalidades/agricola/tabaco/views_pago.py` (+ conciliación y recálculo) y `urls.py` (2 rutas)
+- `verticalidades/agricola/tabaco/templates/agricola/stock/conciliacion.html` (nuevo)
+- `verticalidades/agricola/tabaco/templates/agricola/hooks/menu_sidebar_bottom.html` (1 entrada)
+- `verticalidades/agricola/tabaco/tests/test_plan085_stock.py` (nuevo)
+
+**SIN MIGRACIONES.** La etapa no agrega ni una tabla ni un campo: `VariedadTabaco.producto` ya
+existía desde el Plan 081, previsto justamente para esto. Todo lo demás es servicio, registro y
+pantalla.
+
+**Detalle Técnico:**
+
+*Granularidad: un producto por VARIEDAD, en kilos.* La clase vive en el fardo, no en el producto.
+Si hubiera un producto por clase serían 75, y —lo que importa de verdad— una reclasificación
+tendría que mover stock de uno a otro. Pero reclasificar NO cambia lo que hay en el galpón: son
+los mismos kilos, mejor descriptos. Hay un test que fija esa regla.
+
+*El término sólo aporta la ENTRADA.* La salida ya la resuelve el término `ventas` que existe desde
+siempre: al vender tabaco se factura el `Producto` de la variedad y `VentaItem` lo descuenta. Un
+segundo término de egreso duplicaría la baja.
+
+*Cuándo entra:* al CONFIRMAR el romaneo. El borrador todavía se está cargando y el anulado no
+ocurrió; CONFIRMADO y LIQUIDADO cuentan igual, porque liquidar factura pero no mueve mercadería.
+Como el motor recalcula por signals de `CompraItem`/`VentaItem` —que no aplican acá—, el llamado
+va explícito en `confirmar_romaneo()` y `anular_romaneo()`, los dos únicos momentos en que un
+romaneo cruza el umbral de contar o no contar.
+
+*Degradación silenciosa y deliberada:* si una variedad no tiene producto asignado, el romaneo se
+confirma igual y simplemente no mueve stock. Para que ese silencio no se lea como "está todo
+bien", la conciliación lo informa como una fila destacada.
+
+*Conciliación:* recibidos − vendidos + inicial contra `StockSucursal.cantidad`, por variedad y
+sucursal. La diferencia debe ser cero; si no lo es, el botón de recálculo la corrige, porque el
+stock es un valor derivado y autorreparable.
+
+**LOS TRES PUNTOS DE EXTENSIÓN DEL PLAN 080 QUEDAN TODOS EN USO:**
+
+| Punto | Consumido en |
+|---|---|
+| `registrar_termino_ctacte` | Plan 083 — la deuda de la liquidación |
+| `registrar_aplicacion_op` | Plan 084 — la imputación del pago |
+| `registrar_termino_stock` | Plan 085 — esta etapa |
+
+El Plan 080 se diseñó al principio de todo, antes de que existiera un solo modelo de tabaco.
+Cierra sin haber necesitado un cambio.
+
+**Resultado de las pruebas:**
+
+| Prueba | Resultado |
+|---|---|
+| `test_plan085_stock` (ingreso, egreso, conciliación, comando, pantalla) | **26/26** |
+| Prueba de desenchufe | el stock vuelve **exactamente** a `['compras','recepciones','ventas','remitos_internos']`, los tres registros en 0 y `recalcular_stock()` sigue funcionando |
+| `makemigrations --check` | sin cambios pendientes |
+| **Suite completa** | **872 tests, 13 errores** — lista **idéntica** al baseline, cero fallas nuevas y cero caídas de conexión |
+
+La corrida tardó 1.136 s con la máquina sola, confirmando de nuevo que las caídas de PostgreSQL
+de etapas anteriores venían de correr suites en paralelo.
+
+**Estado actual:** el circuito del acopio está completo de punta a punta —maestros, romaneo,
+liquidación, pago y stock— sin una sola modificación funcional al core.
+
+**Siguientes pasos sugeridos:**
+1. **Etapa 5** — lotes de acopio, acondicionamiento con mermas, venta y **margen por fardo**
+   (venta − compra − costos de acondicionamiento).
+2. **Etapa 6** — reportes FET / Secretaría de la Producción y libro de retenciones practicadas.
+3. Antes de operar: correr `manage.py crear_productos_tabaco --empresa 1` para que las variedades
+   tengan su producto de stock, o asignarlo desde el ABM de variedades.
+4. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.
