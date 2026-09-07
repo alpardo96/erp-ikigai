@@ -749,3 +749,116 @@ class LiquidacionRetencion(models.Model):
 
     def __str__(self):
         return f"{self.codigo}: {self.importe}"
+
+
+# ==============================================================================
+# PAGO AL PRODUCTOR — imputación y retención de Ganancias (Plan 084, Etapa 3)
+# ==============================================================================
+# La Orden de Pago la crea `tesoreria`; acá viven sólo las dos piezas que el core no puede tener:
+# la imputación a una liquidación (porque `OrdenPagoAplicacion.compra` es un FK duro a `Compra`) y
+# el certificado de la retención de Ganancias.
+#
+# LA RETENCIÓN ES UN MEDIO DE PAGO. Ikigai ya sabe practicarlas: un `MedioPago` de categoría 'RET'
+# que `contabilizar_orden_pago()` acredita contra su cuenta. No se construye un mecanismo nuevo.
+
+
+class LiquidacionPago(models.Model):
+    """Imputación de una Orden de Pago a una liquidación.
+
+    Existe de este lado porque `tesoreria.OrdenPagoAplicacion.compra` es un FK duro a `Compra` con
+    `PROTECT`: no puede apuntar a una liquidación de tabaco. La dependencia va verticalidad → core
+    y nunca al revés (Plan 075).
+
+    Es la FUENTE DE VERDAD del saldo de la liquidación, igual que `OrdenPagoAplicacion` lo es del
+    saldo de una compra: `pagado` y `saldo` se derivan de acá, nunca se decrementan.
+    """
+    liquidacion = models.ForeignKey('LiquidacionTabaco', on_delete=models.PROTECT,
+                                    related_name='pagos')
+    orden_pago = models.ForeignKey('tesoreria.OrdenPago', on_delete=models.PROTECT,
+                                   related_name='pagos_liquidacion_tabaco')
+    importe = models.DecimalField(max_digits=15, decimal_places=2)
+    # Se marca en vez de borrarse: la imputación ocurrió y su rastro no se destruye.
+    anulado = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_liquidacion_pago"
+        verbose_name = "Imputación de Pago a Liquidación"
+        verbose_name_plural = "Imputaciones de Pago a Liquidaciones"
+        constraints = [
+            models.UniqueConstraint(fields=['liquidacion', 'orden_pago'],
+                                    name='agro_tab_liqpago_unico'),
+        ]
+        indexes = [
+            models.Index(fields=['liquidacion', 'anulado']),
+            models.Index(fields=['orden_pago']),
+        ]
+
+    def __str__(self):
+        return f"OP {self.orden_pago_id} -> Liq {self.liquidacion_id}: {self.importe}"
+
+
+class RetencionPago(models.Model):
+    """Certificado de una retención practicada en el momento del pago.
+
+    Cumple dos funciones a la vez, y es deliberado: es el comprobante que se le entrega al
+    productor Y el registro del que se DERIVA el acumulado mensual. No hay una tabla de acumulados
+    que mantener sincronizada; el acumulado se reconstruye sumando los certificados vigentes del
+    período. El sistema heredado hacía lo mismo: `liq_mes_ret_gcia` era una vista, no una tabla.
+
+    Consecuencia: al anular un pago se anula su certificado y el acumulado del mes baja solo.
+    """
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT,
+                                related_name='retenciones_pago_tabaco')
+    orden_pago = models.ForeignKey('tesoreria.OrdenPago', on_delete=models.PROTECT,
+                                   related_name='retenciones_tabaco')
+    productor = models.ForeignKey('facturacion.ClienteProveedor', on_delete=models.PROTECT,
+                                  related_name='retenciones_tabaco')
+    tipo_retencion = models.ForeignKey(TipoRetencionTabaco, on_delete=models.PROTECT,
+                                       related_name='+')
+
+    # Copia congelada de la regla aplicada.
+    codigo = models.CharField(max_length=15)
+    detalle = models.CharField(max_length=80)
+    regimen = models.CharField(max_length=15, blank=True)
+    alicuota = models.DecimalField(max_digits=7, decimal_places=4)
+    minimo_no_imponible = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    cuenta_contable = models.ForeignKey('contable.Cuenta', on_delete=models.PROTECT,
+                                        related_name='+')
+
+    # Memoria del cálculo acumulativo, para que el certificado sea verificable a mano.
+    periodo = models.CharField(max_length=6, db_index=True, verbose_name="Período YYYYMM")
+    base_del_pago = models.DecimalField(max_digits=15, decimal_places=2,
+                                        verbose_name="Neto liquidado en este pago")
+    base_acumulada = models.DecimalField(max_digits=15, decimal_places=2,
+                                         verbose_name="Neto acumulado del mes")
+    retencion_del_mes = models.DecimalField(max_digits=15, decimal_places=2,
+                                            verbose_name="Retención total del mes")
+    retenido_previo = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
+                                          verbose_name="Ya retenido en el mes")
+    importe = models.DecimalField(max_digits=15, decimal_places=2,
+                                  verbose_name="Importe retenido ahora")
+
+    nro_certificado = models.BigIntegerField(null=True, blank=True, db_index=True,
+                                             verbose_name="Nro. Certificado")
+    fecha = models.DateField(db_index=True)
+    anulado = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        db_table = "agricola_tabaco_retencion_pago"
+        verbose_name = "Retención Practicada en el Pago"
+        verbose_name_plural = "Retenciones Practicadas en el Pago"
+        ordering = ['-fecha', '-nro_certificado']
+        constraints = [
+            models.UniqueConstraint(fields=['empresa', 'nro_certificado'],
+                                    condition=models.Q(nro_certificado__isnull=False),
+                                    name='agro_tab_retpago_certificado_unico'),
+            models.CheckConstraint(condition=models.Q(importe__gte=0),
+                                   name='agro_tab_retpago_importe_no_neg'),
+        ]
+        indexes = [
+            # El índice que alimenta el cálculo del acumulado mensual.
+            models.Index(fields=['empresa', 'productor', 'periodo', 'anulado']),
+        ]
+
+    def __str__(self):
+        return f"Cert. {self.nro_certificado or 's/n'} — {self.codigo} — {self.importe}"

@@ -1,0 +1,79 @@
+{% load formato_tags %}<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Certificado de Retención Nº {{ cert.nro_certificado }}</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; margin: 30px; }
+        h1 { font-size: 16px; margin: 0 0 2px; text-transform: uppercase; letter-spacing: .04em; }
+        .marco { border: 2px solid #111; padding: 18px 22px; max-width: 700px; }
+        .fila { display: flex; justify-content: space-between; padding: 3px 0; }
+        .fila span:first-child { color: #555; }
+        .seccion { margin-top: 16px; border-top: 1px solid #ccc; padding-top: 10px; }
+        .titulo { font-size: 9px; text-transform: uppercase; letter-spacing: .06em;
+                  color: #666; font-weight: bold; margin-bottom: 6px; }
+        .total { font-size: 16px; font-weight: bold; border-top: 2px solid #111;
+                 margin-top: 10px; padding-top: 8px; }
+        .anulado { color: #b91c1c; font-weight: bold; border: 2px solid #b91c1c;
+                   display: inline-block; padding: 2px 10px; margin-left: 8px; }
+        .pie { margin-top: 18px; font-size: 9px; color: #666; max-width: 700px; }
+        .firma { margin-top: 46px; border-top: 1px solid #111; width: 230px;
+                 text-align: center; font-size: 9px; padding-top: 4px; }
+        @media print { .noprint { display: none; } }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <button class="noprint" onclick="window.print()">Imprimir</button>
+
+    <div class="marco">
+        <h1>
+            Certificado de Retención Nº {{ cert.nro_certificado }}
+            {% if cert.anulado %}<span class="anulado">ANULADO</span>{% endif %}
+        </h1>
+        <div style="color:#555; margin-bottom:14px;">
+            {{ cert.detalle }}{% if cert.regimen %} — Régimen {{ cert.regimen }}{% endif %}
+        </div>
+
+        <div class="seccion">
+            <div class="titulo">Agente de retención</div>
+            <div class="fila"><span>Razón social</span><span>{{ cert.empresa.nombre }}</span></div>
+            {% if cert.empresa.cuit %}<div class="fila"><span>CUIT</span><span>{{ cert.empresa.cuit }}</span></div>{% endif %}
+        </div>
+
+        <div class="seccion">
+            <div class="titulo">Sujeto retenido</div>
+            <div class="fila"><span>Razón social</span><span>{{ cert.productor.razon_social }}</span></div>
+            {% if cert.productor.cuit %}<div class="fila"><span>CUIT</span><span>{{ cert.productor.cuit }}</span></div>{% endif %}
+            <div class="fila"><span>Condición IVA</span><span>{{ cert.productor.condicion_iva }}</span></div>
+        </div>
+
+        <div class="seccion">
+            <div class="titulo">Operación</div>
+            <div class="fila"><span>Fecha</span><span>{{ cert.fecha|date:"d/m/Y" }}</span></div>
+            <div class="fila"><span>Período</span><span>{{ cert.periodo }}</span></div>
+            <div class="fila"><span>Orden de Pago</span><span>{{ cert.orden_pago.punto|stringformat:"04d" }}-{{ cert.orden_pago.numero|stringformat:"08d" }}</span></div>
+        </div>
+
+        <div class="seccion">
+            <div class="titulo">Determinación de la retención</div>
+            <div class="fila"><span>Neto de este pago</span><span>$ {{ cert.base_del_pago|formato_ar }}</span></div>
+            <div class="fila"><span>Acumulado del período</span><span>$ {{ cert.base_acumulada|formato_ar }}</span></div>
+            <div class="fila"><span>Mínimo no imponible</span><span>− $ {{ cert.minimo_no_imponible|formato_ar }}</span></div>
+            <div class="fila"><span>Alícuota</span><span>{{ cert.alicuota|formato_ar }} %</span></div>
+            <div class="fila"><span>Retención del período</span><span>$ {{ cert.retencion_del_mes|formato_ar }}</span></div>
+            <div class="fila"><span>Retenido con anterioridad</span><span>− $ {{ cert.retenido_previo|formato_ar }}</span></div>
+            <div class="fila total"><span>IMPORTE RETENIDO</span><span>$ {{ cert.importe|formato_ar }}</span></div>
+        </div>
+
+        <div class="firma">Firma y sello del agente de retención</div>
+    </div>
+
+    <div class="pie">
+        La retención se determina sobre el acumulado del período menos el mínimo no imponible, y se
+        descuenta lo ya retenido al mismo sujeto en el mismo período. Todos los importes se expresan
+        en pesos.
+    </div>
+
+</body>
+</html>

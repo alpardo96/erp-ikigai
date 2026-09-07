@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 def registrar_todo():
     """Registra los orígenes que la verticalidad aporta a los servicios del core."""
     _registrar_cuenta_corriente()
+    _registrar_imputacion_de_pagos()
+    _registrar_stock()
 
 
 def _registrar_cuenta_corriente():
@@ -47,3 +49,46 @@ def _registrar_cuenta_corriente():
         # dejó de serlo.
         'excluir': ~Q(estado=LiquidacionTabaco.CONFIRMADA),
     })
+
+
+def _registrar_imputacion_de_pagos():
+    """Las Órdenes de Pago que cancelan liquidaciones de tabaco (Plan 084).
+
+    `tesoreria.OrdenPagoAplicacion.compra` es un FK duro a `Compra`, así que la imputación a una
+    liquidación vive en una tabla de esta verticalidad. Sin registrarla, `pendiente_de_aplicar_op()`
+    no la vería y esa OP figuraría PARA SIEMPRE como "sin aplicar" en el listado de tesorería.
+    """
+    try:
+        from contable.services.saldos import registrar_aplicacion_op
+    except ImportError:
+        logger.warning("El core no expone `registrar_aplicacion_op`: las Órdenes de Pago que "
+                       "cancelen liquidaciones de tabaco figurarán como no imputadas.")
+        return
+
+    from .models import LiquidacionPago
+
+    registrar_aplicacion_op({
+        'nombre': 'agricola_tabaco_liquidacion_pago',
+        'modelo': LiquidacionPago,
+        'campo_op': 'orden_pago',
+        'campo_importe': 'importe',
+    })
+
+
+def _registrar_stock():
+    """Los kilos de los fardos entran al stock del ERP (Plan 085).
+
+    Es el tercer y último punto de extensión del Plan 080. Sólo aporta la ENTRADA: la salida ya la
+    resuelve el término `ventas` de siempre, porque al vender tabaco se factura el `Producto` de la
+    variedad. Un segundo término de egreso duplicaría la baja.
+    """
+    try:
+        from productos.services.stock_service import registrar_termino_stock
+    except ImportError:
+        logger.warning("El core no expone `registrar_termino_stock`: los kilos del acopio NO se "
+                       "reflejarán en el stock.")
+        return
+
+    from .services.stock import termino_de_stock
+
+    registrar_termino_stock(termino_de_stock())

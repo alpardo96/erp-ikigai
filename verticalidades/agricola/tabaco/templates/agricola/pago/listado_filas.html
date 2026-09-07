@@ -1,0 +1,27 @@
+{% load formato_tags %}
+{% for p in pagos %}
+<tr>
+    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">
+        OP {{ p.punto|stringformat:"04d" }}-{{ p.numero|stringformat:"08d" }}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ p.fecha|date:"d/m/Y" }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ p.proveedor.razon_social }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ p.total|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-center">
+        {% if p.anulado %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Anulada</span>
+        {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Vigente</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-center text-xs text-gray-400">
+        {% if p.condic == 1 %}Real{% elif p.condic == 2 %}Presup.{% elif p.condic == 3 %}Ajuste{% else %}Auditoría{% endif %}
+    </td>
+    <td class="relative whitespace-nowrap py-3 pl-3 pr-6 text-right text-sm">
+        <a href="{% url 'agro_pago_detalle' p.id %}"
+           class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded text-xs font-bold transition-colors">Ver</a>
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="7" class="px-6 py-10 text-center text-gray-500 text-sm italic">No hay pagos que coincidan con el filtro.</td></tr>
+{% endfor %}

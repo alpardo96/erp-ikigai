@@ -252,6 +252,11 @@ def confirmar_romaneo(romaneo, usuario=None):
     romaneo.estado = RomaneoTabaco.CONFIRMADO
     romaneo.modificado_por = usuario
     romaneo.save(update_fields=['numero', 'estado', 'modificado_por'])
+
+    # Los kilos entran al stock recién ahora (Plan 085). El motor del core recalcula por signals
+    # de `CompraItem`/`VentaItem`, que no aplican acá, así que el llamado va explícito en los dos
+    # únicos momentos en que un romaneo cruza el umbral de contar o no contar.
+    _recalcular_stock(romaneo)
     return romaneo
 
 
@@ -280,6 +285,8 @@ def anular_romaneo(romaneo, motivo, usuario=None):
     romaneo.modificado_por = usuario
     romaneo.save(update_fields=['estado', 'motivo_anulacion', 'anulado_por', 'anulado_el',
                                 'modificado_por'])
+
+    _recalcular_stock(romaneo)
     return romaneo
 
 
@@ -338,6 +345,19 @@ def reclasificar_fardo(fardo, *, clase_nueva, motivo, usuario):
 # ---------------------------------------------------------------------------
 # Validaciones compartidas
 # ---------------------------------------------------------------------------
+
+def _recalcular_stock(romaneo):
+    """Delega en el servicio de stock de la verticalidad, si está disponible.
+
+    El `try/except` cubre el caso de un despliegue donde el Plan 085 todavía no exista: el romaneo
+    se confirma igual y simplemente no mueve stock.
+    """
+    try:
+        from .stock import recalcular_stock_del_romaneo
+    except ImportError:
+        return
+    recalcular_stock_del_romaneo(romaneo)
+
 
 def _exigir_borrador(romaneo):
     """Relee el estado desde la base y bloquea la fila. Devuelve el romaneo fresco.
