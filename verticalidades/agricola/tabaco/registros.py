@@ -16,6 +16,7 @@ def registrar_todo():
     """Registra los orígenes que la verticalidad aporta a los servicios del core."""
     _registrar_cuenta_corriente()
     _registrar_imputacion_de_pagos()
+    _registrar_stock()
 
 
 def _registrar_cuenta_corriente():
@@ -72,3 +73,22 @@ def _registrar_imputacion_de_pagos():
         'campo_op': 'orden_pago',
         'campo_importe': 'importe',
     })
+
+
+def _registrar_stock():
+    """Los kilos de los fardos entran al stock del ERP (Plan 085).
+
+    Es el tercer y último punto de extensión del Plan 080. Sólo aporta la ENTRADA: la salida ya la
+    resuelve el término `ventas` de siempre, porque al vender tabaco se factura el `Producto` de la
+    variedad. Un segundo término de egreso duplicaría la baja.
+    """
+    try:
+        from productos.services.stock_service import registrar_termino_stock
+    except ImportError:
+        logger.warning("El core no expone `registrar_termino_stock`: los kilos del acopio NO se "
+                       "reflejarán en el stock.")
+        return
+
+    from .services.stock import termino_de_stock
+
+    registrar_termino_stock(termino_de_stock())

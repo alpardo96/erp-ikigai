@@ -79,4 +79,8 @@ urlpatterns = [
     path('agro/pagos/<int:pk>/', pag.pago_detalle, name='agro_pago_detalle'),
     path('agro/pagos/<int:pk>/anular/', pag.pago_anular, name='agro_pago_anular'),
     path('agro/certificados/<int:pk>/', pag.pago_certificado, name='agro_pago_certificado'),
+
+    # --- STOCK (Plan 085) ---------------------------------------------------
+    path('agro/stock/conciliacion/', pag.stock_conciliacion, name='agro_stock_conciliacion'),
+    path('agro/stock/recalcular/', pag.stock_recalcular, name='agro_stock_recalcular'),
 ]

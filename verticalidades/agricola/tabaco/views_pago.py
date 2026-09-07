@@ -280,3 +280,51 @@ def pago_anular(request, pk):
         form = AnularPagoForm()
 
     return render(request, 'agricola/pago/anular_modal.html', {'form': form, 'op': op})
+
+
+# ---------------------------------------------------------------------------
+# Conciliación de stock (Plan 085)
+# ---------------------------------------------------------------------------
+
+@login_required
+def stock_conciliacion(request):
+    """Kilos del acopio contra el stock del ERP, por variedad y sucursal.
+
+    La diferencia debe ser cero. Si no lo es, `recalcular_stock` la corrige —el stock es un valor
+    derivado y autorreparable—; lo que este reporte aporta es DETECTARLA.
+    """
+    from .services.stock import conciliar
+
+    empresa_id = _empresa(request)
+    sucursal_id = request.GET.get('sucursal') or None
+    filas = conciliar(empresa_id, int(sucursal_id) if sucursal_id else None)
+
+    return render(request, 'agricola/stock/conciliacion.html', {
+        'filas': filas,
+        'sucursales': Sucursal.objects.filter(empresa_id=empresa_id).order_by('nombre'),
+        'sucursal_id': sucursal_id,
+        'hay_diferencias': any(f['diferencia'] for f in filas),
+        'hay_sin_producto': any(f['sin_producto'] for f in filas),
+    })
+
+
+@login_required
+def stock_recalcular(request):
+    """Fuerza el recálculo de las variedades con producto asignado y vuelve a conciliar."""
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    from productos.models import StockSucursal
+    from productos.services.stock_service import recalcular_stock
+
+    from .models import VariedadTabaco
+
+    empresa_id = _empresa(request)
+    for variedad in VariedadTabaco.objects.filter(empresa_id=empresa_id,
+                                                  producto__isnull=False):
+        for suc_id in (StockSucursal.objects
+                       .filter(producto_id=variedad.producto_id)
+                       .values_list('sucursal_id', flat=True)):
+            recalcular_stock(variedad.producto_id, suc_id)
+
+    return redirect('agro_stock_conciliacion')
