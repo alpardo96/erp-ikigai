@@ -11,6 +11,7 @@ import json
 from django import forms
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -160,12 +161,18 @@ def liquidacion_nueva(request):
 
         sucursal = Sucursal.objects.filter(empresa_id=empresa_id).first()
         try:
-            liq = svc.preparar_liquidacion(
-                empresa=Empresa.objects.get(pk=empresa_id), sucursal=sucursal,
-                productor=productor, romaneos=romaneos, fecha=form.cleaned_data['fecha'],
-                usuario=request.user, numero=form.cleaned_data.get('numero'),
-                cai=form.cleaned_data.get('cai') or '')
-            liq = svc.confirmar_liquidacion(liq, request.user)
+            # Preparar y confirmar van en UNA transacción. `preparar_liquidacion` ya deja los
+            # romaneos tomados por el borrador; si después fallara la confirmación —falta el CAI,
+            # falta una cuenta contable— y cada paso commiteara por su cuenta, quedaría un
+            # borrador huérfano reteniendo esos romaneos: no volverían a figurar como pendientes
+            # y no habría forma de liberarlos desde la pantalla.
+            with transaction.atomic():
+                liq = svc.preparar_liquidacion(
+                    empresa=Empresa.objects.get(pk=empresa_id), sucursal=sucursal,
+                    productor=productor, romaneos=romaneos, fecha=form.cleaned_data['fecha'],
+                    usuario=request.user, numero=form.cleaned_data.get('numero'),
+                    cai=form.cleaned_data.get('cai') or '')
+                liq = svc.confirmar_liquidacion(liq, request.user)
         except ValidationError as e:
             return render(request, 'agricola/liquidacion/nueva.html',
                           {'form': form, 'error': _mensaje_de(e)})

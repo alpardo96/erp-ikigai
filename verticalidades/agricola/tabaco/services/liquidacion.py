@@ -394,6 +394,34 @@ def _limpiar_libro_iva(asiento_id):
 
 
 # ---------------------------------------------------------------------------
+# Descarte de borradores
+# ---------------------------------------------------------------------------
+
+@transaction.atomic
+def descartar_liquidacion(liquidacion):
+    """Borra un borrador y libera sus romaneos.
+
+    Existe como red de seguridad: `preparar_liquidacion` deja los romaneos tomados apenas se arma
+    el borrador, así que un borrador abandonado los retendría —no volverían a figurar como
+    pendientes— sin forma de recuperarlos. El circuito normal de la pantalla prepara y confirma en
+    una sola transacción, pero un borrador puede llegar a existir por una carga por consola o por
+    un flujo futuro que separe ambos pasos.
+
+    Sólo aplica a BORRADORES: una liquidación confirmada se ANULA, no se borra, porque ya generó
+    asiento y Libro IVA.
+    """
+    liq = LiquidacionTabaco.objects.select_for_update().get(pk=liquidacion.pk)
+
+    if liq.estado != LiquidacionTabaco.BORRADOR:
+        raise ValidationError(
+            f"Sólo se descartan borradores. Esta liquidación está "
+            f"«{liq.get_estado_display()}»: si querés dejarla sin efecto, anulala.")
+
+    liq.romaneos.update(liquidacion=None)
+    liq.delete()
+
+
+# ---------------------------------------------------------------------------
 # Anulación
 # ---------------------------------------------------------------------------
 

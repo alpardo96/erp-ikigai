@@ -44,10 +44,20 @@ class Plan080TerminosCtaCteTestCase(TestCase):
             saldo_inicial=Decimal("0.00"), saldo=Decimal("0.00"), empresa=self.empresa,
         )
 
+        # Se GUARDA y se RESTAURA el registro, no se vacía y listo: las verticalidades
+        # instaladas se anuncian una sola vez, en `ready()`, al arrancar el proceso. Si estos
+        # tests dejaran el registro vacío, los que corran después en la misma corrida —los del
+        # acopio de tabaco, por ejemplo— no verían su propio término y fallarían por un motivo
+        # que no tiene nada que ver con ellos.
+        self._ctacte_previos = list(saldos_service._TERMINOS_CTACTE_EXTRA)
+        self._aplic_previas = list(saldos_service._APLICACIONES_OP_EXTRA)
         saldos_service._TERMINOS_CTACTE_EXTRA.clear()
         saldos_service._APLICACIONES_OP_EXTRA.clear()
-        self.addCleanup(saldos_service._TERMINOS_CTACTE_EXTRA.clear)
-        self.addCleanup(saldos_service._APLICACIONES_OP_EXTRA.clear)
+        self.addCleanup(self._restaurar_registros)
+
+    def _restaurar_registros(self):
+        saldos_service._TERMINOS_CTACTE_EXTRA[:] = self._ctacte_previos
+        saldos_service._APLICACIONES_OP_EXTRA[:] = self._aplic_previas
 
     # -- helpers ------------------------------------------------------------
 

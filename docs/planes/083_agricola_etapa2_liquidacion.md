@@ -1,6 +1,6 @@
 # Plan 083 — Agrícola Etapa 2: Liquidación de Compra de Tabaco
 
-## Estado: 🔶 En Progreso
+## Estado: ✅ Completado (2026-09-06)
 
 **Fecha:** 2026-09-06
 **Plan integral:** [`docs/agricola/plan inicial agricola.md`](../agricola/plan%20inicial%20agricola.md) — Etapa 2
@@ -202,13 +202,52 @@ Al desenchufar la carpeta el término no se registra y el saldo se calcula como 
 
 ## 9. Criterio de Hecho
 
-- [ ] Modelos, restricciones y migraciones aplicados.
-- [ ] `alicuota_iva` agregada a `ConfiguracionTabaco` (aditiva, default 21).
-- [ ] Servicios atómicos, idempotentes y con bloqueo.
-- [ ] Asiento por `crear_asiento()`; Libro IVA por `asiento_id`. **Cero cambios al core.**
-- [ ] Término de cuenta corriente registrado con importación tolerante.
-- [ ] Pantallas con Typeahead + Lupa, formato es-AR y filtro de `condic`.
-- [ ] Tests en verde.
-- [ ] Prueba de desenchufe.
-- [ ] Suite completa sin fallas nuevas (baseline actual: 13 preexistentes).
-- [ ] `docs/walkthrough.md` actualizado.
+- [x] Modelos, restricciones y migraciones aplicados — 3 tablas nuevas + FK en el romaneo.
+- [x] `alicuota_iva` agregada a `ConfiguracionTabaco` (aditiva, default 21).
+- [x] Servicios atómicos, idempotentes y con `select_for_update()`.
+- [x] Asiento por `crear_asiento()`; Libro IVA por `asiento_id`. **Cero cambios al core.**
+- [x] Término de cuenta corriente registrado con importación tolerante desde `apps.py::ready()`.
+- [x] Pantallas con Typeahead + Lupa, formato es-AR y filtro de `condic`.
+- [x] Tests en verde — **46/46** de servicio y **21/21** de pantalla.
+- [x] Prueba de desenchufe: 0 términos registrados y el saldo del core sigue calculando.
+- [x] Suite completa: **793 tests**, sin fallas nuevas atribuibles a esta etapa (detalle abajo).
+- [x] `makemigrations --check` sin cambios pendientes.
+- [x] `docs/walkthrough.md` actualizado.
+
+### El cierre del círculo
+
+Un test entra a la pantalla de **Libro IVA Compras del core** (`impuestos:libro_iva_compras`) y
+verifica que la liquidación aparezca ahí con su CUIT, su código 150 y sus cuatro importes. La
+liquidación **no es una `Compra`**, y sin embargo el subsistema fiscal la muestra sin que se haya
+tocado una línea de `impuestos` ni de `contable`. Eso es lo que compra el enganche por `asiento_id`.
+
+### Bug encontrado en autorevisión: el borrador huérfano
+
+`preparar_liquidacion` toma los romaneos apenas arma el borrador, y ambos servicios eran atómicos
+por separado. Si la confirmación fallaba después —faltaba el CAI, faltaba una cuenta— el borrador
+quedaba **commiteado reteniendo esos romaneos para siempre**: no volvían a figurar como
+pendientes y no había forma de liberarlos desde la pantalla.
+
+Se corrigió envolviendo preparar + confirmar en **una sola transacción** en la vista, y se agregó
+`descartar_liquidacion()` como red de seguridad para liberar un borrador que llegue a existir por
+otra vía. Hay tests de regresión para ambos.
+
+### Interferencia entre tests, detectada y corregida
+
+Los tests del Plan 080 **vaciaban** los registros de extensión en `setUp`. Como la verticalidad se
+anuncia una sola vez en `ready()`, al correr la suite completa dejaban al acopio sin su término y
+los tests de cuenta corriente de esta etapa fallaban por un motivo ajeno a ellos. Ahora guardan y
+**restauran** el estado previo. Verificado corriendo los tres módulos juntos en el orden que
+reproducía el problema: 72/72.
+
+### Nota sobre la suite completa
+
+793 tests, 18 errores y 2 fallas. Clasificados:
+
+| Origen | Cantidad | Qué es |
+|---|---|---|
+| Preexistentes del baseline | 13 | CUIM (8), `SyntaxError` de distribución (2), migración `0019` ausente, `ExtensionArmeria`, `ExtensionDistribuidoraForm` |
+| Caída del backend de PostgreSQL | 5 | Un solo evento (`the connection is closed`) que tumbó el `setUp` de `test_plan074_devoluciones.PrimeroSeCuentaDespuesSeAcreditaTestCase`. Mismo fenómeno que en la Etapa 0. **Confirmado**: ese módulo re-corrido aislado da **33/33 OK y cero caídas** |
+| Interferencia del registro | 2 | Corregida; verificada con la corrida dirigida de 72/72 |
+
+Ninguna es una regresión de esta etapa.

@@ -4076,3 +4076,102 @@ cargar fardos con precio en vivo, confirmar, imprimir, anular y reclasificar.
 2. Deuda técnica preexistente: las causas remanentes de los 13 errores (CUIM en `test_plan028` y
    `test_plan071`, `ExtensionArmeria`, `ExtensionDistribuidoraForm`, el `SyntaxError` de
    `test_plan074_facturacion:22` y `test_plan074_pedidos:20`, y la migración `0019` ausente).
+
+## Juan Manuel - Notebook personal - 2026-09-06 - Agrícola Etapa 2: Liquidación de Compra (Plan 083)
+
+**Objetivo:** convertir romaneos confirmados en el comprobante de compra que la empresa emite al
+productor: IVA, retenciones, asiento, Libro IVA y nacimiento de la deuda en cuenta corriente. Es
+la primera etapa de la verticalidad con **efectos contables reales**.
+
+**Archivos creados o modificados:**
+- `docs/planes/083_agricola_etapa2_liquidacion.md` (nuevo)
+- `verticalidades/agricola/tabaco/models.py` (+ `LiquidacionTabaco`, `LiquidacionDetalle`,
+  `LiquidacionRetencion`, `ConfiguracionTabaco.alicuota_iva`, `RomaneoTabaco.liquidacion`) y su
+  migración `0003_liquidacion`
+- `verticalidades/agricola/tabaco/services/liquidacion.py` (nuevo)
+- `verticalidades/agricola/tabaco/registros.py` y `apps.py` (suscripción al Plan 080)
+- `verticalidades/agricola/tabaco/views_liquidacion.py` (nuevo) y `urls.py` (7 rutas)
+- `verticalidades/agricola/tabaco/templates/agricola/liquidacion/` (6 plantillas nuevas)
+- `verticalidades/agricola/tabaco/templates/agricola/hooks/menu_sidebar_bottom.html` (2 entradas)
+- `verticalidades/agricola/tabaco/tests/test_plan083_liquidacion.py` y `test_plan083_pantallas.py`
+- `contable/tests/test_plan080_terminos_ctacte.py` y `productos/tests/test_plan080_terminos_stock.py`
+  (guardan y restauran el registro en vez de vaciarlo — ver más abajo)
+
+**CERO CAMBIOS AL CORE.** La liquidación no es una `Compra`: se engancha al subsistema fiscal por
+`asiento_id`, que es un entero y no un FK. Un test entra a la pantalla de **Libro IVA Compras del
+core** (`impuestos:libro_iva_compras`) y verifica que la liquidación aparezca con su CUIT, su
+código 150 y sus cuatro importes, sin haberse tocado una línea de `impuestos` ni de `contable`.
+
+**Detalle Técnico:**
+
+*Cálculo.* La letra sale de `condicion_iva` del productor: RI → A (150) con IVA discriminado; el
+resto → B (151) sin IVA. Se aplican las retenciones vigentes con `momento = LIQUIDACION`,
+salteando las `solo_responsable_inscripto` cuando no corresponde. Ganancias queda excluida
+—incluso si un dato viejo la pusiera en LIQUIDACION— porque su base es el acumulado mensual de lo
+PAGADO. `total = neto + IVA − retenciones de liquidación`.
+
+*Numeración.* NO usa el contador atómico del core, y es deliberado: en modo MANUAL el número real
+viene del talonario o del comprobante en línea, y un contador interno derivaría de la serie física
+apenas se cargue un número distinto. El sistema PROPONE el siguiente de esa letra y punto, y la
+garantía es el índice único `(empresa, letra, punto, numero)`. Cada letra lleva su serie, como
+`maestro_id.lcta` / `lctb` del sistema heredado.
+
+*`RomaneoTabaco.liquidacion` es una FK simple*, y ahí está la gracia: "no liquidar dos veces los
+mismos kilos" queda garantizado por el MODELO, no por una validación que alguien puede olvidar.
+
+*Congelamiento.* La alícuota de IVA y cada regla de retención (alícuota, base, mínimo, cuenta) se
+copian en la liquidación al confirmar. Hay test: se cambia la alícuota de EEAOC a 9,9 % después de
+emitir y el comprobante no se mueve.
+
+*Anulación.* Anula el asiento por el servicio del core (que lo marca, no lo borra), limpia el
+Libro IVA, libera los romaneos y recalcula el saldo. **Los fardos no se tocan**: la mercadería
+entró y se pesó.
+
+**BUG ENCONTRADO EN AUTOREVISIÓN — el borrador huérfano.** `preparar_liquidacion` toma los
+romaneos apenas arma el borrador, y ambos servicios eran atómicos por separado. Si la confirmación
+fallaba después —faltaba el CAI, faltaba una cuenta— el borrador quedaba commiteado reteniendo
+esos romaneos PARA SIEMPRE: no volvían a figurar como pendientes y no había forma de liberarlos
+desde la pantalla. Se corrigió envolviendo preparar + confirmar en una sola transacción en la
+vista, y se agregó `descartar_liquidacion()` como red de seguridad. Hay tests de regresión.
+
+**INTERFERENCIA ENTRE TESTS, detectada y corregida.** Los tests del Plan 080 vaciaban los
+registros de extensión en `setUp`. Como la verticalidad se anuncia una sola vez en `ready()`, al
+correr la suite completa dejaban al acopio sin su término y los tests de cuenta corriente de esta
+etapa fallaban por un motivo ajeno a ellos. Ahora guardan y RESTAURAN el estado previo. Verificado
+corriendo los tres módulos juntos en el orden que reproducía el problema: **72/72**.
+
+**Resultado de las pruebas:**
+
+| Prueba | Resultado |
+|---|---|
+| `test_plan083_liquidacion` (cálculo, asiento, Libro IVA, cta. cte., anulación, descarte) | **46/46** |
+| `test_plan083_pantallas` (circuito completo + Libro IVA del core) | **21/21** |
+| Corrida dirigida Plan 080 + Plan 083 en el orden problemático | **72/72** |
+| Prueba de desenchufe | 0 términos registrados; el saldo del core sigue calculando |
+| `makemigrations --check` | sin cambios pendientes |
+| **Suite completa** | **793 tests** — 18 errores + 2 fallas, ninguna atribuible a esta etapa |
+
+Clasificación de las 20: **13 preexistentes** del baseline (CUIM ×8, `SyntaxError` de distribución
+×2, migración `0019` ausente, `ExtensionArmeria`, `ExtensionDistribuidoraForm`); **5** por una
+caída del backend de PostgreSQL (`the connection is closed`) que tumbó el `setUp` de
+`test_plan074_devoluciones.PrimeroSeCuentaDespuesSeAcreditaTestCase` —mismo fenómeno que en la
+Etapa 0; ese módulo re-corrido aislado da **33/33 OK y cero caídas de conexión**—; y **2** por la
+interferencia del registro, ya corregida y verificada.
+
+*Prueba de humo contra datos reales.* Con los maestros de la empresa 1 y en transacción revertida:
+romaneo de 1.000 kg de Burley al ponderante 3.250 → neto $ 3.250.000, IVA 21 % $ 682.500,
+retenciones $ 399.750 (EEAOC 16.250 · Ret. IVA 341.250 · Salud Pública 32.500 · Uso de Agua
+9.750), **total $ 3.532.750**. Asiento 176 balanceado en $ 3.932.500 contra las cuentas reales del
+plan (114002, 113101, 214401, 214010, 214105, 214402, 211001), Libro IVA código 150 con crédito
+computable, y cuenta corriente del productor en **$ −3.532.750**.
+
+**Estado actual:** Etapa 2 completada. El circuito comercial está cerrado de punta a punta:
+maestros → romaneo → liquidación → asiento → Libro IVA → cuenta corriente.
+
+**Siguientes pasos sugeridos:**
+1. **Etapa 3 — Pago en tesorería**: imputación de la Orden de Pago a la liquidación
+   (`agricola_tabaco_liquidacion_pago` + `registrar_aplicacion_op` del Plan 080), retención de
+   Ganancias con acumulado mensual, certificados y `recalcular_saldo_liquidacion()`.
+2. Confirmar con el contador el tratamiento de la letra B en el Libro IVA (hoy: importe a
+   `no_gravado`, sin filas de alícuota).
+3. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.

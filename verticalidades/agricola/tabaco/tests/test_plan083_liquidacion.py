@@ -584,3 +584,31 @@ class AislamientoTests(LiquidacionBaseTestCase):
         self.assertNotIn('AJENA', {a['regla'].codigo for a in calculo['retenciones']})
 
 
+class DescarteDeBorradorTests(LiquidacionBaseTestCase):
+    """`preparar_liquidacion` toma los romaneos apenas arma el borrador.
+
+    Si ese borrador quedara abandonado, sus romaneos no volverían a figurar como pendientes y no
+    habría forma de recuperarlos. Estos tests cubren la red de seguridad.
+    """
+
+    def test_descartar_libera_los_romaneos(self):
+        romaneo = self._romaneo()
+        liq = self._preparar(romaneos=[romaneo])
+        romaneo.refresh_from_db()
+        self.assertEqual(romaneo.liquidacion, liq)
+
+        liq_svc.descartar_liquidacion(liq)
+
+        romaneo.refresh_from_db()
+        self.assertIsNone(romaneo.liquidacion)
+        self.assertFalse(LiquidacionTabaco.objects.filter(pk=liq.pk).exists())
+        # Y vuelve a estar disponible para liquidar.
+        self.assertIn(romaneo, liq_svc.romaneos_liquidables(self.empresa.pk, self.productor))
+
+    def test_no_se_descarta_una_confirmada(self):
+        liq = liq_svc.confirmar_liquidacion(self._preparar(), self.user)
+
+        with self.assertRaises(ValidationError) as ctx:
+            liq_svc.descartar_liquidacion(liq)
+        self.assertIn('anulala', str(ctx.exception))
+        self.assertTrue(LiquidacionTabaco.objects.filter(pk=liq.pk).exists())

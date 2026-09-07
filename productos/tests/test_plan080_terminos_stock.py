@@ -47,8 +47,15 @@ class Plan080TerminosStockTestCase(TestCase):
         )
         # El registro es estado de módulo: se limpia antes y después para no contaminar al
         # resto de la suite si un test falla a mitad de camino.
+        # Se GUARDA y se RESTAURA, no se vacía y listo: las verticalidades instaladas se
+        # anuncian una sola vez en `ready()`. Vaciar el registro dejaría sin su término a los
+        # tests que corran después en la misma corrida.
+        self._previos = list(stock_service._TERMINOS_EXTRA)
         stock_service._TERMINOS_EXTRA.clear()
-        self.addCleanup(stock_service._TERMINOS_EXTRA.clear)
+        self.addCleanup(self._restaurar)
+
+    def _restaurar(self):
+        stock_service._TERMINOS_EXTRA[:] = self._previos
 
     # -- helpers ------------------------------------------------------------
 
