@@ -3980,3 +3980,99 @@ cargadas para la empresa 1.
 3. **Etapa 1 — Romaneo**: recepción, pesaje y clasificación por fardo, con el precio congelado.
 4. Deuda técnica pendiente del baseline: las 6 causas de los 15 errores preexistentes, en especial
    `facturacion/services/facturacion_lote_service.py`, que es código de producción roto.
+
+## Juan Manuel - Notebook personal - 2026-09-06 - Agrícola Etapa 1: Romaneo (Plan 082)
+
+**Objetivo:** registrar la recepción física del tabaco del productor y su clasificación fardo por
+fardo, con el precio formado desde la lista vigente y **congelado** en cada fardo. Sin efecto
+contable, de stock ni de cuenta corriente: la deuda nace al liquidar (Etapa 2).
+
+**Archivos creados o modificados:**
+- `docs/planes/082_agricola_etapa1_romaneo.md` (nuevo)
+- `core/models.py` (+ `ContadorDocumento.ROMANEO_TABACO`) y su migración `0003`
+- `verticalidades/agricola/tabaco/models.py` (+ `RomaneoTabaco`, `FardoTabaco`,
+  `ReclasificacionFardo`) y su migración `0002`
+- `verticalidades/agricola/tabaco/services/romaneo.py` (nuevo)
+- `verticalidades/agricola/tabaco/forms_romaneo.py` y `views_romaneo.py` (nuevos)
+- `verticalidades/agricola/tabaco/urls.py` (13 rutas nuevas)
+- `verticalidades/agricola/tabaco/templates/agricola/romaneo/` (11 plantillas nuevas)
+- `verticalidades/agricola/tabaco/templates/agricola/hooks/menu_sidebar_bottom.html` (nuevo)
+- `verticalidades/agricola/tabaco/tests/test_plan082_romaneo.py` y `test_plan082_pantallas.py`
+
+**Detalle Técnico:**
+
+*El borrador se persiste, no va a la sesión.* El patrón de carrito del ERP guarda los ítems en
+`request.session`; acá no sirve, porque un romaneo real tiene cientos de fardos y una sesión con
+800 diccionarios se reescribe entera en cada alta. El romaneo nace en BORRADOR en la base y cada
+fardo es una fila: además de escalar, si se cae el navegador con 300 fardos cargados no se pierde
+nada. Es el criterio del sistema heredado, que usaba una tabla de staging y no memoria.
+
+*Qué se congela.* El romaneo guarda `ponderante_aplicado` y la FK a la lista; cada fardo guarda
+`coeficiente_aplicado` y `precio_aplicado`. Hay un test frontal: se carga un fardo, se cambia el
+ponderante de la lista a 9.999 y el fardo sigue valiendo lo mismo — y un fardo nuevo del MISMO
+romaneo también.
+
+*Numeración.* `ROMANEO_TABACO` se sumó a `ContadorDocumento` para reutilizar
+`siguiente_numero()`, que ya resuelve el bloqueo atómico, en lugar de duplicar la lógica.
+Precedente: Distribución ya tiene ahí `PEDIDO`, `REPARTO` y `RECEPCION_DEVOLUCION`. El número se
+asigna al CONFIRMAR, no al abrir, para no dejar huecos en la serie. El punto sale de
+`Sucursal.punto`, cuyo `help_text` dice literalmente que prenumera este tipo de documentos, así
+cada sucursal lleva su serie propia.
+
+*La reclasificación no borra.* Cambiar la clase de un fardo confirmado deja una fila en
+`ReclasificacionFardo` con clase, coeficiente, precio e importe anteriores y nuevos, más motivo y
+usuario. El fardo queda con los valores nuevos pero la cadena completa es reconstruible.
+
+**DOS BUGS QUE ENCONTRARON LOS TESTS:**
+
+1. **Estado obsoleto en la relación cacheada.** `editar_fardo` y `quitar_fardo` leían
+   `fardo.romaneo`, que Django cachea. Con el objeto viejo en memoria se podían editar o borrar
+   fardos de un romaneo YA CONFIRMADO. Corregido en la raíz: `_exigir_borrador()` relee el estado
+   desde la base con `select_for_update()` y devuelve la instancia fresca, lo que además serializa
+   contra una confirmación concurrente.
+2. **Contrato roto vista/servicio.** `_aviso()` devolvía un `HttpResponse` donde se concatenaba
+   texto, y `abrir_romaneo()` no aceptaba `observaciones` pese a estar en el formulario y el modelo.
+
+**TRAMPA DE MODO ENCHUFE EVITADA.** El enlace del menú NO se escribió en `base.html`: un
+`{% url 'agro_romaneo_listado' %}` ahí levanta `NoReverseMatch` al desenchufar la carpeta y, como
+todas las pantallas extienden `base.html`, se caería el ERP entero. Se usó el templatetag
+`{% hook_menu %}`, que renderiza `agricola/hooks/menu_sidebar_bottom.html` sólo si la carpeta
+existe. Cero líneas en el core. (Se llegó a agregar una bandera a `core/context_processors.py` y
+se revirtió al encontrar el hook.)
+
+**Resultado de las pruebas:**
+
+| Prueba | Resultado |
+|---|---|
+| `test_plan082_romaneo` (congelado, totales, estados, reclasificación, concurrencia) | **40/40** |
+| `test_plan082_pantallas` (circuito completo por el cliente de prueba) | **27/27** |
+| Prueba de desenchufe | `check` limpio, 0 apps, rutas inexistentes, términos de stock intactos |
+| `makemigrations --check` | sin cambios pendientes |
+| **Suite completa** | **729 tests, 13 errores** — todos subconjunto de los 15 preexistentes |
+
+Los 729 son los 640 previos + 67 nuevos de esta etapa + 22 de dos módulos que volvieron a cargar.
+Los errores BAJARON de 15 a 13 porque en paralelo se corrigió el import de `TarifaEstudio` en
+`facturacion/services/facturacion_lote_service.py` — el bug de producción señalado en el Plan 080.
+
+*Prueba de humo contra datos reales.* Se corrió un romaneo completo con los maestros de la empresa
+1 (Burley, ponderante $ 3.250), dentro de una transacción revertida: 5 fardos, 2.311 kg,
+$ 6.841.380, PPP $ 2.960,35 = 91,09 % del ponderante, estadística por grupo B/C/N/T/X y
+confirmación con número 0002-00000001. No quedó nada en la base. En el primer intento el sistema
+rechazó cargar `N5K` en Burley —es una clase de Virginia—, que es exactamente lo que debe hacer.
+
+**OBSERVACIÓN, fuera de alcance.** La corrección de `TarifaEstudio` usa un import ESTÁTICO de
+`verticalidades.estudio.models` desde un servicio del core. Verificado: con la carpeta
+`verticalidades/estudio/` movida, ese módulo lanza `ModuleNotFoundError`. `manage.py check` sigue
+pasando porque nadie lo importa al arrancar, pero es la clase de acoplamiento que el Plan 075
+prohíbe. Queda señalado, sin corregir.
+
+**Estado actual:** Etapa 1 completada y verificada. El circuito de romaneo está operativo: abrir,
+cargar fardos con precio en vivo, confirmar, imprimir, anular y reclasificar.
+
+**Siguientes pasos sugeridos:**
+1. **Etapa 2 — Liquidación de compra**: comprobante 150/151, asiento por `crear_asiento()`,
+   Libro IVA + alícuotas por `asiento_id`, retenciones de liquidación y término de cuenta
+   corriente del Plan 080. Los maestros y la configuración ya están cargados para arrancar.
+2. Deuda técnica preexistente: las causas remanentes de los 13 errores (CUIM en `test_plan028` y
+   `test_plan071`, `ExtensionArmeria`, `ExtensionDistribuidoraForm`, el `SyntaxError` de
+   `test_plan074_facturacion:22` y `test_plan074_pedidos:20`, y la migración `0019` ausente).

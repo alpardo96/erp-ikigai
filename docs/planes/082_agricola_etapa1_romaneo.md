@@ -1,6 +1,6 @@
 # Plan 082 — Agrícola Etapa 1: Romaneo (Recepción y Clasificación)
 
-## Estado: 🔶 En Progreso
+## Estado: ✅ Completado (2026-09-06)
 
 **Fecha:** 2026-09-06
 **Plan integral:** [`docs/agricola/plan inicial agricola.md`](../agricola/plan%20inicial%20agricola.md) — Etapa 1
@@ -163,11 +163,43 @@ Todo servicio con múltiples efectos corre en `transaction.atomic()`; `confirmar
 
 ## 7. Criterio de Hecho
 
-- [ ] Modelos, restricciones y migraciones aplicados.
-- [ ] `ROMANEO_TABACO` agregado al contador del core, con su migración.
-- [ ] Servicios con transaccionalidad y bloqueo en la confirmación.
-- [ ] Pantallas con Typeahead + Lupa y formato es-AR.
-- [ ] Tests en verde.
-- [ ] Prueba de desenchufe.
-- [ ] Suite completa sin fallas nuevas (baseline: 15 preexistentes).
-- [ ] `docs/walkthrough.md` actualizado.
+- [x] Modelos, restricciones y migraciones aplicados — 3 tablas nuevas.
+- [x] `ROMANEO_TABACO` agregado al contador del core, con su migración.
+- [x] Servicios con transaccionalidad y `select_for_update()` en confirmación, anulación,
+      reclasificación y en toda operación sobre el detalle.
+- [x] Pantallas con Typeahead + Lupa, formato es-AR y filtro de `condic` en el listado.
+- [x] Tests en verde — **40/40** de servicio y **27/27** de pantalla.
+- [x] Prueba de desenchufe: `check` limpio, 0 apps, rutas inexistentes, términos de stock intactos.
+- [x] Suite completa **sin fallas nuevas**: 729 tests, 13 errores, todos subconjunto de los 15
+      preexistentes del baseline.
+- [x] `makemigrations --check` sin cambios pendientes.
+- [x] `docs/walkthrough.md` actualizado.
+
+### Dos bugs que encontraron los tests
+
+**Estado obsoleto en la relación cacheada.** `editar_fardo` y `quitar_fardo` leían
+`fardo.romaneo`, que Django cachea. Con el objeto viejo en memoria se podían editar o borrar
+fardos de un romaneo YA CONFIRMADO. Se corrigió en la raíz: `_exigir_borrador()` relee el estado
+desde la base con `select_for_update()` y devuelve la instancia fresca, lo que además serializa
+contra una confirmación concurrente.
+
+**Contrato roto entre vista y servicio.** `_aviso()` devolvía un `HttpResponse` donde se
+concatenaba texto, y `abrir_romaneo()` no aceptaba `observaciones` aunque el formulario y el
+modelo sí lo tienen.
+
+### La trampa de Modo Enchufe que se evitó
+
+El enlace del menú NO se escribió en `base.html`. Un `{% url 'agro_romaneo_listado' %}` ahí
+levanta `NoReverseMatch` al desenchufar la carpeta y, como todas las pantallas extienden
+`base.html`, **se caería el ERP entero**. Se usó el templatetag `{% hook_menu %}`, que sólo
+renderiza `agricola/hooks/menu_sidebar_bottom.html` si la carpeta existe: cero líneas en el core.
+
+### Observación fuera de alcance
+
+Durante esta etapa se corrigió (fuera de este plan) el import de `TarifaEstudio` en
+`facturacion/services/facturacion_lote_service.py`, lo que devolvió a la vida a
+`test_lote_condic` y `test_plan075_numeracion` —de ahí que el baseline pase de 15 errores a 13—.
+La corrección usa un **import estático** de `verticalidades.estudio.models` desde un servicio del
+core: verificado que, con la carpeta `verticalidades/estudio/` movida, ese módulo lanza
+`ModuleNotFoundError`. `manage.py check` sigue pasando porque nadie lo importa al arrancar, pero
+es la clase de acoplamiento que el Plan 075 prohíbe. Queda señalado, sin corregir.

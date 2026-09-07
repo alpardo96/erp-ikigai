@@ -479,6 +479,20 @@ class AislamientoTests(RomaneoBaseTestCase):
         with self.assertRaises(ValidationError):
             svc.agregar_fardo(r, clase=clase_ajena, kilos=Decimal('10'), usuario=self.user)
 
+    def test_el_punto_sale_de_la_sucursal(self):
+        """Cada sucursal lleva su propia serie: si compartieran punto, competirían por la misma."""
+        self.sucursal.punto = 7
+        self.sucursal.save(update_fields=['punto'])
+
+        r = self._abrir()
+        svc.agregar_fardo(r, clase=self.clases['B1F'], kilos=Decimal('10'), usuario=self.user)
+        r = svc.confirmar_romaneo(r, self.user)
+
+        self.assertEqual(r.punto, 7)
+        self.assertTrue(ContadorDocumento.objects.filter(
+            empresa=self.empresa, punto=7,
+            tipo_documento=ContadorDocumento.ROMANEO_TABACO).exists())
+
     def test_la_serie_es_por_empresa(self):
         """Cada empresa lleva su propia numeración de romaneos."""
         r = self._abrir()

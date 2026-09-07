@@ -36,7 +36,7 @@ DOS = Decimal('0.01')
 @transaction.atomic
 def abrir_romaneo(*, empresa, sucursal, productor, variedad, campania, fecha,
                   usuario=None, transporte='', remito='', observaciones='',
-                  condic=1, punto=1):
+                  condic=1, punto=None):
     """Crea el romaneo en BORRADOR con la lista de precio vigente congelada.
 
     Falla si no hay lista aprobada y vigente: sin ponderante no hay precio posible, y dejar
@@ -57,6 +57,12 @@ def abrir_romaneo(*, empresa, sucursal, productor, variedad, campania, fecha,
             raise ValidationError(
                 f"El productor {productor.razon_social} no está habilitado para operar.")
         coeficiente_productor = extension.coeficiente
+
+    # El punto sale de la SUCURSAL, no de un default fijo: su `help_text` dice literalmente que
+    # prenumera este tipo de documentos, y así cada sucursal lleva su propia serie correlativa en
+    # lugar de competir todas por la misma.
+    if punto is None:
+        punto = getattr(sucursal, 'punto', None) or 1
 
     return RomaneoTabaco.objects.create(
         empresa=empresa, sucursal=sucursal, punto=punto, fecha=fecha,

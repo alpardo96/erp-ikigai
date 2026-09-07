@@ -68,7 +68,7 @@
 | 14 | GNC / Combustibles | futuro: `gnc` | ❌ Pendiente | — | Media |
 | 15 | Inmobiliaria | futuro: `inmobiliaria` | ❌ Pendiente | — | Media |
 | 16 | Peluquería | futuro: `peluqueria` | ❌ Pendiente | — | Baja |
-| 17 | Agropecuario y Acopio de Tabaco | `verticalidades/agricola` (`core_agricola`, `tabaco`, `granos`) | 🔶 Etapa 0 completa (maestros) — sigue Etapa 1 (Romaneo) | [plan integral](agricola/plan%20inicial%20agricola.md) · [078](planes/078_arquitectura_verticalidad_agricola.md) · [080](planes/080_terminos_enchufables_saldos_stock.md) ✅ · [081](planes/081_agricola_etapa0_maestros_tabaco.md) ✅ | Alta |
+| 17 | Agropecuario y Acopio de Tabaco | `verticalidades/agricola` (`core_agricola`, `tabaco`, `granos`) | 🔶 Etapas 0 y 1 completas (maestros + romaneo) — sigue Etapa 2 (Liquidación) | [plan integral](agricola/plan%20inicial%20agricola.md) · [078](planes/078_arquitectura_verticalidad_agricola.md) · [080](planes/080_terminos_enchufables_saldos_stock.md) ✅ · [081](planes/081_agricola_etapa0_maestros_tabaco.md) ✅ · [082](planes/082_agricola_etapa1_romaneo.md) ✅ | Alta |
 
 ### Infraestructura y Operaciones
 
