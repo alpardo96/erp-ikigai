@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Resumen de Acopio{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Resumen de Acopio</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Fardos, kilos e importe por variedad y clase. El precio promedio es
+                <strong>ponderado por kilos</strong>, no el promedio de los precios de cada fardo.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_reportes' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Reportes</a>
+            <a href="{% url 'agro_reporte_acopio_csv' %}?{{ request.GET.urlencode }}"
+               class="px-4 py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                CSV
+            </a>
+        </div>
+    </div>
+
+    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-6 gap-4"
+          hx-get="{% url 'agro_reporte_acopio_grilla' %}" hx-trigger="change" hx-target="#acopio-cuerpo">
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Desde</label>{{ filtros.desde }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>{{ filtros.hasta }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Campaña</label>{{ filtros.campania }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Variedad</label>{{ filtros.variedad }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Sucursal</label>{{ filtros.sucursal }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
+    </form>
+
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variedad / Clase</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grupo</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Precio promedio</th>
+                </tr>
+            </thead>
+            <tbody id="acopio-cuerpo" class="divide-y divide-gray-100 bg-white">
+                {% include 'agricola/reportes/acopio_filas.html' %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

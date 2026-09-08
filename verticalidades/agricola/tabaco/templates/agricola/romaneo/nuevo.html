@@ -71,9 +71,16 @@
                 {{ form.fecha }}
                 {% if form.fecha.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.fecha.errors.0 }}</p>{% endif %}
             </div>
+            {# `condic` va oculto y fijo en Real: toda liquidación de tabaco es fiscal. Ofrecerlo
+               como combo era una trampa — un romaneo cargado por error como Presupuestado
+               desaparecería en silencio de la planilla FET, que es una declaración legal. #}
+            {{ form.condic }}
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.condic.label }}</label>
-                {{ form.condic }}
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Condición</label>
+                <div class="w-full rounded-xl border border-gray-200 bg-slate-50 text-sm px-3 py-2 text-gray-600">
+                    Real / Fiscal
+                    <span class="ml-1 text-xs text-gray-400">— toda liquidación de tabaco lo es</span>
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.transporte.label }}</label>

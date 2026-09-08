@@ -263,8 +263,15 @@ def recalcular_lote(lote):
 
     lote.total_fardos = fardos['n'] or 0
     lote.total_kilos = fardos['kilos'] or CERO
-    # El adicional es parte de lo que se le pagó al productor por esos fardos: integra el costo.
-    lote.costo_compra = (fardos['importe'] or CERO) + (fardos['adicional'] or CERO)
+
+    # EL ADICIONAL QUEDA AFUERA DEL COSTO, y no es un olvido.
+    # `LiquidacionDetalle.importe` es `Σ fardo.importe` y `liq.neto` se arma de ahí: hoy el
+    # circuito NO le paga el adicional al productor. Sumarlo acá haría que el costo del lote
+    # dijera una cosa y la liquidación otra, y el margen saldría subestimado contra plata que
+    # nunca salió. Sigue guardado en `fardo.adicional` y se informa aparte.
+    # Cuando se cierre la decisión DA-05 —qué es el adicional y si integra la base— se cambian
+    # LOS DOS lugares juntos: `services/liquidacion.py::preparar_liquidacion` y esta línea.
+    lote.costo_compra = fardos['importe'] or CERO
 
     cerrados = lote.acondicionamientos.filter(estado=Acondicionamiento.CERRADO).aggregate(
         baja=Sum('kilos_baja'), costo=Sum('costo_total'), coprod=Sum('valor_coproductos'))

@@ -43,7 +43,18 @@ class AbrirRomaneoForm(forms.Form):
     transporte = forms.CharField(required=False, max_length=120, label="Transporte / Vehículo",
                                  widget=forms.TextInput(attrs={'placeholder': 'Camión, patente'}))
     remito = forms.CharField(required=False, max_length=40, label="Remito o guía")
-    condic = forms.ChoiceField(choices=CONDIC_CHOICES, initial=1, label="Condición")
+    # FIJO EN 1 (Real / Fiscal): toda liquidación de tabaco es fiscal.
+    #
+    # No es una simplificación: es la regla del negocio, y ofrecerla como combo era una trampa.
+    # Los reportes oficiales —planilla FET, libro de retenciones— filtran por condición fiscal,
+    # así que un romaneo cargado por error como Presupuestado DESAPARECERÍA EN SILENCIO de una
+    # declaración legal, sin que nada fallara a la vista.
+    #
+    # El campo sigue existiendo en el modelo y lo hereda el asiento —regla inflexible del
+    # proyecto—, y los listados siguen ofreciendo el filtro. Lo que se saca es la posibilidad de
+    # elegir mal en la carga.
+    condic = forms.ChoiceField(choices=CONDIC_CHOICES, initial=1, label="Condición",
+                               widget=forms.HiddenInput())
     observaciones = forms.CharField(required=False, widget=forms.Textarea(attrs={'rows': 2}))
 
     def __init__(self, empresa_id=None, *args, **kwargs):
@@ -68,10 +79,13 @@ class FardoForm(forms.Form):
                                                          'placeholder': '0,00'}))
     etiqueta = forms.CharField(required=False, max_length=40, label="Etiqueta",
                                widget=forms.TextInput(attrs={'placeholder': 'Opcional'}))
+    # COMODÍN, HOY SIEMPRE EN CERO. El circuito no se lo paga al productor: `liq.neto` es
+    # `Sum(fardo.importe)` y el adicional no entra. Por eso la pantalla de carga NO lo dibuja
+    # —un campo que se puede llenar y nunca se cobra miente en silencio— pero el campo sobrevive
+    # en el modelo, en el servicio y acá, para el día que se decida qué es y cómo se liquida.
     adicional = DecimalARField(max_digits=15, decimal_places=2, required=False, initial=0,
                                label="Adicional",
-                               widget=forms.TextInput(attrs={'class': 'fInputAR',
-                                                             'placeholder': '0,00'}))
+                               widget=forms.HiddenInput())
 
     def __init__(self, romaneo=None, *args, **kwargs):
         super().__init__(*args, **kwargs)

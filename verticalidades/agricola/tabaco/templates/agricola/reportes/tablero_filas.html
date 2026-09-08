@@ -1,0 +1,89 @@
+{% load formato_tags %}
+<div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-slate-50">
+            <tr>
+                <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ rotulo }}</th>
+                {% if agrupacion == 'clase' %}
+                <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grupo</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Coef.</th>
+                {% elif agrupacion == 'productor' %}
+                <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">CUIT</th>
+                {% endif %}
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lotes</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Compra</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acond.</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo total</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">$/kg</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ingreso</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Margen</th>
+                <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">%</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+            {% for f in filas %}
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">{{ f.rotulo }}</td>
+                {% if agrupacion == 'clase' %}
+                <td class="whitespace-nowrap px-3 py-3 text-sm">
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">{{ f.grupo_clase|default:"—" }}</span>
+                </td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.coeficiente|formato_ar:4 }}</td>
+                {% elif agrupacion == 'productor' %}
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 font-mono">{{ f.cuit }}</td>
+                {% endif %}
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.lotes }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.fardos }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.kilos|formato_ar }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.costo_compra|formato_ar }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.costo_acondicionamiento|formato_ar }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ f.costo_total|formato_ar }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.costo_por_kilo|formato_ar }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ f.ingreso|formato_ar }}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-bold
+                           {% if f.margen < 0 %}text-red-600{% elif f.ingreso %}text-green-600{% else %}text-gray-400{% endif %}">
+                    {{ f.margen|formato_ar }}
+                </td>
+                <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono
+                           {% if f.margen < 0 %}text-red-600{% else %}text-gray-500{% endif %}">
+                    {{ f.margen_porcentaje|formato_ar }} %
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="13" class="px-6 py-10 text-center text-gray-500 text-sm italic">
+                No hay lotes que coincidan con el filtro.
+            </td></tr>
+            {% endfor %}
+        </tbody>
+        {% if filas %}
+        <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+            <tr>
+                {% if agrupacion == 'clase' %}
+                <td colspan="3" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">Totales</td>
+                {% elif agrupacion == 'productor' %}
+                <td colspan="2" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">Totales</td>
+                {% else %}
+                <td class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">Totales</td>
+                {% endif %}
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.lotes }}</td>
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.fardos }}</td>
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.kilos|formato_ar }}</td>
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.costo_compra|formato_ar }}</td>
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.costo_acondicionamiento|formato_ar }}</td>
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.costo_total|formato_ar }}</td>
+                <td></td>
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.ingreso|formato_ar }}</td>
+                {# El porcentaje se recalcula sobre los totales: promediar porcentajes no significa nada. #}
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold {% if totales.margen < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+                    {{ totales.margen|formato_ar }}
+                </td>
+                <td class="px-3 py-3 text-sm text-right font-mono font-bold {% if totales.margen < 0 %}text-red-600{% else %}text-green-700{% endif %}">
+                    {{ totales.margen_porcentaje|formato_ar }} %
+                </td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>

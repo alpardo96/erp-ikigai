@@ -251,6 +251,27 @@ class TipoRetencionTabaco(AuditModel):
 
     momento = models.CharField(max_length=12, choices=MOMENTOS, default=LIQUIDACION,
                                verbose_name="Momento en que se practica")
+
+    # A qué columna de la planilla FET aporta este concepto (Plan 087).
+    #
+    # ES UN DATO DEL MAESTRO Y NO UNA DEDUCCIÓN DEL CÓDIGO, y el motivo es concreto: la primera
+    # versión del reporte mapeaba las columnas por código exacto —`IVA`, `GANANCIAS`, `AGUA`— y
+    # los conceptos reales estaban cargados como `RET-IVA`, `RET-GCIAS` y `USO AGUA`. Tres de las
+    # cinco retenciones caían en «otras» y NADA FALLABA A LA VISTA, porque la fila seguía sumando
+    # bien: la planilla mentía en silencio.
+    #
+    # Ahora se ve en pantalla, se edita desde el ABM y un concepto nuevo se asigna a propósito.
+    # Vacío significa «Otras retenciones», que es una columna real de la planilla y no un error.
+    COLUMNAS_FET = [
+        ('ret_iva', 'Ret. IVA'),
+        ('ret_ganancias', 'Ret. Ganancias'),
+        ('ret_eeaoc', 'EEAOC'),
+        ('ret_salud', 'Salud Pública'),
+        ('ret_agua', 'Uso de Agua'),
+    ]
+    columna_fet = models.CharField(
+        max_length=15, choices=COLUMNAS_FET, blank=True, verbose_name="Columna en la planilla FET",
+        help_text="A qué columna del informe FET aporta. Vacío = «Otras retenciones».")
     solo_responsable_inscripto = models.BooleanField(
         default=False, verbose_name="Sólo a Responsables Inscriptos",
         help_text="La retención de IVA y la de Ganancias sólo aplican a RI.",
@@ -472,6 +493,11 @@ class FardoTabaco(AuditModel):
 
     kilos = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Kilos")
     importe = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
+    # COMODÍN, HOY SIEMPRE EN CERO (decisión DA-05, cerrada). El circuito NO se lo paga al
+    # productor: `LiquidacionDetalle.importe` es `Sum(fardo.importe)` y `liq.neto` se arma de ahí.
+    # Por eso tampoco integra el costo del lote ni la columna «a pagar» de la planilla FET.
+    # La pantalla de carga no lo dibuja; el campo queda para el día que se decida usarlo, y ese
+    # día hay que tocar `preparar_liquidacion` y `recalcular_lote` JUNTOS.
     adicional = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'))
     precio_final = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal('0'),
                                        verbose_name="Precio final (con adicional)")
@@ -989,6 +1015,18 @@ class LoteAcopio(AuditModel):
         servicio, porque depende de una consulta y no de un campo.
         """
         return self.estado in (self.BORRADOR, self.ARMADO, self.ACONDICIONADO)
+
+    @property
+    def adicional_informado(self):
+        """Adicionales de los fardos del lote. NO integra el costo, y es a propósito.
+
+        Hoy el circuito no se lo paga al productor: `LiquidacionDetalle.importe` es
+        `Sum(fardo.importe)` y `liq.neto` se arma de ahí. Sumarlo al costo haría que el lote
+        dijera una cosa y la liquidación otra. Se informa aparte hasta que se cierre la decisión
+        DA-05 —qué es el adicional y si integra la base—.
+        """
+        from django.db.models import Sum
+        return self.fardos.aggregate(s=Sum('adicional'))['s'] or Decimal('0')
 
     @property
     def costo_total(self):

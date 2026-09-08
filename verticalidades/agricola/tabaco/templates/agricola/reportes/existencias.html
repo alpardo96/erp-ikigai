@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}DDJJ de Existencias{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">DDJJ de Existencias por Galpón</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Existencia <strong>a la fecha de corte</strong>, reconstruida desde los
+                comprobantes. No es el stock de hoy.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_reportes' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Reportes</a>
+            <a href="{% url 'agro_reporte_existencias_csv' %}?{{ request.GET.urlencode }}"
+               class="px-4 py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                CSV
+            </a>
+        </div>
+    </div>
+
+    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-4 gap-4"
+          hx-get="{% url 'agro_reporte_existencias_grilla' %}" hx-trigger="change"
+          hx-target="#existencias-cuerpo">
+        <div>
+            <label class="block text-xs font-semibold text-gray-500 mb-1">{{ filtros.fecha.label }}</label>
+            {{ filtros.fecha }}
+            {% if filtros.fecha.errors %}<p class="mt-1 text-xs text-red-600">{{ filtros.fecha.errors|striptags }}</p>{% endif %}
+        </div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Galpón</label>{{ filtros.sucursal }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Variedad</label>{{ filtros.variedad }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
+    </form>
+
+    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+        Se reconstruye desde los comprobantes y no se lee del stock del ERP, porque el stock
+        <strong>sólo sabe el presente</strong>. Una declaración que se presenta en octubre por las
+        existencias al 30 de septiembre necesita el pasado, y el pasado está en los comprobantes.
+    </div>
+
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variedad</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Galpón</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recibidos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acondicion.</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vendidos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Existencia</th>
+                </tr>
+            </thead>
+            <tbody id="existencias-cuerpo" class="divide-y divide-gray-100 bg-white">
+                {% include 'agricola/reportes/existencias_filas.html' %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

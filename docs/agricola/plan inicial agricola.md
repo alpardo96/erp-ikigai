@@ -527,17 +527,21 @@ Ver [`docs/planes/086_agricola_etapa5_lotes_acondicionamiento_venta.md`](../plan
 - **Sin efectos contables propios**: el insumo ya se contabilizó al comprarlo; imputarlo al lote
   es gerencial. Contabilizarlo de nuevo duplicaría el gasto en el balance.
 
-### Etapa 6 — Reportes oficiales y gerenciales
+### Etapa 6 — Reportes oficiales y gerenciales ✅
 
-- **FET / Secretaría de la Producción**: resumen de acopio por variedad y clase, planilla de
-  compras por productor con kilos, precios, importes y retenciones, DDJJ de existencias por
-  galpón. El VFP ya emitía `Informe_fet` y una exportación Excel con las columnas:
-  `id_romaneo · asiento · letra · punto · número · fecha · cod.FET · productor · variedad ·
-  fardos · kilos · importe · adicional · IVA · Ret.IVA · Ret.Gcias · EEAOC · Sal.Púb · Uso Agua ·
-  a pagar · ponderante`.
-- Libro de retenciones practicadas por período y organismo.
-- Tableros de margen por campaña, productor y lote.
-- **Todos con filtro de `condic`.**
+Ver [`docs/planes/087_agricola_etapa6_reportes.md`](../planes/087_agricola_etapa6_reportes.md).
+
+- **Planilla FET**: reproduce las columnas del `Informe_fet` heredado, con una fila por romaneo y
+  las retenciones prorrateadas cuando una liquidación agrupa varios. Exporta a CSV y a Excel.
+- **Resumen de acopio** por variedad y clase, con precio promedio ponderado por kilos.
+- **DDJJ de existencias por galpón a una fecha de corte**, reconstruida desde los comprobantes:
+  el stock del ERP sólo sabe el presente y una declaración necesita el pasado.
+- **Libro de retenciones practicadas**, que une los dos momentos —al liquidar y al pagar— con
+  totales por organismo para conciliar contra el pasivo antes de depositar.
+- **Tableros de margen** por campaña, variedad, productor y clase de tabaco.
+- **Todos con filtro de `condic`**; los oficiales arrancan en Real, porque lo que se declara es la
+  lente fiscal.
+- **Sin una sola tabla nueva.** Todo sale de lo registrado en las Etapas 0 a 5.
 
 ### Etapas 7 a 9 — Producción propia · Granos y caña · Exportación
 
@@ -568,15 +572,17 @@ hasta que el circuito de acopio esté estabilizado en producción.
 | **Momento de cada retención** *(DA-01)* | IVA, EEAOC, Uso de Agua y Salud Pública en la **liquidación**; Ganancias en el **pago**. Parametrizado en el campo `momento`, no hardcodeado |
 | **Autorización del comprobante** *(DA-02)* | **Dos modos válidos y simultáneos**: `MANUAL` (captura de tipo, punto, número y CAI, para talonario impreso o comprobante en línea de ARCA) y `WEBSERVICE` (en estudio, se desarrolla más adelante). Ver §3.6 |
 | **Notas de crédito de liquidación** *(DA-03)* | **Fuera del alcance inicial.** Queda como mejora posterior a la Etapa 2. Ver §9.3 |
+| **Adicionales** *(DA-05)* | **Comodín que queda en cero. No se usa.** Se verificó que el circuito nunca se lo pagó al productor: `LiquidacionDetalle.importe` es `Sum(fardo.importe)` y `liq.neto` se arma de ahí. En consecuencia **la pantalla de carga de fardos ya no lo dibuja** —un campo que se puede llenar y nunca se cobra miente en silencio— y tampoco integra el costo del lote ni la columna «a pagar» de la planilla FET. El campo sobrevive en el modelo y en el servicio como comodín; el día que se decida usarlo hay que tocar `preparar_liquidacion` y `recalcular_lote` **juntos** |
+| **Condición de las liquidaciones** | **Siempre `condic = 1` (Real / Fiscal).** Toda liquidación de tabaco es fiscal, así que el alta de romaneo **ya no ofrece el combo**: era una trampa, porque un romaneo cargado por error como Presupuestado desaparecería en silencio de la planilla FET, que es una declaración legal. El campo sigue en el modelo, lo hereda el asiento y los listados siguen ofreciendo el filtro |
+| **Columna de la planilla FET por concepto** | **Es un dato del maestro** (`TipoRetencionTabaco.columna_fet`), editable desde el ABM. La primera versión la deducía del código y los conceptos reales estaban cargados como `RET-IVA`, `RET-GCIAS` y `USO AGUA`: tres de cinco caían en «otras» sin que nada fallara a la vista. Ver [Plan 087](../planes/087_agricola_etapa6_reportes.md) §7.2 |
 | **Procesos de acondicionamiento, mermas y coproductos** *(DA-07)* | **Se resuelve por configuración, no por código.** `ProcesoAcondicionamiento` es un maestro que carga el usuario: el sistema sabe que *un proceso toma kilos, devuelve kilos, consume plata y pierde peso*, y no presupone ninguno. La **merma** son kilos que desaparecen; el **coproducto** deja de ser tabaco de la variedad y reaparece en su propio producto de stock. Sólo la merma que excede la normal del proceso exige un motivo. Ver [Plan 086](../planes/086_agricola_etapa5_lotes_acondicionamiento_venta.md) |
 
-### 9.2 Abiertas — requieren definición antes de la etapa indicada
+### 9.2 Abiertas — no bloquean nada de lo implementado
 
 | # | Decisión | Etapa |
 |---|---|---|
-| **DA-04** | **Propiedad del tabaco recibido.** ¿El dominio se transfiere al recibir, al clasificar o al liquidar? Define si lo recibido y no liquidado es stock propio o mercadería de terceros. | 4 |
-| **DA-05** | **Adicionales.** El VFP tiene `adic` y `pcio_f` por línea y `adicional` por romaneo. Falta definir su naturaleza: ¿bonificación por calidad, flete, premio por volumen? ¿Integra la base de IVA y de retenciones? | 2 |
-| **DA-06** | **Coeficiente del productor.** El VFP guarda un `coefic` por productor en la cabecera del romaneo pero **no lo usa en el precio**. ¿Es un dato histórico, o debería afectar el cálculo? | 1 |
+| **DA-04** | **Propiedad del tabaco recibido.** ¿El dominio se transfiere al recibir, al clasificar o al liquidar? Define si lo recibido y no liquidado es stock propio o mercadería de terceros. El circuito funciona con el criterio actual —entra al stock al confirmar el romaneo—; la definición cambiaría la exposición contable, no la operatoria. | 4 |
+| **DA-06** | **Coeficiente del productor.** El VFP guarda un `coefic` por productor en la cabecera del romaneo pero **no lo usa en el precio**. Ikigai lo replica: se guarda y no interviene. ¿Es un dato histórico, o debería afectar el cálculo? | 1 |
 
 ### 9.3 Mejoras posteriores — fuera del alcance inicial
 

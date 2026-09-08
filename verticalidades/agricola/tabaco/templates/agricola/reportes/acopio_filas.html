@@ -1,0 +1,38 @@
+{% load formato_tags %}
+{% for v in variedades %}
+    {% for c in v.clases %}
+    <tr class="hover:bg-slate-50 transition-colors">
+        <td class="whitespace-nowrap py-3 pl-10 pr-3 text-sm text-gray-700">
+            <span class="font-mono text-gray-400 mr-2">{{ c.codigo }}</span>{{ c.clase }}
+        </td>
+        <td class="whitespace-nowrap px-3 py-3 text-sm">
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">{{ c.grupo|default:"—" }}</span>
+        </td>
+        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ c.fardos }}</td>
+        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ c.kilos|formato_ar }}</td>
+        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono">{{ c.importe|formato_ar }}</td>
+        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ c.precio_promedio|formato_ar }}</td>
+    </tr>
+    {% endfor %}
+    <tr class="bg-lime-50/60 border-t border-lime-100">
+        <td colspan="2" class="py-3 pl-6 pr-3 text-sm font-bold text-lime-800">{{ v.variedad }}</td>
+        <td class="px-3 py-3 text-sm text-right font-mono font-bold text-lime-800">{{ v.fardos }}</td>
+        <td class="px-3 py-3 text-sm text-right font-mono font-bold text-lime-800">{{ v.kilos|formato_ar }}</td>
+        <td class="px-3 py-3 text-sm text-right font-mono font-bold text-lime-800">{{ v.importe|formato_ar }}</td>
+        <td class="px-3 py-3 text-sm text-right font-mono font-bold text-lime-800">{{ v.precio_promedio|formato_ar }}</td>
+    </tr>
+{% empty %}
+<tr><td colspan="6" class="px-6 py-10 text-center text-gray-500 text-sm italic">
+    No hay fardos de romaneos confirmados que coincidan con el filtro.
+</td></tr>
+{% endfor %}
+
+{% if variedades %}
+<tr class="bg-slate-50 border-t-2 border-slate-200">
+    <td colspan="2" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">Total general</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.fardos }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.kilos|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.importe|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.precio_promedio|formato_ar }}</td>
+</tr>
+{% endif %}

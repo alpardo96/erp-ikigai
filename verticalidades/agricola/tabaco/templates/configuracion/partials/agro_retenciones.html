@@ -7,7 +7,12 @@
     <div class="flex items-center justify-between">
         <div>
             <h2 class="text-xl font-bold text-gray-800">Conceptos de Retención</h2>
-            <p class="text-sm text-gray-500 mt-1">Retenciones que la empresa practica al productor. Cada una acredita su cuenta de pasivo, que luego se cancela al depositar al organismo.</p>
+            <p class="text-sm text-gray-500 mt-1">
+                Retenciones que la empresa practica al productor. Cada una acredita su cuenta de
+                pasivo, que luego se cancela al depositar al organismo.
+                <strong>«Col. FET»</strong> dice a qué columna de la planilla aporta cada concepto:
+                el reporte lee ese dato, no adivina por el nombre.
+            </p>
         </div>
         <button hx-get="{% url 'agro_retencion_add' %}"
                 hx-target="#modal-container"
@@ -41,6 +46,7 @@
                     <th class="px-3 py-3.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alícuota</th>
                     <th class="px-3 py-3.5 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mínimo</th>
                     <th class="px-3 py-3.5 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Momento</th>
+                    <th class="px-3 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Col. FET</th>
                     <th class="px-3 py-3.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cuenta</th>
                     <th class="relative py-3.5 pl-3 pr-6 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Acciones</th>
                 </tr>

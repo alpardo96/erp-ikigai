@@ -1,0 +1,102 @@
+{% load formato_tags %}
+{% comment %}
+El bloque entero —resumen por organismo y detalle— se reemplaza por HTMX al cambiar un filtro. Van
+juntos a propósito: un resumen que quedara mostrando el filtro anterior mientras el detalle muestra
+el nuevo es peor que no tener resumen.
+{% endcomment %}
+<div class="space-y-5">
+
+    {# Es para lo que sirve el libro: conciliar contra el pasivo antes de depositar. #}
+    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100 bg-white">
+        <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-gray-800">A depositar por organismo</h2>
+            <span class="text-sm font-mono font-bold text-gray-900">$ {{ total|formato_ar }}</span>
+        </div>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Organismo</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Concepto</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cuenta de pasivo</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Movim.</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for g in por_organismo %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">{{ g.organismo }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{{ g.codigo }} — {{ g.detalle }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ g.cuenta }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ g.movimientos }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ g.base|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ g.importe|formato_ar }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm italic">Sin retenciones en el período.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Momento</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Comprobante</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Productor</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">CUIT</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Concepto</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Base</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Alícuota</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Importe</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Certificado</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 bg-white">
+                {% for f in filas %}
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm text-gray-500">{{ f.fecha|date:"d/m/Y" }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-center">
+                        {% if f.origen == 'LIQUIDACION' %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-sky-100 text-sky-800">Al liquidar</span>
+                        {% else %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800">Al pagar</span>
+                        {% endif %}
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm">
+                        <a href="{% url f.url_origen.0 f.url_origen.1 %}"
+                           class="text-indigo-600 hover:text-indigo-800 font-medium">{{ f.comprobante }}</a>
+                    </td>
+                    <td class="px-3 py-3 text-sm text-gray-700">{{ f.productor }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 font-mono">{{ f.cuit }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700">
+                        {{ f.codigo }}
+                        {% if f.organismo %}<span class="ml-1 text-xs text-gray-400">{{ f.organismo }}</span>{% endif %}
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.base|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.alicuota|formato_ar:4 }} %</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-900 text-right font-mono font-bold">{{ f.importe|formato_ar }}</td>
+                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">{{ f.certificado|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="px-6 py-10 text-center text-gray-500 text-sm italic">
+                    No hay retenciones practicadas que coincidan con el filtro.
+                </td></tr>
+                {% endfor %}
+            </tbody>
+            {% if filas %}
+            <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+                <tr>
+                    <td colspan="8" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">Total retenido</td>
+                    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ total|formato_ar }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>

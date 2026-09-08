@@ -1,0 +1,38 @@
+{% load formato_tags %}
+{% for f in filas %}
+<tr class="hover:bg-slate-50 transition-colors {% if f.sin_producto %}bg-amber-50/40{% endif %}">
+    <td class="whitespace-nowrap py-3 pl-6 pr-3 text-sm font-bold text-gray-900">{{ f.variedad.detalle }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">
+        {{ f.sucursal.nombre }}
+        {% if f.sin_producto %}
+        <span class="ml-2 text-[11px] text-amber-700 italic">sin producto de stock: no se descuentan ventas</span>
+        {% endif %}
+    </td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.fardos }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-700 text-right font-mono">{{ f.recibidos|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.acondicionados|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right font-mono">{{ f.vendidos|formato_ar }}</td>
+    <td class="whitespace-nowrap px-3 py-3 text-sm text-right font-mono font-bold
+               {% if f.existencia < 0 %}text-red-600{% else %}text-gray-900{% endif %}">
+        {{ f.existencia|formato_ar }}
+    </td>
+</tr>
+{% empty %}
+<tr><td colspan="7" class="px-6 py-10 text-center text-gray-500 text-sm italic">
+    {% if fecha %}No hay movimientos de tabaco hasta el {{ fecha|date:"d/m/Y" }}.
+    {% else %}Elegí la fecha de corte de la declaración.{% endif %}
+</td></tr>
+{% endfor %}
+
+{% if filas %}
+<tr class="bg-slate-50 border-t-2 border-slate-200">
+    <td colspan="2" class="py-3 pl-6 pr-3 text-sm font-bold text-gray-700">
+        Totales al {{ fecha|date:"d/m/Y" }}
+    </td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.fardos }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.recibidos|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.acondicionados|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.vendidos|formato_ar }}</td>
+    <td class="px-3 py-3 text-sm text-right font-mono font-bold text-gray-900">{{ totales.existencia|formato_ar }}</td>
+</tr>
+{% endif %}

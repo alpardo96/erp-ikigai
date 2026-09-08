@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}Reportes del Acopio{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto w-full px-4 py-2 space-y-6">
+
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Reportes del Acopio</h1>
+        <p class="text-sm text-gray-500 mt-1">
+            Lo que hay que entregar hacia afuera y lo que sirve para decidir. Todos con filtro de
+            condición y exportación.
+        </p>
+    </div>
+
+    <div>
+        <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Oficiales</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{% url 'agro_reporte_fet' %}"
+               class="block group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Planilla FET</div>
+                <div class="text-sm text-lime-600/80 mt-1">
+                    Una fila por romaneo con comprobante, kilos, IVA y las cinco retenciones.
+                    Exporta a Excel.
+                </div>
+            </a>
+            <a href="{% url 'agro_reporte_acopio' %}"
+               class="block group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Resumen de Acopio</div>
+                <div class="text-sm text-lime-600/80 mt-1">
+                    Fardos, kilos e importe por variedad y clase, con precio promedio ponderado.
+                </div>
+            </a>
+            <a href="{% url 'agro_reporte_existencias' %}"
+               class="block group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">DDJJ de Existencias</div>
+                <div class="text-sm text-lime-600/80 mt-1">
+                    Existencia por galpón <strong>a una fecha de corte</strong>, reconstruida desde
+                    los comprobantes.
+                </div>
+            </a>
+            <a href="{% url 'agro_reporte_retenciones' %}"
+               class="block group bg-lime-50/50 border border-lime-100 p-5 rounded-2xl hover:bg-lime-100 transition-all shadow-sm">
+                <div class="text-lime-700 font-semibold text-lg group-hover:text-lime-800">Libro de Retenciones</div>
+                <div class="text-sm text-lime-600/80 mt-1">
+                    Lo retenido al liquidar y al pagar, con totales por organismo para conciliar
+                    antes de depositar.
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div>
+        <h2 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Gerenciales</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="{% url 'agro_reporte_tablero' %}"
+               class="block group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Tablero de Margen</div>
+                <div class="text-sm text-indigo-600/80 mt-1">
+                    Por campaña, variedad, productor o <strong>clase de tabaco</strong>: qué
+                    calidades dejaron plata y cuáles se pagaron de más.
+                </div>
+            </a>
+            <a href="{% url 'agro_margen' %}"
+               class="block group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Margen por Lote</div>
+                <div class="text-sm text-indigo-600/80 mt-1">
+                    Lote por lote, con el desglose fardo por fardo.
+                </div>
+            </a>
+            <a href="{% url 'agro_stock_conciliacion' %}"
+               class="block group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+                <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800">Conciliación de Stock</div>
+                <div class="text-sm text-indigo-600/80 mt-1">
+                    Acopio contra el stock del ERP. La diferencia debe ser cero.
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+        Los reportes <strong>oficiales</strong> arrancan filtrados en condición <strong>Real</strong>:
+        lo que se declara ante un organismo es la lente fiscal. Los gerenciales arrancan en Todas,
+        porque para analizar la gestión interesa también lo presupuestado.
+    </div>
+</div>
+{% endblock %}

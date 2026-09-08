@@ -1,0 +1,54 @@
+{% load formato_tags %}
+{% comment %}
+Filas de la planilla FET. Los totales van DENTRO del `<tbody>` porque HTMX reemplaza este bloque
+entero al cambiar un filtro: en un `<tfoot>` quedarían mostrando la suma del filtro anterior.
+{% endcomment %}
+{% for f in filas %}
+<tr class="hover:bg-slate-50 transition-colors">
+    <td class="whitespace-nowrap py-2 pl-4 pr-2 font-bold text-gray-900">{{ f.id_romaneo|default:"—" }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-gray-400">{{ f.asiento|default:"—" }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-gray-700">
+        {{ f.letra }} {{ f.punto|stringformat:"04d" }}-{{ f.numero|stringformat:"08d" }}
+    </td>
+    <td class="whitespace-nowrap px-2 py-2 text-gray-500">{{ f.fecha|date:"d/m/Y" }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-gray-500">{{ f.codigo_fet|default:"—" }}</td>
+    <td class="px-2 py-2 text-gray-700">{{ f.productor }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-gray-500">{{ f.variedad }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-700">{{ f.fardos }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-700">{{ f.kilos|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-900">{{ f.importe|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-400">{{ f.adicional|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-700">{{ f.iva|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-500">{{ f.ret_iva|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono {% if f.ret_ganancias %}text-gray-500{% else %}text-gray-300{% endif %}">{{ f.ret_ganancias|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-500">{{ f.ret_eeaoc|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-500">{{ f.ret_salud|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-500">{{ f.ret_agua|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-500">{{ f.otras_retenciones|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono font-bold text-gray-900">{{ f.a_pagar|formato_ar }}</td>
+    <td class="whitespace-nowrap px-2 py-2 text-right font-mono text-gray-400">{{ f.ponderante|formato_ar }}</td>
+</tr>
+{% empty %}
+<tr><td colspan="20" class="px-6 py-10 text-center text-gray-500 italic">
+    No hay liquidaciones confirmadas que coincidan con el filtro.
+</td></tr>
+{% endfor %}
+
+{% if filas %}
+<tr class="bg-slate-50 border-t-2 border-slate-200 font-bold">
+    <td colspan="7" class="py-3 pl-4 pr-2 text-gray-700">Totales</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-900">{{ totales.fardos }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-900">{{ totales.kilos|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-900">{{ totales.importe|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-500">{{ totales.adicional|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-900">{{ totales.iva|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-700">{{ totales.ret_iva|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-700">{{ totales.ret_ganancias|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-700">{{ totales.ret_eeaoc|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-700">{{ totales.ret_salud|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-700">{{ totales.ret_agua|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-700">{{ totales.otras_retenciones|formato_ar }}</td>
+    <td class="px-2 py-3 text-right font-mono text-gray-900">{{ totales.a_pagar|formato_ar }}</td>
+    <td></td>
+</tr>
+{% endif %}

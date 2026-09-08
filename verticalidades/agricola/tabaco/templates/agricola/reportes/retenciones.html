@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Libro de Retenciones Practicadas{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Libro de Retenciones Practicadas</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                Lo retenido al productor en los dos momentos: al liquidar y al pagar.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_reportes' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Reportes</a>
+            <a href="{% url 'agro_reporte_retenciones_csv' %}?{{ request.GET.urlencode }}"
+               class="px-4 py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                CSV
+            </a>
+        </div>
+    </div>
+
+    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-5 gap-4"
+          hx-get="{% url 'agro_reporte_retenciones_grilla' %}" hx-trigger="change"
+          hx-target="#retenciones-cuerpo">
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Desde</label>{{ filtros.desde }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>{{ filtros.hasta }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Concepto</label>{{ filtros.codigo }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Productor</label>{{ filtros.productor }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
+    </form>
+
+    <div id="retenciones-cuerpo">
+        {% include 'agricola/reportes/retenciones_filas.html' %}
+    </div>
+</div>
+{% endblock %}

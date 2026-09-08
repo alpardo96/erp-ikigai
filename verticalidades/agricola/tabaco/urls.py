@@ -9,6 +9,7 @@ from django.urls import path
 from . import views_htmx as htmx
 from . import views_liquidacion as liq
 from . import views_lotes as lot
+from . import views_reportes as rpt
 from . import views_pago as pag
 from . import views_romaneo as rom
 
@@ -126,6 +127,39 @@ urlpatterns = [
     path('agro/margen/', lot.margen_listado, name='agro_margen'),
     path('agro/margen/grilla/', lot.margen_grilla, name='agro_margen_grilla'),
     path('agro/margen/lote/<int:pk>/', lot.margen_del_lote, name='agro_margen_lote'),
+
+    # --- REPORTES OFICIALES Y GERENCIALES (Plan 087) ------------------------
+    path('agro/reportes/', rpt.reportes_index, name='agro_reportes'),
+
+    # Planilla FET — el reformateo del `Informe_fet` heredado
+    path('agro/reportes/fet/', rpt.fet, name='agro_reporte_fet'),
+    path('agro/reportes/fet/grilla/', rpt.fet_grilla, name='agro_reporte_fet_grilla'),
+    path('agro/reportes/fet/csv/', rpt.fet_csv, name='agro_reporte_fet_csv'),
+    path('agro/reportes/fet/xlsx/', rpt.fet_xlsx, name='agro_reporte_fet_xlsx'),
+
+    # Resumen de acopio por variedad y clase
+    path('agro/reportes/acopio/', rpt.acopio, name='agro_reporte_acopio'),
+    path('agro/reportes/acopio/grilla/', rpt.acopio_grilla, name='agro_reporte_acopio_grilla'),
+    path('agro/reportes/acopio/csv/', rpt.acopio_csv, name='agro_reporte_acopio_csv'),
+
+    # DDJJ de existencias por galpón, a una fecha de corte
+    path('agro/reportes/existencias/', rpt.existencias, name='agro_reporte_existencias'),
+    path('agro/reportes/existencias/grilla/', rpt.existencias_grilla,
+         name='agro_reporte_existencias_grilla'),
+    path('agro/reportes/existencias/csv/', rpt.existencias_csv,
+         name='agro_reporte_existencias_csv'),
+
+    # Libro de retenciones practicadas
+    path('agro/reportes/retenciones/', rpt.retenciones, name='agro_reporte_retenciones'),
+    path('agro/reportes/retenciones/grilla/', rpt.retenciones_grilla,
+         name='agro_reporte_retenciones_grilla'),
+    path('agro/reportes/retenciones/csv/', rpt.retenciones_csv,
+         name='agro_reporte_retenciones_csv'),
+
+    # Tableros de margen
+    path('agro/reportes/tablero/', rpt.tablero, name='agro_reporte_tablero'),
+    path('agro/reportes/tablero/grilla/', rpt.tablero_grilla, name='agro_reporte_tablero_grilla'),
+    path('agro/reportes/tablero/csv/', rpt.tablero_csv, name='agro_reporte_tablero_csv'),
 
     # Procesos de acondicionamiento (maestro — resuelve DA-07 por configuración)
     path('agro/procesos/nuevo/', htmx.proceso_modal, name='agro_proceso_add'),

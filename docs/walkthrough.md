@@ -4605,3 +4605,134 @@ recomendación es no correr suites concurrentes contra la misma instancia.
 - Libros de IVA (Facturación) y Asientos Contables migrados exitosamente.
 - Queda a definir o refinar cualquier otro ajuste fino en la interfaz o de operaciones "SIGIMAC".
 >>>>>>> 6b2fa96e74015965f0956efd62ae588f443dc5e0
+
+---
+
+## 2026-09-07 — Juan Manuel - Notebook personal
+
+### Agrícola · Etapa 6 — Reportes oficiales y gerenciales (Plan 087)
+
+**Objetivo:** lo que el acopio tiene que entregar hacia afuera —FET, Secretaría de la Producción,
+organismos recaudadores— y lo que el dueño necesita para decidir.
+
+Plan: [`docs/planes/087_agricola_etapa6_reportes.md`](planes/087_agricola_etapa6_reportes.md).
+
+#### La propiedad que define la etapa: no crea una sola tabla
+
+Todo sale de lo que ya registraron las Etapas 0 a 5. No hay modelos, no hay migraciones y no hay
+estado nuevo que mantener sincronizado. Es la prueba de que aquel modelo estaba bien planteado: si
+para emitir la planilla FET hubiera que agregar campos, sería señal de que algo no se estaba
+capturando cuando correspondía. Hay un test que lo fija enumerando las 19 tablas de las etapas
+anteriores (`test_la_etapa_6_no_agrega_ninguna_tabla`).
+
+#### Los cinco reportes
+
+| Reporte | Qué resuelve |
+|---|---|
+| **Planilla FET** | Reformateo del `Informe_fet` heredado: una fila por romaneo con comprobante, kilos, IVA y las cinco retenciones. CSV y **Excel** |
+| **Resumen de acopio** | Fardos, kilos e importe por variedad y clase, con precio promedio ponderado |
+| **DDJJ de existencias** | Existencia por galpón **a una fecha de corte** |
+| **Libro de retenciones** | Los dos momentos unificados, con totales por organismo |
+| **Tableros de margen** | Por campaña, variedad, productor y clase de tabaco |
+
+#### Tres decisiones que el sistema heredado no tuvo que tomar
+
+**1. La planilla FET va por ROMANEO, y las retenciones se prorratean.** El Excel heredado
+encabeza con `id_romaneo`, así que la unidad es el romaneo. En el VFP eso era trivial —un romaneo
+era una liquidación, el sistema hacía todo en un solo acto—; en Ikigai una liquidación puede
+agrupar varios y las retenciones se calculan sobre el comprobante entero. Se prorratean por la
+participación del romaneo en el neto, y hay un test que verifica que **la suma de las filas
+reconstruye exactamente el IVA y las retenciones del comprobante**.
+
+**2. `Ret. Ganancias` sale del PAGO, no de la liquidación.** Por DA-01, Ganancias se practica al
+pagar y su base es el acumulado mensual. Una liquidación todavía no pagada la muestra en cero, y
+es lo correcto: poner ahí una estimación sería declarar ante el FET una retención que no se
+practicó. La columna se llena con los certificados `RetencionPago` vigentes de las Órdenes de Pago
+que cancelaron esa liquidación, prorrateados por lo imputado a ella.
+
+**3. La DDJJ se reconstruye desde los comprobantes, no lee `StockSucursal`.** El stock del ERP
+**sólo sabe el presente**. Una declaración que se presenta en octubre por las existencias al 30 de
+septiembre necesita el pasado, y el pasado está en los comprobantes. Es el mismo criterio con el
+que el ERP deriva el stock, con un corte de fecha encima.
+
+#### Dos hallazgos durante el desarrollo
+
+**A. El adicional no se le paga al productor, y la Etapa 5 lo estaba sumando al costo.**
+Al armar la planilla se verificó que `LiquidacionDetalle.importe` es `Sum(fardo.importe)` y que
+`liq.neto` se arma de ahí: **el adicional se captura pero no se liquida** —consecuencia directa de
+que DA-05 sigue abierta—. Mi Etapa 5 sí lo sumaba a `LoteAcopio.costo_compra`, con lo cual el
+costo del lote decía una cosa y la liquidación otra, y el margen salía subestimado contra plata
+que nunca salió.
+
+- Corregido: `services/lotes.py::recalcular_lote` ya no lo suma. Se expone aparte en la property
+  `LoteAcopio.adicional_informado`.
+- En la planilla FET el adicional se muestra —la planilla heredada lo traía— pero **no entra en
+  «a pagar»**: incluirlo declararía un importe que el comprobante no dice.
+- Al cerrar DA-05 hay que tocar **los dos** lugares juntos: `preparar_liquidacion` y
+  `recalcular_lote`.
+
+**B. Los códigos de retención no se pueden cablear.** La primera versión mapeaba las columnas por
+código exacto (`IVA`, `GANANCIAS`, `AGUA`). El cliente cargó los suyos como **`RET-IVA`,
+`RET-GCIAS` y `USO AGUA`**: tres de las cinco retenciones caían en «otras» y —esto es lo grave—
+**nada fallaba a la vista**, porque la fila seguía sumando bien. La planilla mentía en silencio.
+Lo detectó `test_una_retencion_nueva_del_maestro_va_a_otras`.
+
+Ahora se resuelve en dos pasos, del más firme al más laxo:
+1. Por `tipo_base`, que es **estructural** y no depende del nombre: sólo la retención de IVA se
+   calcula sobre el IVA y sólo Ganancias sobre el acumulado mensual. Esas dos columnas quedan
+   resueltas sin mirar un solo texto.
+2. Por palabra clave en el código o el detalle, para las tres que comparten base `NETO` y no se
+   pueden distinguir de otra forma.
+
+Verificado contra los códigos del cliente y contra los genéricos.
+
+#### Archivos creados
+
+- `services/reportes.py` [NEW] — planilla FET, resumen de acopio, existencias a fecha.
+- `services/retenciones_libro.py` [NEW] — libro de retenciones, unificando los dos orígenes.
+- `services/tableros.py` [NEW] — margen por campaña, variedad, productor y clase.
+- `services/exportaciones.py` [NEW] — CSV (`;` + BOM) y XLSX con `openpyxl`.
+- `forms_reportes.py` [NEW] · `views_reportes.py` [NEW].
+- 11 plantillas en `templates/agricola/reportes/`.
+- `tests/test_plan087_reportes.py` [NEW] — 34 tests · `tests/test_plan087_pantallas.py` [NEW] — 27.
+
+#### Archivos modificados
+
+- `verticalidades/agricola/tabaco/services/lotes.py` [MODIFY] — el adicional sale del costo.
+- `verticalidades/agricola/tabaco/models.py` [MODIFY] — property `LoteAcopio.adicional_informado`
+  (**sin migración**: es una property, no un campo).
+- `verticalidades/agricola/tabaco/urls.py` y el hook del menú.
+- `docs/agricola/plan inicial agricola.md` — Etapa 6 marcada; DA-05 enriquecida con lo verificado.
+- `docs/GUIA_MODULAR.md` — el módulo 17 pasa a 🟢.
+
+#### Reglas transversales respetadas
+
+- **Filtro de `condic` en los cinco reportes.** Los oficiales arrancan en **Real**: lo que se
+  declara ante un organismo es la lente fiscal. Los gerenciales, en Todas.
+- **Formato es-AR** en pantalla vía `|formato_ar`. En el CSV y el XLSX van **números crudos**: un
+  `1.234,56` dentro de un CSV con separador `;` es ambiguo y Excel lo lee como texto; en XLSX el
+  formato lo pone la celda. Hay un test para cada cosa.
+- **Sin Django Admin**: todo HTML + Tailwind + HTMX.
+
+#### Resultado de las pruebas
+
+- `test_plan087_reportes` → **34/34 OK** (414,3 s).
+- `test_plan087_pantallas` → **27/27 OK** (240,8 s).
+- `manage.py makemigrations --check --dry-run` → `No changes detected`. **La etapa no genera
+  ninguna migración**, que era el criterio de hecho más importante.
+- **Prueba de desenchufe**: sin la carpeta, `manage.py check` pasa, los términos de stock vuelven
+  a los cuatro de siempre, los tres registros de extensión quedan en cero y las URLs `agro_` dejan
+  de resolver, como corresponde. Al reenchufar, todo vuelve.
+
+#### Estado actual y siguientes pasos
+
+**El circuito del acopio de tabaco queda completo de punta a punta**: maestros → romaneo →
+liquidación → asiento → Libro IVA → cuenta corriente → pago → certificado → stock → lote →
+acondicionamiento → venta → margen → reportes oficiales.
+
+1. **Cargar los procesos reales de la planta** (Configuración → Procesos de Acondicionamiento).
+   Es lo único que resta de DA-07 y es dato operativo.
+2. **Cerrar DA-05** (naturaleza del adicional). Hoy no se paga; si debe pagarse, son dos lugares.
+3. Etapas 7 a 9 —producción propia, granos y caña, exportación— fuera del alcance inicial.
+4. MP-01 (notas de crédito de liquidación) y MP-02 (webservice WSLTV) siguen pendientes.
+5. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.

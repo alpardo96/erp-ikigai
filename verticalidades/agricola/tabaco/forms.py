@@ -210,7 +210,7 @@ class TipoRetencionTabacoForm(_BaseAgroForm):
         model = TipoRetencionTabaco
         fields = ['codigo', 'detalle', 'organismo', 'jurisdiccion', 'regimen',
                   'tipo_base', 'alicuota', 'minimo_no_imponible',
-                  'momento', 'solo_responsable_inscripto', 'cuenta_contable',
+                  'momento', 'columna_fet', 'solo_responsable_inscripto', 'cuenta_contable',
                   'vigencia_desde', 'vigencia_hasta', 'activa']
         widgets = {
             'codigo': forms.TextInput(attrs={'placeholder': 'EEAOC'}),

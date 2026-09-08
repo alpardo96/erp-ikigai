@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Tablero de Margen{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+
+    <div class="flex items-start justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Tablero de Margen</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                El mismo margen que calcula el lote, leído por campaña, variedad, productor o clase.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'agro_reportes' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Reportes</a>
+            <a href="{% url 'agro_reporte_tablero_csv' %}?{{ request.GET.urlencode }}"
+               class="px-4 py-2 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                CSV
+            </a>
+        </div>
+    </div>
+
+    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-6 gap-4 items-end"
+          hx-get="{% url 'agro_reporte_tablero_grilla' %}" hx-trigger="change"
+          hx-target="#tablero-cuerpo">
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Agrupar</label>{{ filtros.agrupar }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Campaña</label>{{ filtros.campania }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Variedad</label>{{ filtros.variedad }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Sucursal</label>{{ filtros.sucursal }}</div>
+        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
+        <label class="flex items-center gap-2 text-sm text-gray-600 pb-2">
+            {{ filtros.solo_vendidos }} Sólo vendidos
+        </label>
+    </form>
+
+    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+        El costo de compra es <strong>exacto</strong> —es lo que se le pagó al productor por cada
+        fardo—; el acondicionamiento y el ingreso se prorratean por kilos, porque en la máquina los
+        fardos se mezclan. Agrupado <strong>por clase</strong> se ve qué coeficientes del ponderante
+        están bien puestos y cuáles no.
+    </div>
+
+    <div id="tablero-cuerpo">
+        {% include 'agricola/reportes/tablero_filas.html' %}
+    </div>
+</div>
+{% endblock %}
