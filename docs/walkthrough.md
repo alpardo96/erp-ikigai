@@ -4736,3 +4736,119 @@ acondicionamiento → venta → margen → reportes oficiales.
 3. Etapas 7 a 9 —producción propia, granos y caña, exportación— fuera del alcance inicial.
 4. MP-01 (notas de crédito de liquidación) y MP-02 (webservice WSLTV) siguen pendientes.
 5. Deuda técnica preexistente: las 6 causas de los 13 errores del baseline.
+
+---
+
+## 2026-09-07 (cierre del día) — Juan Manuel - Notebook personal
+
+### Agrícola · Cuatro decisiones cerradas sobre la Etapa 6
+
+Después de la primera entrega del Plan 087, el usuario revisó los hallazgos y cerró cuatro puntos.
+Esta entrada registra lo que se cambió y por qué.
+
+#### 1. El adicional: comodín en cero, no se usa (DA-05 CERRADA)
+
+**Decisión del usuario:** *"El adicional lo dejamos en cero y por lo pronto no lo utilizaremos.
+Es un comodín que lo más probable es que nunca usemos."*
+
+Se fue un paso más allá de dejarlo en cero: **la pantalla de carga de fardos ya no lo dibuja**. Un
+input que se puede llenar y que nunca se cobra es la misma clase de mentira silenciosa que la
+columna FET mal mapeada — alguien carga $50.000 y el productor nunca los ve.
+
+- `forms_romaneo.py::FardoForm.adicional` → `HiddenInput`.
+- `templates/agricola/romaneo/carga.html` → el bloque del input se retira, con el comentario del
+  porqué.
+- `models.py::FardoTabaco.adicional` → documentado como comodín, con la nota de que el día que se
+  use hay que tocar `preparar_liquidacion` y `recalcular_lote` **juntos**.
+
+El campo sobrevive en el modelo y en el servicio: sigue siendo un comodín disponible.
+
+#### 2. La columna de la planilla FET pasa a ser un dato del maestro
+
+**Observación del usuario:** *"Si el código mapeaba columnas por código exacto ¿por qué me pediste
+que los cargue y no lo hiciste tú que sabías el código?"*
+
+**Tiene razón, y el error es mío:** le pedí que cargara los conceptos de retención sin decirle qué
+códigos usar, y después escribí un reporte que asumía códigos. Nunca definí uno y aun así el
+reporte dependía de eso.
+
+Ofreció cambiar los datos de la tabla para que encajaran con el código. **No se hizo, y por una
+razón:** doblar los datos deja el problema de fondo intacto —el mapeo seguiría siendo implícito— y
+el próximo concepto que cargue volvería a caer mal. El problema no era el mapa: era que estaba
+escondido.
+
+**Solución: `TipoRetencionTabaco.columna_fet`.** Cada concepto declara a qué columna aporta. Se ve
+en la pestaña de Configuración, se edita desde el ABM, y un concepto nuevo se asigna a propósito.
+Vacío significa «Otras retenciones», que es una columna real de la planilla y no un error.
+
+La migración de datos `0007_sembrar_columna_fet` lo dejó cargado de una vez, deduciendo primero
+por `tipo_base` —que es estructural: sólo la retención de IVA se calcula sobre el IVA y sólo
+Ganancias sobre el acumulado mensual— y después por palabra clave para las tres que comparten base
+`NETO`. **El usuario no tuvo que tocar nada.** Verificado sobre la base real:
+
+| Código cargado | Base | Columna FET asignada |
+|---|---|---|
+| `RET-IVA` | IVA | Ret. IVA |
+| `RET-GCIAS` | ACUM_MENSUAL | Ret. Ganancias |
+| `EEAOC` | NETO | EEAOC |
+| `SALUD PUBLICA` | NETO | Salud Pública |
+| `USO AGUA` | NETO | Uso de Agua |
+
+La deducción sobrevive en `services/reportes.py::_deducir_columna()` como **red**, no como camino
+principal: cubre lo que entre por una importación sin pasar por el ABM.
+
+> **Costo consciente:** esto rompe la propiedad «la Etapa 6 no genera migraciones». Se aceptó
+> porque la alternativa era dejar una declaración legal apoyada en una heurística.
+
+#### 3. Toda liquidación de tabaco es fiscal — `condic = 1`
+
+**Decisión del usuario:** *"Todas las liquidaciones son fiscales y por lo tanto condic = 1."*
+
+Eso convertía el combo del alta de romaneo en una trampa: un romaneo cargado por error como
+Presupuestado **desaparecería en silencio de la planilla FET**, que es una declaración legal.
+
+- `forms_romaneo.py::AbrirRomaneoForm.condic` → `HiddenInput` con `initial=1`.
+- `templates/agricola/romaneo/nuevo.html` → muestra «Real / Fiscal — toda liquidación de tabaco lo
+  es», sin combo.
+
+El campo sigue en el modelo, lo hereda el asiento (regla inflexible del proyecto) y los listados
+conservan el filtro de condición.
+
+#### 4. CSV sin separador de miles
+
+Confirmado por el usuario, sin cambios. Ya estaba fijado por
+`test_el_csv_lleva_numeros_crudos_y_no_formato_argentino`.
+
+#### Archivos modificados
+
+- `verticalidades/agricola/tabaco/models.py` — campo `columna_fet`; documentación de `adicional`.
+- `verticalidades/agricola/tabaco/migrations/0006_columna_fet.py` [NEW] y
+  `0007_sembrar_columna_fet.py` [NEW].
+- `verticalidades/agricola/tabaco/services/reportes.py` — `columna_de()` lee el maestro;
+  `_deducir_columna()` queda como red.
+- `verticalidades/agricola/tabaco/forms.py` — `columna_fet` en el ABM de retenciones.
+- `verticalidades/agricola/tabaco/forms_romaneo.py` — `condic` y `adicional` ocultos.
+- `templates/agricola/partials/retencion_table_rows.html` y
+  `templates/configuracion/partials/agro_retenciones.html` — columna «Col. FET» visible.
+- `templates/agricola/romaneo/nuevo.html` y `carga.html`.
+- `tests/test_plan087_reportes.py` — clase `DecisionesCerradasTests`, 5 tests nuevos.
+- `docs/agricola/plan inicial agricola.md` — DA-05 cerrada; `condic` y `columna_fet` documentadas.
+- `docs/planes/087_agricola_etapa6_reportes.md` — §7.2 reescrita, §8 con las decisiones cerradas.
+
+#### Estado y siguiente paso acordado
+
+El usuario eligió seguir por **la deuda técnica preexistente** (los 13 errores del baseline),
+empezando por la violación del Modo Enchufe. Análisis ya iniciado:
+
+- **Módulo-nivel, fatales al desenchufar:**
+  `facturacion/services/facturacion_lote_service.py:7` y `facturacion/views_estudio.py:9`
+  importan `verticalidades.estudio.models` en el encabezado, sin `try/except`.
+  `verticalidades/estudio/urls.py` importa a su vez `facturacion.views_estudio`, o sea que la
+  dependencia va **core → verticalidad**, al revés del Plan 075.
+- **Ya resueltos con `try/except`** (patrón correcto, sirve de referencia):
+  `facturacion/views_htmx.py:8-20`.
+- **Dentro de funciones** (aceptable): `facturacion/helpers.py`, `core/services/numeracion.py`,
+  `core/views_config.py`.
+
+Queda pendiente decidir dónde vive `FacturacionLoteService` y `views_estudio`: lo natural es
+moverlos a `verticalidades/estudio/`, que es de quien son.
