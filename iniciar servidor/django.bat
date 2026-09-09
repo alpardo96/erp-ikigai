@@ -25,9 +25,9 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo [OK] Sistema verificado.
-echo [INFO] Iniciando servidor en http://127.0.0.1:8001
+echo [INFO] Iniciando servidor en http://127.0.0.1:8000
 echo.
-"%PYTHON_EXE%" manage.py runserver 0.0.0.0:8001
+"%PYTHON_EXE%" manage.py runserver 0.0.0.0:8000
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [ERROR] El servidor se cerro inesperadamente.

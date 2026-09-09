@@ -1031,15 +1031,21 @@ class ReservaArmaListView(LoginRequiredMixin, ListView):
     """
     Listado y panel de control de Reservas de Armas sujetas a trámite SIGIMAC.
     Permite auditar el estado de los trámites (Pendientes, Aplicadas, Devueltas).
+    Soporta búsqueda multi-criterio y refrescos reactivos HTMX.
     """
     template_name = 'armeria/reservas_list.html'
     context_object_name = 'reservas'
+
+    def get_template_names(self):
+        if self.request.headers.get('HX-Request') or self.request.META.get('HTTP_HX_REQUEST'):
+            return ["armeria/partials/reservas_tabla_parcial.html"]
+        return super().get_template_names()
 
     def get_queryset(self):
         empresa_id = self.request.session.get('empresa_id')
         from verticalidades.armeria.models import ReservaArma
         qs = ReservaArma.objects.filter(empresa_id=empresa_id).select_related(
-            'cliente', 'producto', 'recibo_reserva', 'venta_aplicada', 'orden_pago_devolucion', 'sucursal'
+            'cliente', 'producto', 'recibo_reserva', 'venta_aplicada', 'venta_aplicada__tipo', 'orden_pago_devolucion', 'sucursal', 'preventa'
         )
 
         estado = self.request.GET.get('estado')
@@ -1048,11 +1054,39 @@ class ReservaArmaListView(LoginRequiredMixin, ListView):
 
         q = self.request.GET.get('q', '').strip()
         if q:
-            qs = qs.filter(
-                Q(cliente__razon_social__icontains=q) |
-                Q(producto__detalle__icontains=q) |
-                Q(recibo_reserva__numero__icontains=q)
-            )
+            terms = q.split()
+            for term in terms:
+                term_clean = term.strip()
+                if not term_clean:
+                    continue
+                term_q = (
+                    # Búsqueda por Cliente (completo)
+                    Q(cliente__razon_social__icontains=term_clean) |
+                    Q(cliente__cuit__icontains=term_clean) |
+                    Q(cliente__telefono__icontains=term_clean) |
+                    Q(cliente__correo__icontains=term_clean) |
+                    Q(cliente__domicilio__icontains=term_clean) |
+                    Q(cliente__contacto__icontains=term_clean) |
+                    # Búsqueda por Producto y Subproducto (serie, CUIM, códigos)
+                    Q(producto__detalle__icontains=term_clean) |
+                    Q(producto__cod_prov__icontains=term_clean) |
+                    Q(producto__cod_fab__icontains=term_clean) |
+                    Q(producto__subproductos__serie__icontains=term_clean) |
+                    Q(producto__subproductos__cuim__icontains=term_clean) |
+                    # Búsqueda por Recibo y Observaciones
+                    Q(recibo_reserva__numero__icontains=term_clean) |
+                    Q(recibo_reserva__observaciones__icontains=term_clean) |
+                    Q(observaciones__icontains=term_clean)
+                )
+
+                num_part = term_clean.lstrip('#')
+                if num_part.isdigit():
+                    num_val = int(num_part)
+                    term_q |= Q(id=num_val) | Q(preventa__preventa_id=num_val) | Q(recibo_reserva__numero=num_val)
+
+                qs = qs.filter(term_q)
+
+            qs = qs.distinct()
 
         f_desde = self.request.GET.get('desde')
         f_hasta = self.request.GET.get('hasta')

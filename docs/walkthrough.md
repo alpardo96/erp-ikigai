@@ -2,6 +2,14 @@
 
 ## Antigravity
 - **Fecha/Día**: 09 de Septiembre de 2026
+- **Objetivo o Tarea**: Soporte de CSRF para accesos externos dinámicos mediante túneles de Cloudflare (`trycloudflare.com`).
+- **Archivos creados o modificados**: `config/settings.py` [MODIFY], `.env` [MODIFY].
+- **Detalle Técnico e implicaciones**: Se incorporó la lectura y parseo de `CSRF_TRUSTED_ORIGINS` desde el `.env` en `settings.py`. Para tolerar las URLs cambiantes de Cloudflare Quick Tunnels, se configuró el wildcard `https://*.trycloudflare.com`, que permite a Django validar cualquier subdominio temporal generado sin tener que actualizar manualmente el archivo en cada reinicio del túnel.
+- **Resultado de las pruebas**: Configuración aplicada y validada sintácticamente.
+- **Estado actual y siguientes pasos sugeridos**: Reiniciar el servidor de desarrollo de Django para que tome los cambios de `settings.py` y `.env`.
+
+## Antigravity
+- **Fecha/Día**: 09 de Septiembre de 2026
 - **Objetivo o Tarea**: Corrección del comportamiento del menú lateral (sidebar) para que la sección de Ventas permanezca abierta al navegar a Reservas SIGIMAC (`/reservas/sigimac/`).
 - **Archivos creados o modificados**: `templates/base.html` [MODIFY].
 - **Detalle Técnico e implicaciones**: Se añadió la condición `window.location.pathname.startsWith('/reservas/')` al directivo `x-data="{ open: ... }"` del acordeón de Ventas en `base.html` utilizando Alpine.js. Esto permite que el menú se mantenga expandido, proporcionando feedback visual y continuidad en la navegación para el usuario al acceder a las rutas de reservas. No hay implicaciones en base de datos.
@@ -4860,3 +4868,57 @@ empezando por la violación del Modo Enchufe. Análisis ya iniciado:
 
 Queda pendiente decidir dónde vive `FacturacionLoteService` y `views_estudio`: lo natural es
 moverlos a `verticalidades/estudio/`, que es de quien son.
+
+---
+
+## 2026-09-09 — Cristian - PC CASA
+
+### Mejoras y Correcciones en Panel de Reservas SIGIMAC (Plan 088)
+
+**Objetivo:**
+1. Implementar búsqueda inteligente multi-criterio y en tiempo real (autocompletado/filtrado dinámico con HTMX y debounce) que busque por Cliente completo (razón social, CUIT, teléfono, correo, etc.), Producto y Subproducto (detalle, serie, CUIM, código de proveedor, código de fábrica), Recibo de seña e IDs de Reserva/Preventa.
+2. Corregir el corte de texto inferior en el selector de Estado SIGIMAC.
+3. Rediseñar y corregir la visualización colapsada ("manchones") de los botones de filtrar y reiniciar en el panel de reservas.
+
+**Archivos creados o modificados:**
+- `verticalidades/armeria/views.py` (modificado): Manejo de solicitudes HTMX en `get_template_names()`, consulta inteligente multi-token para `q` filtrando sobre Cliente, Producto, Subproductos (serie/CUIM), Recibo y números de comprobante/reserva, y aplicación de `.distinct()`.
+- `verticalidades/armeria/templates/armeria/reservas_list.html` (modificado): Rediseño del formulario con triggers HTMX (`input delay:300ms`, `change`), indicador spinner de carga animado, select de Estado SIGIMAC estilizado sin recortes (`h-10 px-3 py-2 text-xs font-semibold rounded-xl`), y botones de Filtrar y Reiniciar con espaciado amplio, iconos claros, tooltips y etiquetas responsivas.
+- `verticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html` (creado): Parcial con la tabla de reservas y tarjetas de resumen métricas para actualización reactiva instantánea por HTMX.
+- `verticalidades/armeria/tests.py` (creado): Suite de pruebas unitarias cubriendo listado completo, respuesta parcial HTMX, búsqueda por cliente, producto/subproducto (serie/CUIM), recibo y filtros por estado.
+- `docs/planes/088_mejoras_reservas_sigimac.md` (creado): Plan formal archivado.
+
+**Detalle Técnico:**
+- La búsqueda inteligente divide los términos ingresados por espacios y aplica filtros combinados `AND` entre términos y `OR` entre los campos correspondientes a Cliente, Producto, Subproducto, Recibo y número de preventa/reserva.
+- Se configuró `hx-trigger="input changed delay:300ms, search"` en el input de búsqueda y `hx-trigger="change"` en los selectores de estado y fechas, permitiendo un filtrado reactivo y fluido sin necesidad de pulsar Enter o hacer click en botones (manteniendo además los botones accesibles y estéticos para submit tradicional).
+- Ajuste UI: Se tomó como referencia exacta la barra de filtros de `compras_listado.html` con contenedor `flex flex-wrap items-end gap-3`, campos de fecha compactos (`w-32`), y botones con texto legible y visible ("Filtrar" y "Limpiar").
+- Se corrigió la duplicación de los globos/tarjetas de resumen al incluir el parcial en la carga estática inicial.
+- Se ajustó el selector de Estado SIGIMAC con `py-1 px-2.5 text-xs font-bold leading-normal` para evitar el clipping vertical del texto en Windows/Chromium.
+
+**Estado actual y siguientes pasos:**
+## 2026-09-09 — Cristian - PC CASA
+
+### Búsqueda Inteligente Multi-Término de Productos en Preventa y Ventas (Plan 089)
+
+**Objetivo:**
+Hacer más inteligente la búsqueda de productos en la carga de preventa, autocompletado y catálogo general, permitiendo concatenar palabras clave en cualquier orden (hacia adelante, atrás o en el medio) y buscando a través de múltiples atributos (detalle, código de fábrica, código de proveedor, código anterior VFP, marca, rubro, familia e ID), con ordenamiento jerárquico por relevancia y límite optimizado de hasta 100 registros por consulta.
+
+**Archivos creados o modificados:**
+- `productos/services/busqueda_service.py` [NEW]: Motor centralizado de búsqueda inteligente de productos con tokenización (`q.split()`), condiciones `AND` por término y `OR` multi-campo, priorización por `Case/When` (coincidencias exactas primero, inicio de texto, subcadena y términos combinados) y soporte multi-tenant.
+- `facturacion/views_htmx.py` [MODIFY]: Integración del servicio en `typeahead_productos_venta` (preventa/ventas rápidas), `buscar_producto_venta_por_codigo` (Enter directo con fallback inteligente), `lista_productos_venta_resultados` (modal de ventas con límite de 100 registros), `typeahead_productos_compra` y `lista_productos_resultados` (modal de compras con límite de 100 registros).
+- `productos/views_htmx.py` [MODIFY]: Integración en `buscar_productos` para el catálogo general con límite de 100 registros.
+- `productos/tests/test_busqueda_inteligente.py` [NEW]: Suite de pruebas unitarias cubriendo palabras en orden invertido, intercaladas, búsqueda por marca/códigos anteriores, relevancia exacta, aislamiento multi-tenant y endpoints HTMX.
+- `docs/planes/089_busqueda_inteligente_productos.md` [NEW]: Plan de implementación archivado.
+- `docs/walkthrough.md` [MODIFY]: Registro de bitácora acumulativa.
+
+**Detalle Técnico:**
+- **Tokenización Multi-Término:** Se descomponen las consultas en palabras individuales permitiendo que términos como `"9mm bersa"` o `"tpr9 pavonada"` localicen de inmediato `"PISTOLA BERSA TPR9 CALIBRE 9X19MM PAVONADA"`.
+- **Búsqueda Multi-Atributo:** Cada término busca simultáneamente en `detalle`, `cod_fab`, `cod_prov`, `codigo_anterior`, `marca__detalle`, `rubro__detalle`, `familia__detalle` e `id` (si es numérico).
+- **Priorización de Relevancia:** Se utiliza una expresión `Case(When(...))` en Django ORM para asignar orden prioritario a coincidencias exactas de código/ID (peso 1 o 2), coincidencias al inicio del detalle (peso 3), frases completas (peso 4) y coincidencias compuestas (peso 6), manteniendo respuestas ágiles y precisas.
+- **Capacidad de Resultados:** Se amplió el límite de resultados para vistas de catálogo y modales de 50 a 100 registros para mayor comodidad del operador sin penalizar la velocidad de la base de datos.
+
+**Resultado de las pruebas:**
+- Se crearon pruebas unitarias integrales en `productos/tests/test_busqueda_inteligente.py`.
+
+**Estado actual y siguientes pasos:**
+- Motor de búsqueda inteligente completamente operativo en la carga de preventa, ventas, compras y catálogo general.
+- Siguientes pasos: Continuar con la hoja de ruta del proyecto o nuevas tareas solicitadas.

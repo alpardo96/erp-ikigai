@@ -1,0 +1,143 @@
+{% load l10n formato_tags %}
+
+{% if request.headers.HX_Request or request.META.HTTP_HX_REQUEST %}
+<div id="tarjetas-resumen-container" hx-swap-oob="outerHTML:#tarjetas-resumen-container" class="flex flex-wrap gap-3">
+    <div class="px-4 py-2 bg-amber-50 rounded-xl border border-amber-200 shadow-xs">
+        <p class="text-[9px] font-black text-amber-800 uppercase tracking-widest">Pendientes SIGIMAC</p>
+        <div class="flex items-baseline gap-2">
+            <p class="text-lg font-black text-amber-900">{{ resumen.pendientes_count|default:0 }}</p>
+            <p class="text-xs font-bold text-amber-700">($ {{ resumen.pendientes_monto|default:0|formato_ar }})</p>
+        </div>
+    </div>
+    <div class="px-4 py-2 bg-emerald-50 rounded-xl border border-emerald-200 shadow-xs">
+        <p class="text-[9px] font-black text-emerald-800 uppercase tracking-widest">Facturadas / Aplicadas</p>
+        <p class="text-lg font-black text-emerald-900">{{ resumen.aplicadas_count|default:0 }}</p>
+    </div>
+    <div class="px-4 py-2 bg-red-50 rounded-xl border border-red-200 shadow-xs">
+        <p class="text-[9px] font-black text-red-800 uppercase tracking-widest">Devueltas / Anuladas</p>
+        <p class="text-lg font-black text-red-900">{{ resumen.devueltas_count|default:0 }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- TABLA DE RESERVAS -->
+<div id="tabla-reservas-container" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider sticky top-0">
+                <tr>
+                    <th class="px-3.5 py-3">ID / Fecha</th>
+                    <th class="px-3.5 py-3">Cliente</th>
+                    <th class="px-3.5 py-3">Producto Reservado</th>
+                    <th class="px-3.5 py-3">Recibo Seña</th>
+                    <th class="px-3.5 py-3 text-right">Seña Cobrada</th>
+                    <th class="px-3.5 py-3 text-right">Total Preventa</th>
+                    <th class="px-3.5 py-3 text-center">Estado</th>
+                    <th class="px-3.5 py-3">Resolución / Comprobante</th>
+                    <th class="px-3.5 py-3 text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-xs">
+                {% for r in reservas %}
+                <tr class="hover:bg-slate-50/90 transition-colors {% if r.estado == 'PENDIENTE' %}bg-amber-50/20{% endif %}">
+                    <td class="px-3.5 py-3">
+                        <span class="font-black text-slate-900">#{{ r.id }}</span>
+                        <span class="block text-[10px] text-slate-500 font-semibold">{{ r.fecha_reserva|date:"d/m/Y" }}</span>
+                        {% if r.preventa %}
+                        <span class="inline-block mt-0.5 px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[9px] font-bold">Prev #{{ r.preventa.preventa_id }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3.5 py-3">
+                        <span class="font-bold text-slate-900 uppercase block">{{ r.cliente.razon_social }}</span>
+                        <div class="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                            <span><strong class="text-slate-600">CUIT/DNI:</strong> {{ r.cliente.cuit|default:"-" }}</span>
+                            {% if r.cliente.telefono %}
+                            <span>• <i class="fa-solid fa-phone text-slate-400 text-[9px]"></i> {{ r.cliente.telefono }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-3.5 py-3">
+                        <span class="font-bold text-slate-800 uppercase block">{{ r.producto.detalle }}</span>
+                        <div class="flex items-center gap-2 text-[10px] mt-0.5">
+                            <span class="text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                Cód: {{ r.producto.cod_prov|default:r.producto.id }}
+                            </span>
+                            {% if r.producto.cod_fab %}
+                            <span class="text-slate-500 font-medium">Fáb: {{ r.producto.cod_fab }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="px-3.5 py-3 font-semibold text-slate-700">
+                        <div class="flex items-center gap-1.5 font-bold text-slate-800">
+                            <i class="fa-solid fa-receipt text-slate-400"></i>
+                            RC #{{ r.recibo_reserva.numero|stringformat:"08d" }}
+                        </div>
+                        <span class="block text-[10px] text-slate-400 mt-0.5">{{ r.recibo_reserva.fecha|date:"d/m/Y" }}</span>
+                    </td>
+                    <td class="px-3.5 py-3 text-right font-black text-emerald-600 text-sm">
+                        $ {{ r.monto_reservado|formato_ar }}
+                    </td>
+                    <td class="px-3.5 py-3 text-right font-black text-slate-700 text-sm">
+                        $ {{ r.monto_total|formato_ar }}
+                    </td>
+                    <td class="px-3.5 py-3 text-center">
+                        {% if r.estado == 'PENDIENTE' %}
+                            <span class="px-2.5 py-1 bg-amber-100 text-amber-900 border border-amber-300/80 rounded-full text-[10px] font-black uppercase tracking-wide inline-flex items-center gap-1.5 shadow-2xs">
+                                <i class="fa-solid fa-hourglass-half text-amber-600 animate-pulse"></i> Pendiente SIGIMAC
+                            </span>
+                        {% elif r.estado == 'APLICADA' %}
+                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300/80 rounded-full text-[10px] font-black uppercase tracking-wide inline-flex items-center gap-1.5 shadow-2xs">
+                                <i class="fa-solid fa-check text-emerald-600"></i> Facturada
+                            </span>
+                        {% else %}
+                            <span class="px-2.5 py-1 bg-rose-100 text-rose-900 border border-rose-300/80 rounded-full text-[10px] font-black uppercase tracking-wide inline-flex items-center gap-1.5 shadow-2xs">
+                                <i class="fa-solid fa-ban text-rose-600"></i> Anulada / Devuelta
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3.5 py-3 text-xs font-medium text-slate-600">
+                        {% if r.estado == 'APLICADA' and r.venta_aplicada %}
+                            <span class="text-emerald-700 font-bold block">Factura {{ r.venta_aplicada.tipo.detalle }} #{{ r.venta_aplicada.numero }}</span>
+                            <span class="text-[10px] text-slate-400 block">{{ r.fecha_resolucion|date:"d/m/Y" }}</span>
+                        {% elif r.estado == 'DEVUELTA' and r.orden_pago_devolucion %}
+                            <span class="text-rose-700 font-bold block">OP Devolución #{{ r.orden_pago_devolucion.numero }}</span>
+                            <span class="text-[10px] text-slate-400 block">{{ r.fecha_resolucion|date:"d/m/Y" }}</span>
+                        {% else %}
+                            <span class="text-slate-400 italic font-normal">En trámite...</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-3.5 py-3 text-center">
+                        {% if r.estado == 'PENDIENTE' %}
+                        <div class="flex items-center justify-center gap-2">
+                            <a href="{% url 'ventas_trazabilidad_carga' %}" title="Facturar por Trazabilidad (Trámite Aprobado)"
+                               class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm hover:shadow flex items-center gap-1.5 active:scale-95">
+                                <i class="fa-solid fa-file-invoice"></i> Facturar
+                            </a>
+                            <button hx-get="{% url 'armeria_reserva_anular_modal' r.id %}"
+                                    hx-target="#modal-container"
+                                    hx-swap="innerHTML"
+                                    title="Anular y Devolver Seña (Trámite Denegado)"
+                                    class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-xs flex items-center gap-1.5 active:scale-95">
+                                <i class="fa-solid fa-rotate-left"></i> Anular / Devolver
+                            </button>
+                        </div>
+                        {% else %}
+                        <span class="text-[10px] text-slate-400 font-black uppercase tracking-wider bg-slate-100 px-2.5 py-1 rounded-md">Cerrada</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="px-4 py-16 text-center text-slate-400">
+                        <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-100 text-slate-400 mb-3 shadow-inner">
+                            <i class="fa-solid fa-shield-halved text-2xl"></i>
+                        </div>
+                        <p class="text-sm font-bold text-slate-700">No se encontraron reservas de armas</p>
+                        <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Pruebe ajustando el texto de búsqueda o los filtros de estado y fechas.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

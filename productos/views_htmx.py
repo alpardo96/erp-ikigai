@@ -3,6 +3,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from .models import Producto, Marca, Rubro, Familia
 from .forms import ProductoForm, MarcaForm, RubroForm, FamiliaForm
+from .services.busqueda_service import buscar_productos_inteligente
 from empresas.models import Empresa
 
 def producto_modal(request, id=None):
@@ -65,18 +66,9 @@ def buscar_productos(request):
         return HttpResponse("<tr><td colspan='100%' class='text-center p-4 text-red-500'>Debe seleccionar una empresa</td></tr>")
 
     q = request.GET.get('q', '').strip()
-    productos = Producto.objects.filter(empresa_id=empresa_id)
+    productos = buscar_productos_inteligente(q=q, empresa_id=empresa_id, limit=100)
 
-    if q:
-        from django.db.models import Q
-        query = Q(detalle__icontains=q) | Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(codigo_anterior__icontains=q)
-        if q.isdigit():
-            query |= Q(id=q)
-        productos = productos.filter(query)
-
-    productos = productos.order_by('detalle')
-
-    return render(request, 'productos/partials/producto_list.html', {'productos': productos[:50]})
+    return render(request, 'productos/partials/producto_list.html', {'productos': productos})
 
 def eliminar_producto(request, id):
     empresa_id = request.session.get('empresa_id')

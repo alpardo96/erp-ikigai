@@ -32,6 +32,10 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG')
 ALLOWED_HOSTS = ['*']
 
+csrf_trusted = os.getenv('CSRF_TRUSTED_ORIGINS')
+if csrf_trusted:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in csrf_trusted.split(',') if origin.strip()]
+
 # Aplicaciones instaladas
 INSTALLED_APPS = [
     'django.contrib.admin',

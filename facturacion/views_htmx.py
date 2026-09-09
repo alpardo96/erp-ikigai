@@ -399,6 +399,7 @@ def eliminar_cliente(request, id):
     return HttpResponse(status=400)
 
 from productos.models import Producto, StockSucursal
+from productos.services.busqueda_service import buscar_productos_inteligente, construir_filtro_busqueda_producto
 from empresas.models import Sucursal
 from django.db.models import Q
 
@@ -532,14 +533,22 @@ def lista_productos_resultados(request):
     if f_prov_hab:
         filtros &= Q(proveedor__razon_social__icontains=f_prov_hab)
     if f_det:
-        filtros &= Q(detalle__icontains=f_det)
+        terminos = [t for t in f_det.split() if t]
+        for term in terminos:
+            filtros &= (
+                Q(detalle__icontains=term) |
+                Q(cod_fab__icontains=term) |
+                Q(cod_prov__icontains=term) |
+                Q(codigo_anterior__icontains=term) |
+                Q(marca__detalle__icontains=term)
+            )
     if request.GET.get('solo_trazables') == '1':
         filtros &= Q(subprod=True)
 
     # Multi-tenant: SIEMPRE acotado a la empresa activa.
     productos = list(Producto.objects.filter(
         filtros, empresa_id=request.session.get('empresa_id')
-    ).select_related('proveedor').order_by('detalle')[:50])
+    ).select_related('proveedor').order_by('detalle')[:100])
 
     items_temp = request.session.get('compra_items_temp', [])
     ids_cargados = [str(item['producto_id']) for item in items_temp]
@@ -919,12 +928,20 @@ def buscar_producto_venta_por_codigo(request):
         except CotizacionMoneda.DoesNotExist:
             pass
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa y excluyendo subproductos.
+    # Multi-tenant: SIEMPRE acotado a la empresa activa.
+    # Primero intentar coincidencia exacta por ID, cod_prov, cod_fab o codigo_anterior
     producto = Producto.objects.filter(
-        Q(id__iexact=q) | Q(cod_prov__iexact=q) | Q(cod_fab__iexact=q),
-        empresa_id=request.session.get('empresa_id'),
-        subprod=False
+        Q(id__iexact=q) | Q(cod_prov__iexact=q) | Q(cod_fab__iexact=q) | Q(codigo_anterior__iexact=q),
+        empresa_id=empresa_id,
     ).first()
+
+    # Si no hubo match exacto, buscar el resultado más relevante de la búsqueda inteligente
+    if not producto:
+        producto = buscar_productos_inteligente(
+            q=q,
+            empresa_id=empresa_id,
+            limit=1
+        ).first()
 
     if producto:
         # Buscamos stock en sucursal
@@ -938,7 +955,8 @@ def buscar_producto_venta_por_codigo(request):
             'detalle': producto.detalle.upper(),
             'precio_sugerido': float(precio_sug),
             'stock': stock_actual,
-            'requiere_credencial': bool(producto.creden)
+            'requiere_credencial': bool(producto.creden),
+            'subprod': bool(producto.subprod)
         }
         response = HttpResponse()
         response['HX-Trigger'] = json.dumps({'productoVentaEncontrado': data})
@@ -949,26 +967,33 @@ def buscar_producto_venta_por_codigo(request):
 @login_required
 def lista_productos_venta_resultados(request):
     """
-    Filtra productos para venta con stock.
+    Filtra productos para venta con stock y búsqueda inteligente multi-término.
     """
     f_id = request.GET.get('f_id', '').strip()
     f_fab = request.GET.get('f_fab', '').strip()
     f_det = request.GET.get('f_det', '').strip()
     sucursal_id = request.session.get('sucursal_id')
+    empresa_id = request.session.get('empresa_id')
 
-    filtros = Q()
+    if f_det:
+        productos_qs, _ = construir_filtro_busqueda_producto(
+            q=f_det,
+            empresa_id=empresa_id,
+            excluir_subprod=False
+        )
+    else:
+        productos_qs = Producto.objects.filter(empresa_id=empresa_id).order_by('detalle')
+
     if f_id:
         if f_id.isdigit():
-            filtros &= Q(id=f_id)
+            productos_qs = productos_qs.filter(id=int(f_id))
         else:
-            filtros &= Q(id=-1)
-    if f_fab: filtros &= Q(cod_fab__icontains=f_fab)
-    if f_det: filtros &= Q(detalle__icontains=f_det)
+            productos_qs = productos_qs.none()
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa y excluyendo subproductos.
-    productos_qs = Producto.objects.filter(
-        filtros, empresa_id=request.session.get('empresa_id'), subprod=False
-    ).order_by('detalle')[:50]
+    if f_fab:
+        productos_qs = productos_qs.filter(cod_fab__icontains=f_fab)
+
+    productos_qs = productos_qs.prefetch_related('existencias')[:100]
 
     # Obtener cotizacion actual
     from empresas.models import CotizacionMoneda
@@ -1857,42 +1882,22 @@ def typeahead_clientes(request):
 @login_required
 def typeahead_productos_venta(request):
     """
-    Autocompletado inline de Productos para Venta (con stock)
+    Autocompletado inline de Productos para Venta (con stock y búsqueda inteligente multi-término)
     """
     q = request.GET.get('q', '').strip()
     sucursal_id = request.session.get('sucursal_id')
+    empresa_id = request.session.get('empresa_id')
+    solo_trazabilidad = request.GET.get('solo_trazabilidad') == '1'
 
-    filtros = Q()
-    if q:
-        if q.isdigit():
-            filtros &= (Q(id=q) | Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-        else:
-            filtros &= (Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-
-    solo_trazabilidad = request.GET.get('solo_trazabilidad')
-    
-    if solo_trazabilidad == '1':
-        productos_qs = Producto.objects.filter(
-            filtros, empresa_id=request.session.get('empresa_id')
-        )
-        from django.db.models import Exists, OuterRef
-        from productos.models import Subproducto
-        subproductos_con_prod = Subproducto.objects.filter(
-            empresa_id=request.session.get('empresa_id'),
-            producto_id=OuterRef('pk')
-        )
-        productos_qs = productos_qs.annotate(en_trazabilidad=Exists(subproductos_con_prod)).filter(en_trazabilidad=True)
-    else:
-        # Multi-tenant: SIEMPRE acotado a la empresa activa.
-        # Ahora se permite visualizar subprod=True para que el vendedor pueda generar la preventa de reserva de armas (SIGIMAC).
-        productos_qs = Producto.objects.filter(
-            filtros, empresa_id=request.session.get('empresa_id')
-        )
-        
-    productos_qs = productos_qs.order_by('detalle')[:20]
+    productos_qs = buscar_productos_inteligente(
+        q=q,
+        empresa_id=empresa_id,
+        solo_trazabilidad=solo_trazabilidad,
+        excluir_subprod=False,
+        limit=100
+    )
 
     from empresas.models import CotizacionMoneda
-    empresa_id = request.session.get('empresa_id')
     cotizacion = 1.0
     if empresa_id:
         try:
@@ -1928,23 +1933,19 @@ def typeahead_productos_venta(request):
 @login_required
 def typeahead_productos_compra(request):
     """
-    Autocompletado inline de Productos para Compras
+    Autocompletado inline de Productos para Compras (con búsqueda inteligente multi-término)
     """
     q = request.GET.get('q', '').strip()
+    solo_trazables = request.GET.get('solo_trazables') == '1'
+    empresa_id = request.session.get('empresa_id')
 
-    filtros = Q()
-    if q:
-        if q.isdigit():
-            filtros &= (Q(id=q) | Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-        else:
-            filtros &= (Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-    if request.GET.get('solo_trazables') == '1':
-        filtros &= Q(subprod=True)
-
-    # Multi-tenant: SIEMPRE acotado a la empresa activa.
-    productos = Producto.objects.filter(
-        filtros, empresa_id=request.session.get('empresa_id')
-    ).order_by('detalle')[:20]
+    productos = buscar_productos_inteligente(
+        q=q,
+        empresa_id=empresa_id,
+        limit=100
+    )
+    if solo_trazables:
+        productos = productos.filter(subprod=True)
 
     return render(request, 'facturacion/partials/productos_compra_typeahead.html', {
         'productos': productos,
