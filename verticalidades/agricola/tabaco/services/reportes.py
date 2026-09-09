@@ -79,7 +79,9 @@ def columna_de(tipo_retencion, codigo='', detalle='', tipo_base=''):
         return declarada
 
     base = tipo_base or (getattr(tipo_retencion, 'tipo_base', '') if tipo_retencion else '')
-    return _deducir_columna(codigo, detalle, base)
+    cod = codigo or (getattr(tipo_retencion, 'codigo', '') if tipo_retencion else '')
+    det = detalle or (getattr(tipo_retencion, 'detalle', '') if tipo_retencion else '')
+    return _deducir_columna(cod, det, base)
 
 
 # ---------------------------------------------------------------------------

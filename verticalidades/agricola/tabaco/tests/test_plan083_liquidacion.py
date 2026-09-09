@@ -92,24 +92,24 @@ class LiquidacionBaseTestCase(TestCase):
         comunes = dict(empresa=self.empresa, activa=True, vigencia_desde=date(2026, 1, 1))
         T = TipoRetencionTabaco
         TipoRetencionTabaco.objects.create(
-            codigo='EEAOC', detalle='RETENCION EEAOC', tipo_base=T.NETO,
+            codigo='EEAOC', detalle='RETENCION EEAOC', tipo_base=T.NETO, columna_fet='ret_eeaoc',
             alicuota=Decimal('0.5'), momento=T.LIQUIDACION, cuenta_contable=self.cta_eeaoc,
             **comunes)
         TipoRetencionTabaco.objects.create(
-            codigo='USO AGUA', detalle='RETENCION USO DE AGUA', tipo_base=T.NETO,
+            codigo='USO AGUA', detalle='RETENCION USO DE AGUA', tipo_base=T.NETO, columna_fet='ret_agua',
             alicuota=Decimal('0.3'), momento=T.LIQUIDACION, cuenta_contable=self.cta_agua,
             **comunes)
         TipoRetencionTabaco.objects.create(
-            codigo='SALUD', detalle='RETENCION SALUD PUBLICA', tipo_base=T.NETO,
+            codigo='SALUD', detalle='RETENCION SALUD PUBLICA', tipo_base=T.NETO, columna_fet='ret_salud',
             alicuota=Decimal('1.0'), momento=T.LIQUIDACION, cuenta_contable=self.cta_salud,
             **comunes)
         self.ret_iva = TipoRetencionTabaco.objects.create(
-            codigo='RET-IVA', detalle='RETENCION IVA', tipo_base=T.IVA,
+            codigo='RET-IVA', detalle='RETENCION IVA', tipo_base=T.IVA, columna_fet='ret_iva',
             alicuota=Decimal('50.0'), momento=T.LIQUIDACION, solo_responsable_inscripto=True,
             cuenta_contable=self.cta_ret_iva, **comunes)
         # Ganancias: su momento es el PAGO. No debe aparecer en la liquidación.
         TipoRetencionTabaco.objects.create(
-            codigo='RET-GCIAS', detalle='RETENCION GANANCIAS', tipo_base=T.ACUM_MENSUAL,
+            codigo='RET-GCIAS', detalle='RETENCION GANANCIAS', tipo_base=T.ACUM_MENSUAL, columna_fet='ret_ganancias',
             alicuota=Decimal('2.0'), minimo_no_imponible=Decimal('224000'),
             momento=T.PAGO, solo_responsable_inscripto=True, regimen='78',
             cuenta_contable=self.cta_gcias, **comunes)

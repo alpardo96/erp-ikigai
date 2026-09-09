@@ -1,94 +1,128 @@
 {% extends 'base.html' %}
 {% load formato_tags %}
 
-{% block title %}Romaneo — Carga de fardos{% endblock %}
+{% block title %}Carga de Fardos — Romaneo #{{ romaneo.id }}{% endblock %}
 
 {% block content %}
-<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5"
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4 animate-in fade-in duration-300"
      x-data="{ claseId: '', claseDetalle: '', sugerencias: false }">
 
-    <div class="flex items-start justify-between">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900">Romaneo en borrador</h1>
-            <p class="text-sm text-gray-500 mt-1">
-                {{ romaneo.productor.razon_social }} · {{ romaneo.variedad.detalle }} ·
-                Campaña {{ romaneo.campania.codigo }} · {{ romaneo.fecha|date:"d/m/Y" }}
-            </p>
-            <p class="text-xs text-gray-400 mt-1">
-                Ponderante congelado: <strong>$ {{ romaneo.ponderante_aplicado|formato_ar }}</strong>
-                — el precio de cada fardo sale de este valor, no del vigente hoy.
-            </p>
+    <!-- TITULO Y USUARIO (Estilo Compras Carga) -->
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+                Carga de Fardos — Romaneo en Borrador
+            </h1>
+            <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                OPERADOR: {{ user.username }}
+            </span>
         </div>
-        <div class="flex items-center gap-2">
-            <a href="{% url 'agro_romaneo_listado' %}"
-               class="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Volver</a>
+        <div class="flex items-center gap-3">
             <button hx-post="{% url 'agro_romaneo_confirmar' romaneo.id %}"
                     hx-target="#panel-fardos" hx-swap="outerHTML"
-                    hx-confirm="Al confirmar se asigna el número y el romaneo queda cerrado a edición. ¿Confirmar?"
-                    class="px-6 py-2.5 text-sm font-bold text-white bg-lime-600 hover:bg-lime-700 rounded-xl shadow-lg transition-transform active:scale-95">
-                Confirmar romaneo
+                    hx-confirm="Al confirmar se asigna el número oficial y el romaneo queda bloqueado para edición. ¿Confirmar?"
+                    class="px-5 py-1.5 text-xs font-black uppercase tracking-wider text-white bg-lime-600 hover:bg-lime-700 rounded-lg shadow transition-all active:scale-95 flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Confirmar Romaneo
             </button>
+            <a href="{% url 'agro_romaneo_listado' %}" class="text-slate-400 hover:text-red-600 transition-colors" title="Volver al Listado">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </a>
         </div>
     </div>
 
-    {# ---------------- Alta de fardo: typeahead de clase + kilos ---------------- #}
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <form hx-post="{% url 'agro_fardo_agregar' romaneo.id %}"
-              hx-target="#panel-fardos" hx-swap="outerHTML"
-              hx-on::after-request="if(event.detail.successful){ this.reset(); claseId=''; claseDetalle=''; document.getElementById('busca-clase').focus(); }"
-              class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-
-            <div class="md:col-span-4 relative">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Clase</label>
-                <input type="text" id="busca-clase" autocomplete="off" autofocus
-                       placeholder="Escribí la clase (B1F, C2F...)"
-                       class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                       x-model="claseDetalle"
-                       @focus="sugerencias = true"
-                       hx-get="{% url 'agro_clase_typeahead' romaneo.id %}"
-                       hx-trigger="keyup changed delay:250ms, search, focus"
-                       hx-target="#clase_suggestions"
-                       name="q">
-                <div id="clase_suggestions"
-                     x-show="sugerencias" @click.outside="sugerencias = false"
-                     class="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-y-auto"></div>
-                <input type="hidden" name="clase" x-model="claseId">
+    <!-- BLOQUE 1: CABECERA IDENTIFICACION -->
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+        <div class="bg-slate-900 px-4 py-1.5 flex justify-between items-center">
+            <h2 class="text-[10px] font-black text-white uppercase tracking-widest">01. Datos del Productor y Campaña</h2>
+            <div class="text-[10px] font-bold text-gray-400 uppercase">
+                SUCURSAL: {{ romaneo.sucursal.nombre|default:"GENERAL" }}
             </div>
-
-            <div class="md:col-span-2">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Kilos</label>
-                <input type="text" name="kilos" placeholder="0,00"
-                       class="fInputAR w-full rounded-xl border-gray-200 text-sm text-right focus:ring-indigo-500 focus:border-indigo-500"
-                       hx-get="{% url 'agro_fardo_cotizar' romaneo.id %}"
-                       hx-trigger="keyup changed delay:250ms"
-                       hx-target="#cotizacion"
-                       hx-include="[name='clase']">
+        </div>
+        <div class="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50/50">
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Productor</label>
+                <div class="text-xs font-black text-slate-900 truncate">{{ romaneo.productor.razon_social }}</div>
             </div>
-
-            <div class="md:col-span-2">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Etiqueta</label>
-                <input type="text" name="etiqueta" placeholder="Opcional"
-                       class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Variedad y Campaña</label>
+                <div class="text-xs font-black text-slate-800">{{ romaneo.variedad.detalle }} · Campaña {{ romaneo.campania.codigo }}</div>
             </div>
-
-            {# El campo `adicional` NO se dibuja: el circuito no se lo paga al productor
-               —`liq.neto` es la suma de `fardo.importe`— así que un input que se puede llenar y
-               nunca se cobra es una mentira silenciosa. El campo sigue en el modelo y en el
-               servicio, como comodín, para el día que se decida qué es y cómo se liquida. #}
-
-            <div class="md:col-span-4">
-                <button type="submit"
-                        class="w-full px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-transform active:scale-95">
-                    Agregar fardo
-                </button>
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Fecha y Condición</label>
+                <div class="text-xs font-black text-slate-800">{{ romaneo.fecha|date:"d/m/Y" }} · Fiscal (Real)</div>
             </div>
-        </form>
-
-        {# El precio lo calcula el SERVIDOR mientras se tipea. Replicarlo en JS duplicaría la
-           fórmula y tarde o temprano las dos versiones discreparían. #}
-        <div id="cotizacion" class="mt-4"></div>
+            <div>
+                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Ponderante Congelado</label>
+                <div class="text-xs font-black text-lime-700 font-mono">$ {{ romaneo.ponderante_aplicado|formato_ar }}</div>
+            </div>
+        </div>
     </div>
 
+    <!-- BLOQUE 2: CARGA DE FARDOS -->
+    <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden italic">
+        <div class="bg-slate-900 px-4 py-1.5 flex justify-between items-center">
+            <h2 class="text-[10px] font-black text-white uppercase tracking-widest">02. Ingreso de Fardo en Balanza</h2>
+            <div class="text-[10px] font-bold text-gray-400 uppercase">
+                PULSE ENTER PARA REGISTRAR
+            </div>
+        </div>
+        <div class="p-4">
+            <form hx-post="{% url 'agro_fardo_agregar' romaneo.id %}"
+                  hx-target="#panel-fardos" hx-swap="outerHTML"
+                  hx-on::after-request="if(event.detail.successful){ this.reset(); claseId=''; claseDetalle=''; document.getElementById('busca-clase').focus(); }"
+                  class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+
+                <div class="md:col-span-4 relative">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Clase de Tabaco <span class="text-red-500">*</span></label>
+                    <input type="text" id="busca-clase" autocomplete="off" autofocus
+                           placeholder="Escriba la clase (B1F, C2F...)"
+                           class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-blue-500 uppercase placeholder:text-slate-400 shadow-inner"
+                           x-model="claseDetalle"
+                           @focus="sugerencias = true"
+                           hx-get="{% url 'agro_clase_typeahead' romaneo.id %}"
+                           hx-trigger="keyup changed delay:250ms, search, focus"
+                           hx-target="#clase_suggestions"
+                           name="q">
+                    <div id="clase_suggestions"
+                         x-show="sugerencias" @click.outside="sugerencias = false"
+                         class="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-72 overflow-y-auto"
+                         style="display: none;"></div>
+                    <input type="hidden" name="clase" x-model="claseId">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Kilos en Balanza <span class="text-red-500">*</span></label>
+                    <input type="text" name="kilos" placeholder="0,00"
+                           class="fInputAR w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 text-right outline-none focus:border-blue-500 font-mono shadow-inner"
+                           hx-get="{% url 'agro_fardo_cotizar' romaneo.id %}"
+                           hx-trigger="keyup changed delay:250ms"
+                           hx-target="#cotizacion"
+                           hx-include="[name='clase']">
+                </div>
+
+                <div class="md:col-span-3">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Etiqueta / Precinto</label>
+                    <input type="text" name="etiqueta" placeholder="Código de barras opcional"
+                           class="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-blue-500 uppercase placeholder:text-slate-400 shadow-inner">
+                </div>
+
+                <div class="md:col-span-2">
+                    <button type="submit"
+                            class="w-full h-10 px-4 text-xs font-black uppercase tracking-wider text-white bg-slate-900 hover:bg-slate-800 rounded-lg shadow transition-all active:scale-95 flex items-center justify-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Agregar Fardo
+                    </button>
+                </div>
+            </form>
+
+            <div id="cotizacion" class="mt-2"></div>
+        </div>
+    </div>
+
+    <!-- BLOQUE 3: DETALLE DE FARDOS CARGADOS -->
     {% include 'agricola/romaneo/panel_fardos.html' %}
 </div>
 {% endblock %}

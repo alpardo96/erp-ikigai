@@ -1,67 +1,124 @@
 {% extends 'base.html' %}
 
-{% block title %}Lotes de Acopio{% endblock %}
+{% block title %}Lotes de Acopio de Tabaco{% endblock %}
 
 {% block content %}
-<div class="max-w-full mx-auto w-full px-4 py-2 space-y-5">
+<div class="max-w-full mx-auto w-full px-4 py-3 space-y-5">
 
-    <div class="flex items-center justify-between">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Lotes de Acopio</h1>
-            <p class="text-sm text-gray-500 mt-1">
-                Agrupación comercial de fardos ya comprados, sin perder la trazabilidad de cada uno.
+            <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">Industrialización y Venta</span>
+                <span class="text-xs font-semibold text-slate-400">Agrupación Comercial</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 mt-1 tracking-tight">Lotes de Acopio</h1>
+            <p class="text-xs font-medium text-slate-500 mt-0.5">
+                Agrupación comercial de fardos comprados para su acondicionamiento en planta o venta en bloque con trazabilidad completa.
             </p>
         </div>
         <div class="flex items-center gap-2">
+            <a href="{% url 'agro_index' %}"
+               class="inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Hub Acopio
+            </a>
             <a href="{% url 'agro_margen' %}"
-               class="inline-flex items-center px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-all font-medium">
-                Margen
+               class="inline-flex items-center px-3.5 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-xs font-bold transition-all shadow-sm">
+                Tablero de Margen
             </a>
             <a href="{% url 'agro_lote_nuevo' %}"
-               class="inline-flex items-center px-4 py-2 bg-lime-600 text-white rounded-xl hover:bg-lime-700 transition-all font-medium shadow-sm">
-                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+               class="inline-flex items-center px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 Nuevo Lote
             </a>
         </div>
     </div>
 
-    {# Todo listado con importes ofrece el filtro de condición: regla del proyecto. #}
-    <form class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 grid grid-cols-1 md:grid-cols-8 gap-4"
+    <!-- Barra de Filtros -->
+    <form class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-end gap-3"
           hx-get="{% url 'agro_lote_grilla' %}"
           hx-trigger="change, keyup changed delay:300ms from:input[name='q']"
           hx-target="#lote-rows">
-        <div class="md:col-span-2">
-            <label class="block text-xs font-semibold text-gray-500 mb-1">Buscar</label>
-            {{ filtros.q }}
+
+        <!-- Buscar -->
+        <div class="w-48">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Buscar</label>
+            <input type="text" name="q" placeholder="Descripción, número..."
+                   class="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 outline-none focus:border-blue-500 placeholder:text-slate-400">
         </div>
-        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Sucursal</label>{{ filtros.sucursal }}</div>
-        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Variedad</label>{{ filtros.variedad }}</div>
-        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Campaña</label>{{ filtros.campania }}</div>
-        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Estado</label>{{ filtros.estado }}</div>
-        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Condición</label>{{ filtros.condic }}</div>
-        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Desde</label>{{ filtros.desde }}</div>
-        <div><label class="block text-xs font-semibold text-gray-500 mb-1">Hasta</label>{{ filtros.hasta }}</div>
+
+        <!-- Sucursal -->
+        <div class="w-36">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Sucursal</label>
+            {{ filtros.sucursal }}
+        </div>
+
+        <!-- Variedad -->
+        <div class="w-36">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Variedad</label>
+            {{ filtros.variedad }}
+        </div>
+
+        <!-- Campaña -->
+        <div class="w-32">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Campaña</label>
+            {{ filtros.campania }}
+        </div>
+
+        <!-- Estado -->
+        <div class="w-32">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Estado</label>
+            {{ filtros.estado }}
+        </div>
+
+        <!-- Condición -->
+        <div class="w-28">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Condición</label>
+            {{ filtros.condic }}
+        </div>
+
+        <!-- Desde -->
+        <div class="w-32">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Desde</label>
+            {{ filtros.desde }}
+        </div>
+
+        <!-- Hasta -->
+        <div class="w-32">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Hasta</label>
+            {{ filtros.hasta }}
+        </div>
+
+        <!-- Acciones -->
+        <div class="flex items-center gap-1.5 ml-auto">
+            <a href="{% url 'agro_lote_listado' %}"
+               class="h-9 px-3.5 flex items-center justify-center text-slate-400 hover:text-slate-700 font-bold text-xs uppercase tracking-wider transition-colors">
+                Limpiar
+            </a>
+        </div>
     </form>
 
-    <div class="overflow-x-auto shadow ring-1 ring-black ring-opacity-5 rounded-2xl border border-gray-100">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-slate-50">
+    <!-- Grilla de Resultados -->
+    <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm bg-white">
+        <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50/80">
                 <tr>
-                    <th class="py-3 pl-6 pr-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Número</th>
-                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
-                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Descripción</th>
-                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Variedad</th>
-                    <th class="px-3 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sucursal</th>
-                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fardos</th>
-                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Kilos</th>
-                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Actuales</th>
-                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Costo</th>
-                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Venta</th>
-                    <th class="px-3 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest">Margen</th>
-                    <th class="px-3 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estado</th>
+                    <th class="py-3 pl-5 pr-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Número</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Fecha</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Descripción</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Variedad</th>
+                    <th class="px-3 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Sucursal</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Fardos</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Kilos Compra</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Kilos Actuales</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Costo Total</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Venta</th>
+                    <th class="px-3 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">Margen</th>
+                    <th class="px-3 py-3 text-center text-[10px] font-black text-slate-400 uppercase tracking-wider">Estado</th>
                 </tr>
             </thead>
-            <tbody id="lote-rows" class="divide-y divide-gray-100 bg-white">
+            <tbody id="lote-rows" class="divide-y divide-slate-100 bg-white">
                 {% include 'agricola/lote/listado_filas.html' %}
             </tbody>
         </table>

@@ -491,7 +491,7 @@ class DecisionesCerradasTests(ReportesBaseTestCase):
     def test_cambiar_la_columna_en_el_maestro_cambia_la_planilla(self):
         """Es la prueba de que se corrige sin tocar código."""
         eeaoc = TipoRetencionTabaco.objects.get(empresa=self.empresa, codigo='EEAOC')
-        eeaoc.columna_fet = ''                       # el usuario la manda a «otras»
+        eeaoc.columna_fet = 'otras'                  # el usuario la manda a «otras»
         eeaoc.save(update_fields=['columna_fet'])
 
         self._liquidar()

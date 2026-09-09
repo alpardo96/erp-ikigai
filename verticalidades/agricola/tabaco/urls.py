@@ -6,6 +6,7 @@ compartidas del panel de Configuración, que resuelven las URL por nombre.
 """
 from django.urls import path
 
+from . import views
 from . import views_htmx as htmx
 from . import views_liquidacion as liq
 from . import views_lotes as lot
@@ -14,6 +15,9 @@ from . import views_pago as pag
 from . import views_romaneo as rom
 
 urlpatterns = [
+    # Hub Principal
+    path('agro/', views.agro_index, name='agro_index'),
+
     # Campañas
     path('agro/campanias/nueva/', htmx.campania_modal, name='agro_campania_add'),
     path('agro/campanias/<int:id>/editar/', htmx.campania_modal, name='agro_campania_edit'),

@@ -4,40 +4,39 @@ Entrada de menú del Acopio de Tabaco (Plan 082).
 Se inyecta por el hook `sidebar_bottom` de `base.html` en lugar de escribir el enlace ahí: el
 templatetag `hook_menu` sólo renderiza este archivo si la carpeta de la verticalidad existe, así
 que al desenchufarla el menú se acomoda solo y `base.html` nunca ve un `{% url 'agro_...' %}`
-que no resuelve —que rompería TODAS las pantallas del ERP, no sólo las agrícolas—.
-
-El gate es `hace_tabaco` y no `tipo_actividad == 'AGRICOLA'`: una empresa agrícola puede hacer
-sólo granos. Si no existe la fila de `EmpresaVertical`, el acceso a la relación falla en silencio
-(Django trata `ObjectDoesNotExist` como fallo silencioso en plantillas) y el bloque no se muestra.
+que no resuelve.
 {% endcomment %}
 {% if empresa_actual.agricola_vertical.hace_tabaco %}
-<div x-data="{ open: {% if request.resolver_match.url_name and 'agro_' in request.resolver_match.url_name %}true{% else %}false{% endif %} }" class="mt-1">
-    <div @click="open = !open"
-         class="flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-slate-800/60 transition-colors rounded-lg">
-        <span class="flex items-center text-sm font-semibold text-gray-300">
-            <svg class="w-5 h-5 mr-3 text-lime-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/agro/') || ['agro_config','agro_variedades','agro_clases','agro_listas_precio','agro_retenciones','agro_procesos'].some(t => window.location.search.includes(t)) }">
+    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+        <a href="{% url 'agro_index' %}" class="flex items-center flex-1 {% if request.resolver_match.url_name == 'agro_index' %}text-lime-400 font-bold{% endif %}">
+            <svg class="w-5 h-5 mr-3 {% if request.resolver_match.url_name == 'agro_index' %}text-lime-400{% else %}text-gray-400{% endif %} group-hover:text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M12 3v18m0 0c-4 0-7-3-7-7 0-2 1-4 3-5m4 12c4 0 7-3 7-7 0-2-1-4-3-5"></path>
             </svg>
             Acopio de Tabaco
-        </span>
-        <svg class="w-4 h-4 text-gray-500 transition-transform" :class="open ? 'rotate-180' : ''"
-             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-        </svg>
+        </a>
+        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </button>
     </div>
 
     <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+        <p class="py-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Recepción</p>
         <a href="{% url 'agro_romaneo_listado' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_listado' %}text-lime-400 font-bold{% endif %}">
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_listado' or request.resolver_match.url_name == 'agro_romaneo_detalle' or request.resolver_match.url_name == 'agro_romaneo_carga' %}text-lime-400 font-bold{% endif %}">
             Romaneos
         </a>
         <a href="{% url 'agro_romaneo_nuevo' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_nuevo' %}text-lime-400 font-bold{% endif %}">
             Nuevo Romaneo
         </a>
+
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Liquidación y Pago</p>
         <a href="{% url 'agro_liquidacion_listado' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_liquidacion_listado' %}text-lime-400 font-bold{% endif %}">
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_liquidacion_listado' or request.resolver_match.url_name == 'agro_liquidacion_detalle' %}text-lime-400 font-bold{% endif %}">
             Liquidaciones
         </a>
         <a href="{% url 'agro_liquidacion_nueva' %}"
@@ -45,15 +44,17 @@ sólo granos. Si no existe la fila de `EmpresaVertical`, el acceso a la relació
             Nueva Liquidación
         </a>
         <a href="{% url 'agro_pago_listado' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_pago_listado' %}text-lime-400 font-bold{% endif %}">
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_pago_listado' or request.resolver_match.url_name == 'agro_pago_detalle' %}text-lime-400 font-bold{% endif %}">
             Pagos a Productores
         </a>
         <a href="{% url 'agro_pago_nuevo' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_pago_nuevo' %}text-lime-400 font-bold{% endif %}">
             Nuevo Pago
         </a>
+
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Lotes y Margen</p>
         <a href="{% url 'agro_lote_listado' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_lote_listado' %}text-lime-400 font-bold{% endif %}">
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_lote_listado' or request.resolver_match.url_name == 'agro_lote_detalle' %}text-lime-400 font-bold{% endif %}">
             Lotes de Acopio
         </a>
         <a href="{% url 'agro_lote_nuevo' %}"
@@ -61,19 +62,23 @@ sólo granos. Si no existe la fila de `EmpresaVertical`, el acceso a la relació
             Nuevo Lote
         </a>
         <a href="{% url 'agro_margen' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_margen' %}text-lime-400 font-bold{% endif %}">
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_margen' or request.resolver_match.url_name == 'agro_margen_lote' %}text-lime-400 font-bold{% endif %}">
             Margen del Acopio
         </a>
+
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Reportes y Auditoría</p>
         <a href="{% url 'agro_reportes' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if 'agro_reporte' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
-            Reportes
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_reportes' or 'agro_reporte_' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
+            Reportes Oficiales
         </a>
         <a href="{% url 'agro_stock_conciliacion' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_stock_conciliacion' %}text-lime-400 font-bold{% endif %}">
             Conciliación de Stock
         </a>
+
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Configuración</p>
         <a href="{% url 'configuracion_index' %}?tab=agro_clases"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors">
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'configuracion_index' and request.GET.tab == 'agro_clases' %}text-lime-400 font-bold{% endif %}">
             Maestros de Tabaco
         </a>
     </div>

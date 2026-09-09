@@ -1,83 +1,131 @@
 {% extends 'base.html' %}
 
-{% block title %}Nueva Liquidación de Compra{% endblock %}
+{% block title %}Nueva Liquidación de Compra de Tabaco{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto w-full px-4 py-6 space-y-5"
-     x-data="{ productorId: '', productorNombre: '', sugerencias: false }"
-     @cliente-venta-seleccionado.window="
-        productorId = $event.detail.id;
-        productorNombre = $event.detail.razon_social;
-        sugerencias = false;
-        document.getElementById('modal-container').innerHTML = '';
-        htmx.ajax('GET', '{% url 'agro_liquidacion_pendientes' %}?productor=' + productorId, '#pendientes');
-     ">
+<div class="max-w-6xl mx-auto w-full px-4 py-4 space-y-6">
 
-    <div>
-        <h1 class="text-2xl font-bold text-gray-900">Nueva Liquidación de Compra</h1>
-        <p class="text-sm text-gray-500 mt-1">
-            Agrupa romaneos confirmados de un mismo productor. La letra sale de su condición de IVA:
-            Responsable Inscripto → <strong>A (150)</strong>, el resto → <strong>B (151)</strong>.
-        </p>
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">Tipo 150 / 151 ARCA</span>
+                <span class="text-xs font-semibold text-slate-400">Emisión Fiscal</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 mt-1 tracking-tight">Nueva Liquidación de Compra</h1>
+            <p class="text-xs font-medium text-slate-500 mt-0.5">
+                Agrupa romaneos confirmados de un mismo productor. La letra se deduce automáticamente de su condición fiscal:
+                Responsable Inscripto → <strong>A (150)</strong>, Monotributista / No Inscripto → <strong>B (151)</strong>.
+            </p>
+        </div>
+        <a href="{% url 'agro_liquidacion_listado' %}"
+           class="inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Volver al listado
+        </a>
     </div>
 
     {% if error %}
-    <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 font-medium">{{ error }}</div>
+    <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-bold flex items-center gap-2">
+        <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>{{ error }}</span>
+    </div>
     {% endif %}
 
-    <form method="post" class="space-y-5">
+    <form method="post" class="space-y-6">
         {% csrf_token %}
 
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 grid grid-cols-1 md:grid-cols-4 gap-5">
-            {# Productor: Typeahead + Lupa, patrón obligatorio del proyecto. #}
-            <div class="md:col-span-2 relative">
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Productor</label>
-                <div class="flex gap-2">
-                    <input type="text" autocomplete="off" placeholder="Escribí la razón social..."
-                           class="flex-1 rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500"
-                           :value="productorNombre" @input="productorNombre = $event.target.value"
-                           @focus="sugerencias = true"
+        <!-- Panel de Cabecera -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 grid grid-cols-1 md:grid-cols-12 gap-5">
+            
+            <!-- Selector de Productor con Lupa -->
+            <div class="md:col-span-6 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-2">
+                <div class="flex items-center justify-between">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                        Productor <span class="text-red-500">*</span>
+                    </label>
+                    <span class="text-[10px] text-slate-400 font-medium">Selección por lupa o búsqueda rápida</span>
+                </div>
+
+                <input type="hidden" id="id_productor" name="productor" value="{{ form.productor.value|default:'' }}" required>
+
+                <div class="relative flex gap-1.5" x-data="{ open: false }" @clienteventaseleccionado.window="open = false">
+                    <input type="text" id="productor_nombre_display" name="q_productor"
+                           class="w-full h-10 px-3.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 uppercase placeholder:text-slate-400 shadow-sm cursor-pointer"
+                           placeholder="Haga clic aquí o use la lupa para buscar productor..."
+                           value="{{ productor_display|default:'' }}"
                            hx-get="{% url 'typeahead_clientes' %}"
                            hx-trigger="keyup changed delay:300ms, search"
                            hx-target="#productor_suggestions"
-                           name="q">
-                    <button type="button"
-                            class="px-4 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
-                            hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container"
-                            title="Búsqueda avanzada">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                           autocomplete="off"
+                           @focus="open = true" @click.outside="open = false" @keydown.escape="open = false">
+
+                    <!-- Botón Lupa -->
+                    <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container"
+                            class="w-10 h-10 shrink-0 flex items-center justify-center bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all shadow-sm"
+                            title="Buscar Productor">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </button>
+
+                    <div x-show="open" id="productor_suggestions"
+                         class="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-64 overflow-y-auto"
+                         style="display: none;"></div>
                 </div>
-                <div id="productor_suggestions" x-show="sugerencias" @click.outside="sugerencias = false"
-                     class="absolute z-30 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-y-auto"></div>
-                <input type="hidden" name="productor" x-model="productorId">
             </div>
 
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.fecha.label }}</label>
+            <!-- Fecha -->
+            <div class="md:col-span-3">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">{{ form.fecha.label }} <span class="text-red-500">*</span></label>
                 {{ form.fecha }}
+                {% if form.fecha.errors %}<p class="text-red-500 text-xs mt-1 font-bold">{{ form.fecha.errors.0 }}</p>{% endif %}
             </div>
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.numero.label }}</label>
+
+            <!-- Número de Comprobante -->
+            <div class="md:col-span-3">
+                <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">{{ form.numero.label }}</label>
                 {{ form.numero }}
-                <p class="text-[11px] text-gray-400 mt-1 italic">Del talonario o del comprobante en línea.</p>
+                <p class="text-[10px] text-slate-400 mt-1 font-medium italic">Del talonario físico o CAE en línea.</p>
+                {% if form.numero.errors %}<p class="text-red-500 text-xs mt-1 font-bold">{{ form.numero.errors.0 }}</p>{% endif %}
             </div>
         </div>
 
+        <!-- Contenedor de Romaneos Pendientes -->
         <div id="pendientes">
-            <div class="px-6 py-10 text-center text-gray-500 text-sm italic bg-white rounded-2xl border border-gray-100">
-                Elegí un productor para ver sus romaneos pendientes de liquidar.
+            <div class="px-6 py-12 text-center text-slate-400 text-sm font-medium italic bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2">
+                <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                <span>Seleccione un productor para cargar y seleccionar sus romaneos pendientes de liquidar.</span>
             </div>
         </div>
 
-        <div class="flex justify-end gap-3">
+        <!-- Acciones -->
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <a href="{% url 'agro_liquidacion_listado' %}"
-               class="px-6 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Cancelar</a>
+               class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                Cancelar
+            </a>
             <button type="submit"
-                    class="px-8 py-2.5 text-sm font-bold text-white bg-lime-600 hover:bg-lime-700 rounded-xl shadow-lg transition-transform active:scale-95">
-                Emitir liquidación
+                    class="px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Emitir Liquidación
             </button>
         </div>
     </form>
 </div>
+
+<!-- JS Listener para captura de selección de Productor -->
+<script>
+document.body.addEventListener('clienteVentaSeleccionado', function(e) {
+    const modalContainer = document.getElementById('modal-container');
+    if (modalContainer) modalContainer.innerHTML = '';
+
+    const idInput = document.getElementById('id_productor');
+    const displayInput = document.getElementById('productor_nombre_display');
+    if (idInput && displayInput) {
+        idInput.value = e.detail.id;
+        displayInput.value = (e.detail.cuit ? e.detail.cuit + ' - ' : '') + e.detail.razon_social;
+        // Cargar romaneos pendientes del productor seleccionado
+        htmx.ajax('GET', '{% url 'agro_liquidacion_pendientes' %}?productor=' + e.detail.id, '#pendientes');
+    }
+});
+</script>
 {% endblock %}
