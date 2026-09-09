@@ -6,30 +6,12 @@
 <div class="max-w-7xl mx-auto w-full">
     <div class="mb-12 text-center">
         <h1 class="text-3xl font-bold text-gray-900 italic">Módulo de Acopio de Tabaco</h1>
-        <p class="mt-2 text-sm text-gray-500 italic">Gestión de romaneos, liquidaciones de compra, pagos a productores, lotes comerciales y declaraciones oficiales.</p>
+        <p class="mt-2 text-sm text-gray-500 italic">Gestión integral de romaneos, liquidaciones de compra, pagos, lotes comerciales y declaraciones oficiales.</p>
     </div>
 
     <div class="flex flex-wrap justify-center gap-8 italic">
 
-        <!-- 1. Romaneos de Tabaco -->
-        <a href="{% url 'agro_romaneo_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-lime-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <svg class="w-24 h-24 text-lime-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-            </div>
-            <div class="flex items-center mb-6">
-                <div class="p-4 bg-lime-100 rounded-2xl text-lime-600 group-hover:bg-lime-600 group-hover:text-white transition-colors">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
-                </div>
-                <h3 class="ml-4 text-2xl font-bold text-gray-900">Romaneos</h3>
-            </div>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6">Listado e historial de entregas de productores, pesaje y detalle fardo por fardo. Control físico de acopio.</p>
-            <div class="flex items-center text-lime-600 font-bold text-sm">
-                Ver romaneos
-                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-            </div>
-        </a>
-
-        <!-- 2. Nuevo Romaneo -->
+        <!-- 1. Carga de Romaneo -->
         <a href="{% url 'agro_romaneo_nuevo' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-emerald-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <svg class="w-24 h-24 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -38,17 +20,35 @@
                 <div class="p-4 bg-emerald-100 rounded-2xl text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 </div>
-                <h3 class="ml-4 text-2xl font-bold text-gray-900">Nuevo Romaneo</h3>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Carga de Romaneo</h3>
             </div>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6">Apertura de romaneo con congelamiento de lista de precio y carga interactiva fardo a fardo en balanza.</p>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Apertura de romaneo con congelamiento de lista de precio y pesaje interactivo fardo a fardo en balanza.</p>
             <div class="flex items-center text-emerald-600 font-bold text-sm">
-                Abrir romaneo
+                Ingresar romaneo
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
 
-        <!-- 3. Liquidaciones de Compra -->
-        <a href="{% url 'agro_liquidacion_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+        <!-- 2. Listado de Romaneos -->
+        <a href="{% url 'agro_romaneo_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-slate-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <svg class="w-24 h-24 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+            </div>
+            <div class="flex items-center mb-6">
+                <div class="p-4 bg-slate-100 rounded-2xl text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                </div>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Listado de Romaneos</h3>
+            </div>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Consulta e historial de entregas de productores, pesajes confirmados y control físico del acopio.</p>
+            <div class="flex items-center text-slate-600 font-bold text-sm">
+                Ver listado
+                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+        </a>
+
+        <!-- 3. Carga de Liquidación -->
+        <a href="{% url 'agro_liquidacion_nueva' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <svg class="w-24 h-24 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             </div>
@@ -56,29 +56,29 @@
                 <div class="p-4 bg-blue-100 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 </div>
-                <h3 class="ml-4 text-2xl font-bold text-gray-900">Liquidaciones</h3>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Carga de Liquidación</h3>
             </div>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6">Comprobantes de compra emitidos al productor (Tipo 150/151 ARCA), asientos contables y Libro IVA Compras.</p>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Emisión de liquidaciones de compra tipo 150/151 ARCA agrupando romaneos con retenciones de ley.</p>
             <div class="flex items-center text-blue-600 font-bold text-sm">
-                Ver liquidaciones
+                Emitir liquidación
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
 
-        <!-- 4. Nueva Liquidación -->
-        <a href="{% url 'agro_liquidacion_nueva' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-indigo-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
+        <!-- 4. Listado de Liquidaciones -->
+        <a href="{% url 'agro_liquidacion_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-indigo-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <svg class="w-24 h-24 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                <svg class="w-24 h-24 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
             </div>
             <div class="flex items-center mb-6">
                 <div class="p-4 bg-indigo-100 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
                 </div>
-                <h3 class="ml-4 text-2xl font-bold text-gray-900">Nueva Liquidación</h3>
+                <h3 class="ml-4 text-2xl font-bold text-gray-900">Listado de Liquidaciones</h3>
             </div>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6">Agrupación de romaneos confirmados de un productor y emisión de la liquidación con retenciones de ley.</p>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Consulta de comprobantes fiscales emitidos, verificación de asientos automáticos y Libro IVA Compras.</p>
             <div class="flex items-center text-indigo-600 font-bold text-sm">
-                Emitir liquidación
+                Ver listado
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
@@ -112,7 +112,7 @@
                 </div>
                 <h3 class="ml-4 text-2xl font-bold text-gray-900">Lotes de Acopio</h3>
             </div>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6">Agrupación comercial de fardos por variedad y sucursal para acondicionamiento en planta o venta.</p>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6">Agrupación comercial de fardos por variedad y galpón para acondicionamiento en planta o venta.</p>
             <div class="flex items-center text-amber-600 font-bold text-sm">
                 Gestionar lotes
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
@@ -137,7 +137,7 @@
             </div>
         </a>
 
-        <!-- 8. Reportes Oficiales y Declaraciones -->
+        <!-- 8. Reportes Oficiales y DDJJ -->
         <a href="{% url 'agro_reportes' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-cyan-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <svg class="w-24 h-24 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -150,25 +150,7 @@
             </div>
             <p class="text-gray-500 text-sm leading-relaxed mb-6">Planilla FET para el Fondo Especial del Tabaco, DDJJ de existencias por galpón y libro de retenciones.</p>
             <div class="flex items-center text-cyan-600 font-bold text-sm">
-                Emitir reportes
-                <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-            </div>
-        </a>
-
-        <!-- 9. Conciliación de Stock -->
-        <a href="{% url 'agro_stock_conciliacion' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-slate-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <svg class="w-24 h-24 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            </div>
-            <div class="flex items-center mb-6">
-                <div class="p-4 bg-slate-100 rounded-2xl text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                </div>
-                <h3 class="ml-4 text-2xl font-bold text-gray-900">Conciliación de Stock</h3>
-            </div>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6">Auditoría cruzada entre kilos de romaneos y mermas del acopio contra las existencias del ERP.</p>
-            <div class="flex items-center text-slate-600 font-bold text-sm">
-                Auditar stock
+                Ver reportes
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>

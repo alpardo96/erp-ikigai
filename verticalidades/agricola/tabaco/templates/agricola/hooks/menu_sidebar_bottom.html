@@ -75,12 +75,6 @@ que no resuelve.
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_stock_conciliacion' %}text-lime-400 font-bold{% endif %}">
             Conciliación de Stock
         </a>
-
-        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Configuración</p>
-        <a href="{% url 'configuracion_index' %}?tab=agro_clases"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'configuracion_index' and request.GET.tab == 'agro_clases' %}text-lime-400 font-bold{% endif %}">
-            Maestros de Tabaco
-        </a>
     </div>
 </div>
 {% endif %}

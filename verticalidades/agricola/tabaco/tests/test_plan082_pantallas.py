@@ -94,14 +94,14 @@ class PantallasRomaneoTests(TestCase):
         r = self.client.get(reverse('agro_romaneo_nuevo'))
 
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'Abrir romaneo')
+        self.assertContains(r, 'Abrir Romaneo')
 
     def test_pantalla_de_carga_renderiza(self):
         romaneo = self._romaneo()
         r = self.client.get(reverse('agro_romaneo_carga', args=[romaneo.id]))
 
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'Agregar fardo')
+        self.assertContains(r, 'Agregar Fardo')
         self.assertContains(r, 'B1F')
 
     def test_detalle_e_impresion_renderizan(self):
