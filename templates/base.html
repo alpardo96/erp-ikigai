@@ -278,7 +278,7 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/ventas/') || window.location.pathname.startsWith('/estudio/') || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'V') }">
+                <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/ventas/') || window.location.pathname.startsWith('/estudio/') || window.location.pathname.startsWith('/reservas/') || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'V') }">
                     <div
                         class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'ventas_index' %}" class="flex items-center flex-1">

@@ -1,5 +1,13 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
+## Antigravity
+- **Fecha/Día**: 09 de Septiembre de 2026
+- **Objetivo o Tarea**: Corrección del comportamiento del menú lateral (sidebar) para que la sección de Ventas permanezca abierta al navegar a Reservas SIGIMAC (`/reservas/sigimac/`).
+- **Archivos creados o modificados**: `templates/base.html` [MODIFY].
+- **Detalle Técnico e implicaciones**: Se añadió la condición `window.location.pathname.startsWith('/reservas/')` al directivo `x-data="{ open: ... }"` del acordeón de Ventas en `base.html` utilizando Alpine.js. Esto permite que el menú se mantenga expandido, proporcionando feedback visual y continuidad en la navegación para el usuario al acceder a las rutas de reservas. No hay implicaciones en base de datos.
+- **Resultado de las pruebas**: Se verificó la lógica de Alpine.js; el menú no se cierra al entrar a la ruta especificada.
+- **Estado actual y siguientes pasos sugeridos**: Corrección completada y funcional.
+
 
 ## Cristian - PC CASA
 - **Fecha/DÃ­a**: 31 de Agosto de 2026
