@@ -20,7 +20,7 @@
     </td>
     <td class="px-2 py-1 text-right">
         <button type="button" 
-                hx-get="{% url 'ventas_producto_buscar_codigo' %}?q={{ p.id }}&moneda={{ moneda_venta }}" 
+                hx-get="{% url 'ventas_producto_buscar_codigo' %}?id={{ p.id }}&moneda={{ moneda_venta }}" 
                 hx-swap="none"
                 class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded font-black text-[9px] uppercase shadow-sm transition-all">
             SEL

@@ -957,7 +957,7 @@ def _guardar_reserva_preventa_transaccional(
     crea el registro de control ReservaArma en estado PENDIENTE y marca la Preventa como cobrada.
     """
     from verticalidades.armeria.models import ReservaArma
-    from contable.models import ParametroContable, Cuenta
+    from contable.models import ParametrosContables, Cuenta
     from tesoreria.models import (
         Recibo, ReciboImputacion, MovimientoCaja, CobroTarjeta, 
         TransaccionBancaria, ValorTerceros, Tarjeta, CuentaBancaria, Banco
@@ -990,12 +990,12 @@ def _guardar_reserva_preventa_transaccional(
     recibo.save()
 
     # 3. Imputación contable a la cuenta corriente del cliente
-    param_c = ParametroContable.objects.filter(empresa_id=empresa_id).first()
+    param_c = ParametrosContables.objects.filter(empresa_id=empresa_id).first()
     cta_imputar = None
     if preventa.cliente.cta_pat:
         cta_imputar = Cuenta.objects.filter(empresa_id=empresa_id, codigo=preventa.cliente.cta_pat).first()
     if not cta_imputar and param_c:
-        cta_imputar = param_c.cta_deudores_ventas
+        cta_imputar = param_c.cta_clientes_default
 
     if cta_imputar:
         ReciboImputacion.objects.create(
@@ -1008,115 +1008,128 @@ def _guardar_reserva_preventa_transaccional(
     concepto_cobro = f"Cobranza Reserva Recibo #{recibo.numero} (Prev #{preventa.preventa_id})"
 
     # 4. Movimientos en Caja Mostrador
+    mov_caja = MovimientoCaja.objects.create(
+        sesion=sesion_caja,
+        empresa_id=empresa_id,
+        fecha=recibo.fecha,
+        tipo='I',
+        importe=total_ingresado,
+        concepto=f"Cobranza Reserva Recibo {recibo.numero}",
+        condic=1,
+        recibo=recibo,
+        cli_pro=preventa.cliente,
+    )
+
+    # Efectivo ARS
     if efectivo > 0:
-        MovimientoCaja.objects.create(
-            sesion=sesion_caja,
-            empresa_id=empresa_id,
-            fecha=recibo.fecha,
-            tipo='I',
-            importe=efectivo,
-            concepto=concepto_cobro,
-            condic=1,
-            medio_pago='EFE',
-            recibo=recibo
-        )
+        mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-ARS').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+        if mp_efe:
+            MovimientoCajaDetalle.objects.create(
+                movimiento_caja=mov_caja,
+                medio_pago=mp_efe,
+                importe=efectivo,
+                importe_moneda_extranjera=0,
+                cotizacion=1.0
+            )
 
+    # Efectivo USD
     if dolares > 0:
-        MovimientoCaja.objects.create(
-            sesion=sesion_caja,
-            empresa_id=empresa_id,
-            fecha=recibo.fecha,
-            tipo='I',
-            importe=dolares,
-            concepto=f"{concepto_cobro} (USD)",
-            condic=1,
-            medio_pago='EFE',
-            moneda='DOL',
-            recibo=recibo
-        )
+        mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+        from empresas.models import CotizacionMoneda
+        cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
+        dolar_cobranza = cotiz.dolar_cobranza if cotiz else Decimal('1.0')
+        if mp_efe:
+            MovimientoCajaDetalle.objects.create(
+                movimiento_caja=mov_caja,
+                medio_pago=mp_efe,
+                importe=dolares * Decimal(str(dolar_cobranza)),
+                importe_moneda_extranjera=dolares,
+                cotizacion=dolar_cobranza
+            )
 
+    # Tarjetas
     if tarjetas:
+        mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, categoria='TAR').first()
         for tarj in tarjetas:
             t_imp = Decimal(str(tarj.get('importe', 0) or 0))
-            if t_imp > 0:
-                tarjeta_obj = Tarjeta.objects.filter(id=tarj.get('tarjeta_id')).first()
+            if t_imp > 0 and mp_tarjeta:
+                detalle = MovimientoCajaDetalle.objects.create(
+                    movimiento_caja=mov_caja,
+                    medio_pago=mp_tarjeta,
+                    importe=t_imp,
+                    importe_moneda_extranjera=0,
+                    cotizacion=1.0
+                )
                 CobroTarjeta.objects.create(
-                    sesion=sesion_caja,
-                    tarjeta=tarjeta_obj,
+                    movimiento_detalle=detalle,
+                    tarjeta_id=tarj.get('tarjeta_id'),
                     lote=tarj.get('lote', ''),
                     cupon=tarj.get('cupon', ''),
-                    importe=t_imp,
-                    recibo=recibo
-                )
-                MovimientoCaja.objects.create(
-                    sesion=sesion_caja,
-                    empresa_id=empresa_id,
-                    fecha=recibo.fecha,
-                    tipo='I',
-                    importe=t_imp,
-                    concepto=f"{concepto_cobro} (Tarjeta {tarjeta_obj.nombre if tarjeta_obj else ''})",
-                    condic=1,
-                    medio_pago='TARJ',
-                    recibo=recibo
+                    cuotas=1,
+                    sucursal_id=sucursal_id
                 )
 
+    # Transferencias
     if transferencias:
+        mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
         for transf in transferencias:
             tr_imp = Decimal(str(transf.get('importe', 0) or 0))
-            if tr_imp > 0:
-                cta_bc = CuentaBancaria.objects.filter(cta_bc_id=transf.get('id')).first()
-                TransaccionBancaria.objects.create(
-                    cuenta_bancaria=cta_bc,
-                    empresa_id=empresa_id,
-                    tipo='CRE',
+            if tr_imp > 0 and mp_tra:
+                cta_bc_id = transf.get('cuenta_id') or transf.get('id')
+                detalle = MovimientoCajaDetalle.objects.create(
+                    movimiento_caja=mov_caja,
+                    medio_pago=mp_tra,
                     importe=tr_imp,
-                    fecha=recibo.fecha,
-                    concepto=concepto_cobro,
-                    cuit_origen=transf.get('cuit', ''),
-                    titular_origen=transf.get('titular', '')
+                    importe_moneda_extranjera=0,
+                    cotizacion=1.0
                 )
-                MovimientoCaja.objects.create(
-                    sesion=sesion_caja,
+                TransaccionBancaria.objects.create(
                     empresa_id=empresa_id,
-                    fecha=recibo.fecha,
-                    tipo='I',
+                    movimiento_detalle=detalle,
+                    cuenta_bancaria_id=cta_bc_id,
+                    numero_operacion='',
                     importe=tr_imp,
-                    concepto=f"{concepto_cobro} (Transf {cta_bc.banco if cta_bc else ''})",
-                    condic=1,
-                    medio_pago='TRANSF',
-                    recibo=recibo
+                    cuit_contraparte=transf.get('cuit', ''),
+                    fecha_operacion=recibo.fecha,
+                    tipo_transaccion='TR',
+                    estado='D'
                 )
 
+    # Valores (Cheques)
     if valores:
+        mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
         for ch in valores:
             ch_imp = Decimal(str(ch.get('importe', 0) or 0))
-            if ch_imp > 0:
-                banco_id = ch.get('banco_id')
-                banco_obj = Banco.objects.filter(id=banco_id).first() if banco_id else None
+            if ch_imp > 0 and mp_chq:
+                detalle = MovimientoCajaDetalle.objects.create(
+                    movimiento_caja=mov_caja,
+                    medio_pago=mp_chq,
+                    importe=ch_imp,
+                    importe_moneda_extranjera=0,
+                    cotizacion=1.0
+                )
                 ValorTerceros.objects.create(
                     empresa_id=empresa_id,
-                    sucursal_id=sucursal_id,
-                    sesion_caja=sesion_caja,
-                    banco=banco_obj,
-                    banco_str=ch.get('banco_str', ''),
-                    numero=ch.get('numero', ''),
-                    fecha_vto=ch.get('vto') or recibo.fecha,
-                    importe=ch_imp,
-                    tipo_valor=ch.get('tipo_valor', 'F'),
+                    movimiento_detalle=detalle,
                     recibo=recibo,
-                    estado='CARTERA'
-                )
-                MovimientoCaja.objects.create(
-                    sesion=sesion_caja,
-                    empresa_id=empresa_id,
-                    fecha=recibo.fecha,
-                    tipo='I',
+                    banco_id=ch.get('banco_id'),
+                    numero_cheque=ch.get('numero', ''),
                     importe=ch_imp,
-                    concepto=f"{concepto_cobro} (Cheque #{ch.get('numero', '')})",
-                    condic=1,
-                    medio_pago='CHEQ',
-                    recibo=recibo
+                    fecha_emision=recibo.fecha,
+                    fecha_vencimiento=ch.get('vto') if ch.get('vto') else recibo.fecha,
+                    cuit_firmante=ch.get('cuit', ''),
+                    nombre_firmante=ch.get('titular', ''),
+                    sucursal_id=sucursal_id,
+                    fecha_recepcion=recibo.fecha,
+                    estado='C'
                 )
+
+    # Contabilización del Recibo
+    from contable.services.contabilizacion import contabilizar_recibo
+    asiento = contabilizar_recibo(recibo)
+    if asiento:
+        from tesoreria.services.imputacion import estampar_asiento
+        estampar_asiento(mov_caja, asiento)
 
     # 5. Crear o actualizar registro ReservaArma
     ReservaArma.objects.update_or_create(

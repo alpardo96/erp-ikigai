@@ -78,15 +78,15 @@ class ProductoForm(forms.ModelForm):
         return self.cleaned_data.get('unidades_por_bulto') or 0
 
     def clean_unidad_venta(self):
-        """Conserva el valor cuando el campo no viaja en el POST.
+        """Conserva o procesa el valor de unidad_venta / calibre según la actividad.
 
-        Sólo se renderiza para DISTRIBUCION, así que en el resto de las actividades llega vacío.
-        Con `blank=True` el form ya no lo rechaza, pero guardaría `''` y rompería el choice: acá
-        se repone lo que tenía el producto o, si es un alta, el default del modelo.
+        - En DISTRIBUCION: maneja los choices (UNIDAD, BULTO, KG).
+        - En ARMERIA: almacena el calibre (texto libre, ej. C.22, 9mm).
+        - En otras actividades o default: repone el valor anterior o el default del modelo ('UNIDAD').
         """
         valor = self.cleaned_data.get('unidad_venta')
         if valor:
-            return valor
+            return str(valor).strip()
         if self.instance and self.instance.pk and self.instance.unidad_venta:
             return self.instance.unidad_venta
         return Producto._meta.get_field('unidad_venta').default
@@ -148,9 +148,20 @@ class ProductoForm(forms.ModelForm):
         if self.instance and self.instance.pk and hasattr(self.instance, 'alic_iva_porc'):
             self.initial['alic_iva'] = self.instance.alic_iva_porc
 
-        # Unidad de Venta: solo es relevante para Distribución.
-        # En otras verticales lo hacemos no-obligatorio para que el form no rompa.
-        if not empresa or empresa.tipo_actividad != 'DISTRIBUCION':
+        # Unidad de Venta / Calibre según actividad:
+        if empresa and getattr(empresa, 'tipo_actividad', '') == 'ARMERIA':
+            # En Armería se utiliza para almacenar el calibre (ej. C.22, 9mm, .308 WIN) en rubros de ARMAS y MUNICIONES
+            self.fields['unidad_venta'] = forms.CharField(
+                max_length=10,
+                required=False,
+                label="Calibre",
+                widget=forms.TextInput(attrs={
+                    'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2',
+                    'placeholder': 'Ej. C.22, 9mm, .308'
+                })
+            )
+        elif not empresa or empresa.tipo_actividad != 'DISTRIBUCION':
+            # En otras verticales lo hacemos no-obligatorio para que el form no rompa
             self.fields['unidad_venta'].required = False
 
         if empresa:
@@ -166,6 +177,3 @@ class ProductoForm(forms.ModelForm):
             if self.instance and self.instance.proveedor_id:
                 qs_proveedor = qs_proveedor | ClienteProveedor.objects.filter(pk=self.instance.proveedor_id)
             self.fields['proveedor'].queryset = qs_proveedor.distinct().order_by('razon_social')
-
-    def clean_unidad_venta(self):
-        return self.cleaned_data.get('unidad_venta') or 'UNIDAD'

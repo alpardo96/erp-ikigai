@@ -10,8 +10,8 @@ User = get_user_model()
 class BusquedaInteligenteProductosTestCase(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='vendedor_test', password='password123')
-        self.empresa_a = Empresa.objects.create(nombre="Empresa Armeria Test")
-        self.empresa_b = Empresa.objects.create(nombre="Empresa Otra Test")
+        self.empresa_a = Empresa.objects.create(nombre="Empresa Armeria Test", cuit="30111111111")
+        self.empresa_b = Empresa.objects.create(nombre="Empresa Otra Test", cuit="30222222222")
         self.sucursal = Sucursal.objects.create(nombre="Casa Central", empresa=self.empresa_a)
 
         self.marca_bersa = Marca.objects.create(detalle="BERSA", empresa=self.empresa_a)
@@ -157,3 +157,67 @@ class BusquedaInteligenteProductosTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('HX-Trigger', response.headers)
         self.assertIn(self.prod4.detalle, response.headers['HX-Trigger'])
+
+        # 4. Prioridad de ID exacto sobre cod_prov (ej. producto ID 3102 vs producto con cod_prov 3102)
+        prod_con_codprov_numerico = Producto.objects.create(
+            detalle="OTRO PRODUCTO DISTINTO",
+            cod_prov=str(self.prod1.id),
+            empresa=self.empresa_a
+        )
+        url_buscar_id_prioridad = reverse('ventas_producto_buscar_codigo') + f'?q={self.prod1.id}'
+        response = client.get(url_buscar_id_prioridad)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('HX-Trigger', response.headers)
+        self.assertIn(self.prod1.detalle, response.headers['HX-Trigger'])
+
+        # 5. Selección explícita por parámetro 'id'
+        url_buscar_param_id = reverse('ventas_producto_buscar_codigo') + f'?id={self.prod1.id}'
+        response = client.get(url_buscar_param_id)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('HX-Trigger', response.headers)
+        self.assertIn(self.prod1.detalle, response.headers['HX-Trigger'])
+
+    def test_busqueda_por_campo_especifico(self):
+        """Prueba las opciones del combobox de búsqueda específica"""
+        # Búsqueda por rubro
+        res_rubro = list(buscar_productos_inteligente(
+            q="ARMAS",
+            empresa_id=self.empresa_a.id,
+            campo="rubro"
+        ))
+        ids_rubro = [p.id for p in res_rubro]
+        self.assertIn(self.prod1.id, ids_rubro)
+        self.assertIn(self.prod2.id, ids_rubro)
+        self.assertNotIn(self.prod3.id, ids_rubro)
+
+        # Búsqueda por cod_prov
+        res_codprov = list(buscar_productos_inteligente(
+            q="BER-001",
+            empresa_id=self.empresa_a.id,
+            campo="cod_prov"
+        ))
+        self.assertEqual([p.id for p in res_codprov], [self.prod1.id])
+
+        # Búsqueda por ID
+        res_id = list(buscar_productos_inteligente(
+            q=str(self.prod1.id),
+            empresa_id=self.empresa_a.id,
+            campo="id"
+        ))
+        self.assertEqual([p.id for p in res_id], [self.prod1.id])
+
+    def test_duplicar_producto_modal(self):
+        """Verifica que el modal de alta con duplicar_de clone los datos del producto base"""
+        client = Client()
+        client.force_login(self.user)
+        session = client.session
+        session['empresa_id'] = self.empresa_a.id
+        session['sucursal_id'] = self.sucursal.id
+        session.save()
+
+        url = reverse('producto_add') + f'?duplicar_de={self.prod1.id}'
+        response = client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Duplicar Producto')
+        self.assertContains(response, self.prod1.detalle)
+        self.assertContains(response, self.prod1.cod_prov)

@@ -165,7 +165,7 @@ class Producto(AuditModel):
     # ARMERIA, ESTUDIO o AGRICOLA, donde no está en pantalla: el alta de producto fallaba con
     # "Este campo es obligatorio" y el usuario no tenía dónde verlo. El default cubre el valor.
     unidad_venta = models.CharField(
-        max_length=10, choices=UNIDAD_VENTA_CHOICES, default='UNIDAD', blank=True,
+        max_length=10, default='UNIDAD', blank=True,
         verbose_name="Unidad de Venta")
     unidades_por_bulto = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, verbose_name="Unidades por Bulto",
@@ -222,6 +222,11 @@ class Producto(AuditModel):
     def id_arca_iva(self):
         return ALICUOTAS_ARCA_MAP.get(self.alic_iva_porc, 5)
 
+    def get_unidad_venta_display(self):
+        """Retorna la representación legible de la unidad de venta o el calibre."""
+        dict_choices = dict(self.UNIDAD_VENTA_CHOICES)
+        return dict_choices.get(self.unidad_venta, self.unidad_venta or '')
+
     def clean(self):
         super().clean()
         self.alic_iva = self.alic_iva_porc
@@ -240,7 +245,10 @@ class Producto(AuditModel):
 
     @property
     def stock_global(self):
-        # Suma de stock de todas las sucursales (Mantenido del original)
+        # Si el stock total vino precalculado con Subquery en la búsqueda/listado, lo retornamos directo en memoria
+        if hasattr(self, 'stock_total_calc') and self.stock_total_calc is not None:
+            return self.stock_total_calc
+        # Suma de stock de todas las sucursales (fallback)
         return self.existencias.aggregate(total=Sum('cantidad'))['total'] or 0
 
     @property

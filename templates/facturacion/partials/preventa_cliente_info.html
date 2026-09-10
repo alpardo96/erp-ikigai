@@ -1,0 +1,54 @@
+<div class="mt-2 bg-slate-50 border border-slate-200 rounded-lg p-3 shadow-xs animate-in fade-in duration-200">
+    <div class="flex items-center justify-between border-b border-slate-200/80 pb-1.5 mb-2">
+        <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                <i class="fa-solid fa-address-card text-indigo-500 mr-1"></i> Datos Fiscales y Domicilio para Facturación
+            </span>
+            <span class="text-[10px] font-bold text-slate-800 uppercase bg-white px-2 py-0.5 rounded border border-slate-200">
+                #{{ cliente.pk }} - {{ cliente.razon_social }}
+            </span>
+        </div>
+        {% if armeria %}
+        <div class="flex items-center gap-1.5 text-[9px] font-bold">
+            {% if armeria.es_policia %}
+            <span class="bg-blue-600 text-white px-2 py-0.5 rounded uppercase tracking-wider">Policía</span>
+            {% endif %}
+            {% if armeria.clu %}
+            <span class="bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded">
+                CLU: {{ armeria.clu }} {% if armeria.clu_vto %}(Vto: {{ armeria.clu_vto|date:"d/m/Y" }}){% endif %}
+            </span>
+            {% else %}
+            <span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded">
+                Sin CLU
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-12 gap-3 text-xs">
+        <!-- Tipo de Documento y CUIT/DNI -->
+        <div class="col-span-12 sm:col-span-3">
+            <span class="block text-[9px] font-black text-slate-400 uppercase tracking-tight">Tipo Doc. / CUIT-DNI</span>
+            <p class="font-bold text-slate-800 bg-white border border-slate-200 rounded px-2 py-1 mt-0.5 truncate">
+                {{ cliente.get_tipo_documento_display|default:'Doc' }}: {{ cliente.cuit|default:'Sin CUIT' }}
+            </p>
+        </div>
+
+        <!-- Condición en IVA -->
+        <div class="col-span-12 sm:col-span-3">
+            <span class="block text-[9px] font-black text-slate-400 uppercase tracking-tight">Condición en IVA</span>
+            <p class="font-bold text-indigo-700 bg-white border border-slate-200 rounded px-2 py-1 mt-0.5 truncate uppercase">
+                {{ cliente.get_condicion_iva_display|default:cliente.condicion_iva }}
+            </p>
+        </div>
+
+        <!-- Domicilio Completo -->
+        <div class="col-span-12 sm:col-span-6">
+            <span class="block text-[9px] font-black text-slate-400 uppercase tracking-tight">Domicilio Completo</span>
+            <p class="font-bold text-slate-800 bg-white border border-slate-200 rounded px-2 py-1 mt-0.5 truncate uppercase" title="{{ cliente.domicilio|default:'S/D' }}, {{ cliente.localidad|default:'S/D' }} (CP: {{ cliente.codigo_postal|default:'S/D' }}) {% if cliente.jurisdiccion %}- {{ cliente.jurisdiccion.nombre|upper }}{% endif %}">
+                {{ cliente.domicilio|default:'S/D' }}{% if cliente.localidad %}, {{ cliente.localidad }}{% endif %}{% if cliente.codigo_postal %} (CP: {{ cliente.codigo_postal }}){% endif %}{% if cliente.jurisdiccion %} - {{ cliente.jurisdiccion.nombre|upper }}{% endif %}
+            </p>
+        </div>
+    </div>
+</div>

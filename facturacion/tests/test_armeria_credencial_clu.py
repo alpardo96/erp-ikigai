@@ -4,7 +4,8 @@ from datetime import timedelta
 from decimal import Decimal
 from empresas.models import Empresa, Sucursal
 from productos.models import Producto, Rubro
-from facturacion.models import ClienteProveedor, ExtensionArmeria, Preventa, PreventaItem
+from facturacion.models import ClienteProveedor, Preventa, PreventaItem
+from verticalidades.armeria.models import ExtensionArmeria
 from django.contrib.auth.models import User
 from facturacion.helpers import validar_clu_cliente_armeria
 
@@ -114,4 +115,78 @@ class ArmeriaCredencialCLUTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'col-clu', response.content)
         self.assertIn(b'col-policia', response.content)
+
+    def test_preventas_item_add_formato_precio_ar(self):
+        """Verifica que montos con formato argentino (ej. '444.808,00') o desformateados no se multipliquen por 100."""
+        self.empresa.modo_edicion_facturacion = 'PRECIO'
+        self.empresa.save()
+
+        client = Client()
+        client.force_login(self.user)
+        session = client.session
+        session['empresa_id'] = self.empresa.id
+        session['sucursal_id'] = self.sucursal.id
+        session['preventa_items_temp'] = []
+        session.save()
+
+        # Enviar precio en formato con puntos de miles y coma decimal
+        response = client.post('/ventas/preventas/item/agregar/', {
+            'producto_id': self.producto_creden.id,
+            'credencial': '1234567',
+            'cantidad': '1',
+            'precio': '444.808,00',
+            'descuento': '0'
+        })
+        self.assertEqual(response.status_code, 200)
+        items = client.session['preventa_items_temp']
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['precio_unitario'], 444808.0)
+        self.assertEqual(items[0]['total'], 444808.0)
+
+    def test_preventa_credencial_condicion_subprod(self):
+        """Verifica que para armas (subprod=True) no se exija credencial en preventa, y para creden=True sin subprod sí se exija."""
+        client = Client()
+        client.force_login(self.user)
+        session = client.session
+        session['empresa_id'] = self.empresa.id
+        session['sucursal_id'] = self.sucursal.id
+        session['preventa_items_temp'] = []
+        session.save()
+
+        # 1. Producto arma (creden=True, subprod=True) -> NO debe exigir credencial en preventa (es anticipo)
+        resp_arma = client.post('/ventas/preventas/item/agregar/', {
+            'producto_id': self.producto_creden.id,
+            'credencial': '',
+            'cantidad': '1',
+            'precio': '1000.00',
+            'descuento': '0'
+        })
+        self.assertEqual(resp_arma.status_code, 200)
+        self.assertNotIn("requiere CREDENCIAL", resp_arma.content.decode())
+        self.assertEqual(len(client.session['preventa_items_temp']), 1)
+
+        # 2. Producto munición/artículo controlado (creden=True, subprod=False) -> SÍ debe exigir credencial
+        session['preventa_items_temp'] = []
+        session.save()
+
+        prod_municion = Producto.objects.create(
+            id=102,
+            empresa=self.empresa,
+            detalle="Caja Municiones 9mm",
+            precio_total=Decimal("50.00"),
+            creden=True,
+            subprod=False,
+            rubro=self.rubro
+        )
+        resp_municion_sin_cred = client.post('/ventas/preventas/item/agregar/', {
+            'producto_id': prod_municion.id,
+            'credencial': '',
+            'cantidad': '1',
+            'precio': '50.00',
+            'descuento': '0'
+        })
+        self.assertEqual(resp_municion_sin_cred.status_code, 200)
+        self.assertIn("requiere CREDENCIAL", resp_municion_sin_cred.content.decode())
+
+
 

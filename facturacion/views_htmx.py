@@ -913,10 +913,11 @@ def buscar_producto_venta_por_codigo(request):
     Busca producto para venta y devuelve stock en sucursal actual.
     """
     q = request.GET.get('q', '').strip()
+    producto_id = request.GET.get('id') or request.GET.get('producto_id')
     moneda_venta = request.GET.get('moneda') or request.session.get('venta_moneda', 'PES')
     sucursal_id = request.session.get('sucursal_id')
     empresa_id = request.session.get('empresa_id')
-    if not q:
+    if not q and not producto_id:
         return HttpResponse("", status=200)
 
     from empresas.models import CotizacionMoneda
@@ -929,14 +930,25 @@ def buscar_producto_venta_por_codigo(request):
             pass
 
     # Multi-tenant: SIEMPRE acotado a la empresa activa.
-    # Primero intentar coincidencia exacta por ID, cod_prov, cod_fab o codigo_anterior
-    producto = Producto.objects.filter(
-        Q(id__iexact=q) | Q(cod_prov__iexact=q) | Q(cod_fab__iexact=q) | Q(codigo_anterior__iexact=q),
-        empresa_id=empresa_id,
-    ).first()
+    producto = None
 
-    # Si no hubo match exacto, buscar el resultado más relevante de la búsqueda inteligente
-    if not producto:
+    # Prioridad 0: Si viene id / producto_id explícito (desde modal o selector)
+    if producto_id:
+        producto = Producto.objects.filter(id=producto_id, empresa_id=empresa_id).first()
+
+    # Prioridad 1: Si 'q' es un número entero, buscar coincidencia EXACTA por primary key ID
+    if not producto and q and q.isdigit():
+        producto = Producto.objects.filter(id=int(q), empresa_id=empresa_id).first()
+
+    # Prioridad 2: Coincidencia EXACTA por cod_prov, cod_fab o codigo_anterior
+    if not producto and q:
+        producto = Producto.objects.filter(
+            Q(cod_prov__iexact=q) | Q(cod_fab__iexact=q) | Q(codigo_anterior__iexact=q),
+            empresa_id=empresa_id,
+        ).first()
+
+    # Prioridad 3: Fallback a búsqueda inteligente multi-término
+    if not producto and q:
         producto = buscar_productos_inteligente(
             q=q,
             empresa_id=empresa_id,
@@ -1286,8 +1298,7 @@ def editar_item_venta_sesion(request, index):
 
             if modo_edicion == 'PRECIO':
                 if 'precio' in request.POST:
-                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
-                    precio_ingresado = float(raw_precio or 0)
+                    precio_ingresado = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
                     item['precio'] = precio_ingresado
                     if precio_ingresado < precio_base and precio_base > 0:
                         item['descuento'] = round(((precio_base - precio_ingresado) / precio_base) * 100.0, 2)
@@ -1297,11 +1308,9 @@ def editar_item_venta_sesion(request, index):
                     item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
             else:
                 if 'descuento' in request.POST:
-                    raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
-                    item['descuento'] = float(raw_descuento or 0)
+                    item['descuento'] = parsear_decimal_ar(request.POST.get('descuento', '0'), default=0.0)
                 if 'precio' in request.POST:
-                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
-                    item['precio'] = float(raw_precio or 0)
+                    item['precio'] = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
                 
                 precio_lista = float(item.get('precio', 0) or 0)
                 descuento = float(item.get('descuento', 0) or 0)
@@ -1428,15 +1437,12 @@ def eliminar_comprobante(request, id):
 def preventas_item_add(request):
     producto_id = request.POST.get('producto_id')
     credencial = request.POST.get('credencial', '').strip()
-    dmp = float(request.POST.get('dmp', 0) or 0)
+    from .helpers import parsear_decimal_ar
+    dmp = parsear_decimal_ar(request.POST.get('dmp', 0))
     try:
-        raw_cantidad = request.POST.get('cantidad', '1').replace('.', '').replace(',', '.')
-        raw_precio = request.POST.get('precio', '0')
-        raw_descuento = request.POST.get('descuento', '0').replace('.', '').replace(',', '.')
-        
-        cantidad = float(raw_cantidad or 1)
-        precio_lista = float(raw_precio or 0)
-        descuento = float(raw_descuento or 0)
+        cantidad = parsear_decimal_ar(request.POST.get('cantidad', '1'), default=1.0)
+        precio_lista = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
+        descuento = parsear_decimal_ar(request.POST.get('descuento', '0'), default=0.0)
     except (ValueError, TypeError):
         return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Valores inválidos.</div>", status=200)
     
@@ -1466,15 +1472,14 @@ def preventas_item_add(request):
         if any(item.get('subprod', False) for item in items):
             return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Esta preventa es exclusiva para la reserva de un arma. Para otros productos debe generar una preventa separada.</div>", status=200)
 
-    if producto.creden and not credencial:
+    # En Preventas, la credencial solo se exige cuando creden=True y subprod=False
+    # (en armas/subprod=True es solo un anticipo/reserva y no aplica pedir credencial aquí)
+    if producto.creden and not producto.subprod and not credencial:
         return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Este producto requiere CREDENCIAL obligatoria.</div>", status=200)
 
-    if producto.creden or producto.subprod:
-        cliente_id = request.POST.get('cliente') or request.POST.get('cliente_id')
-        if cliente_id:
-            es_valido, msj_err = validar_clu_cliente_armeria(cliente_id, request.session.get('empresa_id'))
-            if not es_valido:
-                return HttpResponse(f"<div class='p-4 bg-red-100 text-red-700 font-bold'>{msj_err}</div>", status=200)
+    # Nota: En Preventas no opera la restricción de CLU vigente ya que aquí
+    # no se factura ni entrega el arma, sólo se genera la preventa/reserva (la traba
+    # opera en Ventas con Trazabilidad).
 
     # Lógica de Pesificación (Bimonetarismo)
     moneda_origen = producto.moneda
@@ -1521,12 +1526,9 @@ def preventas_item_add(request):
 
     if modo_edicion == 'PRECIO':
         # En modo PRECIO se toma el precio ingresado por el usuario
-        raw_precio = str(request.POST.get('precio', '')).strip().replace('.', '').replace(',', '.')
-        if raw_precio != '':
-            try:
-                precio_ingresado = float(raw_precio)
-            except (ValueError, TypeError):
-                precio_ingresado = precio_lista
+        raw_precio = request.POST.get('precio')
+        if raw_precio is not None and str(raw_precio).strip() != '':
+            precio_ingresado = parsear_decimal_ar(raw_precio, default=precio_lista)
         else:
             precio_ingresado = precio_lista
 
@@ -1624,6 +1626,7 @@ def editar_item_preventa_sesion(request, index):
     Actualiza precio unitario o descuento de un ítem de preventa en la sesión.
     """
     from empresas.models import Empresa as _Empresa
+    from .helpers import parsear_decimal_ar
     empresa_activa = _Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
     modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
 
@@ -1636,8 +1639,7 @@ def editar_item_preventa_sesion(request, index):
 
             if modo_edicion == 'PRECIO':
                 if 'precio' in request.POST:
-                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
-                    precio_ingresado = float(raw_precio or 0)
+                    precio_ingresado = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
                     item['precio_unitario'] = precio_ingresado
                     if precio_ingresado < precio_base and precio_base > 0:
                         item['descuento'] = round(((precio_base - precio_ingresado) / precio_base) * 100.0, 2)
@@ -1647,11 +1649,9 @@ def editar_item_preventa_sesion(request, index):
                     item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
             else:
                 if 'descuento' in request.POST:
-                    raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
-                    item['descuento'] = float(raw_descuento or 0)
+                    item['descuento'] = parsear_decimal_ar(request.POST.get('descuento', '0'), default=0.0)
                 if 'precio' in request.POST:
-                    raw_precio = str(request.POST.get('precio', '0')).replace('.', '').replace(',', '.')
-                    item['precio_unitario'] = float(raw_precio or 0)
+                    item['precio_unitario'] = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
                 
                 precio_lista = float(item.get('precio_unitario', 0) or 0)
                 descuento = float(item.get('descuento', 0) or 0)
@@ -1680,18 +1680,22 @@ def editar_item_preventa_sesion(request, index):
 
 @login_required
 def info_cliente_preventa(request):
+    """
+    Retorna la ficha de datos fiscales y domicilio completo del cliente para la carga de Preventa.
+    En Distribución incluye adicionalmente el panel de crédito, y en Armería los datos informativos de CLU.
+    """
     cliente_id = request.GET.get('cliente') or request.GET.get('cliente_id')
     if not cliente_id:
         return HttpResponse("")
     
     try:
-        from .models import ClienteProveedor, ExtensionArmeria
+        from .models import ClienteProveedor
+        from verticalidades.armeria.models import ExtensionArmeria
         from empresas.models import Empresa
-        cliente = ClienteProveedor.objects.get(pk=cliente_id, empresa_id=request.session.get('empresa_id'))
         empresa_id = request.session.get('empresa_id')
+        cliente = ClienteProveedor.objects.get(pk=cliente_id, empresa_id=empresa_id)
 
-        # --- Distribución (Plan 074 §7.1): el vendedor necesita a la vista los tres
-        # números con los que decide la venta. Es información, no un bloqueo.
+        # Si es Distribuidora, renderizamos el panel de situación crediticia
         if Empresa.objects.filter(id=empresa_id, tipo_actividad="DISTRIBUIDORA").exists():
             from verticalidades.distribucion.services.credito import situacion_crediticia
             return render(request, 'distribucion/partials/panel_credito.html', {
@@ -1699,14 +1703,15 @@ def info_cliente_preventa(request):
                 'credito': situacion_crediticia(cliente),
             })
 
+        # Para Armería y resto de actividades: renderizamos la ficha con Tipo de Doc, CUIT, Condición IVA y Domicilio completo
+        armeria = None
         if Empresa.objects.filter(id=empresa_id, tipo_actividad="ARMERIA").exists():
-            extension = ExtensionArmeria.objects.filter(cliente=cliente).first()
-            if not extension:
-                return HttpResponse('<div class="text-xs font-bold text-red-600 bg-red-100 p-1 rounded animate-pulse">NO TIENE CLU REGISTRADO</div>')
-            elif extension.esta_vencida:
-                return HttpResponse(f'<div class="text-xs font-bold text-red-600 bg-red-100 p-1 rounded animate-pulse">CLU VENCIDO ({extension.clu_vto.strftime("%d/%m/%Y")})</div>')
-            else:
-                return HttpResponse(f'<div class="text-xs font-bold text-green-700 bg-green-100 p-1 rounded">CLU VÁLIDO ({extension.clu_vto.strftime("%d/%m/%Y")})</div>')
+            armeria = ExtensionArmeria.objects.filter(cliente=cliente).first()
+
+        return render(request, 'facturacion/partials/preventa_cliente_info.html', {
+            'cliente': cliente,
+            'armeria': armeria,
+        })
     except ClienteProveedor.DoesNotExist:
         pass
     

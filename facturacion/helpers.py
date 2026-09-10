@@ -42,3 +42,46 @@ def validar_clu_cliente_armeria(cliente, empresa_id):
         return False, f"El CLU del cliente '{cliente.razon_social}' está VENCIDO ({vto_str}). No se permite la venta de artículos de Armería."
 
     return True, ""
+
+
+def parsear_decimal_ar(val, default=0.0):
+    """
+    Parsea de forma segura y robusta un valor numérico recibido desde el frontend,
+    manejando tanto formato es-AR ('444.808,00' o '444.808,0'),
+    formato desformateado por JS ('444808.00' o '444808.0'),
+    números directos (int, float, Decimal) o valores vacíos.
+    Evita la multiplicación por 100 causada por eliminar el punto en valores ya normalizados.
+    """
+    if val is None:
+        return default
+    if isinstance(val, (int, float)):
+        return float(val)
+    from decimal import Decimal
+    if isinstance(val, Decimal):
+        return float(val)
+
+    texto = str(val).strip()
+    if not texto:
+        return default
+
+    # Si contiene coma y punto: ej. "1.234.567,89" -> punto es miles, coma es decimal
+    if ',' in texto and '.' in texto:
+        texto = texto.replace('.', '').replace(',', '.')
+    # Si contiene sólo coma: ej. "1234,56" o "444808,0" -> coma es decimal
+    elif ',' in texto:
+        texto = texto.replace(',', '.')
+    # Si contiene sólo punto(s)
+    elif '.' in texto:
+        partes = texto.split('.')
+        if len(partes) > 2:
+            # Múltiples puntos: "1.234.567" -> separador de miles
+            texto = texto.replace('.', '')
+        else:
+            # Un solo punto: notación decimal estándar (ej. "444808.00", "444808.0", "12.5")
+            pass
+
+    try:
+        return float(texto)
+    except (ValueError, TypeError):
+        return default
+

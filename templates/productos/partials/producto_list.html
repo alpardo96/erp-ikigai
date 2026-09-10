@@ -4,6 +4,7 @@
     <td class="col-codprov px-3 py-4 text-sm text-gray-500">{{ producto.cod_prov|default:"-" }}</td>
     <td class="col-codfab px-3 py-4 text-sm text-gray-500">{{ producto.cod_fab|default:"-" }}</td>
     <td class="col-detalle px-3 py-4 text-sm font-medium text-gray-900">{{ producto.detalle }}</td>
+    <td class="col-calibre px-3 py-4 text-sm text-gray-500">{{ producto.unidad_venta|default:"-" }}</td>
     <td class="col-proveedor px-3 py-4 text-sm text-gray-500">{{ producto.proveedor.razon_social|default:"-" }}</td>
     <td class="col-minimo px-3 py-4 text-sm text-gray-500">{{ producto.minimo }}</td>
     <td class="col-ptopedir px-3 py-4 text-sm text-gray-500">{{ producto.ptopedir }}</td>
@@ -34,6 +35,12 @@
     <td class="col-fecact px-3 py-4 text-sm text-gray-500">{{ producto.fec_act|date:"d/m/Y"|default:"-" }}</td>
     <td class="relative py-4 pl-3 pr-6 text-right text-sm font-medium">
         <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button hx-get="{% url 'producto_add' %}?duplicar_de={{ producto.id }}" hx-target="#modal-container"
+                class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 p-2 rounded-lg transition-colors" title="Duplicar Producto">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+            </button>
             <button hx-get="{% url 'producto_edit' producto.id %}" hx-target="#modal-container"
                 class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors" title="Editar">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>

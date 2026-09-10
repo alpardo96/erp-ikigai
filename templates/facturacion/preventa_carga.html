@@ -43,7 +43,7 @@
                         <div class="relative flex gap-1" x-data="{ open: false }">
                             <!-- Input oculto para el ID real que va al form -->
                             <input type="hidden" id="id_cliente" name="cliente" required value="1"
-                                hx-get="{% url 'preventas_cliente_info' %}" hx-trigger="change" hx-target="#cliente_clu_info">
+                                hx-get="{% url 'preventas_cliente_info' %}" hx-trigger="change, load" hx-target="#cliente_info_container">
 
                             <!-- Input visual (Ahora editable) -->
                             <input type="text" id="cliente_nombre_display" name="q"
@@ -54,7 +54,7 @@
                                 hx-target="#cliente_suggestions"
                                 autocomplete="off"
                                 @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
-                                oninput="if(this.value === '') { document.getElementById('id_cliente').value = ''; }">
+                                oninput="if(this.value === '') { document.getElementById('id_cliente').value = ''; const cInfo = document.getElementById('cliente_info_container'); if(cInfo) cInfo.innerHTML = ''; }">
                             
                             <!-- Botón Buscar Cliente -->
                             <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}"
@@ -103,12 +103,11 @@
                     de carga y ocupar espacio de pantalla con un dato que no se decide no
                     aporta nada al operador.
                     {% endcomment %}
+                </div>
 
-                    {% if is_armeria %}
-                    <div id="cliente_clu_info" class="flex items-center">
-                        <!-- El info del CLU cargará aquí vía HTMX -->
-                    </div>
-                    {% endif %}
+                <!-- FICHA DE DATOS FISCALES Y DOMICILIO COMPLETO DEL CLIENTE (Vía HTMX) -->
+                <div id="cliente_info_container" class="col-span-12">
+                    <!-- Ficha cargada vía HTMX -->
                 </div>
 
                 {% if is_distribuidora %}
@@ -135,11 +134,6 @@
                             placeholder="Indicaciones de entrega, aclaraciones...">
                     </div>
                 </div>
-                <div class="col-span-12 mt-3">
-                    <div id="cliente_clu_info">
-                        <!-- El panel de crédito del cliente carga acá vía HTMX -->
-                    </div>
-                </div>
                 {% endif %}
             </div>
         </div>
@@ -148,18 +142,22 @@
         <div id="bloque-carga-rapida"
             class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible border-t-2 border-t-blue-600 animate-in fade-in duration-300">
             <div class="bg-slate-50 p-2 flex items-end gap-2 italic font-bold rounded-t-lg">
-                <!-- ID -->
+                <!-- ID y Búsqueda -->
                 <div class="w-32 relative" x-data="{ open: false }">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Cód/Desc/ID</label>
                     <div class="relative">
-                        <input type="text" id="quick_producto_id" name="producto_id" autofocus
+                        <!-- ID definitivo seleccionado para el alta en el listado -->
+                        <input type="hidden" id="selected_producto_id" name="producto_id" value="">
+                        <!-- Input visual para búsqueda libre e interactiva -->
+                        <input type="text" id="quick_producto_id" autofocus
                             hx-get="{% url 'typeahead_productos_venta' %}" 
                             hx-trigger="keyup changed delay:300ms, search, focus" 
                             hx-vals='js:{q: document.getElementById("quick_producto_id").value}'
                             hx-target="#producto_suggestions"
                             autocomplete="off"
                             @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
-                            class="w-full h-8 pl-2 pr-7 bg-white border border-slate-300 rounded text-[11px] font-black text-blue-600 outline-none focus:border-blue-500 uppercase"
+                            oninput="if(document.getElementById('selected_producto_id').value !== this.value) document.getElementById('selected_producto_id').value = '';"
+                            class="w-full h-8 pl-2 pr-7 bg-white border border-slate-300 rounded text-[10px] font-black text-blue-600 outline-none focus:border-blue-500 uppercase"
                             placeholder="Buscar..."
                             onkeydown="if(event.key === 'Enter') { 
                                 htmx.ajax('GET', '{% url 'ventas_producto_buscar_codigo' %}', {values: {q: this.value}, source: this}); 
@@ -182,8 +180,8 @@
                     </div>
                 </div>
 
-                <!-- Detalle -->
-                <div class="flex-1">
+                <!-- Detalle / Descripción (Ancho ajustado, no infinito) -->
+                <div class="flex-1 min-w-[180px]">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Descripción</label>
                     <div id="quick_producto_detalle"
                         class="w-full h-8 px-3 bg-slate-100 border border-slate-200 rounded flex items-center text-[10px] font-black text-slate-700 uppercase italic truncate shadow-inner">
@@ -192,47 +190,48 @@
                 </div>
 
                 <!-- Credencial -->
-                <div id="div_credencial" class="w-24 hidden">
+                <div id="div_credencial" class="w-24 shrink-0 hidden">
                     <label class="block text-[9px] font-black text-red-500 uppercase mb-0.5 text-center">Credencial</label>
                     <input type="text" id="quick_credencial" name="credencial" minlength="7"
                         onblur="if(this.required && this.value.length > 0 && this.value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => this.focus(), 10); }"
-                        class="w-full h-8 px-2 bg-red-50 border border-red-300 rounded text-xs font-black text-red-900 outline-none uppercase placeholder:text-red-300"
+                        class="w-full h-8 px-2 bg-red-50 border border-red-300 rounded text-[10px] font-black text-red-900 outline-none uppercase placeholder:text-red-300"
                         placeholder="OBLIGATORIO">
                 </div>
 
                 <!-- Cantidad -->
-                <div class="w-16">
+                <div class="w-16 shrink-0">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Cant.</label>
                     <input type="text" id="quick_cantidad" name="cantidad" value="1"
-                        class="w-full h-8 bg-white border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR">
+                        class="w-full h-8 bg-white border border-slate-300 rounded text-[10px] font-black text-center outline-none fInputAR">
                 </div>
 
-                <!-- Precio -->
-                <div class="w-28 relative">
+                <!-- Precio (Ampliado a w-40 para que números grandes y con decimales no se corten) -->
+                <div class="w-40 shrink-0 relative">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-right">
                         {% if modo_edicion == 'PRECIO' %}Pcio. Final ($){% else %}Pcio. Lista ($){% endif %}
                     </label>
                     <input type="text" id="quick_precio" name="precio"
                         {% if modo_edicion == 'DESCUENTO' %}readonly tabindex="-1"{% endif %}
-                        class="w-full h-8 px-2 {% if modo_edicion == 'DESCUENTO' %}bg-slate-100 text-slate-600{% else %}bg-white text-slate-900 border-blue-300 focus:border-blue-600{% endif %} border border-slate-300 rounded text-xs font-black text-right outline-none fInputAR"
+                        class="w-full h-8 px-2.5 {% if modo_edicion == 'DESCUENTO' %}bg-slate-100 text-slate-600{% else %}bg-white text-slate-900 border-blue-300 focus:border-blue-600{% endif %} border border-slate-300 rounded text-[10px] font-black text-right outline-none fInputAR"
                         placeholder="0,00"
                         oninput="calcularDescuentoDesdePrecioPreventa()">
                     <span id="alerta_precio_doble_badge" class="hidden absolute -top-3 right-0 bg-amber-500 text-white text-[8px] font-black px-1 rounded animate-pulse" title="El precio ingresado supera el doble del precio de lista base">⚠️ > 2x</span>
                 </div>
 
                 <!-- Descuento -->
-                <div class="w-20">
+                <div class="w-20 shrink-0">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-center">Desc (%)</label>
                     <input type="text" id="quick_descuento" name="descuento" value="0"
                         {% if modo_edicion == 'PRECIO' %}readonly tabindex="-1"{% endif %}
-                        class="w-full h-8 px-2 {% if modo_edicion == 'PRECIO' %}bg-slate-100 text-slate-600 font-bold{% else %}bg-white text-slate-900{% endif %} border border-slate-300 rounded text-xs font-black text-center outline-none fInputAR"
+                        class="w-full h-8 px-2 {% if modo_edicion == 'PRECIO' %}bg-slate-100 text-slate-600 font-bold{% else %}bg-white text-slate-900{% endif %} border border-slate-300 rounded text-[10px] font-black text-center outline-none fInputAR"
                         placeholder="0">
                 </div>
 
                 <!-- Botón Añadir -->
-                <div class="w-20">
+                <div class="w-20 shrink-0">
                     <button type="button" hx-post="{% url 'preventas_item_add' %}" hx-target="#items-tabla-container"
                         hx-include="#preventa-form"
+                        onclick="if(!document.getElementById('selected_producto_id').value) { alert('Debe seleccionar un producto.'); event.stopImmediatePropagation(); event.preventDefault(); return false; } if(document.getElementById('quick_credencial').required && document.getElementById('quick_credencial').value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => document.getElementById('quick_credencial').focus(), 10); event.stopImmediatePropagation(); event.preventDefault(); return false; }"
                         class="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white font-black rounded text-[9px] uppercase tracking-widest shadow-sm transition-all">
                         AÑADIR
                     </button>
@@ -318,6 +317,7 @@
     });
 
     // EVENTO PRODUCTO SELECCIONADO
+    // EVENTO PRODUCTO SELECCIONADO
     document.body.addEventListener('productoVentaEncontrado', (e) => {
         const modalContainer = document.getElementById('modal-container');
         if (modalContainer) modalContainer.innerHTML = '';
@@ -325,6 +325,10 @@
         const data = e.detail;
         unidadPrecioSugerido = data.precio_sugerido; 
         
+        // Bloquear y fijar el ID real del producto como única fuente de verdad para la carga
+        const hiddenId = document.getElementById('selected_producto_id');
+        if (hiddenId) hiddenId.value = data.id;
+
         document.getElementById('quick_producto_id').value = data.id;
         document.getElementById('quick_producto_detalle').innerText = data.detalle;
         document.getElementById('quick_precio').value = fMiles(unidadPrecioSugerido);
@@ -336,7 +340,10 @@
         const divCred = document.getElementById('div_credencial');
         const inputCred = document.getElementById('quick_credencial');
 
-        if (data.requiere_credencial) {
+        // Se activa el textbox credencial cuando creden = true AND subprod = false (en armas es solo anticipo)
+        const exigeCredencial = data.requiere_credencial && !data.subprod;
+
+        if (exigeCredencial) {
             divCred.classList.remove('hidden');
             inputCred.required = true;
             inputCred.value = '';
@@ -379,6 +386,8 @@
 
     document.body.addEventListener('limpiarInputsCargaPreventa', () => {
         unidadPrecioSugerido = 0;
+        const hiddenId = document.getElementById('selected_producto_id');
+        if (hiddenId) hiddenId.value = '';
         document.getElementById('quick_producto_id').value = '';
         document.getElementById('quick_producto_detalle').innerText = 'Aguardando selección de producto...';
         document.getElementById('quick_cantidad').value = '1';

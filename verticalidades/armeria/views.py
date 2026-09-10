@@ -1152,7 +1152,7 @@ def reserva_arma_anular_procesar(request, reserva_id):
         OrdenPago, OrdenPagoImputacion, Caja, CajaSesion, MovimientoCaja,
         TransaccionBancaria, CuentaBancaria
     )
-    from contable.models import ParametroContable, Cuenta
+    from contable.models import ParametrosContables, Cuenta
     from empresas.models import Ejercicio
 
     reserva = get_object_or_404(ReservaArma.objects.select_for_update(), id=reserva_id, empresa_id=empresa_id)
@@ -1194,12 +1194,12 @@ def reserva_arma_anular_procesar(request, reserva_id):
     )
 
     # 2. Imputación contable contra la cuenta deudores / cta corriente del cliente
-    param_c = ParametroContable.objects.filter(empresa_id=empresa_id).first()
+    param_c = ParametrosContables.objects.filter(empresa_id=empresa_id).first()
     cta_imputar = None
     if reserva.cliente.cta_pat:
         cta_imputar = Cuenta.objects.filter(empresa_id=empresa_id, codigo=reserva.cliente.cta_pat).first()
     if not cta_imputar and param_c:
-        cta_imputar = param_c.cta_deudores_ventas
+        cta_imputar = param_c.cta_clientes_default
 
     if cta_imputar:
         OrdenPagoImputacion.objects.create(

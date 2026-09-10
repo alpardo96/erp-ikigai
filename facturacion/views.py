@@ -394,17 +394,9 @@ class PreventaCargaView(LoginRequiredMixin, View):
                         messages.error(request, "La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.")
                         return redirect('preventas_carga')
 
-                # Validar CLU si algún ítem requiere credencial o trazabilidad
-                from .helpers import validar_clu_cliente_armeria
-                cliente_obj = form.cleaned_data.get('cliente')
-                for item_t in items_temp:
-                    p_obj = Producto.objects.filter(id=item_t['producto_id']).first()
-                    if p_obj and (p_obj.creden or p_obj.subprod):
-                        es_val, err_m = validar_clu_cliente_armeria(cliente_obj, empresa_id)
-                        if not es_val:
-                            messages.error(request, err_m)
-                            return redirect('preventas_carga')
-                        break
+                # Nota: En Preventas no opera la restricción de CLU vigente ya que aquí
+                # no se factura ni entrega el arma, sólo se genera la preventa/reserva (la traba
+                # opera de forma estricta en Ventas con Trazabilidad al facturar).
 
                 with transaction.atomic():
                     preventa = form.save(commit=False)

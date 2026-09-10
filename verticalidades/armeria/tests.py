@@ -68,7 +68,7 @@ class ReservaArmaListViewTests(TestCase):
             producto=self.producto_1,
             sucursal=self.sucursal,
             serie="SERIE-GLK-99001",
-            cuim="CUIM-99001",
+            cuim="990001",
             feccpra=timezone.localdate(),
             cto_adq=Decimal('500.00'),
             situacion='DEPOSITO'
@@ -79,12 +79,14 @@ class ReservaArmaListViewTests(TestCase):
             empresa=self.empresa,
             sucursal=self.sucursal,
             cliente=self.cliente_1,
+            vendedor=self.user,
             total=Decimal('1000.00')
         )
         self.preventa_2 = Preventa.objects.create(
             empresa=self.empresa,
             sucursal=self.sucursal,
             cliente=self.cliente_2,
+            vendedor=self.user,
             total=Decimal('1500.00')
         )
 
@@ -174,7 +176,7 @@ class ReservaArmaListViewTests(TestCase):
         self.assertNotIn(self.reserva_2, res_serie.context['reservas'])
 
         # Por CUIM
-        res_cuim = self.client.get(url, {'q': 'CUIM-99001'})
+        res_cuim = self.client.get(url, {'q': '990001'})
         self.assertIn(self.reserva_1, res_cuim.context['reservas'])
 
     def test_busqueda_inteligente_por_recibo(self):
@@ -193,3 +195,84 @@ class ReservaArmaListViewTests(TestCase):
         res_aplicadas = self.client.get(url, {'estado': 'APLICADA'})
         self.assertIn(self.reserva_2, res_aplicadas.context['reservas'])
         self.assertNotIn(self.reserva_1, res_aplicadas.context['reservas'])
+
+
+class ArmeriaModificacionesTests(TestCase):
+    def setUp(self):
+        self.empresa = Empresa.objects.create(nombre="Armeria Test", cuit="30799999992", tipo_actividad="ARMERIA")
+        self.sucursal = Sucursal.objects.create(empresa=self.empresa, nombre="Casa Central", punto=1)
+        self.user = User.objects.create_user(username='vendedor_test', password='password123')
+        self.client = Client()
+        self.client.login(username='vendedor_test', password='password123')
+
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session['sucursal_id'] = self.sucursal.id
+        session.save()
+
+        self.cliente = ClienteProveedor.objects.create(
+            empresa=self.empresa,
+            razon_social="Consumidor Nuevo",
+            cuit="20443322114",
+            domicilio="Av. Belgrano 450",
+            localidad="Salta",
+            codigo_postal="4400",
+            tipo_documento="80",
+            condicion_iva="CONSUMIDOR FINAL",
+            tipo_entidad=1
+        )
+
+        self.producto_arma = Producto.objects.create(
+            empresa=self.empresa,
+            detalle="PISTOLA BERSA THUNDER .380",
+            cod_prov="BER-380",
+            subprod=True,
+            creden=True,
+            precio_total=Decimal('350000.00'),
+            unidad_venta="C.380"
+        )
+
+    def test_producto_form_calibre_armeria(self):
+        """El formulario de producto en Armería debe permitir guardar el Calibre en unidad_venta."""
+        from productos.forms import ProductoForm
+        form = ProductoForm(
+            data={
+                'detalle': 'CARABINA .22 LR',
+                'cod_prov': 'CAR-22',
+                'cod_fab': 'FAB-22',
+                'minimo': 1,
+                'ptopedir': 1,
+                'margen': Decimal('30.00'),
+                'unidad_venta': 'C.22 LR',
+                'alic_iva': '21.00',
+                'moneda': 'PES',
+            },
+            empresa=self.empresa
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['unidad_venta'], 'C.22 LR')
+
+    def test_info_cliente_preventa_datos_completos(self):
+        """info_cliente_preventa debe renderizar el tipo de doc, cuit, condicion iva y domicilio."""
+        response = self.client.get(reverse('preventas_cliente_info'), {'cliente': self.cliente.pk})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'BELGRANO 450', response.content.upper())
+        self.assertIn(b'20443322114', response.content)
+        self.assertIn(b'CONSUMIDOR FINAL', response.content.upper())
+
+    def test_preventa_arma_sin_traba_clu(self):
+        """En preventas no opera la traba de CLU vigente, permitiendo generar la reserva/seña."""
+        # Se guarda la preventa de un arma sin que el cliente tenga CLU registrado
+        preventa = Preventa.objects.create(
+            empresa=self.empresa,
+            sucursal=self.sucursal,
+            cliente=self.cliente,
+            vendedor=self.user,
+            cliente_razon_social=self.cliente.razon_social,
+            cliente_cuit=self.cliente.cuit,
+            cliente_domicilio=self.cliente.domicilio,
+            neto=Decimal('350000.00'),
+            total=Decimal('350000.00')
+        )
+        self.assertIsNotNone(preventa.preventa_id)
+

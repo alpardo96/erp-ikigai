@@ -236,7 +236,7 @@ class SubproductoRemitoInternoTests(Plan028Base):
         )
         self.subp = Subproducto.objects.create(
             empresa=self.emp, producto=self.prod_trazable, sucursal=self.s1,
-            serie="SN998877", cuim="CUIM554433", feccpra=date(2026, 8, 1)
+            serie="SN998877", cuim="554433", feccpra=date(2026, 8, 1)
         )
         self.client.force_login(self.user)
         s = self.client.session

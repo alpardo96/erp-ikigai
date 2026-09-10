@@ -13,17 +13,21 @@ def producto_modal(request, id=None):
         
     empresa = get_object_or_404(Empresa, id=empresa_id)
 
+    producto_base = None
     if id:
         producto = get_object_or_404(Producto, id=id, empresa=empresa)
     else:
         producto = None
+        duplicar_de = request.GET.get('duplicar_de')
+        if duplicar_de:
+            producto_base = get_object_or_404(Producto, id=duplicar_de, empresa=empresa)
 
     if request.method == 'POST':
         form = ProductoForm(request.POST, instance=producto, empresa=empresa)
         if form.is_valid():
             nuevo_producto = form.save(commit=False)
             nuevo_producto.empresa = empresa
-            # Set created/modified by (assuming AuditModel)
+            # Set created/modified by (AuditModel)
             if not id:
                 nuevo_producto.creado_por = request.user
             nuevo_producto.modificado_por = request.user
@@ -46,16 +50,40 @@ def producto_modal(request, id=None):
             return response
     else:
         initial = {}
-        if not id:
+        if producto_base:
+            # Duplicación inteligente: pre-cargamos todos los atributos del producto original
+            initial = {
+                'detalle': producto_base.detalle,
+                'cod_prov': producto_base.cod_prov or '',
+                'cod_fab': producto_base.cod_fab or '',
+                'proveedor': producto_base.proveedor_id,
+                'minimo': producto_base.minimo,
+                'ptopedir': producto_base.ptopedir,
+                'creden': producto_base.creden,
+                'subprod': producto_base.subprod,
+                'moneda': producto_base.moneda,
+                'alic_iva': producto_base.alic_iva_porc,
+                'margen': producto_base.margen,
+                'marca': producto_base.marca_id,
+                'rubro': producto_base.rubro_id,
+                'familia': producto_base.familia_id,
+                'unidad_venta': producto_base.unidad_venta or '',
+                'peso_unitario_kg': producto_base.peso_unitario_kg,
+                'unidades_por_bulto': producto_base.unidades_por_bulto,
+            }
+        elif not id:
             if request.GET.get('cod_prov'):
                 initial['cod_prov'] = request.GET.get('cod_prov')
             if request.GET.get('proveedor'):
                 initial['proveedor'] = request.GET.get('proveedor')
+
         form = ProductoForm(instance=producto, initial=initial, empresa=empresa)
 
     return render(request, 'productos/modals/producto_modal.html', {
         'form': form,
         'producto': producto,
+        'producto_base': producto_base,
+        'es_duplicado': bool(producto_base),
         'origen': request.GET.get('origen') or request.POST.get('origen') or '',
         'tipo_actividad': empresa.tipo_actividad or '',
     })
@@ -66,7 +94,8 @@ def buscar_productos(request):
         return HttpResponse("<tr><td colspan='100%' class='text-center p-4 text-red-500'>Debe seleccionar una empresa</td></tr>")
 
     q = request.GET.get('q', '').strip()
-    productos = buscar_productos_inteligente(q=q, empresa_id=empresa_id, limit=100)
+    campo = request.GET.get('campo', 'todos').strip()
+    productos = buscar_productos_inteligente(q=q, empresa_id=empresa_id, campo=campo, limit=100)
 
     return render(request, 'productos/partials/producto_list.html', {'productos': productos})
 

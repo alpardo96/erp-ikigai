@@ -1,13 +1,15 @@
-from django.db.models import Q, Case, When, Value, IntegerField, Exists, OuterRef
-from productos.models import Producto, Subproducto
+from django.db.models import Q, Case, When, Value, IntegerField, DecimalField, Exists, OuterRef, Subquery, Sum
+from django.db.models.functions import Coalesce
+from productos.models import Producto, Subproducto, StockSucursal
 
 
-def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None):
+def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None, campo='todos'):
     """
     Construye la consulta Q y la expresión de ordenamiento por relevancia para productos.
-    Permite buscar términos concatenados en cualquier orden (adelante, atrás, al medio)
-    y a través de múltiples atributos (detalle, cod_fab, cod_prov, codigo_anterior, marca, rubro, familia, id).
+    Soporta búsqueda por campo específico ('detalle', 'rubro', 'calibre', 'cod_prov', 'proveedor', 'id')
+    o búsqueda general ('todos') a través de múltiples atributos concatenados.
     
+    Optimiza la consulta precargando relaciones y calculando el stock global en la misma query.
     Retorna: (queryset_filtrado, tiene_orden_relevancia)
     """
     empresa_filtros = Q(empresa_id=empresa_id)
@@ -16,7 +18,19 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
     if proveedor_id:
         empresa_filtros &= Q(proveedor_id=proveedor_id)
 
-    qs = Producto.objects.filter(empresa_filtros)
+    # Subconsulta agregada para el stock global consolidado (evita N+1 queries en el renderizado)
+    subq_stock = StockSucursal.objects.filter(
+        producto_id=OuterRef('pk')
+    ).values('producto_id').annotate(total=Sum('cantidad')).values('total')
+
+    qs = Producto.objects.filter(empresa_filtros).select_related(
+        'proveedor', 'marca', 'rubro', 'familia'
+    ).annotate(
+        stock_total_calc=Coalesce(
+            Subquery(subq_stock, output_field=DecimalField(max_digits=15, decimal_places=2)),
+            Value(0, output_field=DecimalField(max_digits=15, decimal_places=2))
+        )
+    )
 
     if solo_trazabilidad:
         subproductos_con_prod = Subproducto.objects.filter(
@@ -29,11 +43,28 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
     if not q_clean:
         return qs.order_by('detalle'), False
 
+    # Filtros por campo específico si el usuario lo seleccionó
+    campo_clean = (campo or 'todos').lower().strip()
+    if campo_clean == 'detalle':
+        return qs.filter(detalle__icontains=q_clean).order_by('detalle'), False
+    elif campo_clean == 'rubro':
+        return qs.filter(rubro__detalle__icontains=q_clean).order_by('rubro__detalle', 'detalle'), False
+    elif campo_clean == 'calibre':
+        return qs.filter(unidad_venta__icontains=q_clean).order_by('detalle'), False
+    elif campo_clean == 'cod_prov':
+        return qs.filter(cod_prov__icontains=q_clean).order_by('detalle'), False
+    elif campo_clean == 'proveedor':
+        return qs.filter(proveedor__razon_social__icontains=q_clean).order_by('detalle'), False
+    elif campo_clean == 'id':
+        if q_clean.isdigit():
+            return qs.filter(id=int(q_clean)), False
+        return qs.none(), False
+
+    # Búsqueda general ('todos'): multi-término AND a través de todos los atributos
     terminos = [t for t in q_clean.split() if t]
     if not terminos:
         return qs.order_by('detalle'), False
 
-    # Filtro multi-término AND: cada palabra ingresada debe encontrarse en al menos uno de los campos
     filtro_terminos = Q()
     for term in terminos:
         term_q = (
@@ -43,7 +74,9 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
             Q(codigo_anterior__icontains=term) |
             Q(marca__detalle__icontains=term) |
             Q(rubro__detalle__icontains=term) |
-            Q(familia__detalle__icontains=term)
+            Q(familia__detalle__icontains=term) |
+            Q(unidad_venta__icontains=term) |
+            Q(proveedor__razon_social__icontains=term)
         )
         if term.isdigit():
             term_q |= Q(id=int(term))
@@ -58,12 +91,14 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
 
     whens.append(When(Q(cod_fab__iexact=q_clean) | Q(cod_prov__iexact=q_clean) | Q(codigo_anterior__iexact=q_clean), then=Value(2)))
     whens.append(When(detalle__istartswith=q_clean, then=Value(3)))
-    whens.append(When(detalle__icontains=q_clean, then=Value(4)))
-    whens.append(When(marca__detalle__istartswith=q_clean, then=Value(5)))
+    whens.append(When(rubro__detalle__istartswith=q_clean, then=Value(4)))
+    whens.append(When(detalle__icontains=q_clean, then=Value(5)))
+    whens.append(When(rubro__detalle__icontains=q_clean, then=Value(6)))
+    whens.append(When(marca__detalle__istartswith=q_clean, then=Value(7)))
 
     prioridad_expr = Case(
         *whens,
-        default=Value(6),
+        default=Value(8),
         output_field=IntegerField()
     )
 
@@ -71,7 +106,7 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
     return qs, True
 
 
-def buscar_productos_inteligente(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None, limit=100):
+def buscar_productos_inteligente(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None, campo='todos', limit=100):
     """
     Ejecuta la búsqueda inteligente de productos y retorna una lista o queryset acotado al límite solicitado.
     """
@@ -80,7 +115,8 @@ def buscar_productos_inteligente(q, empresa_id, solo_trazabilidad=False, excluir
         empresa_id=empresa_id,
         solo_trazabilidad=solo_trazabilidad,
         excluir_subprod=excluir_subprod,
-        proveedor_id=proveedor_id
+        proveedor_id=proveedor_id,
+        campo=campo
     )
     if limit:
         return qs[:limit]
