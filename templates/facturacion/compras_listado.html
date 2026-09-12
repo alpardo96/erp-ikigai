@@ -116,7 +116,7 @@
                 {% for c in compras %}
                 <tr class="hover:bg-blue-50 transition-colors">
                     <td class="px-4 py-2 font-bold text-slate-600">{{ c.fecha|date:"d/m/Y" }}</td>
-                    <td class="px-4 py-2 font-bold text-slate-800">{{ c.tipo.codigo }} {{ c.punto|stringformat:"04d" }}-{{ c.numero|stringformat:"08d" }}</td>
+                    <td class="px-4 py-2 font-bold text-slate-800">{{ c.tipo.codigo }} {{ c.punto|stringformat:"05d" }}-{{ c.numero|stringformat:"08d" }}</td>
                     <td class="px-4 py-2 uppercase text-slate-700">{{ c.proveedor.razon_social }}</td>
                     <td class="px-4 py-2 text-right tabular-nums">$ {{ c.neto|floatformat:2 }}</td>
                     <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ c.iva|floatformat:2 }}</td>

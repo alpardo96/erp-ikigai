@@ -420,12 +420,12 @@ class PreventaItem(models.Model):
 
     def save(self, *args, **kwargs):
         from decimal import Decimal
-        precio = Decimal(str(self.precio_unitario))
-        cant = Decimal(str(self.cantidad))
-        desc = Decimal(str(self.porcentaje_descuento))
-        
-        subtotal = precio * cant
-        self.total = subtotal * (Decimal('1') - (desc / Decimal('100')))
+        if self.total is None or self.total == Decimal('0.00'):
+            precio = Decimal(str(self.precio_unitario))
+            cant = Decimal(str(self.cantidad))
+            desc = Decimal(str(self.porcentaje_descuento))
+            subtotal = precio * cant
+            self.total = round(subtotal * (Decimal('1') - (desc / Decimal('100'))), 2)
         super().save(*args, **kwargs)
 
 
@@ -550,7 +550,7 @@ class Venta(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.tipo} {self.punto:04d}-{self.numero}"
+        return f"{self.tipo} {self.punto:05d}-{self.numero}"
 
     def save(self, *args, **kwargs):
         from decimal import Decimal

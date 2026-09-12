@@ -39,7 +39,7 @@
         </td>
         <td class="der">
             <h1>ORDEN DE PAGO</h1>
-            <div><b>N° {{ op.punto|stringformat:"04d" }}-{{ op.numero|stringformat:"08d" }}</b></div>
+            <div><b>N° {{ op.punto|stringformat:"05d" }}-{{ op.numero|stringformat:"08d" }}</b></div>
             <div class="chico">Fecha: {{ op.fecha|date:"d/m/Y" }}</div>
             <div class="chico">
                 {% if op.condic == 1 %}Real (Fiscal){% else %}Presupuestado (No Fiscal){% endif %}
@@ -74,7 +74,7 @@
             <tr>
                 <td>{{ ap.compra.fecha|date:"d/m/Y" }}</td>
                 <td>{{ ap.compra.tipo.detalle|default:"Comprobante" }}
-                    {{ ap.compra.punto|stringformat:"04d" }}-{{ ap.compra.numero|stringformat:"08d" }}</td>
+                    {{ ap.compra.punto|stringformat:"05d" }}-{{ ap.compra.numero|stringformat:"08d" }}</td>
                 <td class="der">$ {{ ap.compra.total|formato_ar }}</td>
                 <td class="der"><b>$ {{ ap.importe_pesos|formato_ar }}</b></td>
             </tr>

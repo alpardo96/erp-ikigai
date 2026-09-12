@@ -19,7 +19,7 @@
         <tr class="hover:bg-blue-50/40 transition-colors {% if fila.recibo.anulado %}opacity-50 line-through{% endif %}">
             <td class="px-3 py-2 whitespace-nowrap font-bold text-slate-700">{{ fila.recibo.fecha|date:"d/m/Y" }}</td>
             <td class="px-3 py-2 whitespace-nowrap font-black text-slate-900">
-                RC {{ fila.recibo.punto|stringformat:"04d" }}-{{ fila.recibo.numero|stringformat:"08d" }}
+                RC {{ fila.recibo.punto|stringformat:"05d" }}-{{ fila.recibo.numero|stringformat:"08d" }}
             </td>
             <td class="px-3 py-2 text-slate-700">{{ fila.recibo.cliente.razon_social }}</td>
             <td class="px-3 py-2 text-center">

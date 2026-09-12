@@ -5,7 +5,7 @@
         <div class="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
             <div>
                 <h3 class="text-lg font-black text-gray-900">
-                    Orden de Pago {{ op.punto|stringformat:"04d" }}-{{ op.numero|stringformat:"08d" }}
+                    Orden de Pago {{ op.punto|stringformat:"05d" }}-{{ op.numero|stringformat:"08d" }}
                     {% if op.anulado %}<span class="ml-2 text-red-600 text-xs uppercase">Anulada</span>{% endif %}
                 </h3>
                 <p class="text-xs text-slate-500">{{ op.proveedor.razon_social }} · {{ op.fecha|date:"d/m/Y" }}</p>
@@ -35,7 +35,7 @@
                         {% for ap in aplicaciones %}
                         <tr>
                             <td class="px-3 py-1.5">{{ ap.compra.tipo.detalle|default:"Comprobante" }}
-                                {{ ap.compra.punto|stringformat:"04d" }}-{{ ap.compra.numero|stringformat:"08d" }}</td>
+                                {{ ap.compra.punto|stringformat:"05d" }}-{{ ap.compra.numero|stringformat:"08d" }}</td>
                             <td class="px-3 py-1.5 text-right font-bold">$ {{ ap.importe_pesos|formato_ar }}</td>
                         </tr>
                         {% endfor %}

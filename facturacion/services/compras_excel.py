@@ -67,7 +67,7 @@ def exportar_compras_excel(compras, empresa, filtros):
     for c in compras:
         codigo = c.tipo.codigo if c.tipo else ''
         ws.cell(row=row, column=1).value = c.fecha.strftime('%d/%m/%Y') if c.fecha else ''
-        ws.cell(row=row, column=2).value = f"{codigo} {c.punto:04d}-{c.numero:08d}"
+        ws.cell(row=row, column=2).value = f"{codigo} {c.punto:05d}-{c.numero:08d}"
         ws.cell(row=row, column=3).value = c.proveedor.razon_social if c.proveedor else ''
         ws.cell(row=row, column=4).value = c.proveedor.cuit if c.proveedor else ''
         ws.cell(row=row, column=5).value = {1: 'Real', 2: 'Presupuesto'}.get(c.condic, '')

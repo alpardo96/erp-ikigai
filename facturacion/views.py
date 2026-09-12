@@ -335,8 +335,14 @@ class PreventaCargaView(LoginRequiredMixin, View):
         # Limpiar Ã­items temporales al iniciar carga nueva
         request.session['preventa_items_temp'] = []
 
+        # Obtener cliente predeterminado (ID 1 / Consumidor Final)
+        cliente_default = ClienteProveedor.objects.filter(empresa_id=empresa_id, codigo_id=1).first()
+        if not cliente_default:
+            cliente_default = ClienteProveedor.objects.filter(empresa_id=empresa_id, tipo_documento='99').order_by('codigo_id').first()
+
         initial_data = {
-            'vendedor': request.user.id
+            'vendedor': request.user.id,
+            'cliente': cliente_default.codigo_id if cliente_default else 1
         }
         form = PreventaForm(initial=initial_data)
         
@@ -360,6 +366,7 @@ class PreventaCargaView(LoginRequiredMixin, View):
 
         context = {
             'form': form,
+            'cliente_default': cliente_default,
             'is_armeria': Empresa.objects.filter(id=empresa_id, tipo_actividad="ARMERIA").exists(),
             'is_distribuidora': es_distribuidora,
             'modo_edicion': modo_edicion,
@@ -375,7 +382,18 @@ class PreventaCargaView(LoginRequiredMixin, View):
             messages.error(request, "Debe cargar al menos un producto en la grilla.")
             return redirect('preventas_carga')
 
-        form = PreventaForm(request.POST)
+        post_data = request.POST.copy()
+        cliente_id_raw = post_data.get('cliente')
+        if not cliente_id_raw or str(cliente_id_raw).strip() in ('', 'None'):
+            # Si el usuario editó el nombre de Consumidor Final sin seleccionar un cliente específico,
+            # se asigna automáticamente el cliente genérico (ID 1 / Doc 99)
+            cliente_default = ClienteProveedor.objects.filter(empresa_id=empresa_id, codigo_id=1).first()
+            if not cliente_default:
+                cliente_default = ClienteProveedor.objects.filter(empresa_id=empresa_id, tipo_documento='99').order_by('codigo_id').first()
+            if cliente_default:
+                post_data['cliente'] = str(cliente_default.codigo_id)
+
+        form = PreventaForm(post_data)
         if form.is_valid():
             try:
                 # Validación de exclusividad para productos trazables (SIGIMAC / subprod=True)
@@ -394,6 +412,21 @@ class PreventaCargaView(LoginRequiredMixin, View):
                         messages.error(request, "La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.")
                         return redirect('preventas_carga')
 
+                # Validación Armería: no permitir productos con creden=True para clientes sin identificar (tipo_doc='99' / Consumidor Final)
+                es_armeria = Empresa.objects.filter(id=empresa_id, tipo_actividad__iexact="ARMERIA").exists()
+                if es_armeria:
+                    cliente_sel = form.cleaned_data.get('cliente')
+                    if cliente_sel and (cliente_sel.tipo_documento == '99' or cliente_sel.codigo_id == 1):
+                        tiene_creden = False
+                        for item_t in items_temp:
+                            p_obj = Producto.objects.filter(id=item_t['producto_id']).first()
+                            if p_obj and p_obj.creden:
+                                tiene_creden = True
+                                break
+                        if tiene_creden:
+                            messages.error(request, "Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.")
+                            return redirect('preventas_carga')
+
                 # Nota: En Preventas no opera la restricción de CLU vigente ya que aquí
                 # no se factura ni entrega el arma, sólo se genera la preventa/reserva (la traba
                 # opera de forma estricta en Ventas con Trazabilidad al facturar).
@@ -404,9 +437,9 @@ class PreventaCargaView(LoginRequiredMixin, View):
                     preventa.sucursal_id = sucursal_id
                     
                     # Snapshot del cliente o Consumidor Final ocasional
-                    if preventa.cliente.tipo_entidad == 1 and preventa.cliente.cuit in [None, '', '0', '00'] and preventa.cliente.codigo_id == 1:
-                        # Si es consumidor final genérico (asumiendo ID 1), usamos el nombre ocasional
-                        ocasional = request.POST.get('cliente_ocasional', '')
+                    if preventa.cliente.tipo_entidad == 1 and preventa.cliente.cuit in [None, '', '0', '00'] and (preventa.cliente.codigo_id == 1 or preventa.cliente.tipo_documento == '99'):
+                        # Si es consumidor final genérico (asumiendo ID 1 o Doc 99), usamos el nombre ocasional ingresado
+                        ocasional = (request.POST.get('q') or request.POST.get('cliente_nombre_display') or request.POST.get('cliente_ocasional') or '').strip()
                         preventa.cliente_razon_social = ocasional.upper() if ocasional else "CONSUMIDOR FINAL"
                     else:
                         preventa.cliente_razon_social = preventa.cliente.razon_social

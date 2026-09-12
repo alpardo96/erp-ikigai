@@ -60,7 +60,7 @@
                             <span class="block text-xs font-medium text-gray-500 uppercase">Comprobante de Compra</span>
                             <span class="font-semibold text-gray-900 font-mono">
                                 {% if compra %}
-                                    {{ compra.tipo.codigo }}-{{ compra.punto|stringformat:"04d" }}-{{ compra.numero|stringformat:"08d" }}
+                                    {{ compra.tipo.codigo }}-{{ compra.punto|stringformat:"05d" }}-{{ compra.numero|stringformat:"08d" }}
                                 {% else %}
                                     N/A
                                 {% endif %}
@@ -111,7 +111,7 @@
                             <span class="block text-xs font-medium text-gray-500 uppercase">Comprobante de Venta</span>
                             <span class="font-semibold text-gray-900 font-mono">
                                 {% if venta %}
-                                    {{ venta.tipo.codigo }}-{{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}
+                                    {{ venta.tipo.codigo }}-{{ venta.punto|stringformat:"05d" }}-{{ venta.numero|stringformat:"08d" }}
                                 {% else %}
                                     N/A
                                 {% endif %}

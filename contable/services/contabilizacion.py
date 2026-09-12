@@ -163,7 +163,7 @@ def contabilizar_venta_individual(venta: Venta) -> Asiento:
         'cuenta': cta_cliente,
         'debe': venta.total,
         'haber': Decimal("0.00"),
-        'leyenda': f"VENTA COMP. {venta.tipo.codigo} {venta.punto:04d}-{venta.numero}",
+        'leyenda': f"VENTA COMP. {venta.tipo.codigo} {venta.punto:05d}-{venta.numero}",
         'cli_pro': venta.cliente
     })
 
@@ -220,7 +220,7 @@ def contabilizar_venta_individual(venta: Venta) -> Asiento:
     asiento = crear_asiento(
         empresa=venta.empresa,
         fecha=venta.fecha,
-        concepto=f"VENTAS COMPROBANTE {venta.tipo.codigo} {venta.punto:04d}-{venta.numero}",
+        concepto=f"VENTAS COMPROBANTE {venta.tipo.codigo} {venta.punto:05d}-{venta.numero}",
         lineas=lineas_asiento,
         condic=venta.condic,  # FISCAL(1)/NO FISCAL(2) — refleja la condición del comprobante
         modulo=2,  # Ventas
@@ -468,7 +468,7 @@ def contabilizar_compras(compra: Compra) -> Asiento:
         'cuenta': cta_proveedor,
         'debe': Decimal("0.00"),
         'haber': compra.total,
-        'leyenda': f"COMPRA COMP. {compra.tipo.codigo} {compra.punto:04d}-{compra.numero}",
+        'leyenda': f"COMPRA COMP. {compra.tipo.codigo} {compra.punto:05d}-{compra.numero}",
         'cli_pro': compra.proveedor
     })
 
@@ -555,7 +555,7 @@ def contabilizar_compras(compra: Compra) -> Asiento:
     asiento = crear_asiento(
         empresa=compra.empresa,
         fecha=compra.fecha,
-        concepto=f"COMPRAS PROVEEDOR {compra.proveedor.razon_social} COMP. {compra.tipo.codigo} {compra.punto:04d}-{compra.numero}",
+        concepto=f"COMPRAS PROVEEDOR {compra.proveedor.razon_social} COMP. {compra.tipo.codigo} {compra.punto:05d}-{compra.numero}",
         lineas=lineas_asiento,
         condic=compra.condic,  # FISCAL(1)/NO FISCAL(2) — refleja la condición del comprobante
         modulo=5,  # Compras
@@ -660,7 +660,7 @@ def dar_de_baja_compra(compra: Compra) -> None:
     if aid:
         asiento_ids.add(aid)
     if compra.tipo:
-        marca = f"COMP. {compra.tipo.codigo} {compra.punto:04d}-{compra.numero}"
+        marca = f"COMP. {compra.tipo.codigo} {compra.punto:05d}-{compra.numero}"
         asiento_ids.update(
             Asiento.objects.filter(
                 empresa=compra.empresa, modulo=5, cli_pro_id=compra.proveedor_id,

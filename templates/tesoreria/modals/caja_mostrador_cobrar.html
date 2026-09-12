@@ -218,7 +218,7 @@
                         {% endif %}
                     </h3>
                     <p class="{% if es_reserva %}text-amber-100{% else %}text-indigo-200{% endif %} text-xs mt-1 font-bold uppercase">
-                        {{ preventa.cliente.razon_social }}
+                        {{ preventa.cliente_razon_social|default:preventa.cliente.razon_social }}
                         {% if es_reserva and producto_reservado %}
                             <span class="ml-2 px-2 py-0.5 bg-amber-700/80 text-white rounded text-[10px] font-black"><i class="fa-solid fa-shield mr-1"></i> {{ producto_reservado.detalle }}</span>
                         {% endif %}

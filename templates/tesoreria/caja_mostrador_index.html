@@ -88,7 +88,7 @@
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 text-xs text-slate-600">{{ p.fecha|date:"d/m/Y" }}</td>
-                        <td class="px-4 py-3 text-xs font-bold text-slate-800 uppercase">{{ p.cliente.razon_social }}</td>
+                        <td class="px-4 py-3 text-xs font-bold text-slate-800 uppercase">{{ p.cliente_razon_social|default:p.cliente.razon_social }}</td>
                         <td class="px-4 py-3 text-xs font-bold text-slate-500 uppercase">{{ p.vendedor.username }}</td>
                         <td class="px-4 py-3">
                             {% if p.tiene_subprod %}

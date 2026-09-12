@@ -31,7 +31,7 @@
                 <tr class="hover:bg-slate-50 transition-colors group">
                     <td class="px-4 py-3 text-xs font-black text-slate-900"># {{ p.preventa_id }}</td>
                     <td class="px-4 py-3 text-xs text-slate-600">{{ p.fecha|date:"d/m/Y" }}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-slate-700 uppercase">{{ p.cliente.razon_social }}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-700 uppercase">{{ p.cliente_razon_social|default:p.cliente.razon_social }}</td>
                     <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase">{{ p.vendedor.username }}</td>
                     <td class="px-4 py-3 text-xs font-black text-slate-900 text-right">$ {{ p.total|floatformat:2 }}</td>
                     <td class="px-4 py-3 text-center">
@@ -71,7 +71,7 @@
                 <tr class="hover:bg-slate-50 transition-colors group">
                     <td class="px-4 py-3 text-xs font-black text-slate-900"># {{ v.ventas_id }}</td>
                     <td class="px-4 py-3 text-xs text-slate-600">{{ v.fecha|date:"d/m/Y" }}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-slate-700 uppercase">{{ v.cliente.razon_social }}</td>
+                    <td class="px-4 py-3 text-xs font-bold text-slate-700 uppercase">{{ v.cliente_razon_social|default:v.cliente.razon_social }}</td>
                     <td class="px-4 py-3 text-xs font-bold text-slate-600 uppercase">{{ v.usuario.username }}</td>
                     <td class="px-4 py-3 text-xs font-black text-slate-900 text-right">$ {{ v.total|floatformat:2 }}</td>
                     <td class="px-4 py-3 text-center">

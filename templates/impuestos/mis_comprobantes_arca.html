@@ -162,7 +162,7 @@
                         <tr class="hover:bg-emerald-50/50">
                             <td class="px-4 py-3 whitespace-nowrap">{{ c.fecha|date:"d/m/Y" }}</td>
                             <td class="px-4 py-3 font-mono font-bold text-emerald-700">{{ c.codiva }}</td>
-                            <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"04d" }}-{{ c.numero }}</td>
+                            <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"05d" }}-{{ c.numero }}</td>
                             <td class="px-4 py-3 font-mono text-slate-700">{{ c.cuit_contraparte }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ c.razon_social_contraparte }}</td>
                             <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">$ {{ c.total|floatformat:2 }}</td>
@@ -201,7 +201,7 @@
                         <tr class="hover:bg-amber-50/50">
                             <td class="px-4 py-3 whitespace-nowrap">{{ c.fecha|date:"d/m/Y" }}</td>
                             <td class="px-4 py-3 font-mono font-bold text-amber-700">{{ c.codiva }}</td>
-                            <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"04d" }}-{{ c.numero }}</td>
+                            <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"05d" }}-{{ c.numero }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ c.clienteproveedor.razon_social }}</td>
                             <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">$ {{ c.total|floatformat:2 }}</td>
                             <td class="px-4 py-3 font-mono text-xs text-slate-400 italic">{{ c.cae|default:"Pendiente CAE ARCA" }}</td>
@@ -240,7 +240,7 @@
                         <tr class="hover:bg-sky-50/50">
                             <td class="px-4 py-3 whitespace-nowrap">{{ c.fecha|date:"d/m/Y" }}</td>
                             <td class="px-4 py-3 font-mono font-bold text-sky-700">{{ c.codiva }}</td>
-                            <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"04d" }}-{{ c.numero }}</td>
+                            <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"05d" }}-{{ c.numero }}</td>
                             <td class="px-4 py-3 font-mono text-slate-700">{{ c.cuit_contraparte }}</td>
                             <td class="px-4 py-3 font-medium text-slate-900">{{ c.razon_social_contraparte }}</td>
                             <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">$ {{ c.total|floatformat:2 }}</td>

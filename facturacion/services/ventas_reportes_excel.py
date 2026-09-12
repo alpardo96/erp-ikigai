@@ -109,7 +109,7 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
         tot_neto += neto
         tot_total += total
 
-        comprobante_str = f"{vta.tipo.codigo if vta.tipo else ''} {vta.punto:04d}-{vta.numero:08d}" if vta else ''
+        comprobante_str = f"{vta.tipo.codigo if vta.tipo else ''} {vta.punto:05d}-{vta.numero:08d}" if vta else ''
         fecha_str = vta.fecha.strftime('%Y-%m-%d %H:%M:%S') if vta and vta.fecha else ''
         fec_act_str = prod.fec_act.strftime('%Y-%m-%d %H:%M:%S') if prod and prod.fec_act else ''
 

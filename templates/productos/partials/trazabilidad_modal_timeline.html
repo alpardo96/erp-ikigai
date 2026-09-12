@@ -54,7 +54,7 @@
                                         Proveedor: {{ mov.compra.proveedor.razon_social|default:"N/A" }}
                                     </p>
                                     <p class="text-sm text-gray-600 mt-1 font-mono">
-                                        Comprobante: {{ mov.compra.tipo.codigo }}-{{ mov.compra.punto|stringformat:"04d" }}-{{ mov.compra.numero|stringformat:"08d" }}
+                                        Comprobante: {{ mov.compra.tipo.codigo }}-{{ mov.compra.punto|stringformat:"05d" }}-{{ mov.compra.numero|stringformat:"08d" }}
                                     </p>
                                     <p class="text-xs text-gray-500 mt-2">
                                         Costo: <span class="font-bold text-gray-800">${{ mov.cto_adq|floatformat:2 }} {{ mov.moneda }}</span> | Estado: <span class="font-semibold text-gray-700">{{ mov.get_estado_display }}</span>
@@ -85,7 +85,7 @@
                                         Cliente: {{ mov.venta.cliente.razon_social|default:"N/A" }}
                                     </p>
                                     <p class="text-sm text-gray-600 mt-1 font-mono">
-                                        Comprobante: {{ mov.venta.tipo.codigo }}-{{ mov.venta.punto|stringformat:"04d" }}-{{ mov.venta.numero|stringformat:"08d" }}
+                                        Comprobante: {{ mov.venta.tipo.codigo }}-{{ mov.venta.punto|stringformat:"05d" }}-{{ mov.venta.numero|stringformat:"08d" }}
                                     </p>
                                     <p class="text-xs text-gray-500 mt-2">
                                         Precio Venta Total: <span class="font-bold text-green-700">${{ mov.precio_total|floatformat:2 }}</span>

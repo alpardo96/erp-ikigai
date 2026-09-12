@@ -8,8 +8,8 @@ echo ========================================================
 echo.
 
 :: --- 1. CONFIGURACION DE RUTAS ---
-set "ORIGEN=D:\JM_Soft\erp-ikigai-2"
-set "DESTINO_BASE=D:\JM_Soft\erp-ikigai\Respaldo"
+set "ORIGEN=D:\JM_Soft\erp-ikigai"
+set "DESTINO_BASE=D:\JM_Soft\erp-ikigai_respaldo"
 
 :: --- 2. OBTENER FECHA EN FORMATO AAAAMMDD ---
 :: Esto asume tu fecha local DD/MM/AAAA (Ej: 09/02/2026)

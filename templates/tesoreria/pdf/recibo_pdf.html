@@ -33,7 +33,7 @@
         </td>
         <td class="der">
             <h1>RECIBO</h1>
-            <div><b>N° {{ recibo.punto|stringformat:"04d" }}-{{ recibo.numero|stringformat:"08d" }}</b></div>
+            <div><b>N° {{ recibo.punto|stringformat:"05d" }}-{{ recibo.numero|stringformat:"08d" }}</b></div>
             <div class="chico">Fecha: {{ recibo.fecha|date:"d/m/Y" }}</div>
             <div class="chico">
                 {% if recibo.condic == 1 %}Real (Fiscal){% else %}Presupuestado (No Fiscal){% endif %}
@@ -71,7 +71,7 @@
             <tr>
                 <td>{{ ap.venta.fecha|date:"d/m/Y" }}</td>
                 <td>{{ ap.venta.tipo.detalle|default:"Comprobante" }}
-                    {{ ap.venta.punto|stringformat:"04d" }}-{{ ap.venta.numero|stringformat:"08d" }}</td>
+                    {{ ap.venta.punto|stringformat:"05d" }}-{{ ap.venta.numero|stringformat:"08d" }}</td>
                 <td class="der">$ {{ ap.venta.total|formato_ar }}</td>
                 <td class="der"><b>$ {{ ap.importe_pesos|formato_ar }}</b></td>
             </tr>

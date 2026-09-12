@@ -20,11 +20,11 @@
                 </div>
                 <div class="flex justify-between items-center border-b border-slate-100 pb-2">
                     <span class="text-xs font-bold text-slate-500 uppercase">Número</span>
-                    <span class="text-sm font-black text-slate-800 tabular-nums">{{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}</span>
+                    <span class="text-sm font-black text-slate-800 tabular-nums">{{ venta.punto|stringformat:"05d" }}-{{ venta.numero|stringformat:"08d" }}</span>
                 </div>
                 <div class="flex justify-between items-center border-b border-slate-100 pb-2">
                     <span class="text-xs font-bold text-slate-500 uppercase">Cliente</span>
-                    <span class="text-sm font-black text-slate-800">{{ venta.cliente.razon_social|default:"Consumidor Final" }}</span>
+                    <span class="text-sm font-black text-slate-800">{{ venta.cliente_razon_social|default:venta.cliente.razon_social|default:"Consumidor Final" }}</span>
                 </div>
                 {% if venta.cliente.cuit %}
                 <div class="flex justify-between items-center border-b border-slate-100 pb-2">

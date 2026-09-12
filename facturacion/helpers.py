@@ -30,6 +30,10 @@ def validar_clu_cliente_armeria(cliente, empresa_id):
             return False, "Cliente invalido o no encontrado."
         cliente = cliente_obj
 
+    # Validación de cliente identificado: no se permite tipo_documento = '99' (Consumidor Final / Sin Identificar)
+    if getattr(cliente, 'tipo_documento', '') == '99' or getattr(cliente, 'codigo_id', None) == 1:
+        return False, "Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real."
+
     extension = ExtensionArmeria.objects.filter(cliente=cliente).first()
     if not extension:
         return False, f"El cliente '{cliente.razon_social}' NO posee CLU registrado en Armería."

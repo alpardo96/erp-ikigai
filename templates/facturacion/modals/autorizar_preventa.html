@@ -11,7 +11,7 @@
             <div class="grid grid-cols-2 gap-4 mb-6 border-b pb-4">
                 <div>
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cliente</p>
-                    <p class="text-sm font-bold text-slate-800 uppercase">{{ preventa.cliente.razon_social }}</p>
+                    <p class="text-sm font-bold text-slate-800 uppercase">{{ preventa.cliente_razon_social|default:preventa.cliente.razon_social }}</p>
                 </div>
                 <div>
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Vendedor</p>

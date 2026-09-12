@@ -18,7 +18,7 @@
             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ c.fecha|date:"d/m/Y" }}</td>
             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                 <span class="font-medium">{{ c.tipo.detalle|default:"Comprobante" }}</span>
-                <span class="text-gray-500">{{ c.punto|stringformat:"04d" }}-{{ c.numero|stringformat:"08d" }}</span>
+                <span class="text-gray-500">{{ c.punto|stringformat:"05d" }}-{{ c.numero|stringformat:"08d" }}</span>
                 {% if c.saldo < 0 %}
                 <span class="ml-1 px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black border border-emerald-200">RESTA</span>
                 {% endif %}

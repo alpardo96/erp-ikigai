@@ -27,7 +27,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                         <p class="text-[10px] text-slate-500 uppercase font-bold">Comprobante</p>
-                        <p class="text-xs font-black text-slate-800">{{ venta.tipo.codigo }} {{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}</p>
+                        <p class="text-xs font-black text-slate-800">{{ venta.tipo.codigo }} {{ venta.punto|stringformat:"05d" }}-{{ venta.numero|stringformat:"08d" }}</p>
                     </div>
                     <div>
                         <p class="text-[10px] text-slate-500 uppercase font-bold">Fecha</p>
@@ -35,7 +35,7 @@
                     </div>
                     <div>
                         <p class="text-[10px] text-slate-500 uppercase font-bold">Cliente</p>
-                        <p class="text-xs font-black text-slate-800 truncate" title="{{ venta.cliente.razon_social|default:'Consumidor Final' }}">{{ venta.cliente.razon_social|default:"Consumidor Final" }}</p>
+                        <p class="text-xs font-black text-slate-800 truncate" title="{{ venta.cliente_razon_social|default:venta.cliente.razon_social|default:'Consumidor Final' }}">{{ venta.cliente_razon_social|default:venta.cliente.razon_social|default:"Consumidor Final" }}</p>
                     </div>
                     <div>
                         <p class="text-[10px] text-slate-500 uppercase font-bold">Total Original</p>

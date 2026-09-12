@@ -132,6 +132,7 @@ class ArmeriaCredencialCLUTestCase(TestCase):
         # Enviar precio en formato con puntos de miles y coma decimal
         response = client.post('/ventas/preventas/item/agregar/', {
             'producto_id': self.producto_creden.id,
+            'cliente': self.cliente_valido.codigo_id,
             'credencial': '1234567',
             'cantidad': '1',
             'precio': '444.808,00',
@@ -156,6 +157,7 @@ class ArmeriaCredencialCLUTestCase(TestCase):
         # 1. Producto arma (creden=True, subprod=True) -> NO debe exigir credencial en preventa (es anticipo)
         resp_arma = client.post('/ventas/preventas/item/agregar/', {
             'producto_id': self.producto_creden.id,
+            'cliente': self.cliente_valido.codigo_id,
             'credencial': '',
             'cantidad': '1',
             'precio': '1000.00',
@@ -180,6 +182,7 @@ class ArmeriaCredencialCLUTestCase(TestCase):
         )
         resp_municion_sin_cred = client.post('/ventas/preventas/item/agregar/', {
             'producto_id': prod_municion.id,
+            'cliente': self.cliente_valido.codigo_id,
             'credencial': '',
             'cantidad': '1',
             'precio': '50.00',
@@ -187,6 +190,163 @@ class ArmeriaCredencialCLUTestCase(TestCase):
         })
         self.assertEqual(resp_municion_sin_cred.status_code, 200)
         self.assertIn("requiere CREDENCIAL", resp_municion_sin_cred.content.decode())
+
+    def test_preventa_creden_bloquea_tipo_documento_99(self):
+        """Verifica que en Armería NO se permita agregar productos creden=True para clientes con tipo_documento=99 (Consumidor Final)."""
+        cliente_cf = ClienteProveedor.objects.create(
+            codigo_id=1,
+            empresa=self.empresa,
+            razon_social="CONSUMIDOR FINAL",
+            cuit="0",
+            tipo_documento="99",
+            tipo_entidad=1
+        )
+        prod_municion = Producto.objects.create(
+            id=103,
+            empresa=self.empresa,
+            detalle="BALA C.10MM MAGTECH",
+            precio_total=Decimal("200.00"),
+            creden=True,
+            subprod=False,
+            rubro=self.rubro
+        )
+
+        client = Client()
+        client.force_login(self.user)
+        session = client.session
+        session['empresa_id'] = self.empresa.id
+        session['sucursal_id'] = self.sucursal.id
+        session['preventa_items_temp'] = []
+        session.save()
+
+        # 1. Intentar agregar con cliente tipo_documento='99' (Consumidor Final) -> DEBE BLOQUEARSE
+        resp_bloqueo = client.post('/ventas/preventas/item/agregar/', {
+            'producto_id': prod_municion.id,
+            'cliente': cliente_cf.codigo_id,
+            'credencial': '1234567',
+            'cantidad': '1',
+            'precio': '200.00',
+            'descuento': '0'
+        })
+        self.assertEqual(resp_bloqueo.status_code, 200)
+        self.assertIn("Debe identificar al cliente que compra este tipo de producto", resp_bloqueo.content.decode())
+        self.assertEqual(len(client.session.get('preventa_items_temp', [])), 0)
+
+        # 2. Con cliente identificado (tipo_documento='80' o '86') -> DEBE PERMITIRSE
+        resp_permitido = client.post('/ventas/preventas/item/agregar/', {
+            'producto_id': prod_municion.id,
+            'cliente': self.cliente_valido.codigo_id,
+            'credencial': '1234567',
+            'cantidad': '1',
+            'precio': '200.00',
+            'descuento': '0'
+        })
+        self.assertEqual(resp_permitido.status_code, 200)
+        self.assertEqual(len(client.session['preventa_items_temp']), 1)
+
+    def test_preventa_consumidor_final_nombre_ocasional(self):
+        """Verifica que al facturar a Consumidor Final se guarde el nombre ocasional en Preventa.cliente_razon_social."""
+        cliente_cf = ClienteProveedor.objects.create(
+            codigo_id=9999,
+            empresa=self.empresa,
+            razon_social="CONSUMIDOR FINAL",
+            cuit="0",
+            tipo_documento="99",
+            tipo_entidad=1
+        )
+        prod_comun = Producto.objects.create(
+            id=104,
+            empresa=self.empresa,
+            detalle="Linterna Táctica",
+            precio_total=Decimal("150.00"),
+            creden=False,
+            subprod=False,
+            rubro=self.rubro
+        )
+
+        client = Client()
+        client.force_login(self.user)
+        session = client.session
+        session['empresa_id'] = self.empresa.id
+        session['sucursal_id'] = self.sucursal.id
+        session['preventa_items_temp'] = [{
+            'producto_id': prod_comun.id,
+            'cantidad': 1,
+            'precio_unitario': 150.0,
+            'descuento': 0.0,
+            'total': 150.0,
+            'credencial': '',
+            'dmp': 0.0
+        }]
+        session.save()
+
+        # Enviar preventa con nombre ocasional 'MARCELO GARCIA' en 'q'
+        resp = client.post('/ventas/preventas/carga/', {
+            'cliente': cliente_cf.codigo_id,
+            'vendedor': self.user.id,
+            'q': 'MARCELO GARCIA',
+            'total': '150.00'
+        })
+        self.assertEqual(resp.status_code, 302)
+        preventa = Preventa.objects.filter(empresa=self.empresa, cliente=cliente_cf).order_by('-preventa_id').first()
+        self.assertIsNotNone(preventa)
+        self.assertEqual(preventa.cliente_razon_social, "MARCELO GARCIA")
+
+    def test_preventa_modo_precio_descuento_y_autorizacion(self):
+        """Verifica que al ingresar un precio menor al de lista se calcule el descuento y se evalúe contra el rubro."""
+        self.empresa.modo_edicion_facturacion = 'PRECIO'
+        self.empresa.save()
+
+        # Rubro con descuento máximo 5%
+        self.rubro.descuento_maximo = Decimal("5.00")
+        self.rubro.save()
+
+        # Producto con precio de lista 1000.00
+        prod = Producto.objects.create(
+            id=105,
+            empresa=self.empresa,
+            detalle="Aceite Limpiador",
+            precio_total=Decimal("1000.00"),
+            creden=False,
+            subprod=False,
+            rubro=self.rubro
+        )
+
+        client = Client()
+        client.force_login(self.user)
+        session = client.session
+        session['empresa_id'] = self.empresa.id
+        session['sucursal_id'] = self.sucursal.id
+        session['preventa_items_temp'] = []
+        session.save()
+
+        # Enviar precio editado de 800.00 (descuento del 20% > 5% max)
+        resp = client.post('/ventas/preventas/item/agregar/', {
+            'producto_id': prod.id,
+            'cantidad': '1',
+            'precio': '800.00'
+        })
+        self.assertEqual(resp.status_code, 200)
+        items = client.session['preventa_items_temp']
+        self.assertEqual(len(items), 1)
+        item = items[0]
+        self.assertEqual(item['precio_unitario'], 1000.0)
+        self.assertEqual(item['descuento'], 20.0)
+        self.assertEqual(item['total'], 800.0)
+        self.assertTrue(item['requiere_autorizacion'])
+
+        # Confirmar la preventa
+        resp_conf = client.post('/ventas/preventas/carga/', {
+            'cliente': self.cliente_valido.codigo_id,
+            'vendedor': self.user.id,
+            'total': '800.00'
+        })
+        self.assertEqual(resp_conf.status_code, 302)
+        preventa = Preventa.objects.filter(empresa=self.empresa).order_by('-preventa_id').first()
+        self.assertEqual(preventa.total, Decimal('800.00'))
+        self.assertEqual(preventa.items.first().total, Decimal('800.00'))
+        self.assertEqual(preventa.items.first().precio_unitario, Decimal('1000.00'))
+        self.assertEqual(preventa.items.first().porcentaje_descuento, Decimal('20.00'))
 
 
 

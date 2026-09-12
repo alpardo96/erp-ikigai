@@ -11,7 +11,7 @@
             <div class="grid grid-cols-2 gap-4 mb-6 border-b pb-4">
                 <div>
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cliente</p>
-                    <p class="text-sm font-bold text-slate-800 uppercase">{{ venta.cliente.razon_social }}</p>
+                    <p class="text-sm font-bold text-slate-800 uppercase">{{ venta.cliente_razon_social|default:venta.cliente.razon_social }}</p>
                 </div>
                 <div>
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Usuario</p>

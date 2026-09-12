@@ -41,36 +41,31 @@
                     <div class="flex-1 max-w-sm">
                         <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Cliente / Razón Social</label>
                         <div class="relative flex gap-1" x-data="{ open: false }">
-                            <!-- Input oculto para el ID real que va al form -->
-                            <input type="hidden" id="id_cliente" name="cliente" required value="1"
+                            <!-- Input oculto para el ID real que va al form (Predeterminado 1 / Consumidor Final) -->
+                            <input type="hidden" id="id_cliente" name="cliente" required 
+                                value="{{ cliente_default.codigo_id|default:'1' }}"
+                                data-doc-tipo="{{ cliente_default.tipo_documento|default:'99' }}"
                                 hx-get="{% url 'preventas_cliente_info' %}" hx-trigger="change, load" hx-target="#cliente_info_container">
 
-                            <!-- Input visual (Ahora editable) -->
+                            <!-- Input visual (Editable para nombre ocasional si es Consumidor Final o búsqueda) -->
                             <input type="text" id="cliente_nombre_display" name="q"
+                                value="{{ cliente_default.razon_social|default:'CONSUMIDOR FINAL' }}"
                                 class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none focus:border-indigo-500 focus:bg-white placeholder:text-slate-400"
                                 placeholder="Tipee Consumidor Final o busque..."
                                 hx-get="{% url 'typeahead_clientes' %}" 
                                 hx-trigger="keyup changed delay:300ms, search, focus" 
                                 hx-target="#cliente_suggestions"
-                                autocomplete="off"
                                 @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
-                                oninput="if(this.value === '') { document.getElementById('id_cliente').value = ''; const cInfo = document.getElementById('cliente_info_container'); if(cInfo) cInfo.innerHTML = ''; }">
+                                oninput="const idCli = document.getElementById('id_cliente'); if(!idCli.value || idCli.value !== '1') { idCli.value = '{{ cliente_default.codigo_id|default:'1' }}'; idCli.setAttribute('data-doc-tipo', '99'); htmx.trigger(idCli, 'change'); }">
                             
-                            <!-- Botón Buscar Cliente -->
+                            <!-- Botón Buscar Cliente (Lupa) -->
                             <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}"
                                 hx-target="#modal-container"
+                                title="Buscar cliente en el padrón"
                                 class="w-8 h-8 shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-all cursor-pointer shadow-sm">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
-                            </button>
-
-                            <!-- Botón Alta Rápida -->
-                            <button type="button" hx-get="{% url 'cliente_add' %}?origen=preventa"
-                                hx-target="#modal-container"
-                                class="w-8 h-8 shrink-0 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition-all cursor-pointer shadow-sm"
-                                title="Alta rápida de cliente">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             </button>
 
                             <!-- Dropdown Suggestions -->
@@ -231,7 +226,7 @@
                 <div class="w-20 shrink-0">
                     <button type="button" hx-post="{% url 'preventas_item_add' %}" hx-target="#items-tabla-container"
                         hx-include="#preventa-form"
-                        onclick="if(!document.getElementById('selected_producto_id').value) { alert('Debe seleccionar un producto.'); event.stopImmediatePropagation(); event.preventDefault(); return false; } if(document.getElementById('quick_credencial').required && document.getElementById('quick_credencial').value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => document.getElementById('quick_credencial').focus(), 10); event.stopImmediatePropagation(); event.preventDefault(); return false; }"
+                        onclick="if(!document.getElementById('selected_producto_id').value) { alert('Debe seleccionar un producto.'); event.stopImmediatePropagation(); event.preventDefault(); return false; } const isArm = {% if is_armeria %}true{% else %}false{% endif %}; const idCli = document.getElementById('id_cliente').value; const docTipo = document.getElementById('id_cliente').getAttribute('data-doc-tipo'); const reqCred = document.getElementById('quick_credencial').required; if(isArm && reqCred && (idCli === '1' || docTipo === '99' || !idCli)) { alert('Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.'); document.getElementById('cliente_nombre_display').focus(); event.stopImmediatePropagation(); event.preventDefault(); return false; } if(reqCred && document.getElementById('quick_credencial').value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => document.getElementById('quick_credencial').focus(), 10); event.stopImmediatePropagation(); event.preventDefault(); return false; }"
                         class="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white font-black rounded text-[9px] uppercase tracking-widest shadow-sm transition-all">
                         AÑADIR
                     </button>
@@ -300,29 +295,56 @@
         });
     }
 
-    // EVENTO CLIENTE SELECCIONADO (Desde el modal)
+    // EVENTO CLIENTE SELECCIONADO (Desde el modal o typeahead)
     document.body.addEventListener('clienteVentaSeleccionado', (e) => {
         const modalContainer = document.getElementById('modal-container');
         if (modalContainer) modalContainer.innerHTML = '';
 
         const inputId = document.getElementById('id_cliente');
         inputId.value = e.detail.id;
+        inputId.setAttribute('data-doc-tipo', e.detail.tipo_documento || '');
         document.getElementById('cliente_nombre_display').value = e.detail.razon_social;
         
         // Disparar escape para cerrar el dropdown si está abierto
         document.getElementById('cliente_nombre_display').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
         
-        // Disparar HTMX para CLU si corresponde
+        // Disparar HTMX para info/CLU del cliente
         htmx.trigger(inputId, 'change');
     });
 
-    // EVENTO PRODUCTO SELECCIONADO
     // EVENTO PRODUCTO SELECCIONADO
     document.body.addEventListener('productoVentaEncontrado', (e) => {
         const modalContainer = document.getElementById('modal-container');
         if (modalContainer) modalContainer.innerHTML = '';
 
         const data = e.detail;
+        const isArm = {% if is_armeria %}true{% else %}false{% endif %};
+        const idCli = document.getElementById('id_cliente').value;
+        const docTipo = document.getElementById('id_cliente').getAttribute('data-doc-tipo');
+
+        const divCred = document.getElementById('div_credencial');
+        const inputCred = document.getElementById('quick_credencial');
+
+        // Se activa el textbox credencial cuando creden = true AND subprod = false (en armas es solo anticipo)
+        const exigeCredencial = data.requiere_credencial && !data.subprod;
+
+        // Validación Armería: exigir cliente identificado (no tipo doc 99 / Consumidor Final) para productos con credencial
+        if (isArm && data.requiere_credencial && (idCli === '1' || docTipo === '99' || !idCli)) {
+            alert('Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.');
+            // Limpiar selección de producto
+            const hiddenId = document.getElementById('selected_producto_id');
+            if (hiddenId) hiddenId.value = '';
+            document.getElementById('quick_producto_id').value = '';
+            document.getElementById('quick_producto_detalle').innerHTML = '<span class="opacity-30">Aguardando...</span>';
+            document.getElementById('quick_precio').value = '';
+            document.getElementById('quick_descuento').value = '0';
+            divCred.classList.add('hidden');
+            inputCred.required = false;
+            inputCred.value = '';
+            setTimeout(() => document.getElementById('cliente_nombre_display').focus(), 50);
+            return;
+        }
+
         unidadPrecioSugerido = data.precio_sugerido; 
         
         // Bloquear y fijar el ID real del producto como única fuente de verdad para la carga
@@ -336,12 +358,6 @@
 
         const badgeDoble = document.getElementById('alerta_precio_doble_badge');
         if (badgeDoble) badgeDoble.classList.add('hidden');
-
-        const divCred = document.getElementById('div_credencial');
-        const inputCred = document.getElementById('quick_credencial');
-
-        // Se activa el textbox credencial cuando creden = true AND subprod = false (en armas es solo anticipo)
-        const exigeCredencial = data.requiere_credencial && !data.subprod;
 
         if (exigeCredencial) {
             divCred.classList.remove('hidden');
@@ -364,8 +380,8 @@
         const modo = "{{ modo_edicion }}";
         if (modo !== 'PRECIO') return;
 
-        const rawPrecio = document.getElementById('quick_precio').value.replace(/\./g, '').replace(',', '.');
-        const precioIngresado = parseFloat(rawPrecio) || 0;
+        const inputPrecio = document.getElementById('quick_precio');
+        const precioIngresado = (typeof window.desformatearAR === 'function') ? window.desformatearAR(inputPrecio) : parseAR(inputPrecio.value);
         const precioBase = parseFloat(unidadPrecioSugerido) || 0;
 
         const badgeDoble = document.getElementById('alerta_precio_doble_badge');
@@ -424,9 +440,18 @@
         });
     });
 
-    // Bloquear el Enter para evitar envíos accidentales
+    // Asegurar que el ID de cliente tenga valor antes del submit si se ingresó un nombre libre
     const form = document.getElementById('preventa-form');
     if (form) {
+        form.addEventListener('submit', function (e) {
+            const idCli = document.getElementById('id_cliente');
+            if (!idCli.value || idCli.value.trim() === '') {
+                idCli.value = '{{ cliente_default.codigo_id|default:'1' }}';
+                idCli.setAttribute('data-doc-tipo', '99');
+            }
+        });
+
+        // Bloquear el Enter para evitar envíos accidentales
         form.addEventListener('keydown', function (e) {
             if (e.keyCode === 13 && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
                 e.preventDefault();

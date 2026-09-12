@@ -1141,11 +1141,14 @@ def agregar_item_venta_sesion(request):
             if not es_valido:
                 return HttpResponse(msj_err, status=400)
     
+    # Base de precio de lista oficial desde el catálogo del producto
+    precio_lista = float(producto.precio_total or 0.0)
+    
     # Lógica de Pesificación (Bimonetarismo)
     from empresas.models import CotizacionMoneda, Empresa as _Empresa
     moneda_origen = producto.moneda
     cotizacion_aplicada = 1.0
-    precio_origen = precio_lista  # El precio que ingresa el usuario en moneda origen
+    precio_origen = precio_lista  # El precio base en moneda origen
     
     if moneda == 'DOL':
         empresa_id = request.session.get('empresa_id')
@@ -1189,16 +1192,16 @@ def agregar_item_venta_sesion(request):
 
         # Validaciones de precio mayor / menor
         if precio_ingresado < precio_lista and precio_lista > 0:
+            precio_unitario_final = precio_lista
             descuento = round(((precio_lista - precio_ingresado) / precio_lista) * 100.0, 2)
+            total_final = precio_ingresado * cantidad
         else:
+            precio_unitario_final = precio_ingresado
             descuento = 0.0
+            total_final = precio_unitario_final * cantidad
 
         if precio_ingresado > (precio_lista * 2) and precio_lista > 0:
             alerta_precio_duplicado = True
-
-        precio_unitario_final = precio_ingresado
-        subtotal = precio_unitario_final * cantidad
-        total_final = subtotal
     else:
         # En modo DESCUENTO se utiliza el descuento ingresado por el usuario
         precio_unitario_final = precio_lista
@@ -1298,13 +1301,15 @@ def editar_item_venta_sesion(request, index):
 
             if modo_edicion == 'PRECIO':
                 if 'precio' in request.POST:
-                    precio_ingresado = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
-                    item['precio'] = precio_ingresado
+                    precio_ingresado = parsear_decimal_ar(request.POST.get('precio', '0'), default=precio_base)
                     if precio_ingresado < precio_base and precio_base > 0:
+                        item['precio'] = precio_base
                         item['descuento'] = round(((precio_base - precio_ingresado) / precio_base) * 100.0, 2)
+                        item['total'] = round(precio_ingresado * cantidad, 2)
                     else:
+                        item['precio'] = precio_ingresado
                         item['descuento'] = 0.0
-                    item['total'] = round(precio_ingresado * cantidad, 2)
+                        item['total'] = round(precio_ingresado * cantidad, 2)
                     item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
             else:
                 if 'descuento' in request.POST:
@@ -1472,6 +1477,26 @@ def preventas_item_add(request):
         if any(item.get('subprod', False) for item in items):
             return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Esta preventa es exclusiva para la reserva de un arma. Para otros productos debe generar una preventa separada.</div>", status=200)
 
+    # Validación para empresas tipo ARMERÍA:
+    # No se permite facturar productos con creden = True a clientes sin identificar (tipo_documento = 99 / Consumidor Final)
+    from empresas.models import Empresa as _Empresa
+    from facturacion.models import ClienteProveedor
+    empresa_id = request.session.get('empresa_id')
+    es_armeria = _Empresa.objects.filter(id=empresa_id, tipo_actividad__iexact="ARMERIA").exists()
+
+    if es_armeria and producto.creden:
+        cliente_id = request.POST.get('cliente') or request.POST.get('cliente_id') or request.POST.get('id_cliente')
+        cliente_obj = None
+        if cliente_id:
+            cliente_obj = ClienteProveedor.objects.filter(pk=cliente_id, empresa_id=empresa_id).first()
+        if not cliente_obj or cliente_obj.tipo_documento == '99' or cliente_obj.codigo_id == 1:
+            return HttpResponse(
+                "<div class='p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-900 font-black text-[11px] rounded shadow-sm'>"
+                "⚠️ Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real."
+                "</div>",
+                status=200
+            )
+
     # En Preventas, la credencial solo se exige cuando creden=True y subprod=False
     # (en armas/subprod=True es solo un anticipo/reserva y no aplica pedir credencial aquí)
     if producto.creden and not producto.subprod and not credencial:
@@ -1481,7 +1506,8 @@ def preventas_item_add(request):
     # no se factura ni entrega el arma, sólo se genera la preventa/reserva (la traba
     # opera en Ventas con Trazabilidad).
 
-    # Lógica de Pesificación (Bimonetarismo)
+    # Base de precio de lista oficial desde el catálogo del producto
+    precio_lista = float(producto.precio_total or 0.0)
     moneda_origen = producto.moneda
     cotizacion_aplicada = 1.0
     precio_origen = precio_lista
@@ -1532,18 +1558,19 @@ def preventas_item_add(request):
         else:
             precio_ingresado = precio_lista
 
-        # Validaciones de precio mayor / menor
+        # Validaciones de precio mayor / menor contra el precio de lista oficial
         if precio_ingresado < precio_lista and precio_lista > 0:
+            # Se conserva el precio de lista base en precio_unitario y el total refleja el precio ingresado
+            precio_unitario_final = precio_lista
             descuento = round(((precio_lista - precio_ingresado) / precio_lista) * 100.0, 2)
+            total_final = precio_ingresado * cantidad
         else:
+            precio_unitario_final = precio_ingresado
             descuento = 0.0
+            total_final = precio_unitario_final * cantidad
 
         if precio_ingresado > (precio_lista * 2) and precio_lista > 0:
             alerta_precio_duplicado = True
-
-        precio_unitario_final = precio_ingresado
-        subtotal = precio_unitario_final * cantidad
-        total_final = subtotal
     else:
         # En modo DESCUENTO se utiliza el descuento ingresado por el usuario
         precio_unitario_final = precio_lista
@@ -1639,13 +1666,15 @@ def editar_item_preventa_sesion(request, index):
 
             if modo_edicion == 'PRECIO':
                 if 'precio' in request.POST:
-                    precio_ingresado = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
-                    item['precio_unitario'] = precio_ingresado
+                    precio_ingresado = parsear_decimal_ar(request.POST.get('precio', '0'), default=precio_base)
                     if precio_ingresado < precio_base and precio_base > 0:
+                        item['precio_unitario'] = precio_base
                         item['descuento'] = round(((precio_base - precio_ingresado) / precio_base) * 100.0, 2)
+                        item['total'] = round(precio_ingresado * cantidad, 2)
                     else:
+                        item['precio_unitario'] = precio_ingresado
                         item['descuento'] = 0.0
-                    item['total'] = round(precio_ingresado * cantidad, 2)
+                        item['total'] = round(precio_ingresado * cantidad, 2)
                     item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
             else:
                 if 'descuento' in request.POST:

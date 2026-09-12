@@ -1,6 +1,6 @@
 {% for c in clientes %}
 <tr class="bg-white hover:bg-blue-50 transition-colors group cursor-pointer"
-    onclick="document.body.dispatchEvent(new CustomEvent('clienteVentaSeleccionado', { detail: { id: '{{ c.pk }}', razon_social: '{{ c.razon_social|escapejs }}', cuit: '{{ c.cuit|default:""|escapejs }}', cta_res: '{{ c.cta_res|default:0 }}', condicion_iva: '{{ c.condicion_iva|escapejs }}', usa_orden_compra: '{% if c.usa_orden_compra %}true{% else %}false{% endif %}', clasificacion: '{{ c.clasificacion|escapejs }}' } }))">
+    onclick="document.body.dispatchEvent(new CustomEvent('clienteVentaSeleccionado', { detail: { id: '{{ c.pk }}', razon_social: '{{ c.razon_social|escapejs }}', tipo_documento: '{{ c.tipo_documento }}', cuit: '{{ c.cuit|default:""|escapejs }}', cta_res: '{{ c.cta_res|default:0 }}', condicion_iva: '{{ c.condicion_iva|escapejs }}', usa_orden_compra: '{% if c.usa_orden_compra %}true{% else %}false{% endif %}', clasificacion: '{{ c.clasificacion|escapejs }}' } }))">
     <td class="px-3 py-2 border-b border-slate-100">
         <span class="text-[10px] font-black text-slate-400">#{{ c.pk }}</span>
     </td>
