@@ -14,10 +14,10 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
     ws = wb.active
     ws.title = "Productos Vendidos"
 
-    # Encabezados de 38 columnas según productos_vendidos.xlsx
+    # Encabezados de 40 columnas según plantilla con Domicilio y Calibre
     headers = [
-        'ID.Vta', 'ID.Asto', 'Fecha', 'Comprobante', 'id.cod', 'Cliente', 'Credencial',
-        'Codigo', 'Cod Prov', 'Producto', 'Serie', 'CUIM', 'Cantidad', 'cto.Rep.',
+        'ID.Vta', 'ID.Asto', 'Fecha', 'Comprobante', 'id.cod', 'Cliente', 'Domicilio', 'Credencial',
+        'Codigo', 'Cod Prov', 'Producto', 'Calibre', 'Serie', 'CUIM', 'Cantidad', 'cto.Rep.',
         'fec.Act.', 'moneda', 'cotiz', 'alic.iva', 'pcio.T.', 'Neto', 'Total',
         'Stock', 'id.pro', 'Proveedor', 'id.rubro', 'rubro', 'id.flia', 'familia',
         'id.subflia', 'subfamilia', 'id.marca', 'marca', 'id.vdor', 'Vendedor',
@@ -112,6 +112,8 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
         comprobante_str = f"{vta.tipo.codigo if vta.tipo else ''} {vta.punto:05d}-{vta.numero:08d}" if vta else ''
         fecha_str = vta.fecha.strftime('%Y-%m-%d %H:%M:%S') if vta and vta.fecha else ''
         fec_act_str = prod.fec_act.strftime('%Y-%m-%d %H:%M:%S') if prod and prod.fec_act else ''
+        domicilio_str = (cli_obj.domicilio_completo if cli_obj else '') or (vta.cliente_domicilio if vta else '') or ''
+        calibre_str = prod.unidad_venta if prod and prod.unidad_venta else ''
 
         row_data = [
             vta.ventas_id if vta else '',                             # ID.Vta
@@ -120,10 +122,12 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
             comprobante_str,                                         # Comprobante
             cli_obj.codigo_id if cli_obj else '',                    # id.cod
             vta.cliente_razon_social or (cli_obj.razon_social if cli_obj else ''), # Cliente
+            domicilio_str,                                           # Domicilio Completo
             item.credencial or '',                                   # Credencial
             prod.pk if prod else '',                                 # Codigo
             prod.cod_prov if prod and prod.cod_prov else '',         # Cod Prov
             item.concepto or (prod.detalle if prod else ''),         # Producto
+            calibre_str,                                             # Calibre
             '',                                                      # Serie
             '',                                                      # CUIM
             float(cant),                                             # Cantidad
@@ -160,28 +164,28 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
             cell = ws.cell(row=row_idx, column=col_idx, value=val)
             cell.border = border_light
             # Formatos numéricos
-            if col_idx in [13]:  # Cantidad
+            if col_idx in [15]:  # Cantidad
                 cell.number_format = '#,##0.00'
                 cell.alignment = Alignment(horizontal='right')
-            elif col_idx in [14, 17, 18, 19, 20, 21, 22, 35, 36, 37]:  # Moneda / importes
+            elif col_idx in [16, 19, 20, 21, 22, 23, 24, 37, 38, 39]:  # Moneda / importes
                 cell.number_format = '#,##0.00'
                 cell.alignment = Alignment(horizontal='right')
 
         row_idx += 1
 
     # Fila final de Totales
-    ws.cell(row=row_idx, column=10, value="TOTALES GENERALES").font = Font(bold=True)
-    ws.cell(row=row_idx, column=10).alignment = Alignment(horizontal='right')
+    ws.cell(row=row_idx, column=11, value="TOTALES GENERALES").font = Font(bold=True)
+    ws.cell(row=row_idx, column=11).alignment = Alignment(horizontal='right')
 
-    cell_cant = ws.cell(row=row_idx, column=13, value=float(tot_cant))
+    cell_cant = ws.cell(row=row_idx, column=15, value=float(tot_cant))
     cell_cant.number_format = '#,##0.00'
     cell_cant.font = Font(bold=True)
 
-    cell_neto = ws.cell(row=row_idx, column=20, value=float(tot_neto))
+    cell_neto = ws.cell(row=row_idx, column=22, value=float(tot_neto))
     cell_neto.number_format = '#,##0.00'
     cell_neto.font = Font(bold=True)
 
-    cell_total = ws.cell(row=row_idx, column=21, value=float(tot_total))
+    cell_total = ws.cell(row=row_idx, column=23, value=float(tot_total))
     cell_total.number_format = '#,##0.00'
     cell_total.font = Font(bold=True)
 

@@ -199,6 +199,10 @@
                                     <span class="text-xs text-gray-700 font-medium">Cliente</span>
                                 </label>
                                 <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-domicilio" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Domicilio Completo</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
                                     <input type="checkbox" data-column="col-cuit" class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
                                     <span class="text-xs text-gray-700 font-medium">CUIT</span>
                                 </label>
@@ -213,6 +217,10 @@
                                 <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
                                     <input type="checkbox" data-column="col-producto" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
                                     <span class="text-xs text-gray-700 font-medium">Producto / Detalle</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-calibre" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Calibre</span>
                                 </label>
                                 <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
                                     <input type="checkbox" data-column="col-cantidad" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
@@ -386,6 +394,14 @@
         if (inputId) inputId.value = e.detail.id;
         if (inputDisplay) inputDisplay.value = e.detail.detalle;
         actualizarUrlExportacion();
+    });
+
+    // Refrescar reporte al sincronizar datos de un cliente
+    document.body.addEventListener('ventaClienteActualizado', () => {
+        const form = document.getElementById('filter-form');
+        if (form) {
+            htmx.trigger(form, 'submit');
+        }
     });
 </script>
 {% endblock %}

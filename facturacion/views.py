@@ -1419,3 +1419,35 @@ class CompraDetalleModalView(LoginRequiredMixin, View):
             'tiene_asiento': tiene_asiento,
         })
 
+
+class VentaSincronizarClienteView(LoginRequiredMixin, View):
+    """
+    Sincroniza y actualiza los datos personales congelados en la Venta (razón social, CUIT, domicilio)
+    a partir de los datos vigentes del maestro ClienteProveedor.
+    """
+    def post(self, request, id):
+        empresa_id = request.session.get('empresa_id')
+        venta = get_object_or_404(Venta, pk=id, empresa_id=empresa_id)
+        
+        if venta.cliente:
+            cli = venta.cliente
+            venta.cliente_razon_social = cli.razon_social
+            venta.cliente_cuit = cli.cuit
+            venta.cliente_domicilio = cli.domicilio_completo or cli.domicilio or ''
+            venta.save(update_fields=['cliente_razon_social', 'cliente_cuit', 'cliente_domicilio'])
+            messages.success(request, f"Datos de cliente actualizados en la venta #{venta.ventas_id}: {cli.razon_social} ({cli.cuit}).")
+        else:
+            messages.warning(request, f"La venta #{venta.ventas_id} no posee cliente asignado en el maestro.")
+            
+        referer = request.META.get('HTTP_REFERER', '')
+        if request.headers.get('HX-Request'):
+            response = HttpResponse()
+            if 'reportes/productos-vendidos' in referer or 'productos-vendidos' in referer:
+                response['HX-Trigger'] = 'ventaClienteActualizado'
+            else:
+                response['HX-Redirect'] = referer or reverse('ventas_listado')
+            return response
+            
+        return redirect(referer or 'ventas_listado')
+
+

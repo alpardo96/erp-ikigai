@@ -190,3 +190,39 @@ class ReporteVentasProductoTestCase(TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    def test_domicilio_completo_propiedad(self):
+        """Verifica la concatenación de domicilio, código postal, localidad y jurisdicción."""
+        from facturacion.models import Jurisdiccion
+        jur = Jurisdiccion.objects.create(codigo="01", nombre="BUENOS AIRES")
+        cli = ClienteProveedor.objects.create(
+            empresa=self.empresa,
+            razon_social="JUAN PEREZ",
+            tipo_entidad=1,
+            cuit="20333333334",
+            domicilio="AV CORRIENTES 1234",
+            codigo_postal="1043",
+            localidad="SAN NICOLAS",
+            jurisdiccion=jur
+        )
+        self.assertEqual(cli.domicilio_completo, "AV CORRIENTES 1234 - CP: 1043 - SAN NICOLAS, BUENOS AIRES")
+
+    def test_sincronizar_datos_cliente_venta(self):
+        """Verifica que el endpoint venta_sincronizar_cliente actualice los campos snapshot de la venta."""
+        self.cliente.razon_social = "CLIENTE ACTUALIZADO SA"
+        self.cliente.cuit = "30777777779"
+        self.cliente.domicilio = "NUEVA DIRECCION 456"
+        self.cliente.codigo_postal = "1405"
+        self.cliente.localidad = "CABALLITO"
+        self.cliente.save()
+
+        url = reverse('venta_sincronizar_cliente', args=[self.venta1.ventas_id])
+        response = self.client.post(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+
+        self.venta1.refresh_from_db()
+        self.assertEqual(self.venta1.cliente_razon_social, "CLIENTE ACTUALIZADO SA")
+        self.assertEqual(self.venta1.cliente_cuit, "30777777779")
+        self.assertIn("NUEVA DIRECCION 456", self.venta1.cliente_domicilio)
+        self.assertIn("1405", self.venta1.cliente_domicilio)
+

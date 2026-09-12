@@ -8,7 +8,7 @@ from django.conf.urls.static import static
 from core.views_config import ConfiguracionIndexView, guardar_configuracion_trazabilidad
 from empresas.views_htmx import empresa_modal, buscar_empresas, eliminar_empresa, sucursal_modal, buscar_sucursales, eliminar_sucursal, ejercicio_modal, buscar_ejercicios, eliminar_ejercicio, cotizaciones_modal, punto_venta_modal, buscar_puntos_venta, eliminar_punto_venta
 from usuarios.views_htmx import usuario_modal, buscar_usuarios, eliminar_usuario, rol_modal, buscar_roles, eliminar_rol
-from facturacion.views import ClientesProveedoresIndexView, ComprasIndexView, VentasIndexView, ComprasCargaView, VentasCargaView, PreventaCargaView, AutorizacionesIndexView, ComprasListView, CompraBajaView, CompraDetalleModalView, VentasListView, VentaAnularModalView, VentaEmitirNotaCreditoView, VentaPrevisualizarModalView
+from facturacion.views import ClientesProveedoresIndexView, ComprasIndexView, VentasIndexView, ComprasCargaView, VentasCargaView, PreventaCargaView, AutorizacionesIndexView, ComprasListView, CompraBajaView, CompraDetalleModalView, VentasListView, VentaAnularModalView, VentaEmitirNotaCreditoView, VentaPrevisualizarModalView, VentaSincronizarClienteView
 from facturacion.views_procesamiento import CargaCompraAutomaticaView, ProcesarRecorteOCRView
 from facturacion.views_ia import CargaCompraIAView, ProcesarFacturaIAView
 from facturacion.views_impresion import imprimir_factura
@@ -203,6 +203,7 @@ urlpatterns = [
     # 🔹 VENTAS 🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹
     path('ventas/', VentasIndexView.as_view(), name='ventas_index'),
     path('ventas/listado/', VentasListView.as_view(), name='ventas_listado'),
+    path('ventas/<int:id>/sincronizar-cliente/', VentaSincronizarClienteView.as_view(), name='venta_sincronizar_cliente'),
     path('ventas/<int:id>/anular/modal/', VentaAnularModalView.as_view(), name='venta_anular_modal'),
     path('ventas/<int:id>/previsualizar/modal/', VentaPrevisualizarModalView.as_view(), name='venta_previsualizar_modal'),
     path('ventas/<int:id>/anular/procesar/', VentaEmitirNotaCreditoView.as_view(), name='venta_emitir_nc'),

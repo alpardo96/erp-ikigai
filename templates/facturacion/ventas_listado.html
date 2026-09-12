@@ -153,7 +153,22 @@
                     <td class="px-4 py-2 text-center font-mono text-slate-500 font-bold">{{ v.asiento_id|default:"—" }}</td>
                     <td class="px-4 py-2 font-bold text-slate-600">{{ v.fecha|date:"d/m/Y" }}</td>
                     <td class="px-4 py-2 font-bold text-slate-800">{{ v.tipo.codigo }} {{ v.punto|stringformat:"05d" }}-{{ v.numero|stringformat:"08d" }}</td>
-                    <td class="px-4 py-2 uppercase text-slate-700">{{ v.cliente_razon_social|default:v.cliente.razon_social|default:"Consumidor Final" }}</td>
+                    <td class="px-4 py-2 uppercase text-slate-700">
+                        <div class="flex items-center justify-between gap-1.5">
+                            <span>{{ v.cliente_razon_social|default:v.cliente.razon_social|default:"Consumidor Final" }}</span>
+                            {% if v.cliente %}
+                            <button type="button"
+                                    hx-post="{% url 'venta_sincronizar_cliente' v.ventas_id %}"
+                                    hx-swap="none"
+                                    class="shrink-0 p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all cursor-pointer"
+                                    title="Sincronizar datos personales desde ficha de cliente (ARCA/Maestro)">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
                     <td class="px-4 py-2 text-right tabular-nums">$ {{ v.neto|floatformat:2 }}</td>
                     <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ v.iva|floatformat:2 }}</td>
                     <td class="px-4 py-2 text-right font-black tabular-nums">$ {{ v.total|floatformat:2 }}</td>

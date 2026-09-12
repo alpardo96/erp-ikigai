@@ -110,6 +110,26 @@ class ClienteProveedor(AuditModel):
     def __str__(self):
         return f"[{self.codigo_id}] {self.razon_social}"
 
+    @property
+    def domicilio_completo(self):
+        """
+        Retorna la concatenación limpia de domicilio + CP + localidad + provincia.
+        Ejemplo: 'AV SAN MARTIN 1234 - CP: 1405 - CABALLITO, CAPITAL FEDERAL'
+        """
+        partes = []
+        if self.domicilio and self.domicilio.strip():
+            partes.append(self.domicilio.strip())
+        if self.codigo_postal and self.codigo_postal.strip():
+            partes.append(f"CP: {self.codigo_postal.strip()}")
+        loc_prov = []
+        if self.localidad and self.localidad.strip():
+            loc_prov.append(self.localidad.strip())
+        if self.jurisdiccion and self.jurisdiccion.nombre and self.jurisdiccion.nombre.strip():
+            loc_prov.append(self.jurisdiccion.nombre.strip())
+        if loc_prov:
+            partes.append(", ".join(loc_prov))
+        return " - ".join(partes) if partes else ""
+
     def save(self, *args, **kwargs):
         # 1. Convertir campos de texto a mayúsculas (excepto emails o códigos específicos)
         exclude_fields = ['correo', 'tipo_documento', 'tipo_iibb']
@@ -614,6 +634,17 @@ class Venta(models.Model):
             return Decimal('0.00')
         cm_total = self.contribucion_marginal_total
         return (cm_total / Decimal(str(self.neto))) * Decimal('100.00')
+
+    @property
+    def domicilio_completo_cliente(self):
+        """
+        Retorna el domicilio completo del cliente asignado o el snapshot de la venta si no está disponible.
+        """
+        if self.cliente:
+            dom = self.cliente.domicilio_completo
+            if dom:
+                return dom
+        return self.cliente_domicilio or ""
 
 class VentaItem(models.Model):
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='items')
