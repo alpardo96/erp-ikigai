@@ -1,6 +1,19 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
 ## Antigravity
+- **Fecha/Día**: 14 de Septiembre de 2026
+- **Objetivo o Tarea**: Reparación del modal de Alta/Edición de Clientes y ajuste de lógica fiscal en Facturación Masiva del Estudio.
+- **Archivos creados o modificados**:
+  - `templates/facturacion/modals/cliente_modal.html` [MODIFY]
+  - `verticalidades/estudio/services/facturacion_lote_estudio.py` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Modal de Clientes Roto (Parte 1 - DOM):** Se reparó una anomalía severa en el DOM de `cliente_modal.html`. Un merge previo había combinado el contenedor `bg-white` (que contenía el `x-data` de AlpineJS) con un `div` interno sin remover su etiqueta de cierre `</div>`. Esto causaba que el formulario y el contenedor de scroll se cerraran prematuramente en la mitad del documento (sección Identidad), expulsando las secciones 2, 3, Notas, módulos y Footer fuera del flujo de layout principal. Se corrigió envolviendo adecuadamente el primer bloque en un nuevo `<div>` para que el cierre `</div>` prematuro apuntara a este wrapper y no al contenedor general `bg-white`. AlpineJS recuperó el control de las directivas `x-show` sobre `esProveedor` en todo el documento y la maquetación se restauró por completo.
+  2. **Modal de Clientes Roto (Parte 2 - Comillas en AlpineJS):** El usuario reportó que el modal escupía código JavaScript crudo en la parte superior. Esto ocurría porque al encapsular toda la lógica JS de Alpine dentro del atributo `x-data="{ ... }"` (usando comillas dobles), se insertó inadvertidamente código con comillas dobles internas (ej. `.normalize("NFD")` y `.replace(/.../, "")`). El navegador interpretaba la primera comilla doble como el cierre abrupto del atributo `x-data`, provocando que el resto de la lógica quedara huérfana y se renderizara como texto en el HTML. Se reemplazaron todas las comillas dobles internas por comillas simples (`'NFD'` y `''`), restaurando la interpretación válida de AlpineJS.
+  3. **Facturación Masiva de Estudio - Omisión AFIP para No Fiscales:** Se adaptó `FacturacionLoteEstudioService` para que, en caso de ejecutarse un lote mixto donde un cliente con `tarifa_f > 0` posea una condición de IVA no fiscal (ej. `PRESUPUESTO` o `CONSUMO INTERNO`), el monto destinado a facturación fiscal (`tarifa_f`) sea sumado y derivado automáticamente a `tarifa_p` (comprobante interno `PRE`), y la ejecución en AFIP para ese registro sea evitada de forma silente. Esto cumple con la directiva de procesar lotes masivos mezclados enviando a AFIP solo los registros que correspondan según su matriz impositiva, sin interrumpir la operación ni emitir errores.
+- **Resultado de las pruebas**: Se verificó que el template renderiza ahora de forma íntegra en un test local de Django. La lógica del servicio de facturación deriva tarifas fiscales a presupuesto de forma correcta según el diccionario de condiciones.
+- **Estado actual y siguientes pasos sugeridos**: El modal vuelve a ser cien por ciento operativo, y la facturación loteada puede procesarse en estado mixto. No quedan tareas pendientes urgentes del bloque de facturación.
+
+## Antigravity
 - **Fecha/Día**: 09 de Septiembre de 2026
 - **Objetivo o Tarea**: Soporte de CSRF para accesos externos dinámicos mediante túneles de Cloudflare (`trycloudflare.com`).
 - **Archivos creados o modificados**: `config/settings.py` [MODIFY], `.env` [MODIFY].
@@ -4922,3 +4935,11 @@ Hacer más inteligente la búsqueda de productos en la carga de preventa, autoco
 **Estado actual y siguientes pasos:**
 - Motor de búsqueda inteligente completamente operativo en la carga de preventa, ventas, compras y catálogo general.
 - Siguientes pasos: Continuar con la hoja de ruta del proyecto o nuevas tareas solicitadas.
+
+## Estudio - Refactor Facturación por Lotes (Servicios)
+- **Fecha/Día**: 14 de Septiembre de 2026
+- **Objetivo o Tarea**: Migrar módulo de Facturación Lotes a verticalidad Estudio, ajustar período por separado e implementar emisión real AFIP de Servicios.
+- **Archivos creados o modificados**: erticalidades/estudio/services/facturacion_lote_estudio.py [NEW], erticalidades/estudio/views.py [MODIFY], erticalidades/estudio/urls.py [MODIFY], erticalidades/estudio/templates/estudio/facturacion_lotes.html [MODIFY].
+- **Detalle Técnico e implicaciones**: Se creó el servicio FacturacionLoteEstudioService que conecta con ARCA usando concepto = 2 y fechas armadas desde el período seleccionado. Se trasladaron las vistas desde el core a la verticalidad Estudio sin afectar asientos. En la UI se separó el input de período en Mes y Año autocentrados.
+- **Resultado de las pruebas**: Migración de código y templates exitosa. UI revisada.
+- **Estado actual y siguientes pasos sugeridos**: Listo para probar facturar un servicio real.

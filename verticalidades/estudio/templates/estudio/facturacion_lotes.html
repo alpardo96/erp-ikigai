@@ -23,9 +23,11 @@
     <div class="bg-white p-3 shadow-sm rounded-lg border border-gray-200 mb-3 flex flex-col gap-3 relative z-20 shrink-0">
         <div class="flex flex-wrap items-center gap-4">
             
-            <div class="flex items-center space-x-2 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-200 shrink-0">
-                <label class="relative top-1 text-sm font-bold text-blue-800 uppercase whitespace-nowrap">Período:</label>
-                <input type="text" x-model="periodo" placeholder="YYYYMM" class="h-8 w-14 px-1 py-0 text-center bg-white border border-blue-300 rounded text-xs font-mono font-bold text-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" maxlength="6" @input="cargarDatos()">
+            <div class="flex items-center space-x-1 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-200 shrink-0">
+                <label class="relative top-[1px] text-sm font-bold text-blue-800 uppercase whitespace-nowrap">Período:</label>
+                <input type="text" x-model="periodoMes" placeholder="MM" class="h-8 px-1 py-0 text-center bg-white border border-blue-300 rounded text-xs font-mono font-bold text-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" maxlength="2" style="width: 50px;">
+                <span class="text-blue-800 font-bold">/</span>
+                <input type="text" x-model="periodoAnio" placeholder="YYYY" class="h-8 px-1 py-0 text-center bg-white border border-blue-300 rounded text-xs font-mono font-bold text-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none" maxlength="4" style="width: 75px;">
             </div>
 
             <div class="flex items-center space-x-2 bg-indigo-50 px-3 py-1.5 rounded-md border border-indigo-200 shrink-0">
@@ -173,13 +175,28 @@
 
     const lotesGrid = {
         items: [],
-        periodo: '202607',
+        periodoMes: '',
+        periodoAnio: '',
         pto_vta: '',
         busqueda: '',
         isLoading: false,
         isGenerating: false,
         
+        get periodo() {
+            if (this.periodoAnio.length === 4 && this.periodoMes.length >= 1) {
+                return `${this.periodoAnio}${this.periodoMes.padStart(2, '0')}`;
+            }
+            return '';
+        },
+        
         init() {
+            const now = new Date();
+            this.periodoMes = String(now.getMonth() + 1).padStart(2, '0');
+            this.periodoAnio = String(now.getFullYear());
+            
+            this.$watch('periodoMes', () => this.cargarDatos());
+            this.$watch('periodoAnio', () => this.cargarDatos());
+            
             this.cargarDatos();
         },
         

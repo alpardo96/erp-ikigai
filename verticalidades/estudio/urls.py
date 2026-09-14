@@ -1,5 +1,5 @@
 from django.urls import path
-from facturacion.views_estudio import actualizar_tarifas, api_tarifas, guardar_tarifas, facturacion_lotes, api_facturacion_lotes, generar_lote_facturacion
+from verticalidades.estudio.views import actualizar_tarifas, api_tarifas, guardar_tarifas, facturacion_lotes, api_facturacion_lotes, generar_lote_facturacion
 
 urlpatterns = [
     path('estudio/tarifas/', actualizar_tarifas, name='estudio_actualizar_tarifas'),

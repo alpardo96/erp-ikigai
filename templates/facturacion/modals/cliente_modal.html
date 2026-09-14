@@ -248,9 +248,9 @@
                                             }
                                             // Fallback: buscar por texto si no seleccionó por ID
                                             if (!jurInput.value && data.provincia) {
-                                                const pciaBuscada = String(data.provincia).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                                                const pciaBuscada = String(data.provincia).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
                                                 for (let i = 0; i < jurInput.options.length; i++) {
-                                                    const optText = jurInput.options[i].text.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                                    const optText = jurInput.options[i].text.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                                                     if (optText.includes(pciaBuscada) || (pciaBuscada.includes('TUCUMAN') && optText.includes('TUCUMAN')) || (pciaBuscada.includes('BUENOS AIRES') && optText.includes('BUENOS AIRES'))) {
                                                         jurInput.selectedIndex = i;
                                                         break;
@@ -287,6 +287,7 @@
                             });
                     }
                 }" x-init="onTipoEntidadChange()">
+                <div>
                     <h4
                         class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-6 border-b pb-3 border-indigo-50 flex items-center">
                         <span
