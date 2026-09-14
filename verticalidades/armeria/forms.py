@@ -30,9 +30,9 @@ class ExtensionArmeriaForm(forms.ModelForm):
         self.fields['clu'].required = False
         self.fields['clu_vto'].required = False
         if self.instance and self.instance.pk:
-            self.fields['es_policia'].initial = 'true' if self.instance.es_policia else 'false'
+            self.initial['es_policia'] = 'true' if self.instance.es_policia else 'false'
         else:
-            self.fields['es_policia'].initial = ''
+            self.initial['es_policia'] = ''
 
         for field_name, field in self.fields.items():
             clase_actual = field.widget.attrs.get('class', '')

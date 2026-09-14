@@ -2,6 +2,18 @@
 
 ## Antigravity
 - **Fecha/Día**: 14 de Septiembre de 2026
+- **Objetivo o Tarea**: Agregar filtro de validación de Persona Jurídica y corregir carga del campo "es_policia" al crear o editar un cliente/proveedor (verticalidad Armería).
+- **Archivos creados o modificados**:
+  - `facturacion/views_htmx.py` [MODIFY]
+  - `verticalidades/armeria/forms.py` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Validación Cruzada de Entidad Fiscal:** Se agregó una capa de validación en la vista `cliente_proveedor_crear_editar` (`facturacion/views_htmx.py`) para obligar a que cualquier ingreso de CUIT de 11 dígitos que inicie con "3" deba categorizarse forzosamente como "Persona Jurídica" dentro de la extensión de Armería. Así mismo, si el usuario marca "Persona Jurídica", el sistema exigirá que el documento proporcionado sea un CUIT válido (arrancando con 3 y de 11 dígitos). Con esto se logra blindar los errores de carga en AFIP y ANMaC (Agencia Nacional de Materiales Controlados).
+  2. **Corrección Carga de Select Booleano (es_policia):** Se reparó un bug visual al momento de editar un Cliente Armería existente. El campo `es_policia` es un `TypedChoiceField` con opciones `('true', 'false')`, pero el form (`ExtensionArmeriaForm`) intentaba pre-poblar su valor vía `self.fields['es_policia'].initial`. En un `ModelForm` con instancia, Django lee del diccionario `self.initial`, que contenía el valor booleano puro de base de datos (`True/False`). Al no hacer match el booleano puro con el string de las opciones, el select cargaba vacío. Se modificó el `__init__` para sobreescribir `self.initial['es_policia']` con el string correspondiente.
+- **Resultado de las pruebas**: Se constató el correcto acople de la validación sin interferir con las otras entidades del formulario (distribuidora/base). Y al editar, el selector recupera el valor correcto de "es_policia".
+- **Estado actual y siguientes pasos sugeridos**: El bloque de facturación sigue robusto. Funcionalidad completada.
+
+## Antigravity
+- **Fecha/Día**: 14 de Septiembre de 2026
 - **Objetivo o Tarea**: Reparación del modal de Alta/Edición de Clientes y ajuste de lógica fiscal en Facturación Masiva del Estudio.
 - **Archivos creados o modificados**:
   - `templates/facturacion/modals/cliente_modal.html` [MODIFY]

@@ -239,7 +239,26 @@ def cliente_modal(request, id=None):
                               if puede_distribuidora else None)
 
         form_valid = form.is_valid()
-        armeria_valid = (not puede_armeria) or (form_armeria is None) or (not form_armeria.has_changed()) or form_armeria.is_valid()
+        
+        armeria_valid = True
+        if puede_armeria and form_armeria is not None:
+            armeria_valid = form_armeria.is_valid() or not form_armeria.has_changed()
+            if form_valid and armeria_valid:
+                if not hasattr(form_armeria, 'cleaned_data'):
+                    form_armeria.is_valid()
+                if not form_armeria.errors:
+                    cuit = form.cleaned_data.get('cuit') or ''
+                    tipo_persona = form_armeria.cleaned_data.get('tipo_persona')
+                    
+                    es_cuit_juridica = cuit.startswith('3') and len(cuit) == 11
+                    
+                    if es_cuit_juridica and tipo_persona != 'J':
+                        form_armeria.add_error('tipo_persona', 'El CUIT ingresado (comienza con 3) corresponde a una Persona Jurídica.')
+                        armeria_valid = False
+                    elif tipo_persona == 'J' and not es_cuit_juridica:
+                        form.add_error('cuit', 'Una Persona Jurídica debe poseer un CUIT válido (11 dígitos, comenzando con 3).')
+                        form_valid = False
+
         distribuidora_valid = ((not puede_distribuidora) or (form_distribuidora is None)
                                or (not form_distribuidora.has_changed())
                                or form_distribuidora.is_valid())
