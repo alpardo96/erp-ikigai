@@ -195,12 +195,13 @@ def run():
         ClienteProveedor.objects.bulk_create(entidades_to_create, ignore_conflicts=True, batch_size=1000)
         print(f"OK: {len(entidades_to_create)} Clientes y Proveedores migrados desde CONTABLE.")
 
-    # 6. Extensión Armería (desde COMERCIO eje_255)
+    # 6. Extensión Armería y Observaciones / Notas (desde COMERCIO eje_255)
     clipro_comercio_dbf = os.path.join(dir_comercio, 'cli_pro.dbf')
     if os.path.exists(clipro_comercio_dbf):
         table_com = DBF(clipro_comercio_dbf, ignore_missing_memofile=True, encoding='latin1')
         valid_clientes = set(ClienteProveedor.objects.filter(empresa=empresa).values_list('codigo_id', flat=True))
         ext_to_create = []
+        observaciones_dict = {}
         
         for row in table_com:
             codigo = row.get('CODIGO')
@@ -211,6 +212,9 @@ def run():
             clu_vto = row.get('CLU_VTO')
             es_policia = bool(row.get('POLICIA', False))
             tipo_persona = map_personas.get(codigo, 'F')
+            observa = str(row.get('OBSERVA', '')).strip()
+            if observa:
+                observaciones_dict[codigo] = observa
             
             ext_to_create.append(ExtensionArmeria(
                 cliente_id=codigo,
@@ -222,6 +226,11 @@ def run():
             
         ExtensionArmeria.objects.bulk_create(ext_to_create, ignore_conflicts=True, batch_size=1000)
         print(f"OK: {len(ext_to_create)} Registros de Extensión Armería (CLU, Vencimiento, Policía) creados.")
+
+        if observaciones_dict:
+            for cod, obs in observaciones_dict.items():
+                ClienteProveedor.objects.filter(codigo_id=cod, empresa=empresa).update(observaciones=obs)
+            print(f"OK: {len(observaciones_dict)} Notas/Observaciones particulares actualizadas en Clientes.")
 
     print("Fase 2 completada con éxito.")
 

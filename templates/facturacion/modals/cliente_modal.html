@@ -63,9 +63,8 @@
             </div>
             {% endif %}
 
-            <div class="bg-white px-10 py-8 space-y-10 max-h-[75vh] overflow-y-auto custom-scrollbar">
-
-                <div x-data="{
+            <div class="bg-white px-10 py-8 space-y-10 max-h-[75vh] overflow-y-auto custom-scrollbar"
+                x-data="{
                     tipoEntidad: '{{ form.tipo_entidad.value|default:'1' }}',
                     condicionIva: '{{ form.condicion_iva.value|default:'CONSUMIDOR FINAL' }}',
                     tipoDoc: '{{ form.tipo_documento.value|default:'99' }}',
@@ -182,8 +181,6 @@
                                         }
                                     });
                                 } else {
-                                    // Rellenar Tipo de Persona, Razón Social, Nombre, Apellido
-                                    console.log('DATOS ARCA FRONTEND:', data);
                                     if (data.tipo_persona) {
                                         this.tipoPersona = data.tipo_persona;
                                     }
@@ -198,6 +195,19 @@
                                         this.cliApellido = data.apellido || '';
                                         this.cliNombre = data.nombre || '';
                                     }
+                                    
+                                    this.$nextTick(() => {
+                                        let apInput = document.querySelector('input[name=cli_apellido]');
+                                        let nomInput = document.querySelector('input[name=cli_nombre]');
+                                        if (apInput && data.apellido) {
+                                            apInput.value = data.apellido;
+                                            apInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                        }
+                                        if (nomInput && data.nombre) {
+                                            nomInput.value = data.nombre;
+                                            nomInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                        }
+                                    });
                                     
                                     // Condición IVA
                                     this.condicionIva = data.condicion_iva;
@@ -230,10 +240,23 @@
                                     }
 
                                     // Jurisdicción (Provincia)
-                                    if (data.jurisdiccion_id) {
+                                    if (data.jurisdiccion_id || data.provincia) {
                                         let jurInput = document.getElementById('id_jurisdiccion');
                                         if (jurInput) {
-                                            jurInput.value = data.jurisdiccion_id;
+                                            if (data.jurisdiccion_id) {
+                                                jurInput.value = String(data.jurisdiccion_id);
+                                            }
+                                            // Fallback: buscar por texto si no seleccionó por ID
+                                            if (!jurInput.value && data.provincia) {
+                                                const pciaBuscada = String(data.provincia).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+                                                for (let i = 0; i < jurInput.options.length; i++) {
+                                                    const optText = jurInput.options[i].text.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                                    if (optText.includes(pciaBuscada) || (pciaBuscada.includes('TUCUMAN') && optText.includes('TUCUMAN')) || (pciaBuscada.includes('BUENOS AIRES') && optText.includes('BUENOS AIRES'))) {
+                                                        jurInput.selectedIndex = i;
+                                                        break;
+                                                    }
+                                                }
+                                            }
                                             jurInput.dispatchEvent(new Event('change', {bubbles: true}));
                                         }
                                     }

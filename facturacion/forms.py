@@ -1,5 +1,5 @@
 from django import forms
-from core.forms import DecimalARField
+from core.forms import DecimalARField, DateInputHTML5
 from .models import (ClienteProveedor, 
                      Jurisdiccion, Compra, Venta, TipoComprobante, Preventa)
 # ... (formularios previos)
@@ -92,7 +92,7 @@ class ClienteProveedorForm(forms.ModelForm):
             'razon_social': forms.TextInput(),
             'tipo_documento': forms.Select(),
             'cuit': forms.TextInput(),
-            'fecha_nacimiento': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_nacimiento': DateInputHTML5(),
             'tipo_entidad': forms.Select(),
             'domicilio': forms.TextInput(),
             'codigo_postal': forms.TextInput(),

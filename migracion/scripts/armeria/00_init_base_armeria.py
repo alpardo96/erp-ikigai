@@ -39,9 +39,9 @@ def init_base():
         id=1,
         defaults={
             'nombre': 'Armería',
-            'cuit': '30000000000',
+            'cuit': '30718098226',
             'condicion_iibb': 'CM',
-            'entorno_afip': 'HOMO',
+            'entorno_afip': 'PROD',
             'creado_por': user,
             'fecha_creacion': date.today(),
             'fecha_modificacion': date.today()

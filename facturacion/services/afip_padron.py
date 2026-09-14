@@ -162,31 +162,32 @@ class AFIPPadronService:
             result['apellido'] = apellido or ''
             
         # Mapeo interno de idProvincia AFIP a Códigos IIBB (Convenio Multilateral)
-        MAPEO_AFIP_IIBB = {
-            0: 901,  # CABA
-            1: 902,  # Buenos Aires
-            2: 903,  # Catamarca
-            3: 904,  # Córdoba
-            4: 905,  # Corrientes
-            5: 908,  # Entre Ríos
-            6: 910,  # Jujuy
-            7: 913,  # Mendoza
-            8: 912,  # La Rioja
-            9: 917,  # Salta
-            10: 918, # San Juan
-            11: 919, # San Luis
-            12: 921, # Santa Fe
-            13: 922, # Santiago del Estero
-            14: 924, # Tucumán
-            16: 906, # Chaco
-            17: 907, # Chubut
-            18: 909, # Formosa
-            19: 914, # Misiones
-            20: 915, # Neuquén
-            21: 911, # La Pampa
-            22: 916, # Río Negro
-            23: 920, # Santa Cruz
-            24: 923, # Tierra del Fuego
+        # Mapeo de idProvincia de AFIP a Códigos de Jurisdicción internos (1 a 24)
+        MAPEO_AFIP_PROVINCIA = {
+            0: 2,   # CABA / Capital Federal
+            1: 1,   # Buenos Aires
+            2: 3,   # Catamarca
+            3: 6,   # Córdoba
+            4: 7,   # Corrientes
+            5: 8,   # Entre Ríos
+            6: 10,  # Jujuy
+            7: 13,  # Mendoza
+            8: 12,  # La Rioja
+            9: 17,  # Salta
+            10: 18, # San Juan
+            11: 19, # San Luis
+            12: 21, # Santa Fe
+            13: 22, # Santiago del Estero
+            14: 24, # Tucumán
+            16: 4,  # Chaco
+            17: 5,  # Chubut
+            18: 9,  # Formosa
+            19: 14, # Misiones
+            20: 15, # Neuquén
+            21: 11, # La Pampa
+            22: 16, # Río Negro
+            23: 20, # Santa Cruz
+            24: 23, # Tierra del Fuego
         }
         
         # Determinar si es CUIT (80) o CUIL (86) a partir de los datos explícitos de ARCA
@@ -221,20 +222,35 @@ class AFIPPadronService:
                     
                 result['domicilio'] = direccion
                 result['codigo_postal'] = get_val(dom, 'codigoPostal')
-                result['provincia'] = get_val(dom, 'descripcionProvincia')
+                desc_pcia = get_val(dom, 'descripcionProvincia')
+                result['provincia'] = desc_pcia
                 result['localidad'] = get_val(dom, 'localidad')
                 
                 # Mapeo de Jurisdicción
                 id_provincia_afip = get_val(dom, 'idProvincia')
+                from facturacion.models import Jurisdiccion
+                jur = None
                 if id_provincia_afip is not None:
                     try:
-                        cod_iibb = MAPEO_AFIP_IIBB.get(int(id_provincia_afip))
-                        if cod_iibb:
-                            from facturacion.models import Jurisdiccion
-                            jur = Jurisdiccion.objects.filter(codigo=cod_iibb).first()
-                            if jur:
-                                result['jurisdiccion_id'] = jur.id
+                        cod_interno = MAPEO_AFIP_PROVINCIA.get(int(id_provincia_afip))
+                        if cod_interno:
+                            jur = Jurisdiccion.objects.filter(codigo=cod_interno).first()
                     except (ValueError, TypeError):
                         pass
+                if not jur and desc_pcia:
+                    desc_clean = str(desc_pcia).strip().upper()
+                    # Normalización de casos especiales
+                    if any(k in desc_clean for k in ['BUENOS AIRES', 'BS AS', 'BSAS']) and 'CIUDAD' not in desc_clean and 'CABA' not in desc_clean:
+                        jur = Jurisdiccion.objects.filter(codigo=1).first()
+                    elif any(k in desc_clean for k in ['CIUDAD AUTONOMA', 'CAPITAL FEDERAL', 'CABA']):
+                        jur = Jurisdiccion.objects.filter(codigo=2).first()
+                    elif 'SANTIAGO' in desc_clean:
+                        jur = Jurisdiccion.objects.filter(codigo=22).first()
+                    elif 'TIERRA DEL FUEGO' in desc_clean:
+                        jur = Jurisdiccion.objects.filter(codigo=23).first()
+                    else:
+                        jur = Jurisdiccion.objects.filter(nombre__icontains=desc_clean).first()
+                if jur:
+                    result['jurisdiccion_id'] = jur.id
                 
         return result

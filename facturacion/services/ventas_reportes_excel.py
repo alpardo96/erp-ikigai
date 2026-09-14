@@ -185,7 +185,7 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
             cell.border = border_light
             # Formatos de fecha (columnas 3 y 17)
             if col_idx in [3, 17]:
-                cell.number_format = 'yyyy-mm-dd'
+                cell.number_format = 'DD/MM/YYYY'
                 cell.alignment = Alignment(horizontal='center', vertical='center')
             # Formatos numéricos
             elif col_idx == 15:  # Cantidad

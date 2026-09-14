@@ -1,4 +1,5 @@
 from django import forms
+from core.forms import DateInputHTML5
 from .models import ExtensionArmeria
 
 class ExtensionArmeriaForm(forms.ModelForm):
@@ -21,7 +22,7 @@ class ExtensionArmeriaForm(forms.ModelForm):
         fields = ['tipo_persona', 'clu', 'clu_vto', 'es_policia']
         widgets = {
             'clu': forms.TextInput(),
-            'clu_vto': forms.DateInput(attrs={'type': 'date'}),
+            'clu_vto': DateInputHTML5(),
         }
 
     def __init__(self, *args, **kwargs):
