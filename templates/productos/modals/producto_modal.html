@@ -215,9 +215,8 @@
         if (!contCalibre || !selectRubro) return;
 
         const selectedOption = selectRubro.options[selectRubro.selectedIndex];
-        const rubroTexto = selectedOption ? selectedOption.text.trim().toUpperCase() : '';
-
-        if (rubroTexto.startsWith('ARMAS') || rubroTexto.startsWith('MUNICIONES')) {
+        // Se activa para cualquier rubro que comience con ARMA (ARMAS, ARMAS USADAS, etc.) o MUNI (MUNICIONES, MUNI AA, etc.)
+        if (rubroTexto.startsWith('ARMA') || rubroTexto.startsWith('MUNI')) {
             contCalibre.style.display = 'block';
         } else {
             contCalibre.style.display = 'none';

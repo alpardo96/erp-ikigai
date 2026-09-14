@@ -101,7 +101,7 @@ def obtener_items_ventas_filtrados(request):
         .select_related(
             'venta', 'venta__cliente', 'venta__tipo', 'venta__sucursal', 'venta__vendedor',
             'venta__cliente__jurisdiccion', 'producto', 'producto__rubro', 'producto__familia',
-            'producto__marca', 'producto__proveedor'
+            'producto__marca', 'producto__proveedor', 'subproducto'
         )
     )
 
@@ -234,7 +234,7 @@ def exportar_ventas_producto_csv(request):
 
     writer = csv.writer(response, delimiter=',')
 
-    # Cabecera de los 74 campos del archivo CSV legacy
+    # Cabecera de campos del archivo CSV
     header_csv = [
         'id_vta', 'fecha', 'tipo', 'punto', 'numero', 'id_cod', 'cliente',
         't_doc', 'cuit', 'domicilio', 'cpostal', 'localidad', 'provincia',
@@ -245,16 +245,13 @@ def exportar_ventas_producto_csv(request):
         'total', 'pciov', 'fec_adq', 'pciof', 'pciop', 'pciod', 'marca', 'suc',
         'credencial', 'alic_iva', 'stock', 'id_marca', 'serie', 'cuim',
         'cod_prov', 'cod_fab', 'detalle', 'id_prov', 'prove', 'id_sprod',
-        'minimo', 'ptopedir', 'stkcons', 'id_rubro', 'id_flia', 'id_sflia',
-        'subprod', 'rubro', 'familia', 'subfamilia', 'margen', 'mg_rubro',
+        'minimo', 'ptopedir', 'stkcons', 'id_rubro', 'id_flia',
+        'subprod', 'rubro', 'familia', 'margen', 'mg_rubro',
         'telefono', 'observa'
     ]
     writer.writerow(header_csv)
 
-    # Stock por (producto, sucursal) en UNA consulta (Plan 053). Antes la columna `stock` salía de
-    # `Producto.stock`, un campo heredado del VFP que ya nadie actualizaba: exportaba el valor
-    # congelado de la importación. Ahora sale del stock real, y se precarga acá porque leerlo
-    # producto por producto dispararía una consulta por fila del CSV.
+    # Stock por (producto, sucursal) en UNA consulta (Plan 053).
     from productos.models import StockSucursal
     claves_producto = {i.producto_id for i in items if i.producto_id}
     claves_sucursal = {i.venta.sucursal_id for i in items if i.venta_id and i.venta.sucursal_id}
@@ -286,7 +283,7 @@ def exportar_ventas_producto_csv(request):
 
         pcio_t = (tot / cant).quantize(Decimal("0.01")) if cant else Decimal(str(item.precio_unitario or 0))
 
-        # Mapeo a los 74 campos
+        # Mapeo a los campos
         row = [
             vta.ventas_id if vta else '',
             vta.fecha.strftime('%d/%m/%Y') if vta and vta.fecha else '',
@@ -341,26 +338,22 @@ def exportar_ventas_producto_csv(request):
             # Stock REAL de la sucursal de la venta (Plan 053).
             float(stock_por_clave.get((item.producto_id, vta.sucursal_id if vta else None), 0) or 0),
             marca.pk if marca else 0,
-            '', # serie
-            '', # cuim
+            item.serie or (item.subproducto.serie if item.subproducto else '') or '', # serie
+            item.cuim or (item.subproducto.cuim if item.subproducto else '') or '', # cuim
             prod.cod_prov if prod and prod.cod_prov else '',
             prod.cod_fab if prod and prod.cod_fab else '',
             item.concepto or (prod.detalle if prod else ''),
             prov.codigo_id if prov else '',
             prov.razon_social if prov else '',
-            0,  # id_sprod
+            item.subproducto_id or 0,  # id_sprod
             float(prod.minimo) if prod and prod.minimo else 0.0,
             float(prod.ptopedir) if prod and prod.ptopedir else 0.0,
-            # `stkcons` era el stock en consignación del VFP; no tiene equivalente en el esquema
-            # actual. La columna se conserva como relleno para no alterar el layout de 74 campos.
-            0.0,
+            0.0, # stkcons
             rubro.pk if rubro else 0,
             flia.pk if flia else 0,
-            0,  # id_sflia
             1 if prod and prod.subprod else 0,
             rubro.detalle if rubro else '',
             flia.detalle if flia else '',
-            'VARIOS', # subfamilia
             float(prod.margen) if prod and prod.margen else 0.0,
             float(rubro.margen) if rubro and rubro.margen else 0.0,
             cli.telefono if cli else '',

@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from decimal import Decimal, InvalidOperation
 from core.models import AuditModel
 from empresas.models import Empresa, Sucursal
@@ -165,7 +166,7 @@ class Producto(AuditModel):
     # ARMERIA, ESTUDIO o AGRICOLA, donde no está en pantalla: el alta de producto fallaba con
     # "Este campo es obligatorio" y el usuario no tenía dónde verlo. El default cubre el valor.
     unidad_venta = models.CharField(
-        max_length=10, default='UNIDAD', blank=True,
+        max_length=30, default='UNIDAD', blank=True,
         verbose_name="Unidad de Venta")
     unidades_por_bulto = models.DecimalField(
         max_digits=10, decimal_places=2, default=0, verbose_name="Unidades por Bulto",
@@ -402,3 +403,62 @@ class MovimientoStock(AuditModel):
         indexes = [
             models.Index(fields=['producto', 'sucursal', '-fecha_creacion']),
         ]
+
+class TomaInventario(AuditModel):
+    """
+    Cabecera de Toma / Recuento Físico de Inventario por Sucursal.
+    Módulo general aplicable a todas las empresas del ERP (Armería, Distribución, etc.).
+    """
+    ESTADOS = [
+        ('BORRADOR', 'Borrador / En Proceso'),
+        ('CONFIRMADO', 'Confirmado'),
+        ('APLICADO', 'Aplicado al Stock'),
+        ('ANULADO', 'Anulado')
+    ]
+    
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, verbose_name="Empresa")
+    sucursal = models.ForeignKey(Sucursal, on_delete=models.CASCADE, related_name="inventarios", verbose_name="Sucursal")
+    numero = models.IntegerField(default=1, verbose_name="N° de Inventario")
+    fecha_toma = models.DateTimeField(verbose_name="Fecha y Hora de la Toma")
+    observaciones = models.TextField(null=True, blank=True, verbose_name="Observaciones")
+    estado = models.CharField(max_length=15, choices=ESTADOS, default='BORRADOR', db_index=True, verbose_name="Estado")
+    terminal = models.CharField(max_length=50, null=True, blank=True, verbose_name="Terminal / Estación")
+    
+    class Meta:
+        verbose_name = "Toma de Inventario"
+        verbose_name_plural = "Tomas de Inventario"
+        ordering = ['-fecha_toma', 'sucursal']
+        indexes = [
+            models.Index(fields=['empresa', 'sucursal', '-fecha_toma']),
+            models.Index(fields=['empresa', 'estado']),
+        ]
+
+    def __str__(self):
+        return f"Inventario N° {self.numero} - {self.sucursal.nombre} ({self.fecha_toma.strftime('%d/%m/%Y') if self.fecha_toma else 'Sin fecha'})"
+
+class TomaInventarioItem(models.Model):
+    """
+    Detalle de ítems contados físicamente en una toma de inventario.
+    """
+    inventario = models.ForeignKey(TomaInventario, on_delete=models.CASCADE, related_name="items", verbose_name="Toma de Inventario")
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name="conteos_inventario", verbose_name="Producto")
+    cantidad_contada = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Cantidad Contada (Física)")
+    stock_teorico = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Stock Teórico al momento")
+    diferencia = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Diferencia (Contada - Teórico)")
+    
+    # Metadatos del conteo
+    usuario_conteo = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuario que contó")
+    fecha_hora = models.DateTimeField(null=True, blank=True, verbose_name="Fecha/Hora de Conteo")
+    terminal = models.CharField(max_length=50, null=True, blank=True, verbose_name="Terminal / Estación")
+
+    class Meta:
+        verbose_name = "Ítem de Inventario"
+        verbose_name_plural = "Ítems de Inventario"
+        unique_together = ('inventario', 'producto')
+        indexes = [
+            models.Index(fields=['inventario', 'producto']),
+        ]
+
+    def __str__(self):
+        return f"{self.producto.detalle} - Contado: {self.cantidad_contada}"
+

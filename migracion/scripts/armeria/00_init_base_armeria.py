@@ -16,26 +16,30 @@ from tesoreria.models import Caja
 User = get_user_model()
 
 def init_base():
-    print("Iniciando creación de Entorno Base (Fase 0) para Armería...")
+    print("=== FASE 0: CREACIÓN DE ENTORNO BASE PARA ARMERÍA ===")
     
     # 1. Superusuario
-    try:
-        if not User.objects.filter(username='ikigai').exists():
-            User.objects.create_superuser('ikigai', 'admin@ikigai.com', 'ortiz')
-            print("OK Superusuario 'ikigai' creado.")
-        else:
-            print("OK Superusuario 'ikigai' ya existe.")
-    except Exception as e:
-        print(f"Error creando usuario: {e}")
-        
-    user = User.objects.get(username='ikigai')
+    user, created_user = User.objects.get_or_create(
+        username='ikigai',
+        defaults={
+            'email': 'admin@ikigai.com',
+            'is_staff': True,
+            'is_superuser': True
+        }
+    )
+    if created_user:
+        user.set_password('ortiz')
+        user.save()
+        print("OK: Superusuario 'ikigai' creado.")
+    else:
+        print("OK: Superusuario 'ikigai' verificado.")
 
-    # 2. Empresa "Armeria"
-    empresa, created = Empresa.objects.get_or_create(
+    # 2. Empresa "Armería"
+    empresa, created_emp = Empresa.objects.get_or_create(
         id=1,
         defaults={
             'nombre': 'Armería',
-            'cuit': '30000000000', # Por defecto
+            'cuit': '30000000000',
             'condicion_iibb': 'CM',
             'entorno_afip': 'HOMO',
             'creado_por': user,
@@ -43,13 +47,13 @@ def init_base():
             'fecha_modificacion': date.today()
         }
     )
-    if created:
-        print("OK Empresa 'Armería' creada con id=1.")
-    else:
-        print("OK Empresa 'Armería' ya existe (id=1).")
+    print(f"OK: Empresa 'Armería' (ID: {empresa.id})")
 
-    # 3. Sucursales (Casa Central y Sucursal)
-    sucursal1, created1 = Sucursal.objects.get_or_create(
+    # 3. Sucursales
+    # Sucursal 1: Casa Central (Punto de Venta: 4)
+    # Sucursal 2: Yerba Buena (Punto de Venta: 6)
+    # Sucursal 3: DSK (Punto de Venta: 0 / DSK)
+    sucursal1, _ = Sucursal.objects.get_or_create(
         id=1,
         empresa=empresa,
         defaults={
@@ -61,11 +65,11 @@ def init_base():
         }
     )
     
-    sucursal2, created2 = Sucursal.objects.get_or_create(
+    sucursal2, _ = Sucursal.objects.get_or_create(
         id=2,
         empresa=empresa,
         defaults={
-            'nombre': 'Sucursal',
+            'nombre': 'Yerba Buena',
             'punto': 6,
             'creado_por': user,
             'fecha_creacion': date.today(),
@@ -73,11 +77,21 @@ def init_base():
         }
     )
     
-    if created1: print("OK Sucursal 'Casa Central' (PV: 4) creada con id=1.")
-    if created2: print("OK Sucursal 'Sucursal' (PV: 6) creada con id=2.")
+    sucursal3, _ = Sucursal.objects.get_or_create(
+        id=3,
+        empresa=empresa,
+        defaults={
+            'nombre': 'DSK',
+            'punto': 0,
+            'creado_por': user,
+            'fecha_creacion': date.today(),
+            'fecha_modificacion': date.today()
+        }
+    )
+    print(f"OK: Sucursales configuradas -> 1: {sucursal1.nombre}, 2: {sucursal2.nombre}, 3: {sucursal3.nombre}")
 
-    # 4. Ejercicio (Amplio para capturar todo el historial)
-    ejercicio, created = Ejercicio.objects.get_or_create(
+    # 4. Ejercicio 2026
+    ejercicio, _ = Ejercicio.objects.get_or_create(
         id=1,
         empresa=empresa,
         defaults={
@@ -86,13 +100,10 @@ def init_base():
             'cierre': date(2026, 12, 31)
         }
     )
-    if created:
-        print("OK Ejercicio 2026 creado con id=1.")
-    else:
-        print("OK Ejercicio 2026 ya existe (id=1).")
+    print(f"OK: Ejercicio fiscal 2026 activo (ID: {ejercicio.id})")
 
-    # 5. Cajas
-    caja_central, created_c1 = Caja.objects.get_or_create(
+    # 5. Cajas de Tesorería por Sucursal
+    caja_central, _ = Caja.objects.get_or_create(
         id=1,
         empresa=empresa,
         defaults={
@@ -101,18 +112,25 @@ def init_base():
             'tipo': 'T' 
         }
     )
-    caja_suc, created_c2 = Caja.objects.get_or_create(
+    caja_yb, _ = Caja.objects.get_or_create(
         id=2,
         empresa=empresa,
         defaults={
             'sucursal': sucursal2,
-            'nombre': 'Caja Sucursal',
+            'nombre': 'Caja Yerba Buena',
             'tipo': 'T'
         }
     )
-    if created_c1: print("OK Caja Casa Central creada con id=1.")
-    if created_c2: print("OK Caja Sucursal creada con id=2.")
-        
+    caja_dsk, _ = Caja.objects.get_or_create(
+        id=3,
+        empresa=empresa,
+        defaults={
+            'sucursal': sucursal3,
+            'nombre': 'Caja DSK',
+            'tipo': 'T'
+        }
+    )
+    print("OK: Cajas de Tesorería configuradas para las 3 sucursales.")
     print("Fase 0 completada con éxito.")
 
 if __name__ == '__main__':

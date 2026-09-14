@@ -670,8 +670,11 @@ class VentaItem(models.Model):
     cotizacion_aplicada = models.DecimalField(max_digits=15, decimal_places=4, default=1.0, verbose_name="Cotización")
     precio_origen = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Precio en Moneda Origen")
     
-    # Campos específicos Armería (Imagen de referencia)
+    # Campos específicos Armería (Municiones y Armas)
     credencial = models.CharField(max_length=50, null=True, blank=True, verbose_name="Credencial")
+    serie = models.CharField(max_length=50, null=True, blank=True, verbose_name="Nro. Serie")
+    cuim = models.CharField(max_length=50, null=True, blank=True, verbose_name="CUIM")
+    subproducto = models.ForeignKey('productos.Subproducto', on_delete=models.SET_NULL, null=True, blank=True, related_name='ventas_items', verbose_name="Subproducto / Arma")
     dmp = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="DMP")
 
     class Meta:

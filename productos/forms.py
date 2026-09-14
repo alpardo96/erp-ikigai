@@ -150,9 +150,9 @@ class ProductoForm(forms.ModelForm):
 
         # Unidad de Venta / Calibre según actividad:
         if empresa and getattr(empresa, 'tipo_actividad', '') == 'ARMERIA':
-            # En Armería se utiliza para almacenar el calibre (ej. C.22, 9mm, .308 WIN) en rubros de ARMAS y MUNICIONES
+            # En Armería se utiliza para almacenar el calibre (ej. C.22, 9mm, .308 WIN) en rubros que inicien con ARMA o MUNI
             self.fields['unidad_venta'] = forms.CharField(
-                max_length=10,
+                max_length=30,
                 required=False,
                 label="Calibre",
                 widget=forms.TextInput(attrs={

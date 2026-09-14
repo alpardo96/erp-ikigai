@@ -1,9 +1,21 @@
 from django.contrib import admin
-from .models import Producto, StockSucursal, Subproducto, MovimientoStock
+from .models import Producto, StockSucursal, Subproducto, MovimientoStock, TomaInventario, TomaInventarioItem
 
 class StockSucursalInline(admin.TabularInline):
     model = StockSucursal
     extra = 1
+
+class TomaInventarioItemInline(admin.TabularInline):
+    model = TomaInventarioItem
+    extra = 0
+    raw_id_fields = ('producto',)
+
+@admin.register(TomaInventario)
+class TomaInventarioAdmin(admin.ModelAdmin):
+    list_display = ('numero', 'sucursal', 'fecha_toma', 'estado', 'terminal')
+    list_filter = ('empresa', 'sucursal', 'estado', 'fecha_toma')
+    search_fields = ('numero', 'observaciones', 'terminal')
+    inlines = [TomaInventarioItemInline]
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
@@ -33,3 +45,4 @@ class MovimientoStockAdmin(admin.ModelAdmin):
             obj.creado_por = request.user
         obj.modificado_por = request.user
         super().save_model(request, obj, form, change)
+

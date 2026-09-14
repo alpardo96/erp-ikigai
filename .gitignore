@@ -54,3 +54,7 @@ static/
  
 # Nombre
 docs/soy.md
+
+#Produccion Waitress
+logs/
+ActualizadorGitHub.bat
