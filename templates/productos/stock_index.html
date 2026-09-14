@@ -21,15 +21,6 @@
                 Capturar Excel
             </button>
 
-            <!-- Botón Exportar Selección -->
-            <button hx-get="{% url 'producto_modal_exportar_seleccion' %}" hx-target="#modal-container" hx-include="[name='q']"
-                class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium text-sm shadow-sm" title="Exportar listado en Excel eligiendo columnas">
-                <svg class="h-4 w-4 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Exportar Selección
-            </button>
-
             <!-- Botón Exportar Tabla Completa -->
             <a href="{% url 'producto_exportar_excel_completo' %}" target="_blank"
                 class="inline-flex items-center px-4 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-sm" title="Exportar tabla completa de productos (Plantilla)">
@@ -80,8 +71,12 @@
                 <option value="todos" selected>Buscar en: Todos</option>
                 <option value="detalle">Detalle</option>
                 <option value="rubro">Rubro</option>
+                {% if empresa_actual.tipo_actividad == 'ARMERIA' %}
                 <option value="calibre">Calibre</option>
+                {% endif %}
+                {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
                 <option value="cod_prov">Cód. Prov</option>
+                {% endif %}
                 <option value="proveedor">Proveedor</option>
                 <option value="id">ID</option>
             </select>
@@ -105,6 +100,7 @@
                             <input type="checkbox" data-column="col-id" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">ID</span>
                         </label>
+                        {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
                         <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                             <input type="checkbox" data-column="col-codprov" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Cód. Prov</span>
@@ -113,18 +109,35 @@
                             <input type="checkbox" data-column="col-codfab" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Cód. Fab</span>
                         </label>
+                        {% endif %}
                         <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                             <input type="checkbox" data-column="col-detalle" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Detalle</span>
                         </label>
+                        {% if empresa_actual.tipo_actividad == 'ARMERIA' %}
                         <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                             <input type="checkbox" data-column="col-calibre" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Calibre</span>
                         </label>
+                        {% elif empresa_actual.tipo_actividad == 'DISTRIBUCION' %}
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-peso" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Peso (kg)</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-unidad-venta" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Unidad Venta</span>
+                        </label>
+                        <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input type="checkbox" data-column="col-unidades-bulto" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
+                            <span class="text-sm text-gray-700 font-medium">Unidades/Bulto</span>
+                        </label>
+                        {% endif %}
                         <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                             <input type="checkbox" data-column="col-proveedor" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Proveedor</span>
                         </label>
+                        {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
                         <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                             <input type="checkbox" data-column="col-minimo" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Mínimo</span>
@@ -133,6 +146,7 @@
                             <input type="checkbox" data-column="col-ptopedir" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Pto. Pedir</span>
                         </label>
+                        {% endif %}
                         <label class="flex items-center p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
                             <input type="checkbox" data-column="col-creden" class="rounded text-indigo-600 focus:ring-indigo-500 mr-3">
                             <span class="text-sm text-gray-700 font-medium">Creden.</span>
@@ -198,13 +212,23 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="col-id py-4 pl-6 pr-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                        {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
                         <th class="col-codprov px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Cód. Prov</th>
                         <th class="col-codfab px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Cód. Fab</th>
+                        {% endif %}
                         <th class="col-detalle px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detalle</th>
+                        {% if empresa_actual.tipo_actividad == 'ARMERIA' %}
                         <th class="col-calibre px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Calibre</th>
+                        {% elif empresa_actual.tipo_actividad == 'DISTRIBUCION' %}
+                        <th class="col-peso px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Peso (kg)</th>
+                        <th class="col-unidad-venta px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Unidad Venta</th>
+                        <th class="col-unidades-bulto px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Unidades/Bulto</th>
+                        {% endif %}
                         <th class="col-proveedor px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Proveedor</th>
+                        {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
                         <th class="col-minimo px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Mínimo</th>
                         <th class="col-ptopedir px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Pto. Pedir</th>
+                        {% endif %}
                         <th class="col-creden px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Creden.</th>
                         <th class="col-moneda px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Moneda</th>
                         <th class="col-margen px-3 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Margen</th>

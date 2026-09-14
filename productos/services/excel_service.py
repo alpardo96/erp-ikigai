@@ -12,40 +12,60 @@ from django.utils.timezone import now
 from productos.models import Producto, Marca, Rubro, Familia
 from facturacion.models import ClienteProveedor
 
-# Mapeo de columnas disponibles para exportación y captura
-COLUMNAS_PRODUCTO_MAP = {
-    'id': 'ID',
-    'cod_prov': 'Cód. Prov',
-    'cod_fab': 'Cód. Fab',
-    'detalle': 'Detalle',
-    'proveedor': 'Proveedor',
-    'minimo': 'Mínimo',
-    'ptopedir': 'Pto. Pedir',
-    'creden': 'Credencial',
-    'moneda': 'Moneda',
-    'alic_iva': 'IVA (%)',
-    'margen': 'Margen (%)',
-    'marca': 'Marca',
-    'rubro': 'Rubro',
-    'familia': 'Familia',
-    'subprod': 'Subproductos',
-    'stock_global': 'Stock Total',
-    'cto_adq': 'Costo Adq.',
-    'cto_rep': 'Costo Rep.',
-    'precio_neto': 'Precio Neto',
-    'precio_total': 'Precio Final',
-    'cotiz_cpra': 'Cotiz. Compra',
-    'fec_adq': 'Fec. Adq.',
-    'fec_act': 'Fec. Act.',
-}
+def get_columnas_producto(empresa):
+    """Devuelve el mapa de columnas basado en el tipo de actividad de la empresa"""
+    tipo_actividad = getattr(empresa, 'tipo_actividad', '')
+    columnas = {
+        'id': 'ID',
+    }
+    
+    if tipo_actividad != 'ESTUDIO':
+        columnas['cod_prov'] = 'Cód. Prov'
+        columnas['cod_fab'] = 'Cód. Fab'
+        
+    columnas['detalle'] = 'Detalle'
+    
+    if tipo_actividad == 'ARMERIA':
+        columnas['unidad_venta'] = 'Calibre'
+    elif tipo_actividad == 'DISTRIBUCION':
+        columnas['peso_unitario_kg'] = 'Peso (kg)'
+        columnas['unidad_venta'] = 'Unidad Venta'
+        columnas['unidades_por_bulto'] = 'Unidades/Bulto'
+        
+    columnas['proveedor'] = 'Proveedor'
+    
+    if tipo_actividad != 'ESTUDIO':
+        columnas['minimo'] = 'Mínimo'
+        columnas['ptopedir'] = 'Pto. Pedir'
+        
+    columnas.update({
+        'creden': 'Credencial',
+        'moneda': 'Moneda',
+        'alic_iva': 'IVA (%)',
+        'margen': 'Margen (%)',
+        'marca': 'Marca',
+        'rubro': 'Rubro',
+        'familia': 'Familia',
+        'subprod': 'Subproductos',
+        'stock_global': 'Stock Total',
+        'cto_adq': 'Costo Adq.',
+        'cto_rep': 'Costo Rep.',
+        'precio_neto': 'Precio Neto',
+        'precio_total': 'Precio Final',
+        'cotiz_cpra': 'Cotiz. Compra',
+        'fec_adq': 'Fec. Adq.',
+        'fec_act': 'Fec. Act.',
+    })
+    return columnas
 
-def generar_excel_productos(queryset, columnas_seleccionadas=None):
+def generar_excel_productos(queryset, empresa, columnas_seleccionadas=None):
     """
     Genera un libro de Excel (.xlsx) con los productos provistos en el queryset
     y las columnas solicitadas (o todas si no se especifica selección).
     """
+    columnas_map = get_columnas_producto(empresa)
     if not columnas_seleccionadas:
-        columnas_seleccionadas = list(COLUMNAS_PRODUCTO_MAP.keys())
+        columnas_seleccionadas = list(columnas_map.keys())
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -59,7 +79,7 @@ def generar_excel_productos(queryset, columnas_seleccionadas=None):
     cell_border = Border(top=border_light, bottom=border_light, left=border_light, right=border_light)
 
     # Escribir Encabezados
-    headers = [COLUMNAS_PRODUCTO_MAP.get(col, col) for col in columnas_seleccionadas]
+    headers = [columnas_map.get(col, col) for col in columnas_seleccionadas]
     ws.append(headers)
 
     for col_num in range(1, len(headers) + 1):
@@ -118,6 +138,12 @@ def generar_excel_productos(queryset, columnas_seleccionadas=None):
                 row_data.append(prod.fec_adq.strftime("%d/%m/%Y") if prod.fec_adq else '')
             elif col_key == 'fec_act':
                 row_data.append(prod.fec_act.strftime("%d/%m/%Y") if prod.fec_act else '')
+            elif col_key == 'unidad_venta':
+                row_data.append((prod.unidad_venta or '').upper() if empresa.tipo_actividad == 'ARMERIA' else prod.get_unidad_venta_display() or '')
+            elif col_key == 'peso_unitario_kg':
+                row_data.append(float(prod.peso_unitario_kg or 0))
+            elif col_key == 'unidades_por_bulto':
+                row_data.append(float(prod.unidades_por_bulto or 0))
             else:
                 row_data.append('')
         
@@ -176,12 +202,13 @@ def procesar_captura_excel_productos(empresa, usuario, archivo_excel):
         return resultado
 
     # Mapeo inverso de encabezados a nombres de campo
+    columnas_map = get_columnas_producto(empresa)
     normalized_headers = {}
     for idx, h in enumerate(headers):
         h_lower = h.lower()
-        # Buscar coincidencia en COLUMNAS_PRODUCTO_MAP
+        # Buscar coincidencia en columnas_map
         found_key = None
-        for k, v in COLUMNAS_PRODUCTO_MAP.items():
+        for k, v in columnas_map.items():
             if k.lower() == h_lower or v.lower() == h_lower:
                 found_key = k
                 break
@@ -348,6 +375,9 @@ def procesar_captura_excel_productos(empresa, usuario, archivo_excel):
             precio_neto = to_decimal(row_dict.get('precio_neto'))
             precio_total = to_decimal(row_dict.get('precio_total'))
             cotiz_cpra = to_decimal(row_dict.get('cotiz_cpra'))
+            unidad_venta = str(row_dict.get('unidad_venta') or '').strip().upper() or None
+            peso_unitario_kg = to_decimal(row_dict.get('peso_unitario_kg'))
+            unidades_por_bulto = to_decimal(row_dict.get('unidades_por_bulto'))
 
             # Si precio_total no viene especificado pero viene cto_adq/rep y margen, calcularlo
             if precio_total == Decimal('0.00') and (cto_adq > 0 or cto_rep > 0):
@@ -384,6 +414,14 @@ def procesar_captura_excel_productos(empresa, usuario, archivo_excel):
                 if precio_neto > 0: producto_existente.precio_neto = precio_neto
                 if precio_total > 0: producto_existente.precio_total = precio_total
                 if cotiz_cpra > 0: producto_existente.cotiz_cpra = cotiz_cpra
+                
+                if empresa.tipo_actividad == 'ARMERIA':
+                    if unidad_venta: producto_existente.unidad_venta = unidad_venta
+                elif empresa.tipo_actividad == 'DISTRIBUCION':
+                    if unidad_venta: producto_existente.unidad_venta = unidad_venta
+                    if peso_unitario_kg > 0: producto_existente.peso_unitario_kg = peso_unitario_kg
+                    if unidades_por_bulto > 0: producto_existente.unidades_por_bulto = unidades_por_bulto
+                    
                 producto_existente.fec_act = now().date()
                 producto_existente.modificado_por = usuario
                 producto_existente.save()
@@ -415,6 +453,15 @@ def procesar_captura_excel_productos(empresa, usuario, archivo_excel):
                     creado_por=usuario,
                     modificado_por=usuario
                 )
+                if empresa.tipo_actividad == 'ARMERIA':
+                    nuevo_prod.unidad_venta = unidad_venta
+                    nuevo_prod.save()
+                elif empresa.tipo_actividad == 'DISTRIBUCION':
+                    nuevo_prod.unidad_venta = unidad_venta
+                    nuevo_prod.peso_unitario_kg = peso_unitario_kg
+                    nuevo_prod.unidades_por_bulto = unidades_por_bulto
+                    nuevo_prod.save()
+                    
                 resultado['creados'] += 1
 
     return resultado

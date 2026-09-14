@@ -1,13 +1,23 @@
 {% for producto in productos %}
 <tr class="hover:bg-gray-50 transition-colors group">
     <td class="col-id py-4 pl-6 pr-3 text-sm font-medium text-gray-900">{{ producto.id }}</td>
+    {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
     <td class="col-codprov px-3 py-4 text-sm text-gray-500">{{ producto.cod_prov|default:"-" }}</td>
     <td class="col-codfab px-3 py-4 text-sm text-gray-500">{{ producto.cod_fab|default:"-" }}</td>
+    {% endif %}
     <td class="col-detalle px-3 py-4 text-sm font-medium text-gray-900">{{ producto.detalle }}</td>
+    {% if empresa_actual.tipo_actividad == 'ARMERIA' %}
     <td class="col-calibre px-3 py-4 text-sm text-gray-500">{{ producto.unidad_venta|default:"-" }}</td>
+    {% elif empresa_actual.tipo_actividad == 'DISTRIBUCION' %}
+    <td class="col-peso px-3 py-4 text-sm text-gray-500">{{ producto.peso_unitario_kg|default:"0" }}</td>
+    <td class="col-unidad-venta px-3 py-4 text-sm text-gray-500">{{ producto.get_unidad_venta_display|default:"-" }}</td>
+    <td class="col-unidades-bulto px-3 py-4 text-sm text-gray-500">{{ producto.unidades_por_bulto|default:"0" }}</td>
+    {% endif %}
     <td class="col-proveedor px-3 py-4 text-sm text-gray-500">{{ producto.proveedor.razon_social|default:"-" }}</td>
+    {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
     <td class="col-minimo px-3 py-4 text-sm text-gray-500">{{ producto.minimo }}</td>
     <td class="col-ptopedir px-3 py-4 text-sm text-gray-500">{{ producto.ptopedir }}</td>
+    {% endif %}
     <td class="col-creden px-3 py-4 text-sm text-gray-500">
         {% if producto.creden %}
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sí</span>

@@ -2,6 +2,38 @@
 
 ## Antigravity
 - **Fecha/Día**: 14 de Septiembre de 2026
+- **Objetivo o Tarea**: Ocultar campos innecesarios en el maestro de productos/servicios para la verticalidad Estudio Contable.
+- **Archivos creados o modificados**:
+  - `templates/productos/stock_index.html` [MODIFY]
+  - `templates/productos/partials/producto_list.html` [MODIFY]
+  - `templates/productos/modals/producto_modal.html` [MODIFY]
+  - `productos/services/excel_service.py` [MODIFY]
+  - `productos/views_htmx.py` [MODIFY]
+  - `config/urls.py` [MODIFY]
+  - `templates/productos/modals/exportar_seleccion_modal.html` [DELETE]
+- **Detalle Técnico e implicaciones**:
+  1. **Limpieza de Interfaz para Estudio:** Dado que la verticalidad Estudio maneja "Servicios" y no "Productos" físicos, los campos relacionados a reposición e identificación de fábrica carecen de sentido y ensucian la pantalla.
+  2. **Corrección de Variable de Entorno y Vistas:** Se corrigió el condicional en `stock_index.html` y `producto_list.html` reemplazando `request.user.empresa_activa` (que resolvía vacío) por la variable correcta de contexto `empresa_actual`. Ahora se ocultan correctamente en ESTUDIO "Cód. Prov", "Cód. Fab", "Mínimo" y "Pto. Pedir", reflejando esto también en la botonera de columnas y la cabecera.
+  3. **Condicionamiento en Modal:** Se aplicó la misma exclusión en `producto_modal.html` ocultando la renderización de esos campos dentro del formulario.
+  4. **Eliminación de Exportar Selección:** Se eliminó por completo el botón "Exportar Selección" de `stock_index.html` junto con su ruta en `config/urls.py`, sus funciones HTMX en `views_htmx.py` y el template de modal interactivo, quedando el código libre de componentes no utilizados o rotos.
+  5. **Refactorización de Excel Completo:** Se extrajo el mapeo de columnas estático en `excel_service.py` hacia una función dinámica `get_columnas_producto(empresa)`. Con esto, la opción de Excel Completo incluirá "Calibre" para Armería; y "Peso (kg)", "Unidad Venta", "Unidades/Bulto" para Distribución, excluyendo a la vez códigos de fábrica si el tipo es Estudio.
+- **Resultado de las pruebas**: Las vistas en una sesión de la verticalidad Estudio ya no despliegan estos controles.
+- **Estado actual y siguientes pasos sugeridos**: Corrección visual de la grilla completada exitosamente sin alterar la base ni la integridad del form original.
+## Antigravity
+- **Fecha/Día**: 14 de Septiembre de 2026
+- **Objetivo o Tarea**: Condicionar visualización y exigencia de campos de unidad de venta (Calibre, Peso, Bulto) según el tipo de actividad (Armería, Distribución).
+- **Archivos creados o modificados**:
+  - `templates/productos/stock_index.html` [MODIFY]
+  - `templates/productos/partials/producto_list.html` [MODIFY]
+  - `templates/productos/modals/producto_modal.html` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Filtro y Columnas del Index:** Se actualizaron `stock_index.html` y `producto_list.html` para que el campo genérico "Calibre" solo se muestre bajo la actividad "ARMERIA". Si el usuario pertenece a una empresa con actividad "DISTRIBUCION", se muestran las tres columnas pertinentes: "Peso (kg)", "Unidad Venta" y "Unidades/Bulto" directamente desde las propiedades del modelo (`peso_unitario_kg`, `unidad_venta`, `unidades_por_bulto`). Para el resto de actividades no se muestran.
+  2. **Modal de Formulario:** En `producto_modal.html` se agregó la visualización condicional de los tres inputs para Distribución, que antes solo mostraba uno. Adicionalmente, se corrigió un bug en JavaScript dentro de la función `toggleCalibreArmeria` donde la variable `rubroTexto` no estaba inicializada y causaba un error por consola al intentar leer su valor para ocultar/mostrar el input de Calibre en Armería.
+  3. **No Intromisión:** En bases de otras verticales (ej. Estudio o Agrícola), estos campos permanecen ocultos en el front, y en el form están seteados como `required=False` para evitar errores de validación.
+- **Resultado de las pruebas**: Las vistas ahora se renderizan dinámicamente según `request.user.empresa_activa.tipo_actividad`.
+- **Estado actual y siguientes pasos sugeridos**: Corrección completa. Los campos respetan sus nomenclaturas de base de datos sin forzar operatorias externas.
+## Antigravity
+- **Fecha/Día**: 14 de Septiembre de 2026
 - **Objetivo o Tarea**: Agregar filtro de validación de Persona Jurídica y corregir carga del campo "es_policia" al crear o editar un cliente/proveedor (verticalidad Armería).
 - **Archivos creados o modificados**:
   - `facturacion/views_htmx.py` [MODIFY]

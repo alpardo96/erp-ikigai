@@ -59,6 +59,7 @@
                         </div>
 
                         <!-- Códigos -->
+                        {% if tipo_actividad != 'ESTUDIO' %}
                         <div class="sm:col-span-3">
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.cod_prov.label }}</label>
                             {{ form.cod_prov }}
@@ -67,6 +68,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.cod_fab.label }}</label>
                             {{ form.cod_fab }}
                         </div>
+                        {% endif %}
 
                         <!-- Proveedor -->
                         <div class="sm:col-span-6">
@@ -95,6 +97,7 @@
                         </div>
 
                         <!-- Stock / Pedido -->
+                        {% if tipo_actividad != 'ESTUDIO' %}
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.minimo.label }}</label>
                             {{ form.minimo }}
@@ -103,10 +106,19 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.ptopedir.label }}</label>
                             {{ form.ptopedir }}
                         </div>
+                        {% endif %}
                         {% if tipo_actividad == 'DISTRIBUCION' %}
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.peso_unitario_kg.label }}</label>
+                            {{ form.peso_unitario_kg }}
+                        </div>
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.unidad_venta.label|default:"Unidad Venta" }}</label>
                             {{ form.unidad_venta }}
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.unidades_por_bulto.label }}</label>
+                            {{ form.unidades_por_bulto }}
                         </div>
                         {% endif %}
 
@@ -215,6 +227,7 @@
         if (!contCalibre || !selectRubro) return;
 
         const selectedOption = selectRubro.options[selectRubro.selectedIndex];
+        const rubroTexto = selectedOption ? selectedOption.text.toUpperCase() : '';
         // Se activa para cualquier rubro que comience con ARMA (ARMAS, ARMAS USADAS, etc.) o MUNI (MUNICIONES, MUNI AA, etc.)
         if (rubroTexto.startsWith('ARMA') || rubroTexto.startsWith('MUNI')) {
             contCalibre.style.display = 'block';

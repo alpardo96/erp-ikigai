@@ -62,9 +62,8 @@ from productos.views_htmx import (
     rubro_prod_modal, buscar_rubros_prod, eliminar_rubro_prod,
     familia_modal, buscar_familias, eliminar_familia,
     obtener_margen, filtrar_familias,
-    exportar_productos_excel_completo, modal_exportar_seleccion,
-    exportar_productos_excel_seleccion, modal_capturar_excel,
-    capturar_productos_excel
+    exportar_productos_excel_completo,
+    modal_capturar_excel, capturar_productos_excel
 )
 from tesoreria.views_htmx import (
     buscar_mediospago, mediopago_modal, eliminar_mediopago,
@@ -315,8 +314,6 @@ urlpatterns = [
     path('productos/<int:id>/editar/', producto_modal, name='producto_edit'),
     path('productos/<int:id>/eliminar/', eliminar_producto, name='producto_delete'),
     path('productos/excel/exportar-completo/', exportar_productos_excel_completo, name='producto_exportar_excel_completo'),
-    path('productos/excel/modal-exportar/', modal_exportar_seleccion, name='producto_modal_exportar_seleccion'),
-    path('productos/excel/exportar-seleccion/', exportar_productos_excel_seleccion, name='producto_exportar_excel_seleccion'),
     path('productos/excel/modal-capturar/', modal_capturar_excel, name='producto_modal_capturar_excel'),
     path('productos/excel/capturar/', capturar_productos_excel, name='producto_capturar_excel'),
 

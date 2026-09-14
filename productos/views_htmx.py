@@ -263,7 +263,6 @@ def filtrar_familias(request):
 from io import BytesIO
 from django.utils.timezone import now
 from .services.excel_service import (
-    COLUMNAS_PRODUCTO_MAP,
     generar_excel_productos,
     procesar_captura_excel_productos
 )
@@ -287,7 +286,8 @@ def exportar_productos_excel_completo(request):
         )
     productos = productos.order_by('detalle')
 
-    wb = generar_excel_productos(productos)
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    wb = generar_excel_productos(productos, empresa)
     buffer = BytesIO()
     wb.save(buffer)
     buffer.seek(0)
@@ -299,52 +299,6 @@ def exportar_productos_excel_completo(request):
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
-
-
-def modal_exportar_seleccion(request):
-    """
-    Despliega el modal interactivo para seleccionar qué columnas exportar a Excel.
-    """
-    q = request.GET.get('q', '').strip()
-    return render(request, 'productos/modals/exportar_seleccion_modal.html', {
-        'columnas_map': COLUMNAS_PRODUCTO_MAP,
-        'q': q
-    })
-
-
-def exportar_productos_excel_seleccion(request):
-    """
-    Procesa las columnas seleccionadas y genera la descarga del Excel filtrado.
-    """
-    empresa_id = request.session.get('empresa_id')
-    if not empresa_id:
-        return HttpResponse("Debe seleccionar una empresa primero.", status=400)
-
-    empresa = get_object_or_404(Empresa, id=empresa_id)
-    q = request.GET.get('q', '').strip()
-    
-    columnas_seleccionadas = request.POST.getlist('columnas') or request.GET.getlist('columnas')
-    if not columnas_seleccionadas:
-        columnas_seleccionadas = list(COLUMNAS_PRODUCTO_MAP.keys())
-
-    productos = Producto.objects.filter(empresa=empresa)
-    if q:
-        productos = productos.filter(detalle__icontains=q) | productos.filter(cod_prov__icontains=q) | productos.filter(cod_fab__icontains=q)
-    productos = productos.order_by('detalle')
-
-    wb = generar_excel_productos(productos, columnas_seleccionadas)
-    buffer = BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-
-    filename = f"Productos_Listado_{now().strftime('%Y%m%d_%H%M')}.xlsx"
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response
-
 
 def modal_capturar_excel(request):
     """
