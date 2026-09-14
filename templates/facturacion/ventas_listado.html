@@ -150,7 +150,29 @@
             <tbody class="divide-y divide-gray-100">
                 {% for v in ventas %}
                 <tr class="hover:bg-blue-50 transition-colors">
-                    <td class="px-4 py-2 text-center font-mono text-slate-500 font-bold">{{ v.asiento_id|default:"—" }}</td>
+                    <td class="px-4 py-2 text-center font-mono whitespace-nowrap">
+                        {% if v.asiento_id %}
+                            {% if v.fecha|date:"Y" >= "2026" %}
+                            <!-- Asiento del ejercicio activo: abre modal interactivo -->
+                            <button type="button"
+                                    hx-get="{% url 'detalle_asiento_modal' v.asiento_id %}"
+                                    hx-target="#modal-container"
+                                    hx-swap="innerHTML"
+                                    class="text-indigo-600 hover:text-indigo-900 hover:underline font-bold transition-colors cursor-pointer"
+                                    title="Ver detalle del asiento contable N° {{ v.asiento_id }}">
+                                {{ v.asiento_id }}
+                            </button>
+                            {% else %}
+                            <!-- Asiento de ejercicio histórico: solo texto informativo -->
+                            <span class="text-slate-400 font-semibold cursor-help"
+                                  title="Asiento histórico N° {{ v.asiento_id }} (Ejercicio anterior no migrado a contabilidad activa)">
+                                {{ v.asiento_id }}
+                            </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-slate-300 font-bold">—</span>
+                        {% endif %}
+                    </td>
                     <td class="px-4 py-2 font-bold text-slate-600">{{ v.fecha|date:"d/m/Y" }}</td>
                     <td class="px-4 py-2 font-bold text-slate-800">{{ v.tipo.codigo }} {{ v.punto|stringformat:"05d" }}-{{ v.numero|stringformat:"08d" }}</td>
                     <td class="px-4 py-2 uppercase text-slate-700">

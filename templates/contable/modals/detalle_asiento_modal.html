@@ -1,3 +1,41 @@
+{% if no_encontrado %}
+<div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden animate-slide-up ring-1 ring-slate-900/5 relative">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-amber-100 text-amber-600 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-800">Asiento N° {{ asiento_id }}</h3>
+                    <p class="text-xs text-slate-500 font-medium">Información Contable</p>
+                </div>
+            </div>
+            <button onclick="this.closest('.fixed').remove()" 
+                    class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors" title="Cerrar">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 bg-slate-50 text-center">
+            <p class="text-sm text-slate-700 font-medium mb-2">
+                El asiento <span class="font-bold text-slate-900 font-mono">N° {{ asiento_id }}</span> no se encuentra en la contabilidad activa.
+            </p>
+            <p class="text-xs text-slate-500 leading-relaxed">
+                Este comprobante pertenece a un ejercicio histórico previo o a un período no migrado al sistema contable en curso.
+            </p>
+            <div class="mt-5">
+                <button type="button" onclick="this.closest('.fixed').remove()"
+                        class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold uppercase transition-colors">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
 <div class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up ring-1 ring-slate-900/5 relative">
         
@@ -65,3 +103,4 @@
         
     </div>
 </div>
+{% endif %}

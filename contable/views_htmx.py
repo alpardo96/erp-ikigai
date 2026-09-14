@@ -201,8 +201,16 @@ def asiento_modal(request):
 @login_required
 def detalle_asiento_modal(request, asiento_id):
     empresa_id = request.session.get('empresa_id')
-    from django.shortcuts import get_object_or_404
-    asiento = get_object_or_404(Asiento, pk=asiento_id, empresa_id=empresa_id)
+    # Buscar el asiento activo para la empresa actual
+    asiento = Asiento.objects.filter(pk=asiento_id, empresa_id=empresa_id).first()
+    
+    if not asiento:
+        # Asiento histórico o no encontrado: renderizar modal informativo en lugar de error 404
+        return render(request, 'contable/modals/detalle_asiento_modal.html', {
+            'asiento_id': asiento_id,
+            'no_encontrado': True,
+        })
+
     lineas = asiento.lineas.all().select_related('cuenta')
     
     total_debe = sum(l.debe for l in lineas)
@@ -212,7 +220,8 @@ def detalle_asiento_modal(request, asiento_id):
         'asiento': asiento,
         'lineas': lineas,
         'total_debe': total_debe,
-        'total_haber': total_haber
+        'total_haber': total_haber,
+        'no_encontrado': False,
     }
     return render(request, 'contable/modals/detalle_asiento_modal.html', context)
 
