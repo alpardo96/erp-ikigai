@@ -19,7 +19,17 @@ class SeleccionEmpresaView(LoginRequiredMixin, View):
         if user.is_staff or (perfil and perfil.es_admin_sistema):
             empresas = Empresa.objects.all().prefetch_related('sucursales')
         elif perfil:
-            empresas = perfil.empresas.all().prefetch_related('sucursales')
+            from django.db.models import Prefetch, Q
+            sucursales_permitidas = perfil.sucursales.all()
+            if sucursales_permitidas.exists():
+                queryset_sucursales = Sucursal.objects.filter(id__in=sucursales_permitidas)
+            else:
+                # Fallback: si no tiene ninguna asignada, al menos mostrarle Sede Central / Casa Central
+                queryset_sucursales = Sucursal.objects.filter(
+                    Q(nombre__icontains="Sede Central") | Q(nombre__icontains="Casa Central")
+                )
+            
+            empresas = perfil.empresas.all().prefetch_related(Prefetch('sucursales', queryset=queryset_sucursales))
         else:
             empresas = Empresa.objects.none()
             

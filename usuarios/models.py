@@ -5,6 +5,7 @@ from empresas.models import Empresa, Sucursal
 class Perfil(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name="perfil")
     empresas = models.ManyToManyField(Empresa, blank=True, related_name="usuarios")
+    sucursales = models.ManyToManyField(Sucursal, blank=True, related_name="usuarios_permitidos")
     es_admin_sistema = models.BooleanField(default=False, verbose_name="Es Administrador de Sistema")
 
     # Permisos Modulares Dedicados

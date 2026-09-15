@@ -38,6 +38,25 @@ def context_context(request):
         sucursal_actual = Sucursal.objects.filter(id=sucursal_id).first()
         if not sucursal_actual:
             if 'sucursal_id' in request.session: del request.session['sucursal_id']
+        elif request.user.is_authenticated:
+            # Validar que el usuario tenga acceso a esta sucursal
+            user = request.user
+            perfil = getattr(user, 'perfil', None)
+            es_valida = False
+            
+            if user.is_staff or (perfil and perfil.es_admin_sistema):
+                es_valida = True
+            elif perfil:
+                permitidas = perfil.sucursales.all()
+                if permitidas.exists():
+                    es_valida = permitidas.filter(id=sucursal_actual.id).exists()
+                else:
+                    # Fallback a Sede Central si no tiene ninguna explícita
+                    es_valida = 'central' in sucursal_actual.nombre.lower()
+
+            if not es_valida:
+                sucursal_actual = None
+                if 'sucursal_id' in request.session: del request.session['sucursal_id']
 
     if ejercicio_id:
         ejercicio_actual = Ejercicio.objects.filter(id=ejercicio_id).first()

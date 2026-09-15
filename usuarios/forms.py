@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User, Group, Permission
 from .models import Perfil
-from empresas.models import Empresa
+from empresas.models import Empresa, Sucursal
 
 class UsuarioForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'}), required=False, label="Contraseña", help_text="Déjalo en blanco si no quieres cambiarla.")
@@ -30,6 +30,13 @@ class UsuarioForm(forms.ModelForm):
         help_text="Selecciona las empresas a las que este usuario tendrá acceso."
     )
 
+    sucursales = forms.ModelMultipleChoiceField(
+        queryset=Sucursal.objects.all(),
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-2'}),
+        help_text="Selecciona las sucursales a las que este usuario tendrá acceso (Casa Central está implícita)."
+    )
+
     class Meta:
         model = User
         fields = ['username', 'email', 'is_active']
@@ -47,6 +54,7 @@ class UsuarioForm(forms.ModelForm):
             if hasattr(self.instance, 'perfil'):
                 self.fields['es_admin_sistema'].initial = self.instance.perfil.es_admin_sistema
                 self.fields['empresas'].initial = self.instance.perfil.empresas.all()
+                self.fields['sucursales'].initial = self.instance.perfil.sucursales.all()
                 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -62,6 +70,7 @@ class UsuarioForm(forms.ModelForm):
             perfil, created = Perfil.objects.get_or_create(usuario=user)
             perfil.es_admin_sistema = self.cleaned_data.get('es_admin_sistema')
             perfil.empresas.set(self.cleaned_data.get('empresas'))
+            perfil.sucursales.set(self.cleaned_data.get('sucursales'))
             perfil.save()
             
         return user

@@ -5063,3 +5063,24 @@ Hacer más inteligente la búsqueda de productos en la carga de preventa, autoco
      -   S e   a g r e g �   a   \ M I D D L E W A R E \   e n   \ s e t t i n g s . p y \ . 
  -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   L i s t o   p a r a   v e r i f i c a c i � n   m a n u a l .   L a   i n t r u s i � n   d i r e c t a   v � a   U R L   p o r   u s u a r i o s   n o   a u t o r i z a d o s   a r r o j a r �   u n   4 0 3   ( A c c e s o   D e n e g a d o ) .  
  
+## Antigravity
+- **Fecha/Día**: 15 de Septiembre de 2026
+- **Objetivo o Tarea**: Reestructuración de Sucursales por Usuario y Parámetros Contables por Empresa
+- **Archivos creados o modificados**:
+    - usuarios/models.py [MODIFY]
+    - usuarios/forms.py [MODIFY]
+    - core/context_processors.py [MODIFY]
+    - usuarios/views.py [MODIFY]
+    - 	emplates/configuracion/modals/usuario_form.html [MODIFY]
+    - 	emplates/configuracion/partials/hub.html [MODIFY]
+    - 	emplates/configuracion/partials/empresa_table_rows.html [MODIFY]
+    - config/urls.py [MODIFY]
+    - contable/views_htmx.py [MODIFY]
+    - 	emplates/configuracion/modals/parametros_contables_form.html [MODIFY]
+- **Detalle Técnico e implicaciones**:
+    - Se añadió el campo M2M sucursales al modelo Perfil.
+    - Se actualizó el formulario de Usuarios para permitir la selección de sucursales permitidas.
+    - El context_processor valida que la sucursal actual esté dentro de las permitidas, con un fallback a Sede/Casa Central.
+    - SeleccionEmpresaView ahora filtra las sucursales devueltas utilizando Prefetch según los permisos.
+    - Se movió el acceso de Parámetros Contables del Hub global hacia las filas individuales del ABM de Empresas en la tabla HTMX, inyectando el empresa_id directamente a la URL de HTMX.
+- **Resultado de las pruebas**: Vistas HTMX, forms y modelos actualizados correctamente, migraciones ejecutadas exitosamente.
