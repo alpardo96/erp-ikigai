@@ -6,7 +6,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils import timezone
 from empresas.models import Sucursal
 from tesoreria.models import MedioPago, CuentaBancaria, Banco
-from tesoreria.permisos import SinCajeroMostradorMixin
 
 class TesoreriaIndexView(LoginRequiredMixin, TemplateView):
     template_name = 'tesoreria/index.html'
@@ -26,18 +25,6 @@ class ReciboCargaView(LoginRequiredMixin, TemplateView):
 
     template_name = 'tesoreria/recibo_carga.html'
     origen = 'TESORERIA'
-
-    def dispatch(self, request, *args, **kwargs):
-        # El cajero no emite el recibo de Tesorería, pero SÍ el de su propia caja: es la
-        # misma vista, y lo que la distingue es el origen.
-        from tesoreria.permisos import MENSAJE, es_cajero_restringido
-
-        if self.origen != 'MOSTRADOR' and es_cajero_restringido(request.user):
-            from django.contrib import messages
-            from django.shortcuts import redirect
-            messages.error(request, MENSAJE)
-            return redirect('caja_mostrador_index')
-        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -62,7 +49,7 @@ class ReciboCargaView(LoginRequiredMixin, TemplateView):
         
         return context
 
-class OrdenPagoCargaView(SinCajeroMostradorMixin, LoginRequiredMixin, TemplateView):
+class OrdenPagoCargaView(LoginRequiredMixin, TemplateView):
     template_name = 'tesoreria/ordenpago_carga.html'
     
     def get_context_data(self, **kwargs):

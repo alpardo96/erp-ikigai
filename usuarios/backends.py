@@ -17,3 +17,24 @@ class CaseInsensitiveModelBackend(ModelBackend):
             if user.check_password(password) and self.user_can_authenticate(user):
                 return user
         return None
+
+    def get_all_permissions(self, user_obj, obj=None):
+        """
+        Calcula todos los permisos (directos + heredados de grupos) y RESTA
+        los que estén explícitamente registrados en PermisoDenegado.
+        """
+        if not user_obj.is_active or user_obj.is_anonymous or obj is not None:
+            return set()
+
+        # Obtenemos los permisos nativos de Django (user_permissions + group_permissions)
+        perms = super().get_all_permissions(user_obj, obj)
+
+        # Si el usuario tiene permisos denegados registrados, los restamos
+        denied_ids = list(user_obj.permisos_denegados.values_list('permiso_id', flat=True))
+        if denied_ids:
+            from django.contrib.auth.models import Permission
+            denied_perms = Permission.objects.filter(id__in=denied_ids).values_list('content_type__app_label', 'codename')
+            denied_set = {f"{ct}.{name}" for ct, name in denied_perms}
+            perms = perms - denied_set
+
+        return perms

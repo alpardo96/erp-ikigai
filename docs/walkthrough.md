@@ -4987,3 +4987,16 @@ Hacer más inteligente la búsqueda de productos en la carga de preventa, autoco
 - **Detalle Técnico e implicaciones**: Se creó el servicio FacturacionLoteEstudioService que conecta con ARCA usando concepto = 2 y fechas armadas desde el período seleccionado. Se trasladaron las vistas desde el core a la verticalidad Estudio sin afectar asientos. En la UI se separó el input de período en Mes y Año autocentrados.
 - **Resultado de las pruebas**: Migración de código y templates exitosa. UI revisada.
 - **Estado actual y siguientes pasos sugeridos**: Listo para probar facturar un servicio real.
+
+## 2026-09-15 - Excepciones a Roles (Permisos Negativos)
+
+**Objetivo**: Implementar un sistema de exclusiones de permisos para que un usuario pueda tener permisos denegados de forma puntual, anulando los permisos que hereda de su grupo/rol.
+
+**Archivos modificados**:
+- usuarios/models.py: Creado modelo PermisoDenegado.
+- usuarios/backends.py: Modificado CaseInsensitiveModelBackend para restar PermisoDenegado del set total de permisos de Django.
+- usuarios/views_htmx.py: Lógica para guardar PermisoDenegado vs user_permissions al editar un usuario.
+- 	emplates/configuracion/modals/usuario_form.html: Habilitados checkboxes de permisos heredados con estados tachado/denegado.
+
+**Migraciones**: usuarios.0004_permisodenegado.
+**Siguientes pasos**: Comprobar el funcionamiento del submodal de exclusiones en la UI y la re-renderización de la navbar.

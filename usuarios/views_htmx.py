@@ -4,6 +4,29 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from .forms import UsuarioForm
 import json
+from django.contrib.auth.models import Group, Permission
+
+def agrupar_permisos_menu(permisos_menu):
+    agrupados = {}
+    nombres = {
+        'compras': 'Compras',
+        'ventas': 'Ventas',
+        'stock': 'Stock',
+        'tesoreria': 'Tesorería',
+        'contable': 'Contable',
+        'impuestos': 'Impuestos',
+        'configuracion': 'Configuración',
+        'clientes': 'Clientes y Proveedores',
+        'armeria': 'Armería (Verticalidad)',
+    }
+    for p in permisos_menu:
+        partes = p.codename.split('_')
+        modulo = partes[1] if len(partes) > 1 else 'otros'
+        nombre_modulo = nombres.get(modulo, modulo.capitalize())
+        if nombre_modulo not in agrupados:
+            agrupados[nombre_modulo] = []
+        agrupados[nombre_modulo].append(p)
+    return agrupados
 
 @login_required
 def usuario_modal(request, id=None):
@@ -21,22 +44,61 @@ def usuario_modal(request, id=None):
         is_new = True
 
     if request.method == 'POST':
-        # Instancia el formulario con datos del POST y archivos (si hubiera)
         form = UsuarioForm(request.POST, request.FILES, instance=usuario)
         if form.is_valid():
-            form.save() # Guarda el usuario y actualiza los permisos del Perfil
+            user_obj = form.save()
+            
+            # Obtener IDs heredados (de los grupos seleccionados)
+            permisos_heredados = set()
+            for group in user_obj.groups.all():
+                permisos_heredados.update(list(group.permissions.values_list('id', flat=True)))
+                
+            # Obtener IDs que vienen marcados en el formulario
+            marcados = request.POST.getlist('user_permissions')
+            marcados = set(map(int, marcados)) if marcados else set()
+            
+            # Extras: Marcados pero no heredados
+            extras = marcados - permisos_heredados
+            user_obj.user_permissions.set(extras)
+            
+            # Denegados: Heredados pero NO marcados
+            denegados = permisos_heredados - marcados
+            from usuarios.models import PermisoDenegado
+            PermisoDenegado.objects.filter(usuario=user_obj).delete()
+            if denegados:
+                objetos_denegados = [PermisoDenegado(usuario=user_obj, permiso_id=pid) for pid in denegados]
+                PermisoDenegado.objects.bulk_create(objetos_denegados)
+
             response = HttpResponse()
-            # Triggers para recargar el listado y luego cerrar el modal
             response['HX-Trigger'] = json.dumps({'reloadUsuarios': True, 'cerrarModal': True})
-            response['HX-Reswap'] = 'none' # Mantiene el DOM activo para la burbuja de eventos
+            response['HX-Reswap'] = 'none'
             return response
     else:
         form = UsuarioForm(instance=usuario)
 
+    apps_ignoradas = ['admin', 'auth', 'contenttypes', 'sessions']
+    permisos = Permission.objects.exclude(content_type__app_label__in=apps_ignoradas).select_related('content_type')
+    
+    permisos_menu = [p for p in permisos if p.codename.startswith('menu_')]
+    permisos_menu_agrupados = agrupar_permisos_menu(permisos_menu)
+    permisos_usuario = list(usuario.user_permissions.values_list('id', flat=True)) if usuario else []
+    
+    permisos_heredados = []
+    permisos_denegados = []
+    if usuario:
+        for group in usuario.groups.all():
+            permisos_heredados.extend(list(group.permissions.values_list('id', flat=True)))
+        permisos_denegados = list(usuario.permisos_denegados.values_list('permiso_id', flat=True))
+    permisos_heredados = list(set(permisos_heredados))
+
     return render(request, 'configuracion/modals/usuario_form.html', {
         'form': form, 
         'is_new': is_new, 
-        'usuario_obj': usuario
+        'usuario_obj': usuario,
+        'permisos_menu_agrupados': permisos_menu_agrupados,
+        'permisos_usuario': permisos_usuario,
+        'permisos_heredados': permisos_heredados,
+        'permisos_denegados': permisos_denegados
     })
 
 @login_required
@@ -72,9 +134,6 @@ def eliminar_usuario(request, id):
             response['HX-Trigger'] = json.dumps({'reloadUsuarios': True})
             return response
     return HttpResponse(status=400)
-
-
-from django.contrib.auth.models import Group, Permission
 
 @login_required
 def rol_modal(request, id=None):
@@ -125,13 +184,14 @@ def rol_modal(request, id=None):
         if action in agrupados[app][model]:
             agrupados[app][model][action] = p
 
+    permisos_menu_agrupados = agrupar_permisos_menu(permisos_menu)
     permisos_grupo = list(grupo.permissions.values_list('id', flat=True)) if grupo else []
 
     return render(request, 'configuracion/modals/rol_modal.html', {
         'grupo': grupo,
         'is_new': is_new,
         'agrupados': agrupados,
-        'permisos_menu': permisos_menu,
+        'permisos_menu_agrupados': permisos_menu_agrupados,
         'permisos_grupo': permisos_grupo
     })
 

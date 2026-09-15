@@ -176,6 +176,7 @@
                     </svg>
                     Dashboard
                 </a>
+                {% if perms.usuarios.menu_clientes or user.perfil.es_admin_sistema or user.is_staff %}
                 <a href="{% url 'clientes_index' %}"
                     class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                     <svg class="w-5 h-5 mr-3 text-gray-400 group-hover:text-blue-400" fill="none" stroke="currentColor"
@@ -186,6 +187,9 @@
                     </svg>
                     Clientes y Proveedores
                 </a>
+                {% endif %}
+                
+                {% if perms.usuarios.menu_stock or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/stock/') || ['/compras/recepciones/', '/compras/remitos-internos/', '/compras/recepcion-interna/'].some(p => window.location.pathname.startsWith(p)) }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'stock_index' %}" class="flex items-center flex-1">
@@ -207,21 +211,30 @@
                         </a>
                         {% hook_menu 'stock' %}
                         {% if empresa_actual.usa_orden_compra %}
+                        {% if perms.usuarios.menu_stock_recepciones or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'recepcion_listado' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'recepcion_listado' %}text-indigo-500 font-bold{% endif %}">
                             Recepción de Mercadería
                         </a>
+                        {% endif %}
+                        {% if perms.usuarios.menu_stock_remitos_internos or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'remito_interno_listado' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'remito_interno_listado' %}text-indigo-500 font-bold{% endif %}">
                             Remitos Internos
                         </a>
+                        {% endif %}
+                        {% if perms.usuarios.menu_stock_recepcion_interna or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'recepcion_interna_listado' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'recepcion_interna_listado' or request.resolver_match.url_name == 'recepcion_interna_carga' %}text-indigo-500 font-bold{% endif %}">
                             Recepción Interna
                         </a>
                         {% endif %}
+                        {% endif %}
                     </div>
                 </div>
+                {% endif %}
+                
+                {% if perms.usuarios.menu_compras or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: (window.location.pathname.startsWith('/compras/') && !['/compras/recepciones/', '/compras/remitos-internos/', '/compras/recepcion-interna/'].some(p => window.location.pathname.startsWith(p))) || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'C') }">
                     <div
                         class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
@@ -278,6 +291,9 @@
                         {% endif %}
                     </div>
                 </div>
+                {% endif %}
+                
+                {% if perms.usuarios.menu_ventas or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/ventas/') || window.location.pathname.startsWith('/estudio/') || window.location.pathname.startsWith('/reservas/') || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'V') }">
                     <div
                         class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
@@ -340,9 +356,11 @@
 
                     </div>
                 </div>
+                {% endif %}
 
                 {% hook_menu 'sidebar_bottom' %}
 
+                {% if perms.usuarios.menu_tesoreria or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/tesoreria/') }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'tesoreria_index' %}" class="flex items-center flex-1">
@@ -358,35 +376,37 @@
                         </button>
                     </div>
                     <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
-                        {% comment %}
-                        El cajero opera todo desde su Caja Mostrador (Plan 077 §G): cobra con
-                        el recibo que sale de esa pantalla y rinde al cerrarla. Esconder el
-                        link no alcanza como permiso —las vistas también lo bloquean—, pero
-                        mostrarle opciones que no puede usar sería peor.
-                        {% endcomment %}
-                        {% if not user.perfil.es_cajero_mostrador %}
+                        {% if perms.usuarios.menu_tesoreria_recibos or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'recibo_carga' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'recibo_carga' %}text-indigo-500 font-bold{% endif %}">
                             Emitir Recibo
                         </a>
+                        {% endif %}
+                        {% if perms.usuarios.menu_tesoreria_orden_pago or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'ordenpago_carga' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ordenpago_carga' %}text-red-400 font-bold{% endif %}">
                             Emitir Orden Pago
                         </a>
                         {% endif %}
+                        {% if perms.usuarios.menu_tesoreria_caja or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'caja_mostrador_index' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'caja_mostrador_index' %}text-green-600 font-bold{% endif %}">
                             Caja Mostrador
                         </a>
-                        {% if not user.perfil.es_cajero_mostrador %}
+                        {% endif %}
+                        {% if perms.usuarios.menu_tesoreria_caja_diaria or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'caja_diaria_index' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'caja_diaria_index' %}text-green-600 font-bold{% endif %}">
                             Caja Diaria
                         </a>
+                        {% endif %}
+                        {% if perms.usuarios.menu_tesoreria_eoaf or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'eoaf_index' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'eoaf_index' %}text-indigo-300 font-bold{% endif %}">
                             Origen y Aplicacion de Fondos
                         </a>
+                        {% endif %}
+                        {% if perms.usuarios.menu_tesoreria_rendiciones or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'rendiciones_recepcion' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'rendiciones_recepcion' %}text-indigo-300 font-bold{% endif %}">
                             Recepcion de Rendiciones
@@ -394,6 +414,9 @@
                         {% endif %}
                     </div>
                 </div>
+                {% endif %}
+                
+                {% if perms.usuarios.menu_contable or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/contable/') }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'contable_index' %}" class="flex items-center flex-1">
@@ -430,6 +453,9 @@
                         </a>
                     </div>
                 </div>
+                {% endif %}
+                
+                {% if perms.usuarios.menu_impuestos or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/impuestos/') }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'impuestos:impuestos_index' %}" class="flex items-center flex-1">
@@ -467,6 +493,7 @@
                         </a>
                     </div>
                 </div>
+                {% endif %}
             </nav>
             <div class="p-6 border-t border-gray-800">
                 <a href="{% url 'seleccion_empresa' %}"

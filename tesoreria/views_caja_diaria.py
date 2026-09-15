@@ -19,8 +19,6 @@ from tesoreria.services.caja_diaria import (
 MAX_CAJAS_LISTADO = 60
 
 
-from tesoreria.permisos import bloquear_cajero
-
 def _contexto_base(request):
     """Resuelve empresa, sucursal, listado de cajas y la caja seleccionada.
 
@@ -79,7 +77,6 @@ def _contexto_base(request):
 
 
 @login_required
-@bloquear_cajero
 def caja_diaria_index(request):
     contexto = _contexto_base(request)
     if contexto is None:

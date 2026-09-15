@@ -12,8 +12,6 @@ from django.db.models.functions import Coalesce
 from decimal import Decimal
 from contable.services.saldos import recalcular_saldo_compra, recalcular_saldo_venta
 from contable.services.retenciones import regimen_rg830_de_compra
-from tesoreria.permisos import bloquear_cajero
-
 
 def _validar_entidad(entidad_id, empresa_id):
     """La entidad debe pertenecer a la empresa de la sesión (aislamiento multi-tenant).
@@ -2004,7 +2002,6 @@ def _get_sesion_tesoreria(request, empresa_id, sucursal_id):
 
 
 @login_required
-@bloquear_cajero
 def rendiciones_recepcion(request):
     """Bandeja del tesorero: rendiciones En Tránsito destinadas a su sucursal."""
     empresa_id = request.session.get('empresa_id')

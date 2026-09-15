@@ -1,5 +1,5 @@
-from django.db import models
-from django.contrib.auth.models import User
+from django.db import models
+from django.contrib.auth.models import User, Permission
 from empresas.models import Empresa, Sucursal
 
 class Perfil(models.Model):
@@ -7,18 +7,6 @@ class Perfil(models.Model):
     empresas = models.ManyToManyField(Empresa, blank=True, related_name="usuarios")
     es_admin_sistema = models.BooleanField(default=False, verbose_name="Es Administrador de Sistema")
 
-    # El cajero opera TODO desde su Caja Mostrador (Plan 077 §G): cobra con el recibo que
-    # sale de esa pantalla y rinde al cerrar. No emite recibos ni órdenes de pago de
-    # Tesorería, ni entra a la caja de Tesorería.
-    #
-    # ES UNA RESTRICCIÓN, NO UN PERMISO, y por eso arranca en False: así nadie pierde
-    # accesos al aplicar el cambio y sólo queda acotado quien se marque. Al revés —un
-    # permiso que hubiera que otorgar— dejaría a todos afuera hasta tildarlo uno por uno.
-    es_cajero_mostrador = models.BooleanField(
-        default=False, verbose_name="Sólo Caja Mostrador",
-        help_text="Restringe al usuario a su caja: no ve Recibos, Órdenes de Pago ni "
-                  "Tesorería.")
-    
     # Permisos Modulares Dedicados
     permiso_clientes_ver = models.BooleanField(default=False, verbose_name="Ver Clientes y Proveedores")
     permiso_clientes_editar = models.BooleanField(default=False, verbose_name="ABM Clientes y Proveedores")
@@ -48,7 +36,10 @@ class Perfil(models.Model):
         verbose_name = "Perfil de Usuario"
         verbose_name_plural = "Perfiles de Usuarios"
         permissions = [
+            ('menu_clientes', 'Acceso: Clientes y Proveedores'),
+
             # Facturación / Compras
+            ('menu_compras', 'Acceso: Módulo Compras (Padre)'),
             ('menu_compras_carga', 'Acceso: Carga Manual de Compras'),
             ('menu_compras_oc', 'Acceso: Órdenes de Compra'),
             ('menu_compras_automatica', 'Acceso: Carga Automática (OCR)'),
@@ -56,16 +47,63 @@ class Perfil(models.Model):
             ('menu_compras_listado', 'Acceso: Listado de Compras y Facturas Pendientes'),
             
             # Facturación / Ventas
+            ('menu_ventas', 'Acceso: Módulo Ventas (Padre)'),
             ('menu_ventas_carga', 'Acceso: Carga de Ventas'),
+            ('menu_ventas_preventas', 'Acceso: Carga de PreVentas'),
             ('menu_ventas_listado', 'Acceso: Listado de Ventas'),
+            ('menu_ventas_reportes', 'Acceso: Reportes de Ventas'),
+            ('menu_ventas_autorizaciones', 'Acceso: Lista de Autorizaciones'),
             
             # Stock y Logística
+            ('menu_stock', 'Acceso: Módulo Stock (Padre)'),
             ('menu_stock_dashboard', 'Acceso: Mantenimiento de Productos y Stock'),
             ('menu_stock_recepciones', 'Acceso: Recepción de Mercadería'),
+            ('menu_stock_remitos_internos', 'Acceso: Remitos Internos'),
+            ('menu_stock_recepcion_interna', 'Acceso: Recepción Interna'),
             
             # Tesorería
+            ('menu_tesoreria', 'Acceso: Módulo Tesorería (Padre)'),
+            ('menu_tesoreria_recibos', 'Acceso: Emitir Recibo'),
+            ('menu_tesoreria_orden_pago', 'Acceso: Emitir Orden Pago'),
             ('menu_tesoreria_caja', 'Acceso: Operar Caja Mostrador'),
+            ('menu_tesoreria_caja_diaria', 'Acceso: Caja Diaria'),
+            ('menu_tesoreria_eoaf', 'Acceso: Origen y Aplicación de Fondos'),
+            ('menu_tesoreria_rendiciones', 'Acceso: Recepción de Rendiciones'),
+
+            # Contable
+            ('menu_contable', 'Acceso: Módulo Contable (Padre)'),
+            ('menu_contable_libro_diario', 'Acceso: Libro Diario'),
+            ('menu_contable_libro_mayor', 'Acceso: Libro Mayor'),
+            ('menu_contable_balance', 'Acceso: Balance de Sumas y Saldos'),
+            ('menu_contable_saldos', 'Acceso: Saldos Mensuales'),
+
+            # Impuestos
+            ('menu_impuestos', 'Acceso: Módulo Impuestos (Padre)'),
+            ('menu_impuestos_cierre_iva', 'Acceso: Cierre Periodo IVA'),
+            ('menu_impuestos_libro_ventas', 'Acceso: Libro IVA Ventas'),
+            ('menu_impuestos_libro_compras', 'Acceso: Libro IVA Compras'),
+            ('menu_impuestos_arca', 'Acceso: Captura Mis Comprobantes ARCA'),
+            ('menu_impuestos_sicore', 'Acceso: SICORE - Retención Impuesto a las Ganancias'),
+
+            # Configuración
+            ('menu_configuracion', 'Acceso: Módulo Configuración (Solo Administradores)'),
         ]
 
     def __str__(self):
-        return f"Perfil de {self.usuario.username}"
+        return f"{self.usuario.username} - Perfil"
+
+class PermisoDenegado(models.Model):
+    """
+    Registra permisos que han sido explícitamente denegados a un usuario,
+    incluso si los hereda a través de un rol (grupo).
+    """
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permisos_denegados')
+    permiso = models.ForeignKey(Permission, on_delete=models.CASCADE)
+
+    class Meta:
+        verbose_name = 'Permiso Denegado'
+        verbose_name_plural = 'Permisos Denegados'
+        unique_together = ('usuario', 'permiso')
+
+    def __str__(self):
+        return f"{self.usuario.username} denegado: {self.permiso.codename}"

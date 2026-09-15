@@ -24,7 +24,6 @@ from facturacion.models import ClienteProveedor
 from tesoreria.models import OrdenPago, Recibo
 
 
-from tesoreria.permisos import bloquear_cajero
 
 def _rango_fechas(request):
     """Rango del filtro para listados de Tesorería (Recibos y Órdenes de Pago).
@@ -55,7 +54,6 @@ def _anotar_aplicado(queryset, relacion):
 # ---------------------------------------------------------------- Órdenes de Pago
 
 @login_required
-@bloquear_cajero
 def ordenes_pago_listado(request):
     empresa_id = request.session.get('empresa_id')
     desde, hasta = _rango_fechas(request)
@@ -198,7 +196,6 @@ def _contexto_comprobante_op(pk, empresa_id):
 # ---------------------------------------------------------------------- Recibos
 
 @login_required
-@bloquear_cajero
 def recibos_listado(request):
     empresa_id = request.session.get('empresa_id')
     desde, hasta = _rango_fechas(request)

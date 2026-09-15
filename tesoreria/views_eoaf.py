@@ -36,8 +36,6 @@ MEDIOS = [
 FILTROS_MEDIO = [('', 'Todos')] + MEDIOS
 
 
-from tesoreria.permisos import bloquear_cajero
-
 def _con_medios_en_orden(filas):
     """Aplana el dict `medios` a una lista en el orden de `MEDIOS`.
 
@@ -112,7 +110,6 @@ def _contexto_base(request):
 
 
 @login_required
-@bloquear_cajero
 def eoaf_index(request):
     """Pantalla del reporte. NO ejecuta la consulta: espera el botón Generar."""
     contexto = _contexto_base(request)

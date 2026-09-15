@@ -6,8 +6,6 @@ from empresas.models import Empresa
 class UsuarioForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'}), required=False, label="Contraseña", help_text="Déjalo en blanco si no quieres cambiarla.")
     es_admin_sistema = forms.BooleanField(required=False, label="¿Es Administrador General?", widget=forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'}))
-    
-    es_cajero_mostrador = forms.BooleanField(required=False, label="Sólo Caja Mostrador", widget=forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'}))
 
     groups = forms.ModelMultipleChoiceField(
         queryset=Group.objects.all(),
@@ -48,7 +46,6 @@ class UsuarioForm(forms.ModelForm):
             self.fields['user_permissions'].initial = self.instance.user_permissions.all()
             if hasattr(self.instance, 'perfil'):
                 self.fields['es_admin_sistema'].initial = self.instance.perfil.es_admin_sistema
-                self.fields['es_cajero_mostrador'].initial = self.instance.perfil.es_cajero_mostrador
                 self.fields['empresas'].initial = self.instance.perfil.empresas.all()
                 
     def save(self, commit=True):
@@ -64,7 +61,6 @@ class UsuarioForm(forms.ModelForm):
             
             perfil, created = Perfil.objects.get_or_create(usuario=user)
             perfil.es_admin_sistema = self.cleaned_data.get('es_admin_sistema')
-            perfil.es_cajero_mostrador = self.cleaned_data.get('es_cajero_mostrador')
             perfil.empresas.set(self.cleaned_data.get('empresas'))
             perfil.save()
             

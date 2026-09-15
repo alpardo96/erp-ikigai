@@ -1,6 +1,8 @@
 {% if empresa_actual.usa_trazabilidad or empresa_actual.tipo_actividad == 'ARMERIA' or empresa_actual.tipo_actividad == 'AUTOMOTOR' %}
+{% if perms.armeria.menu_armeria_compras or user.perfil.es_admin_sistema or user.is_staff %}
 <a href="{% url 'compras_trazabilidad_carga' %}"
     class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_trazabilidad_carga' %}text-amber-400 font-bold{% endif %}">
     Compra de Armas
 </a>
+{% endif %}
 {% endif %}

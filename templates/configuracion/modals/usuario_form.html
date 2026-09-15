@@ -86,51 +86,82 @@
                         {{ form.groups.errors }}
                     </div>
 
-                    <div class="mt-4" x-data="{ showPermisos: false }">
-                        <label class="block text-sm font-semibold text-gray-700 mb-1">Permisos Específicos Extra</label>
-                        <p class="mb-2 text-[10px] text-gray-400 italic">Opcional. Añadir permisos puntuales fuera de su rol.</p>
-                        
-                        <!-- Botón para abrir modal de permisos -->
-                        <button type="button" @click="showPermisos = true" class="mt-1 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            <svg class="-ml-1 mr-2 h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                            Seleccionar Permisos Específicos
+                    <div class="mt-8" x-data="{ showPermisosExtra: false }">
+                        <button type="button" @click="showPermisosExtra = true"
+                                class="w-full flex items-center justify-between p-4 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-colors group">
+                            <div class="flex items-center space-x-3">
+                                <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg group-hover:bg-indigo-200 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                </div>
+                                <div class="text-left">
+                                    <h4 class="text-sm font-bold text-indigo-900">Permisos Específicos Extra</h4>
+                                    <p class="text-[11px] text-indigo-600/70">Asignar o remover accesos particulares a este usuario, ignorando su rol.</p>
+                                </div>
+                            </div>
+                            <span class="text-indigo-600 font-semibold text-sm">Gestionar &rarr;</span>
                         </button>
-                        
-                        <!-- Modal interno de Alpine.js para Permisos -->
-                        <div x-show="showPermisos" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60" style="display: none;" x-transition>
-                            <div class="bg-white p-6 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" @click.outside="showPermisos = false">
-                                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                                    <h3 class="text-lg font-bold text-gray-900">Permisos Específicos Adicionales</h3>
-                                    <button type="button" @click="showPermisos = false" class="text-gray-400 hover:text-red-500">
-                                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+
+                        <!-- Submodal de Alpine para Permisos Extra -->
+                        <div x-show="showPermisosExtra" class="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 px-4 py-10" x-cloak>
+                            <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl transform transition-all overflow-hidden border border-gray-100 flex flex-col max-h-[85vh]"
+                                 @click.outside="showPermisosExtra = false">
+                                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                    <div>
+                                        <h3 class="text-lg font-bold text-gray-900">Permisos Específicos Extra</h3>
+                                        <p class="text-xs text-gray-500">Estos permisos se aplican exclusivamente a este usuario.</p>
+                                    </div>
+                                    <button type="button" @click="showPermisosExtra = false" class="text-gray-400 hover:text-red-500 transition-colors">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                     </button>
                                 </div>
-                                <div class="overflow-y-auto flex-1 pr-2 space-y-2">
-                                    {% for checkbox in form.user_permissions %}
-                                        <div class="flex items-center p-2 hover:bg-slate-50 rounded-lg transition-colors">
-                                            {{ checkbox.tag }}
-                                            <label for="{{ checkbox.id_for_label }}" class="ml-3 text-sm font-medium text-gray-700 cursor-pointer flex-1">{{ checkbox.choice_label }}</label>
+                                
+                                <div class="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+                                    <div class="space-y-3">
+                                        {% for modulo, permisos in permisos_menu_agrupados.items %}
+                                        <div class="border border-indigo-100 rounded-xl overflow-hidden bg-white" x-data="{ open: false }">
+                                            <button type="button" @click="open = !open" class="w-full px-4 py-3 bg-indigo-50/30 flex justify-between items-center hover:bg-indigo-50 transition-colors focus:outline-none">
+                                                <span class="font-bold text-indigo-900">{{ modulo }}</span>
+                                                <svg :class="{'rotate-180': open}" class="w-5 h-5 text-indigo-400 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </button>
+                                            <div x-show="open" x-cloak class="p-4 border-t border-indigo-50">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {% for p in permisos %}
+                                                        <label class="flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all border border-transparent {% if p.id in permisos_denegados %}bg-red-50/50 border-red-100{% elif p.id in permisos_heredados %}bg-indigo-50/50 border-indigo-100{% elif p.id in permisos_usuario %}bg-emerald-50/50 border-emerald-100{% else %}hover:bg-gray-50 hover:border-gray-200{% endif %}">
+                                                            <div class="flex-shrink-0 mt-0.5">
+                                                                <input type="checkbox" name="user_permissions" value="{{ p.id }}" 
+                                                                       {% if p.id in permisos_usuario or p.id in permisos_heredados and p.id not in permisos_denegados %}checked{% endif %}
+                                                                       class="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 transition-colors">
+                                                            </div>
+                                                            <div class="flex flex-col">
+                                                                <span class="text-sm font-bold {% if p.id in permisos_denegados %}text-red-800 line-through opacity-70{% elif p.id in permisos_heredados %}text-indigo-800{% elif p.id in permisos_usuario %}text-emerald-800{% else %}text-slate-700{% endif %}">{{ p.name }}</span>
+                                                                <span class="text-[10px] text-slate-400 font-mono mt-0.5">
+                                                                    {{ p.codename }}
+                                                                    {% if p.id in permisos_denegados %}
+                                                                    <span class="inline-block ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[9px] font-bold uppercase tracking-wider">Denegado</span>
+                                                                    {% elif p.id in permisos_heredados %}
+                                                                    <span class="inline-block ml-2 px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded text-[9px] font-bold uppercase tracking-wider">Del Rol</span>
+                                                                    {% elif p.id in permisos_usuario %}
+                                                                    <span class="inline-block ml-2 px-1.5 py-0.5 bg-emerald-100 text-emerald-600 rounded text-[9px] font-bold uppercase tracking-wider">Extra</span>
+                                                                    {% endif %}
+                                                                </span>
+                                                            </div>
+                                                        </label>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
                                         </div>
-                                    {% endfor %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
-                                <div class="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-                                    <button type="button" @click="showPermisos = false" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow hover:bg-indigo-700">Listo</button>
+                                <div class="px-6 py-4 border-t border-gray-100 flex justify-end bg-white">
+                                    <button type="button" @click="showPermisosExtra = false" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-bold shadow-md transition-transform active:scale-95">
+                                        Aceptar y Volver
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        {{ form.user_permissions.errors }}
-                    </div>
-
-                    <div class="mt-4 border-t pt-4 border-slate-200">
-                        <p class="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Tesorería</p>
-                        <div class="flex items-center text-sm text-slate-700">
-                            {{ form.es_cajero_mostrador }} <span class="ml-2">Sólo Caja Mostrador</span>
-                        </div>
-                        <p class="text-[11px] text-slate-400 italic mt-1">
-                            El usuario opera únicamente su caja: cobra con el botón «Emitir Recibo» de esa
-                            pantalla y rinde al cerrarla. No ve Recibos ni Órdenes de Pago de Tesorería,
-                            ni la Caja Diaria.
-                        </p>
                     </div>
 
                     <!-- Asignación de Empresas: Solo relevante si no es superadmin -->

@@ -1,10 +1,14 @@
 {% if empresa_actual.usa_trazabilidad or empresa_actual.tipo_actividad == 'ARMERIA' or empresa_actual.tipo_actividad == 'AUTOMOTOR' %}
+{% if perms.armeria.menu_armeria_ventas or user.perfil.es_admin_sistema or user.is_staff %}
 <a href="{% url 'ventas_trazabilidad_carga' %}"
     class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ventas_trazabilidad_carga' %}text-amber-400 font-bold{% endif %}">
     Venta Trazabilidad
 </a>
+{% endif %}
+{% if perms.armeria.menu_armeria_reservas or user.perfil.es_admin_sistema or user.is_staff %}
 <a href="{% url 'armeria_reservas_list' %}"
     class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'armeria_reservas_list' %}text-amber-400 font-bold{% endif %}">
     Reservas por Venta de Armas
 </a>
+{% endif %}
 {% endif %}
