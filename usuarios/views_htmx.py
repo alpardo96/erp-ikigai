@@ -44,29 +44,43 @@ def usuario_modal(request, id=None):
         is_new = True
 
     if request.method == 'POST':
+        # Capturar el estado ANTES de guardar para saber qué permisos se desmarcaron intencionalmente
+        permisos_heredados_antes = set()
+        permisos_denegados_antes = set()
+        if not is_new:
+            for group in usuario.groups.all():
+                permisos_heredados_antes.update(list(group.permissions.values_list('id', flat=True)))
+            permisos_denegados_antes = set(usuario.permisos_denegados.values_list('permiso_id', flat=True))
+
         form = UsuarioForm(request.POST, request.FILES, instance=usuario)
         if form.is_valid():
             user_obj = form.save()
             
-            # Obtener IDs heredados (de los grupos seleccionados)
-            permisos_heredados = set()
+            # Obtener IDs heredados (después de guardar)
+            permisos_heredados_despues = set()
             for group in user_obj.groups.all():
-                permisos_heredados.update(list(group.permissions.values_list('id', flat=True)))
+                permisos_heredados_despues.update(list(group.permissions.values_list('id', flat=True)))
                 
             # Obtener IDs que vienen marcados en el formulario
             marcados = request.POST.getlist('user_permissions')
             marcados = set(map(int, marcados)) if marcados else set()
             
-            # Extras: Marcados pero no heredados
-            extras = marcados - permisos_heredados
+            # Extras: Marcados pero no heredados (después de guardar los grupos)
+            extras = marcados - permisos_heredados_despues
             user_obj.user_permissions.set(extras)
             
-            # Denegados: Heredados pero NO marcados
-            denegados = permisos_heredados - marcados
+            # Denegados: Heredados (ahora) pero NO marcados
+            # Para evitar que los permisos de un grupo recién asignado se denieguen automáticamente 
+            # (ya que sus checkboxes no estaban marcados en la UI), solo denegamos si:
+            # 1. Ya estaba heredado de antes (el usuario lo vio marcado y lo desmarcó).
+            # 2. O ya estaba denegado de antes (el usuario lo dejó desmarcado).
+            candidatos_denegados = permisos_heredados_despues - marcados
+            denegados_final = candidatos_denegados & (permisos_heredados_antes | permisos_denegados_antes)
+            
             from usuarios.models import PermisoDenegado
             PermisoDenegado.objects.filter(usuario=user_obj).delete()
-            if denegados:
-                objetos_denegados = [PermisoDenegado(usuario=user_obj, permiso_id=pid) for pid in denegados]
+            if denegados_final:
+                objetos_denegados = [PermisoDenegado(usuario=user_obj, permiso_id=pid) for pid in denegados_final]
                 PermisoDenegado.objects.bulk_create(objetos_denegados)
 
             response = HttpResponse()

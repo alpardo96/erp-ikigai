@@ -189,7 +189,7 @@
                 </a>
                 {% endif %}
                 
-                {% if perms.usuarios.menu_stock or user.perfil.es_admin_sistema or user.is_staff %}
+                {% if perms.usuarios.menu_stock or perms.usuarios.menu_stock_dashboard or perms.usuarios.menu_stock_recepciones or perms.usuarios.menu_stock_remitos_internos or perms.usuarios.menu_stock_recepcion_interna or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/stock/') || ['/compras/recepciones/', '/compras/remitos-internos/', '/compras/recepcion-interna/'].some(p => window.location.pathname.startsWith(p)) }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'stock_index' %}" class="flex items-center flex-1">
@@ -234,7 +234,7 @@
                 </div>
                 {% endif %}
                 
-                {% if perms.usuarios.menu_compras or user.perfil.es_admin_sistema or user.is_staff %}
+                {% if perms.usuarios.menu_compras or perms.usuarios.menu_compras_carga or perms.usuarios.menu_compras_oc or perms.usuarios.menu_compras_automatica or perms.usuarios.menu_compras_ia or perms.usuarios.menu_compras_listado or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: (window.location.pathname.startsWith('/compras/') && !['/compras/recepciones/', '/compras/remitos-internos/', '/compras/recepcion-interna/'].some(p => window.location.pathname.startsWith(p))) || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'C') }">
                     <div
                         class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
@@ -256,22 +256,31 @@
                         </button>
                     </div>
                     <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
-                        {% if perms.usuarios.menu_compras_carga or user.perfil.es_admin_sistema or user.is_staff %}
+                        {% if perms.usuarios.menu_compras_oc or user.perfil.es_admin_sistema or user.is_staff %}
                             {% if empresa_actual.usa_orden_compra %}
                             <a href="{% url 'oc_listado' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'oc_listado' %}text-indigo-500 font-bold{% endif %}">
                                 Órdenes de Compra
                             </a>
                             {% endif %}
+                        {% endif %}
+                        
+                        {% if perms.usuarios.menu_compras_carga or user.perfil.es_admin_sistema or user.is_staff %}
                             <a href="{% url 'compras_carga' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_carga' %}text-indigo-500 font-bold{% endif %}">
                                 Carga de Compras
                             </a>
-                            {% hook_menu 'compras' %}
+                        {% endif %}
+                        {% hook_menu 'compras' %}
+                        
+                        {% if perms.usuarios.menu_compras_automatica or user.perfil.es_admin_sistema or user.is_staff %}
                             <a href="{% url 'compras_carga_automatica' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_carga_automatica' %}text-indigo-500 font-bold{% endif %}">
                                 Carga de Compras Automatica
                             </a>
+                        {% endif %}
+                        
+                        {% if perms.usuarios.menu_compras_ia or user.perfil.es_admin_sistema or user.is_staff %}
                             <a href="{% url 'compras_carga_ia' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'compras_carga_ia' %}text-indigo-500 font-bold{% endif %}">
                                 Carga de Compra IA
@@ -293,7 +302,7 @@
                 </div>
                 {% endif %}
                 
-                {% if perms.usuarios.menu_ventas or user.perfil.es_admin_sistema or user.is_staff %}
+                {% if perms.usuarios.menu_ventas or perms.usuarios.menu_ventas_carga or perms.usuarios.menu_ventas_preventas or perms.usuarios.menu_ventas_listado or perms.usuarios.menu_ventas_reportes or perms.usuarios.menu_ventas_autorizaciones or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/ventas/') || window.location.pathname.startsWith('/estudio/') || window.location.pathname.startsWith('/reservas/') || ('{{ request.resolver_match.url_name }}' === 'facturas_pendientes' && new URLSearchParams(window.location.search).get('operacion') === 'V') }">
                     <div
                         class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
@@ -320,7 +329,10 @@
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'ventas_carga' %}text-green-400 font-bold{% endif %}">
                                 Carga de Ventas
                             </a>
-                            {% hook_menu 'ventas' %}
+                        {% endif %}
+                        {% hook_menu 'ventas' %}
+                        
+                        {% if perms.usuarios.menu_ventas_preventas or user.perfil.es_admin_sistema or user.is_staff %}
                             {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
                             <a href="{% url 'preventas_carga' %}"
                                 class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'preventas_carga' %}text-green-400 font-bold{% endif %}">
@@ -360,7 +372,7 @@
 
                 {% hook_menu 'sidebar_bottom' %}
 
-                {% if perms.usuarios.menu_tesoreria or user.perfil.es_admin_sistema or user.is_staff %}
+                {% if perms.usuarios.menu_tesoreria or perms.usuarios.menu_tesoreria_recibos or perms.usuarios.menu_tesoreria_orden_pago or perms.usuarios.menu_tesoreria_caja or perms.usuarios.menu_tesoreria_caja_diaria or perms.usuarios.menu_tesoreria_eoaf or perms.usuarios.menu_tesoreria_rendiciones or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/tesoreria/') }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'tesoreria_index' %}" class="flex items-center flex-1">
@@ -416,7 +428,7 @@
                 </div>
                 {% endif %}
                 
-                {% if perms.usuarios.menu_contable or user.perfil.es_admin_sistema or user.is_staff %}
+                {% if perms.usuarios.menu_contable or perms.usuarios.menu_contable_libro_diario or perms.usuarios.menu_contable_libro_mayor or perms.usuarios.menu_contable_balance or perms.usuarios.menu_contable_saldos or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/contable/') }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'contable_index' %}" class="flex items-center flex-1">
@@ -455,7 +467,7 @@
                 </div>
                 {% endif %}
                 
-                {% if perms.usuarios.menu_impuestos or user.perfil.es_admin_sistema or user.is_staff %}
+                {% if perms.usuarios.menu_impuestos or perms.usuarios.menu_impuestos_cierre_iva or perms.usuarios.menu_impuestos_libro_ventas or perms.usuarios.menu_impuestos_libro_compras or perms.usuarios.menu_impuestos_arca or perms.usuarios.menu_impuestos_sicore or user.perfil.es_admin_sistema or user.is_staff %}
                 <div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/impuestos/') }">
                     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
                         <a href="{% url 'impuestos:impuestos_index' %}" class="flex items-center flex-1">

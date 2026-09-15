@@ -1,4 +1,5 @@
 {% if empresa_actual.usa_trazabilidad or empresa_actual.tipo_actividad == 'ARMERIA' or empresa_actual.tipo_actividad == 'AUTOMOTOR' %}
+{% if perms.armeria.menu_armeria_ventas or user.perfil.es_admin_sistema or user.is_staff %}
 <!-- Tarjeta de Venta Trazabilidad -->
 <a href="{% url 'ventas_trazabilidad_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-amber-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -16,7 +17,10 @@
         <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
     </div>
 </a>
+{% endif %}
 
+
+{% if perms.armeria.menu_armeria_reservas or user.perfil.es_admin_sistema or user.is_staff %}
 <!-- Tarjeta de Reservas por Venta de Armas -->
 <a href="{% url 'armeria_reservas_list' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-amber-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -34,4 +38,5 @@
         <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
     </div>
 </a>
+{% endif %}
 {% endif %}

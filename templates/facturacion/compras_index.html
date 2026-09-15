@@ -11,6 +11,7 @@
     
     <div class="flex flex-wrap justify-center gap-8 italic">
         {% if empresa_actual.usa_orden_compra %}
+        {% if perms.usuarios.menu_compras_oc or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Órdenes de Compra -->
         <a href="{% url 'oc_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-emerald-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -28,9 +29,10 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
-
+        {% endif %}
         {% endif %}
 
+        {% if perms.usuarios.menu_compras_carga or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Compras -->
         <a href="{% url 'compras_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -48,9 +50,11 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
         {% hook_ui 'compras_index_cards' %}
 
+        {% if perms.usuarios.menu_compras_listado or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Listado de Compras -->
         <a href="{% url 'compras_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-slate-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -68,7 +72,9 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
+        {% if perms.usuarios.menu_compras_listado or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Facturas Pendientes (Plan 056) -->
         <a href="{% url 'facturas_pendientes' %}?operacion=C" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-orange-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -86,7 +92,9 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
+        {% if perms.usuarios.menu_compras_automatica or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Compras Automática -->
         <a href="{% url 'compras_carga_automatica' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-cyan-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -104,7 +112,9 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
+        {% if perms.usuarios.menu_compras_ia or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Carga IA -->
         <a href="{% url 'compras_carga_ia' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-purple-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -122,6 +132,7 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

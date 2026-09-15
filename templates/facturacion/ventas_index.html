@@ -10,6 +10,7 @@
     </div>
     
     <div class="flex flex-wrap justify-center gap-8 italic">
+        {% if perms.usuarios.menu_ventas_carga or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Ventas -->
         <a href="{% url 'ventas_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-green-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -27,9 +28,11 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
         {% hook_ui 'ventas_index_cards' %}
 
+        {% if perms.usuarios.menu_ventas_listado or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta Listado de Ventas -->
         <a href="{% url 'ventas_listado' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -47,7 +50,9 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
+        {% if perms.usuarios.menu_ventas_reportes or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta Reporte Ventas por Producto -->
         <a href="{% url 'reporte_ventas_producto' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-emerald-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -65,7 +70,9 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
+        {% if perms.usuarios.menu_ventas_listado or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Facturas Pendientes (Plan 056) -->
         <a href="{% url 'facturas_pendientes' %}?operacion=V" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-orange-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -83,8 +90,10 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
         {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
+        {% if perms.usuarios.menu_ventas_preventas or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta de Preventas -->
         <a href="{% url 'preventas_carga' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-purple-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -102,6 +111,7 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
         {% if user.perfil.permiso_autorizar_descuentos or user.perfil.es_admin_sistema or user.is_staff %}
         <!-- Tarjeta Bandeja de Autorizaciones -->

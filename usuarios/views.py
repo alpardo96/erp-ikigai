@@ -53,10 +53,16 @@ class SeleccionEmpresaView(LoginRequiredMixin, View):
         return redirect('seleccion_empresa')
 
 class CambiarEjercicioView(LoginRequiredMixin, View):
+    def get(self, request):
+        return redirect('home')
+
     def post(self, request):
         ejercicio_id = request.POST.get('ejercicio_id')
         if ejercicio_id:
             request.session['ejercicio_id'] = ejercicio_id
         
         next_url = request.META.get('HTTP_REFERER', 'home')
+        if 'cambiar-ejercicio' in next_url:
+            next_url = 'home'
+            
         return redirect(next_url)

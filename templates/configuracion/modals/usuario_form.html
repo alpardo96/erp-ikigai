@@ -130,7 +130,7 @@
                                                     {% for p in permisos %}
                                                         <label class="flex items-start space-x-3 cursor-pointer p-3 rounded-lg transition-all border border-transparent {% if p.id in permisos_denegados %}bg-red-50/50 border-red-100{% elif p.id in permisos_heredados %}bg-indigo-50/50 border-indigo-100{% elif p.id in permisos_usuario %}bg-emerald-50/50 border-emerald-100{% else %}hover:bg-gray-50 hover:border-gray-200{% endif %}">
                                                             <div class="flex-shrink-0 mt-0.5">
-                                                                <input type="checkbox" name="user_permissions" value="{{ p.id }}" 
+                                                                <input type="checkbox" name="user_permissions" value="{{ p.id }}" data-codename="{{ p.codename }}"
                                                                        {% if p.id in permisos_usuario or p.id in permisos_heredados and p.id not in permisos_denegados %}checked{% endif %}
                                                                        class="h-5 w-5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 transition-colors">
                                                             </div>
@@ -198,3 +198,34 @@
         </form>
     </div>
 </div>
+<script>
+    document.querySelectorAll('input[name="user_permissions"]').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const codename = this.dataset.codename;
+            const parentCodenames = ['menu_compras', 'menu_ventas', 'menu_stock', 'menu_tesoreria', 'menu_contable', 'menu_impuestos'];
+            if (parentCodenames.includes(codename)) {
+                const prefix = codename + '_';
+                const children = document.querySelectorAll(`input[name="user_permissions"][data-codename^="${prefix}"]`);
+                
+                if (this.checked) {
+                    children.forEach(child => {
+                        if (!child.dataset.originalStateSaved) {
+                            child.dataset.originalChecked = child.checked;
+                            child.dataset.originalStateSaved = 'true';
+                        }
+                        child.checked = true;
+                    });
+                } else {
+                    children.forEach(child => {
+                        if (child.dataset.originalStateSaved === 'true') {
+                            child.checked = child.dataset.originalChecked === 'true';
+                            delete child.dataset.originalStateSaved;
+                        } else {
+                            child.checked = false;
+                        }
+                    });
+                }
+            }
+        });
+    });
+</script>
