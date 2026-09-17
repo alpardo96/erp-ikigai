@@ -34,7 +34,7 @@
                         {% for mov in movimientos %}
                             <!-- Item de Compra (Ingreso al depósito) -->
                             <div class="relative pl-20 transition-all cursor-pointer group" 
-                                 hx-get="{% url 'subproducto_detalle_modal' mov.subpro %}" 
+                                 hx-get="{% url 'movimiento_detalle_modal' mov.subpro %}" 
                                  hx-target="#modal-container">
                                 <div class="absolute left-6 top-1.5 w-4 h-4 bg-green-500 border-4 border-green-100 rounded-full shadow-sm z-10 group-hover:scale-125 transition-transform"></div>
                                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group-hover:border-indigo-300 group-hover:shadow-md transition-all">
@@ -65,7 +65,7 @@
                             <!-- Item de Venta (Egreso), si fue vendido -->
                             {% if mov.situacion == 'VENDIDA' and mov.venta %}
                             <div class="relative pl-20 transition-all hover:-translate-y-0.5 cursor-pointer group"
-                                 hx-get="{% url 'subproducto_detalle_modal' mov.subpro %}" 
+                                 hx-get="{% url 'movimiento_detalle_modal' mov.subpro %}" 
                                  hx-target="#modal-container">
                                 <div class="absolute left-6 top-1.5 w-4 h-4 bg-red-500 border-4 border-red-100 rounded-full shadow-sm z-10 group-hover:scale-125 transition-transform"></div>
                                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group-hover:border-red-300 group-hover:shadow-md transition-all">

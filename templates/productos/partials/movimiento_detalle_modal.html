@@ -1,0 +1,186 @@
+<div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeModal()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-100">
+            <!-- Header -->
+            <div class="bg-white px-6 py-5 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
+                <div>
+                    <h3 class="text-xl leading-6 font-bold text-gray-900 flex items-center" id="modal-title">
+                        <svg class="h-6 w-6 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Ficha de Trazabilidad
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        Producto: <span class="font-semibold text-gray-800">{{ subproducto.producto.detalle }}</span>
+                        | Serie: <span class="font-mono text-indigo-600 font-bold">{{ subproducto.serie }}</span>
+                        {% if subproducto.cuim %}| CUIM: <span class="font-mono text-gray-700 font-semibold">{{ subproducto.cuim }}</span>{% endif %}
+                    </p>
+                </div>
+                <button type="button" onclick="closeModal()" class="bg-white rounded-xl p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none transition-all">
+                    <span class="sr-only">Cerrar</span>
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body - Detalle de Compra y Venta -->
+            <div class="bg-gray-50 px-6 py-6 space-y-6">
+                
+                <!-- Datos de Adquisición (Compra) -->
+                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-green-700 flex items-center">
+                            <svg class="h-5 w-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"></path>
+                            </svg>
+                            Origen / Datos de Compra (compra_id: {{ subproducto.compra_id|default:"N/A" }})
+                        </h4>
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-green-100 text-green-800">
+                            {{ subproducto.feccpra|date:"d/m/Y" }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Proveedor</span>
+                            <span class="font-semibold text-gray-900">
+                                {% if compra and compra.proveedor %}
+                                    {{ compra.proveedor.razon_social }}
+                                {% else %}
+                                    {{ subproducto.compra.proveedor.razon_social|default:"Proveedor No Registrado" }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Comprobante de Compra</span>
+                            <span class="font-semibold text-gray-900 font-mono">
+                                {% if compra %}
+                                    {{ compra.tipo.codigo }}-{{ compra.punto|stringformat:"05d" }}-{{ compra.numero|stringformat:"08d" }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Costo Adquisición (cto_adq)</span>
+                            <span class="font-bold text-gray-900">
+                                ${{ subproducto.cto_adq|floatformat:2 }} {{ subproducto.moneda }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Cotización Compra (cotizadq)</span>
+                            <span class="font-semibold text-gray-900 font-mono">
+                                {{ subproducto.cotizadq|floatformat:4 }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Datos de Venta (id_vta > 0) -->
+                {% if subproducto.venta or subproducto.situacion == 'VENDIDA' %}
+                <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+                        <h4 class="text-sm font-bold uppercase tracking-wider text-red-700 flex items-center">
+                            <svg class="h-5 w-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 11h14l1 12H4L5 11z"></path>
+                            </svg>
+                            Destino / Datos de Venta (id_vta: {{ subproducto.venta_id|default:"0" }})
+                        </h4>
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800">
+                            {{ subproducto.fecvta|date:"d/m/Y"|default:"N/A" }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Cliente</span>
+                            <span class="font-semibold text-gray-900">
+                                {% if venta and venta.cliente %}
+                                    {{ venta.cliente.razon_social }}
+                                {% else %}
+                                    Sin Cliente Asociado
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Comprobante de Venta</span>
+                            <span class="font-semibold text-gray-900 font-mono">
+                                {% if venta %}
+                                    {{ venta.tipo.codigo }}-{{ venta.punto|stringformat:"05d" }}-{{ venta.numero|stringformat:"08d" }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Precio Neto</span>
+                            <span class="font-bold text-gray-900">
+                                ${{ subproducto.precio_neto|floatformat:2 }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="block text-xs font-medium text-gray-500 uppercase">Precio Total (IVA Incl.)</span>
+                            <span class="font-bold text-green-700 text-base">
+                                ${{ subproducto.precio_total|floatformat:2 }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl flex items-center justify-between text-indigo-900 text-sm font-medium">
+                    <span class="flex items-center">
+                        <svg class="h-5 w-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Este subproducto se encuentra actualmente **En Depósito** (no posee Venta activa).
+                    </span>
+                    <span class="bg-indigo-200 text-indigo-800 text-xs px-2.5 py-1 rounded-full font-bold uppercase">DEPOSITO</span>
+                </div>
+                {% endif %}
+
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-white px-6 py-4 border-t border-gray-100 flex justify-between items-center rounded-b-3xl">
+                <div class="flex items-center space-x-2">
+                    <button type="button" 
+                            hx-get="{% url 'subproducto_editar_modal' subproducto.subpro %}" 
+                            hx-target="#modal-container"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-semibold rounded-xl transition-colors text-sm shadow-sm">
+                        <svg class="h-4 w-4 mr-1.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Editar SERIE / CUIM
+                    </button>
+                    {% if venta %}
+                    <a href="{% url 'imprimir_factura' venta.id_vta %}" target="_blank"
+                       class="inline-flex items-center px-4 py-2 border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 font-semibold rounded-xl transition-colors text-sm shadow-sm">
+                        <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        PDF Factura
+                    </a>
+                    {% endif %}
+                </div>
+
+                <button type="button" hx-get="{% url 'subproducto_trazabilidad_modal' subproducto.serie %}" hx-target="#modal-container" class="inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-6 py-2 bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none transition-all">
+                    Volver al Historial
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function closeModal() {
+        const modalContainer = document.getElementById('modal-container');
+        if (modalContainer) {
+            modalContainer.innerHTML = '';
+        }
+    }
+</script>

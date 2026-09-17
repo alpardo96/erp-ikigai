@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     SubproductoTrazabilidadListView, trazabilidad_modal_timeline,
-    subproducto_detalle_modal, subproducto_editar_modal,
+    subproducto_detalle_modal, movimiento_detalle_modal, subproducto_editar_modal,
     ComprasTrazabilidadCargaView, compras_trazabilidad_item_add,
     compras_trazabilidad_item_remove, typeahead_series_trazabilidad,
     VentasTrazabilidadCargaView, agregar_item_venta_trazabilidad,
@@ -15,6 +15,7 @@ urlpatterns = [
     path('stock/trazabilidad/', SubproductoTrazabilidadListView.as_view(), name='subproducto_trazabilidad_listado'),
     path('stock/trazabilidad/modal/<str:serie>/', trazabilidad_modal_timeline, name='subproducto_trazabilidad_modal'),
     path('stock/trazabilidad/subproducto/<int:subpro_id>/detalle/', subproducto_detalle_modal, name='subproducto_detalle_modal'),
+    path('stock/trazabilidad/movimiento/<int:subpro_id>/detalle/', movimiento_detalle_modal, name='movimiento_detalle_modal'),
     path('stock/trazabilidad/subproducto/<int:subpro_id>/editar/', subproducto_editar_modal, name='subproducto_editar_modal'),
 
     # Compras Trazabilidad

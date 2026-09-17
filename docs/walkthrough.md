@@ -5196,3 +5196,31 @@ otas_sigimac\ por POST.
     - **UI y Estilos SweetAlert & SVG**: Se aplicó uttonsStyling: false con clases Tailwind (customClass) para asegurar contraste y legibilidad en botones de SweetAlert. Se reemplazó el icono FontAwesome en la tabla de Reservas por un componente SVG inline para garantizar visualización perfecta y apertura del modal de notas.
 - **Resultado de las pruebas**: Flujo validado de extremo a extremo: Carga de Preventa trazable -> Solicitud de Nota -> Creación de Reserva con Notas visibles en bandeja -> Facturación directa con cliente y arma precargados.
 - **Estado actual**: Funcionalidad completada y verificada.
+
+---
+
+### Cristian - PC CASA
+**Fecha:** 17/09/2026
+**Objetivo:** Separar Ficha de Subproducto de Detalles de Movimiento y aplicar nuevo diseño.
+**Archivos Modificados:**
+- `verticalidades/armeria/views.py`: Se renombró `subproducto_detalle_modal` a `movimiento_detalle_modal` y se creó la nueva vista `subproducto_detalle_modal`.
+- `verticalidades/armeria/urls.py`: Se agregó la ruta para `movimiento_detalle_modal`.
+- `templates/productos/partials/movimiento_detalle_modal.html`: Se renombró desde `subproducto_detalle_modal.html`, se ajustó el botón Volver y se agregó el botón PDF para facturas.
+- `templates/productos/partials/subproducto_detalle_modal.html`: Creado desde cero con diseño modo oscuro (Ficha del Arma).
+- `templates/productos/partials/trazabilidad_modal_timeline.html`: Se actualizaron las referencias de URL al nuevo `movimiento_detalle_modal`.
+**Detalle Técnico:** 
+Se implementó el flujo donde al presionar "Detalle" en la grilla principal, se abre la Ficha del Arma. Al presionar "Historial", se abre la línea de tiempo. Y desde la línea de tiempo se accede a los Detalles del Movimiento (que ahora incluyen botón de Volver y PDF).
+**Pruebas:** Servidor corriendo (sin caídas), flujo de modal evaluado a nivel código de HTMX.
+**Estado y Siguientes Pasos:** Completado. Pendiente a futuro lógica de precios (Efectivo/Débito/USD) desde Medios de Pago.
+
+---
+
+### Cristian - PC CASA
+**Fecha:** 17/09/2026
+**Objetivo:** Agregar leyendas informativas de validación en el formulario de Clientes/Proveedores.
+**Archivos Modificados:**
+- `templates/facturacion/modals/cliente_modal.html`: Se añadieron mensajes en rojo ("Sólo números permitidos" y "Debe ser un email válido con @") debajo de los inputs de teléfono y correo respectivamente. Además, se habilitó el renderizado de `form.errors` para esos campos.
+**Detalle Técnico:** 
+Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cumplir el regex de validación (por ej. ingresar letras en el teléfono) y el usuario no entendía por qué no se guardaba la entidad.
+**Pruebas:** Servidor corriendo, inspección visual del código HTML modificado.
+**Estado y Siguientes Pasos:** Completado.

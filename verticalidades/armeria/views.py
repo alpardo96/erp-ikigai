@@ -984,10 +984,10 @@ def trazabilidad_modal_timeline(request, serie):
 
 
 @login_required
-def subproducto_detalle_modal(request, subpro_id):
+def movimiento_detalle_modal(request, subpro_id):
     """
-    Renderiza el modal con los detalles completos del registro de trazabilidad seleccionado.
-    Toma los datos de la compra (compra_id) y, si id_vta > 0 (venta no nula), los datos de la venta.
+    Renderiza el modal con los detalles completos de compra/venta (movimiento).
+    Se llama desde la línea de tiempo del historial.
     """
     empresa_id = request.session.get('empresa_id')
     if not empresa_id:
@@ -999,10 +999,29 @@ def subproducto_detalle_modal(request, subpro_id):
         empresa_id=empresa_id
     )
 
-    return render(request, 'armeria/partials/subproducto_detalle_modal.html', {
+    return render(request, 'armeria/partials/movimiento_detalle_modal.html', {
         'subproducto': subproducto,
         'compra': subproducto.compra,
         'venta': subproducto.venta,
+    })
+
+@login_required
+def subproducto_detalle_modal(request, subpro_id):
+    """
+    Renderiza la ficha técnica del arma con sus características, serie, CUIM y precios.
+    """
+    empresa_id = request.session.get('empresa_id')
+    if not empresa_id:
+        return render(request, 'core/partials/mensaje_error.html', {'mensaje': "Empresa no seleccionada"})
+
+    subproducto = get_object_or_404(
+        Subproducto.objects.select_related('producto', 'sucursal'),
+        subpro=subpro_id,
+        empresa_id=empresa_id
+    )
+
+    return render(request, 'armeria/partials/subproducto_detalle_modal.html', {
+        'subproducto': subproducto,
     })
 
 

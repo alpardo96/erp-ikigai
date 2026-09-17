@@ -20,6 +20,25 @@
 - [ ] **Trazabilidad Armas (Detalle/Historial/Factura):** Detalle mostrar pendiente y el historial es detalles el card. Cuando le demos click al card de la línea de tiempo, este abre el detalle editable. Agregar botón de Factura a la card del historial para rearmar la factura de venta sin tener que buscarlo en el listado de ventas.
 - [ ] **Aislamiento por Sucursal (Preventa y Trazabilidad):** No facturar de otra sucursal en Trazabilidad ni Preventa. Si estoy en sucursal 0 no puedo operar movimientos ni clientes de sucursal 2. Todo lo que tenga sucursal_id pertenece estrictamente a esa sucursal.
 - [ ] **CUIM:** 6 dígitos obligatorio en compra a proveedores (si el clipro es Cliente, sí se permite).
-- [ ] **CLU obligatorio para Municiones en Preventa:** Validar CLU al vender munición. Permitir al vendedor abrir modal rápido de edición de cliente para actualizar CLU y vencimiento en ese instante.
-- [ ] **Bucle en credencial fallida en venta:** Corregir bucle de alerta continua cuando se ingresa una credencial de 6 dígitos o menos.
+- [x] **CLU obligatorio para Municiones en Preventa:** Validar CLU al vender munición. Permitir al vendedor abrir modal rápido de edición de cliente para actualizar CLU y vencimiento en ese instante.
+- [x] **Bucle en credencial fallida en venta:** Corregir bucle de alerta continua cuando se ingresa una credencial de 6 dígitos o menos.
 - [ ] **Mapeo de Teclado:** Navegación fluida en formularios mediante Tab, Enter y Flechas (baja prioridad / punto fino).
+
+
+Roles
+- Usuarios:
+    - Eduardo Odone: Cajero
+    - Santiago Mozzoni: Cajero
+    - Alicia Mercado: Contabilidad + Cajero
+    - Nicolas Spector: Admin
+    - Esteban Spector: Admin
+    - Alicia Toulet: Admin
+    - Jorge Armas: Vendedor
+    - Mario Barthaburu: Vendedor
+    - Nahuel Consalvo: Vendedor
+    - Walter Bounar: Vendedor
+- Roles:
+    - Vendedor: Generar Pedido de Venta (PREVENTA), Listado Clientes, Dashboard de Armas Disponibles (nueva vista de lectura con las armas que estan a la venta, sus precios y caracteristicas),
+    - Cajero: Todo lo del vendedor + Trazabilidad de armas, Caja Mostrador, Stock Armas, Venta trazabilidad, Reserva por venta de armas, Listado de ventas, Ventas por producto, Facturas pendientes,
+    - Contabilidad: Ver con Juan
+    - Admin: Todo
