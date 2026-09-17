@@ -1,5 +1,10 @@
 {% load l10n formato_tags %}
 <div class="h-full flex flex-col">
+    {% for item in items %}
+        {% if item.subprod %}
+            <input type="hidden" id="tiene_arma_flag" value="true">
+        {% endif %}
+    {% endfor %}
     <table class="w-full text-left border-collapse bg-white">
         <thead class="sticky top-0 shadow-sm z-10">
             <tr class="bg-slate-800 text-white text-[9px] uppercase tracking-wider">

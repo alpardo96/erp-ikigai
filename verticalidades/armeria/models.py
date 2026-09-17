@@ -12,6 +12,7 @@ class ExtensionArmeria(models.Model):
     clu = models.CharField(max_length=20, verbose_name="CLU")
     clu_vto = models.DateField(null=True, blank=True, verbose_name="Vencimiento CLU")
     es_policia = models.BooleanField(default=False, verbose_name="Es Policía")
+    activo = models.BooleanField(null=True, default=True, verbose_name="Activo en Armería", db_index=True)
 
     class Meta:
         verbose_name = "Detalle Armería"
@@ -57,6 +58,8 @@ class ReservaArma(models.Model):
     
     venta_aplicada = models.ForeignKey('facturacion.Venta', on_delete=models.SET_NULL, null=True, blank=True, related_name="reserva_arma_aplicada", verbose_name="Factura de Venta Trazabilidad")
     orden_pago_devolucion = models.ForeignKey('tesoreria.OrdenPago', on_delete=models.SET_NULL, null=True, blank=True, related_name="reserva_arma_devuelta", verbose_name="Orden de Pago Devolución")
+    
+    notas = models.TextField(null=True, blank=True, verbose_name="Notas de Preventa")
     
     fecha_reserva = models.DateField(auto_now_add=True, verbose_name="Fecha de Reserva")
     fecha_resolucion = models.DateField(null=True, blank=True, verbose_name="Fecha Resolución SIGIMAC")

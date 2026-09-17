@@ -1140,7 +1140,8 @@ def _guardar_reserva_preventa_transaccional(
             'recibo_reserva': recibo,
             'monto_reservado': total_ingresado,
             'monto_total': preventa.total,
-            'estado': 'PENDIENTE'
+            'estado': 'PENDIENTE',
+            'notas': preventa.notas_sigimac
         }
     )
 

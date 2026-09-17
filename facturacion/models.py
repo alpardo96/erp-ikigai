@@ -382,6 +382,7 @@ class Preventa(models.Model):
     
     estado = models.IntegerField(choices=ESTADOS, default=0, db_index=True)
     es_consumidor_final = models.BooleanField(default=False, verbose_name="Facturar como Consumidor Final (Consumo Propio)")
+    notas_sigimac = models.TextField(null=True, blank=True, verbose_name="Notas SIGIMAC (Uso Interno)")
     
     # Importes
     neto = models.DecimalField(max_digits=15, decimal_places=2, default=0)

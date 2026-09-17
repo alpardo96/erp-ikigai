@@ -60,10 +60,21 @@
                                 
                             <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}"
                                 hx-target="#modal-container"
+                                title="Buscar cliente en el padrón"
                                 class="w-7 h-7 shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-all cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                            
+                            <!-- Botón Editar Cliente (Lápiz) -->
+                            <button type="button" 
+                                onclick="const cid = document.getElementById('id_cliente').value; if(cid && cid != '1') htmx.ajax('GET', '/clientes/' + cid + '/editar/', {target: '#modal-container'}); else Swal.fire({icon: 'info', title: 'Atención', text: 'Seleccione un cliente válido para editar (no Consumidor Final ocasional).', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false});"
+                                title="Editar cliente seleccionado"
+                                class="w-7 h-7 shrink-0 flex items-center justify-center bg-amber-100 text-amber-700 rounded hover:bg-amber-200 transition-all cursor-pointer shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                                 </svg>
                             </button>
 
@@ -193,7 +204,7 @@
                     <label
                         class="block text-[9px] font-black text-red-500 uppercase mb-0.5 text-center">Credencial</label>
                     <input type="text" id="quick_credencial" name="credencial" minlength="7"
-                        onblur="if(this.required && this.value.length > 0 && this.value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => this.focus(), 10); }"
+                        onblur="if(this.required && this.value.length > 0 && this.value.length < 7) { Swal.fire({icon: 'warning', title: 'Atención', text: 'La credencial no puede ser menor a 7 caracteres.', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false}); this.value = ''; }"
                         class="w-full h-8 px-2 bg-red-50 border border-red-300 rounded text-[10px] font-black text-red-900 outline-none uppercase placeholder:text-red-300"
                         placeholder="OBLIGATORIO">
                 </div>

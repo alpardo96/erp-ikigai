@@ -138,6 +138,12 @@ class ClienteProveedorForm(forms.ModelForm):
         self.default_cta_prov_id = ''
         self.default_cta_prov_nombre = ''
 
+        if 'telefono' in self.fields:
+            self.fields['telefono'].widget.attrs.update({'type': 'text', 'pattern': '[0-9]*', 'inputmode': 'numeric'})
+            
+        if 'localidad' in self.fields:
+            self.fields['localidad'].widget.attrs.update({'list': 'datalist-localidades'})
+
         if empresa_id:
             from contable.models import ParametrosContables
             try:
@@ -153,6 +159,11 @@ class ClienteProveedorForm(forms.ModelForm):
                     self.default_cta_prov_nombre = f"{params.cta_proveedores_default.jerarquia} - {params.cta_proveedores_default.cuenta}"
             except ParametrosContables.DoesNotExist:
                 pass
+
+            from empresas.models import Empresa
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+            if empresa and empresa.tipo_actividad == 'ARMERIA' and 'contacto' in self.fields:
+                self.fields['contacto'].widget = forms.HiddenInput()
 
         if self.instance and self.instance.pk:
             if self.instance.tipo_entidad == 1:
@@ -248,6 +259,28 @@ class ClienteProveedorForm(forms.ModelForm):
             cleaned_data['cta_pat'] = 0
         if cleaned_data.get('cta_res') is None:
             cleaned_data['cta_res'] = 0
+
+        # Validación Correo
+        correo = cleaned_data.get('correo')
+        if correo:
+            if '@' not in correo or '.' not in correo:
+                self.add_error('correo', 'Ingrese un correo electrónico válido.')
+
+        # Validación CUIT duplicado considerando activo
+        if cuit and cuit not in ['0', '00']:
+            existing = ClienteProveedor.objects.filter(empresa_id=self._empresa_id, cuit=cuit)
+            if self.instance and self.instance.pk:
+                existing = existing.exclude(pk=self.instance.pk)
+            
+            if hasattr(self, '_empresa_id') and self._empresa_id:
+                from empresas.models import Empresa
+                empresa = Empresa.objects.filter(id=self._empresa_id).first()
+                if empresa and empresa.tipo_actividad == 'ARMERIA':
+                    existing = existing.exclude(armeria__activo=False)
+            
+            if existing.exists():
+                self.add_error('cuit', 'Ya existe un registro activo con este CUIT/DNI en la empresa.')
+
 
         return cleaned_data
 

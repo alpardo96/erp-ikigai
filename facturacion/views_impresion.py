@@ -20,3 +20,18 @@ def imprimir_factura(request, venta_id):
     except Exception as e:
         logger.exception("Error al generar PDF de la factura")
         return HttpResponse(f"Error al generar el comprobante PDF: {str(e)}", status=500)
+
+@login_required
+def imprimir_preventa(request, preventa_id):
+    """
+    Vista que devuelve el PDF generado para una preventa/reserva.
+    """
+    try:
+        from .services.pdf_service import generar_pdf_preventa
+        pdf_bytes = generar_pdf_preventa(preventa_id)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="Reserva_Preventa_{preventa_id}.pdf"'
+        return response
+    except Exception as e:
+        logger.exception("Error al generar PDF de la preventa")
+        return HttpResponse(f"Error al generar el comprobante PDF: {str(e)}", status=500)

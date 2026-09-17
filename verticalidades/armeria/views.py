@@ -45,10 +45,19 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
         puntos_venta = PuntoVenta.objects.filter(sucursal_id=sucursal_id, activo=True)
         modo_edicion = getattr(empresa, 'modo_edicion_facturacion', 'DESCUENTO') if empresa else 'DESCUENTO'
         
+        cliente_id = request.GET.get('cliente_id')
+        cliente_seleccionado = None
+        if cliente_id:
+            from facturacion.models import ClienteProveedor
+            cliente_seleccionado = ClienteProveedor.objects.filter(pk=cliente_id, empresa_id=empresa_id).first()
+            if cliente_seleccionado:
+                form.initial['cliente'] = cliente_seleccionado.pk
+        
         return render(request, 'armeria/ventas_trazabilidad_carga.html', {
             'form': form,
             'puntos_venta': puntos_venta,
-            'modo_edicion': modo_edicion
+            'modo_edicion': modo_edicion,
+            'cliente_seleccionado': cliente_seleccionado
         })
 
     def post(self, request):
@@ -102,6 +111,16 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
 
             try:
                 empresa_id = request.session.get('empresa_id')
+                
+                # Validación anticipada de Reserva SIGIMAC para evitar doble facturación concurrente
+                reserva_id = request.POST.get('reserva_id')
+                if reserva_id:
+                    from verticalidades.armeria.models import ReservaArma
+                    reserva_valida = ReservaArma.objects.filter(id=reserva_id, empresa_id=empresa_id, estado='PENDIENTE').exists()
+                    if not reserva_valida:
+                        messages.error(request, "Atención: La reserva que intenta facturar ya fue aplicada por otro usuario o no se encuentra PENDIENTE. Venta cancelada para evitar duplicidad.")
+                        return redirect('ventas_trazabilidad_carga')
+                
                 empresa_obj = Empresa.objects.get(pk=empresa_id)
                 venta_temp = form.save(commit=False)
                 cae_afip, vto_cae_afip, numero_afip, cod_qr_afip = None, None, None, None
@@ -701,7 +720,22 @@ def compras_trazabilidad_item_add(request):
     # Validaciones obligatorias dinámicas configuradas por la empresa
     if config_traz and config_traz.pedir_estado and not estado:
         return HttpResponse("Debe indicar el Estado físico (Nuevo / Usado) del subproducto.", status=400)
-    if config_traz and config_traz.pedir_cuim and not cuim:
+        
+    es_maquina_recarga = False
+    if producto.rubro and 'RECARGA' in producto.rubro.detalle.upper() and 'MAQUINA' in producto.detalle.upper():
+        es_maquina_recarga = True
+        
+    from empresas.models import Empresa
+    es_armeria = False
+    if empresa_id:
+        emp_obj = Empresa.objects.filter(id=empresa_id).first()
+        if emp_obj and emp_obj.tipo_actividad == 'ARMERIA':
+            es_armeria = True
+
+    if es_armeria and not es_maquina_recarga and not cuim:
+        return HttpResponse("Debe ingresar el CUIM (6 dígitos) del artículo para compras de Armería.", status=400)
+        
+    if not es_armeria and config_traz and config_traz.pedir_cuim and not cuim:
         return HttpResponse("Debe ingresar el CUIM / Patente / Dominio para este subproducto.", status=400)
 
     if cuim:
@@ -767,10 +801,14 @@ def typeahead_series_trazabilidad(request):
     Sugerencias interactivas de series disponibles en depósito para Venta Trazabilidad.
     """
     q = request.GET.get('serie_escaneada', '').strip().upper()
+    cliente_id = request.GET.get('cliente_id', '')
     empresa_id = request.session.get('empresa_id')
     sucursal_id = request.session.get('sucursal_id')
 
-    if not q or not empresa_id:
+    if not empresa_id:
+        return HttpResponse('', status=200)
+
+    if not q and not cliente_id:
         return HttpResponse('', status=200)
 
     todas = request.GET.get('todas') == '1'
@@ -779,9 +817,21 @@ def typeahead_series_trazabilidad(request):
     if not todas:
         subproductos = subproductos.filter(situacion='DEPOSITO')
 
-    subproductos = subproductos.filter(
-        Q(serie__icontains=q) | Q(cuim__icontains=q) | Q(producto__detalle__icontains=q)
-    ).select_related('producto').order_by('serie')[:10]
+    if q:
+        subproductos = subproductos.filter(
+            Q(serie__icontains=q) | Q(cuim__icontains=q) | Q(producto__detalle__icontains=q)
+        ).select_related('producto').order_by('serie')[:10]
+    elif cliente_id:
+        from verticalidades.armeria.models import ReservaArma
+        reservados = ReservaArma.objects.filter(
+            cliente_id=cliente_id, 
+            empresa_id=empresa_id, 
+            estado='PENDIENTE'
+        ).values_list('producto_id', flat=True)
+        if reservados:
+            subproductos = subproductos.filter(producto_id__in=reservados).select_related('producto').order_by('serie')[:20]
+        else:
+            subproductos = subproductos.none()
 
     return render(request, 'armeria/partials/serie_typeahead.html', {
         'subproductos': subproductos,
@@ -831,6 +881,10 @@ class SubproductoTrazabilidadListView(LoginRequiredMixin, ListView):
         from django.db.models import Subquery, Q
         
         qs = Subproducto.objects.filter(empresa_id=empresa_id)
+        
+        sucursal_id = self.request.session.get('sucursal_id')
+        if sucursal_id:
+            qs = qs.filter(sucursal_id=sucursal_id)
 
         # Si se busca por CliPro, primero encontramos las series que tienen ese CliPro en su historia
         if search_clipro:

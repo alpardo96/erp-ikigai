@@ -67,6 +67,16 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                 </svg>
                             </button>
+                            
+                            <!-- Botón Editar Cliente (Lápiz) -->
+                            <button type="button" 
+                                onclick="const cid = document.getElementById('id_cliente').value; if(cid && cid != '1') htmx.ajax('GET', '/clientes/' + cid + '/editar/', {target: '#modal-container'}); else Swal.fire({icon: 'info', title: 'Atención', text: 'Seleccione un cliente válido para editar (no Consumidor Final ocasional).', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false});"
+                                title="Editar cliente seleccionado"
+                                class="w-8 h-8 shrink-0 flex items-center justify-center bg-amber-100 text-amber-700 rounded hover:bg-amber-200 transition-all cursor-pointer shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                </svg>
+                            </button>
 
                             <!-- Dropdown Suggestions -->
                             <div x-show="open" id="cliente_suggestions" 
@@ -188,7 +198,7 @@
                 <div id="div_credencial" class="w-24 shrink-0 hidden">
                     <label class="block text-[9px] font-black text-red-500 uppercase mb-0.5 text-center">Credencial</label>
                     <input type="text" id="quick_credencial" name="credencial" minlength="7"
-                        onblur="if(this.required && this.value.length > 0 && this.value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => this.focus(), 10); }"
+                        onblur="if(this.required && this.value.length > 0 && this.value.length < 7) { Swal.fire({icon: 'warning', title: 'Atención', text: 'La credencial no puede ser menor a 7 caracteres.', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false}); this.value = ''; }"
                         class="w-full h-8 px-2 bg-red-50 border border-red-300 rounded text-[10px] font-black text-red-900 outline-none uppercase placeholder:text-red-300"
                         placeholder="OBLIGATORIO">
                 </div>
@@ -226,7 +236,7 @@
                 <div class="w-20 shrink-0">
                     <button type="button" hx-post="{% url 'preventas_item_add' %}" hx-target="#items-tabla-container"
                         hx-include="#preventa-form"
-                        onclick="if(!document.getElementById('selected_producto_id').value) { alert('Debe seleccionar un producto.'); event.stopImmediatePropagation(); event.preventDefault(); return false; } const isArm = {% if is_armeria %}true{% else %}false{% endif %}; const idCli = document.getElementById('id_cliente').value; const docTipo = document.getElementById('id_cliente').getAttribute('data-doc-tipo'); const reqCred = document.getElementById('quick_credencial').required; if(isArm && reqCred && (idCli === '1' || docTipo === '99' || !idCli)) { alert('Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.'); document.getElementById('cliente_nombre_display').focus(); event.stopImmediatePropagation(); event.preventDefault(); return false; } if(reqCred && document.getElementById('quick_credencial').value.length < 7) { alert('La credencial no puede ser menor a 7 caracteres.'); setTimeout(() => document.getElementById('quick_credencial').focus(), 10); event.stopImmediatePropagation(); event.preventDefault(); return false; }"
+                        onclick="if(!document.getElementById('selected_producto_id').value) { Swal.fire({icon: 'warning', title: 'Atención', text: 'Debe seleccionar un producto.', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false}); event.stopImmediatePropagation(); event.preventDefault(); return false; } const isArm = {% if is_armeria %}true{% else %}false{% endif %}; const idCli = document.getElementById('id_cliente').value; const docTipo = document.getElementById('id_cliente').getAttribute('data-doc-tipo'); const reqCred = document.getElementById('quick_credencial').required; if(isArm && reqCred && (idCli === '1' || docTipo === '99' || !idCli)) { Swal.fire({icon: 'warning', title: 'Atención', text: 'Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.', toast: true, position: 'top-end', timer: 5000, showConfirmButton: false}); document.getElementById('cliente_nombre_display').focus(); event.stopImmediatePropagation(); event.preventDefault(); return false; } if(reqCred && document.getElementById('quick_credencial').value.length < 7) { Swal.fire({icon: 'warning', title: 'Atención', text: 'La credencial no puede ser menor a 7 caracteres.', toast: true, position: 'top-end', timer: 3000, showConfirmButton: false}); document.getElementById('quick_credencial').value = ''; event.stopImmediatePropagation(); event.preventDefault(); return false; }"
                         class="w-full h-8 bg-blue-600 hover:bg-blue-700 text-white font-black rounded text-[9px] uppercase tracking-widest shadow-sm transition-all">
                         AÑADIR
                     </button>
@@ -261,7 +271,8 @@
                     </div>
                 </div>
                 <input type="hidden" name="total" id="id_total" value="0.00">
-                <button type="submit"
+                <input type="hidden" name="notas_sigimac" id="id_notas_sigimac" value="">
+                <button type="button" onclick="confirmarPreventaConNotas()"
                     class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black h-14 rounded-lg text-xs uppercase tracking-widest mt-2 shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 border-b-4 border-blue-800">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
@@ -275,6 +286,48 @@
         [x-cloak] { display: none !important; }
         .fInputAR.valor-cero { color: #cbd5e1 !important; font-weight: normal !important; }
     </style>
+    <script>
+        function confirmarPreventaConNotas() {
+            const tieneArma = document.getElementById('tiene_arma_flag');
+            const form = document.getElementById('preventa-form');
+            if (tieneArma && tieneArma.value === 'true') {
+                Swal.fire({
+                    title: 'Añadir Nota a la Reserva',
+                    html: '<p class="text-xs text-slate-500 mb-4">Esta nota será visible para el cajero en la bandeja de reservas.</p>' +
+                          '<textarea id="swal-nota-sigimac" class="w-full h-24 p-2 text-sm border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none placeholder:text-slate-400" placeholder="Escribe aquí los detalles o instrucciones para el cajero..."></textarea>',
+                    icon: 'info',
+                    allowOutsideClick: false,
+                    showCancelButton: true,
+                    showConfirmButton: true,
+                    confirmButtonText: '<i class="fa-solid fa-check"></i> Confirmar Preventa',
+                    cancelButtonText: 'Cerrar',
+                    confirmButtonColor: '#1eff00ff',
+                    cancelButtonColor: '#64748b',
+                    buttonsStyling: false,
+                    customClass: {
+                        confirmButton: 'px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm',
+                        cancelButton: 'px-4 py-2.5 bg-slate-500 hover:bg-slate-600 text-white rounded-lg font-bold shadow-sm mr-2',
+                        actions: 'mt-6 w-full flex justify-center gap-3'
+                    },
+                    preConfirm: () => {
+                        const val = document.getElementById('swal-nota-sigimac').value.trim();
+                        if (!val) {
+                            Swal.showValidationMessage('La nota es obligatoria y no puede estar vacía.');
+                            return false;
+                        }
+                        return val;
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById('id_notas_sigimac').value = result.value;
+                        form.submit();
+                    }
+                });
+            } else {
+                form.submit();
+            }
+        }
+    </script>
 </div>
 
 {% block extra_js %}

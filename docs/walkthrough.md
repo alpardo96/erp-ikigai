@@ -5084,3 +5084,115 @@ Hacer m√°s inteligente la b√∫squeda de productos en la carga de preventa, autoco
     - SeleccionEmpresaView ahora filtra las sucursales devueltas utilizando Prefetch seg√∫n los permisos.
     - Se movi√≥ el acceso de Par√°metros Contables del Hub global hacia las filas individuales del ABM de Empresas en la tabla HTMX, inyectando el empresa_id directamente a la URL de HTMX.
 - **Resultado de las pruebas**: Vistas HTMX, forms y modelos actualizados correctamente, migraciones ejecutadas exitosamente.
+
+## Antigravity
+- **Fecha/DÌa**: 16 de Septiembre de 2026
+- **Objetivo o Tarea**: ImplementaciÛn de Extensiones ArmerÌa, Trazabilidad, e ImpresiÛn de Preventas
+- **Archivos creados o modificados**:
+    - \acturacion/views.py\ [MODIFY]
+    - \erticalidades/armeria/views.py\ [MODIFY]
+    - \acturacion/services/pdf_service.py\ [MODIFY]
+    - \acturacion/views_impresion.py\ [MODIFY]
+    - \config/urls.py\ [MODIFY]
+    - \	emplates/facturacion/preventa_carga.html\ [MODIFY]
+    - \	emplates/facturacion/ventas_carga.html\ [MODIFY]
+    - \	emplates/facturacion/autorizaciones_index.html\ [MODIFY]
+    - \erticalidades/armeria/templates/armeria/partials/trazabilidad_modal_timeline.html\ [MODIFY]
+- **Detalle TÈcnico e implicaciones**:
+    - Se agregÛ botÛn de ediciÛn de cliente en modal en las vistas de carga de ventas y preventas.
+    - Se reemplazaron alertas de bucle infinito (alert) por notificaciones Swal.fire.
+    - Se incorporÛ soporte de impresiÛn de Remitos de Preventa con \generar_pdf_preventa\.
+    - Se aÒadiÛ botÛn PDF en el modal de Trazabilidad (Timeline) y en la bandeja de Autorizaciones para descargar el comprobante en nueva pestaÒa.
+    - Se ejecutÛ script de reset de secuencias para arreglar error de ID ya existente y se aplicaron migraciones para los borrados lÛgicos.
+- **Resultado de las pruebas**: Vistas actualizadas, PDF generando correctamente y bug de alertas JS solucionado.
+
+
+## Antigravity
+- **Fecha/DÌa**: 16 de Septiembre de 2026
+- **Objetivo o Tarea**: Arreglar selecciÛn de cliente en ArmerÌa y automatizar facturaciÛn de reservas SIGIMAC.
+- **Archivos creados o modificados**:
+    - \	emplates/facturacion/partials/clientes_typeahead.html\ [MODIFY]
+    - \erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html\ [MODIFY]
+    - \erticalidades/armeria/views.py\ [MODIFY]
+    - \erticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html\ [MODIFY]
+- **Detalle TÈcnico e implicaciones**:
+    - Se solucionÛ el bug donde \clienteVentaSeleccionado\ no llegaba a \document.body\ al seleccionarse desde el typeahead, haciendo que el evento se dispare sobre \document.body\ y burbujee de forma correcta. Esto arreglÛ la alerta de reserva pendiente "que no estaba funcionando".
+    - El botÛn "Facturar" en SIGIMAC ahora aÒade \?cliente_id=X\ a la URL.
+    - \VentasTrazabilidadCargaView\ lee el par·metro y auto-asigna al cliente en la vista, despachando el evento HTMX al terminar de cargar la p·gina, de modo que se rellenan sus datos e impuestos autom·ticamente.
+    - El autocompletado de serie \	ypeahead_series_trazabilidad\ ahora intercepta el \cliente_id\ seleccionado en la factura y, de estar el campo de serie vacÌo (cuando el usuario hace focus/clic), carga directamente los subproductos (series) que ese cliente tenga en sus reservas PENDIENTES, facilitando seleccionar el arma reservada sin escribir nada.
+- **Resultado de las pruebas**: NavegaciÛn directa desde bandeja SIGIMAC hasta Trazabilidad con cliente precargado y arma lista para ser seleccionada al hacer clic en el buscador de series.
+
+
+## Antigravity (CorrecciÛn)
+- **Fecha/DÌa**: 16 de Septiembre de 2026
+- **Objetivo o Tarea**: Arreglar error de ID vacÌo al clickear 'Facturar' y alerta no renderizada.
+- **Archivos modificados**:
+    - \erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html\ [MODIFY]
+    - \erticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html\ [MODIFY]
+- **Detalle TÈcnico**:
+    - Se cambiÛ \{{ r.cliente.id }}\ por \{{ r.cliente.pk }}\ en el botÛn Facturar de la tabla de reservas. Esto ocurrÌa porque el modelo \ClienteProveedor\ tiene un primary key personalizado (\codigo_id\), lo que provocaba que Django devolviera un string vacÌo al usar \.id\ en el template, arruinando la URL generada.
+    - Se cambiÛ el uso de \etch()\ crudo en JS por \htmx.ajax()\ al escuchar el evento de cliente seleccionado. Esto asegura que la peticiÛn de validaciÛn de reserva SIGIMAC viaje con todas las cookies de sesiÛn y cabeceras necesarias, evitando que la vista de verificaciÛn fallara al no reconocer la sesiÛn (\empresa_id\).
+
+
+    - Se regresÛ el sistema de alerta al mÈtodo \etch()\ (el cual funcionaba antes) pero montado sobre el \document.body\, debido a que HTMX por defecto cancela las peticiones asÌncronas concurrentes originadas en el mismo elemento (o si no se les especifica un 'source' explÌcito). Al volver a usar la API nativa de JavaScript, permitimos que la carga de los detalles fiscales del cliente y la alerta de reserva se procesen en paralelo sin chocarse ni cancelarse.
+    - **ProtecciÛn de Concurrencia (Doble Venta)**: Se aÒadiÛ una validaciÛn temprana en \VentasTrazabilidadCargaView\ al momento de hacer un POST. Si se envÌa un \eserva_id\, se verifica en milisegundos que siga en estado 'PENDIENTE' antes de tocar AFIP. Si otra PC ya la facturÛ mientras esta tenÌa la pestaÒa abierta, el sistema bloquear· la venta y devolver· un mensaje de error amigable, previniendo asÌ un doble cobro y doble baja de stock.
+
+
+## [16 de Septiembre de 2026] - Notas de Reservas SIGIMAC
+**Objetivo:** Permitir al vendedor aÒadir una nota interna al confirmar la preventa de un arma (producto trazable), y visualizarla en la bandeja del cajero de Reservas SIGIMAC.
+**Archivos Modificados:**
+- \acturacion/models.py\: AÒadido \
+otas_sigimac\ a \Preventa\.
+- \erticalidades/armeria/models.py\: AÒadido \
+otas\ a \ReservaArma\.
+- \acturacion/migrations/0004_preventa_notas_sigimac.py\ y \rmeria/migrations/0006_reservaarma_notas.py\: Migraciones generadas y aplicadas.
+- \	emplates/facturacion/partials/preventa_items_tabla.html\: Inyectado flag oculto \	iene_arma_flag\ si alg˙n producto tiene \subprod = True\.
+- \	emplates/facturacion/preventa_carga.html\: Interceptado el botÛn de Confirmar Preventa para levantar el modal \Swal.fire\ solicitando la nota.
+- \acturacion/views.py\ (\PreventaCargaView\): Captura de \
+otas_sigimac\ por POST.
+- \	esoreria/views_htmx.py\ (\procesar_recibo_preventa_trazable\): Se copia el campo \preventa.notas_sigimac\ al crear la \ReservaArma\.
+- \erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html\: AÒadida columna Notas y botÛn interactivo para visualizar el contenido con \Swal.fire\.
+**Resultado:** Al facturar un arma, salta el modal de notas y las notas son copiadas a la bandeja de ArmerÌa, reemplazando el flujo fÌsico de anotaciones en papel.
+
+
+- **Ajustes Adicionales (16 Sep)**: 
+  - Se configurÛ \llowOutsideClick: false\ en el modal de notas para evitar cierres accidentales por miss-clicks.
+  - Se aÒadieron explÌcitamente los botones de Aceptar (Confirmar) y Cancelar (Cerrar).
+  - Se implementÛ validaciÛn de campo obligatorio dentro de \preConfirm\: no se permite avanzar si la nota est· vacÌa, arrojando un mensaje de error visual dentro del modal de SweetAlert.
+
+
+  - Se forzÛ el color del texto de los botones del modal (\	ext-white !font-bold\) a travÈs de \customClass\ para evitar que TailwindCSS sobreescriba los colores por defecto de SweetAlert2, corrigiendo el error visual de que los botones de Aceptar/Cancelar se vieran oscuros o invisibles.
+
+
+  - Se corrigiÛ la visibilidad del botÛn en la columna de Notas de la bandeja de Reservas. El Ìcono previo (\a-note-sticky\) no estaba siendo renderizado por la versiÛn de FontAwesome en uso, lo que causaba que el botÛn tuviera dimensiones 0x0 y la celda apareciera vacÌa. Se reemplazÛ por \a-comment-dots\ y se le dio estilo estructurado (padding, fondo y borde) para asegurar su correcta renderizaciÛn e interactividad.
+
+
+  - Se cambiÛ el Ìcono del botÛn de Notas en la tabla de Reservas por un SVG nativo embebido, ya que hubo problemas de compatibilidad con la versiÛn de FontAwesome local que impedÌan la correcta renderizaciÛn de cualquier Ìcono en esa vista, mostrando un botÛn vacÌo.
+
+
+
+---
+
+## Cristian - PC CASA
+- **Fecha/D√≠a**: 16 de Septiembre de 2026
+- **Objetivo o Tarea**: Implementaci√≥n completa del flujo de Notas SIGIMAC en Preventa/Reservas y estabilizaci√≥n UI de Trazabilidad.
+- **Archivos creados o modificados**:
+    - acturacion/models.py [MODIFY]
+    - erticalidades/armeria/models.py [MODIFY]
+    - acturacion/migrations/0004_preventa_notas_sigimac.py [NEW]
+    - erticalidades/armeria/migrations/0006_reservaarma_notas.py [NEW]
+    - 	emplates/facturacion/partials/preventa_items_tabla.html [MODIFY]
+    - 	emplates/facturacion/preventa_carga.html [MODIFY]
+    - acturacion/views.py [MODIFY]
+    - 	esoreria/views_htmx.py [MODIFY]
+    - erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html [MODIFY]
+    - erticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html [MODIFY]
+    - 	emplates/facturacion/partials/clientes_typeahead.html [MODIFY]
+    - erticalidades/armeria/views.py [MODIFY]
+- **Detalle T√©cnico e implicaciones**:
+    - **Pase y Detecci√≥n de Reservas en Trazabilidad**: El bot√≥n 'Facturar' en Reservas ahora vincula mediante ?cliente_id=X utilizando .pk (soportando primary key codigo_id), cargando autom√°ticamente datos fiscales y sugiriendo en el buscador de series las armas reservadas activas del cliente.
+    - **Protecci√≥n de Concurrencia**: Verificaci√≥n de estado 'PENDIENTE' de la reserva antes de enviar a AFIP/guardar, previniendo dobles ventas accidentales entre terminales simult√°neas.
+    - **Notas SIGIMAC en Preventa**: Intercepci√≥n de 'Confirmar Preventa' si hay productos trazables para ingresar notas obligatorias dirigidas a caja/armer√≠a (llowOutsideClick: false). Las notas se guardan y se transfieren a la ReservaArma en la cobranza de se√±a/preventa.
+    - **UI y Estilos SweetAlert & SVG**: Se aplic√≥ uttonsStyling: false con clases Tailwind (customClass) para asegurar contraste y legibilidad en botones de SweetAlert. Se reemplaz√≥ el icono FontAwesome en la tabla de Reservas por un componente SVG inline para garantizar visualizaci√≥n perfecta y apertura del modal de notas.
+- **Resultado de las pruebas**: Flujo validado de extremo a extremo: Carga de Preventa trazable -> Solicitud de Nota -> Creaci√≥n de Reserva con Notas visibles en bandeja -> Facturaci√≥n directa con cliente y arma precargados.
+- **Estado actual**: Funcionalidad completada y verificada.

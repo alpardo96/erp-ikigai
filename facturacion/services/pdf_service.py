@@ -415,3 +415,93 @@ def generar_pdf_venta(venta_id):
     builder.save()
     packet.seek(0)
     return packet.read()
+
+def generar_pdf_preventa(preventa_id):
+    from facturacion.models import Preventa
+    preventa = Preventa.objects.select_related('cliente', 'empresa', 'sucursal', 'cliente__jurisdiccion').prefetch_related('items', 'items__producto').get(preventa_id=preventa_id)
+    
+    packet = io.BytesIO()
+    builder = PDFBuilder(packet)
+    
+    empresa = preventa.empresa
+    cliente = preventa.cliente
+    
+    # SKELETON (MARCOS Y LÍNEAS)
+    builder.draw_rect(15, 15, 565, 785)
+    builder.draw_line(15, 45, 580, 45)
+    builder.draw_line(15, 170, 580, 170)
+    builder.draw_rect(270, 45, 55, 45)
+    builder.draw_line(297.5, 90, 297.5, 170)
+    builder.draw_line(15, 235, 580, 235)
+    builder.draw_line(15, 255, 580, 255)
+    builder.draw_line(15, 275, 580, 275)
+    builder.draw_line(15, 700, 580, 700)
+    
+    # Header Letter
+    builder.draw_text("X", 297.5, 75, font_name="Helvetica-Bold", font_size=28, align="center")
+    
+    # Top info
+    builder.draw_text("ORIGINAL", 297.5, 38, font_name="Helvetica-Bold", align="center")
+    
+    # Left Header
+    if empresa.logo:
+        builder.draw_image(empresa.logo.path, 30, 60, 150, 70)
+    else:
+        builder.draw_text(empresa.razon_social or "EMPRESA SIN NOMBRE", 20, 85, font_name="Helvetica-Bold", font_size=16)
+        
+    builder.draw_text(empresa.razon_social or "", 20, 105, font_name="Helvetica-Bold")
+    builder.draw_text(empresa.domicilio or "", 20, 120)
+    builder.draw_text(f"{empresa.localidad or ''} - {empresa.provincia or ''}", 20, 135)
+    builder.draw_text(f"IVA: {empresa.condicion_iva or ''}", 20, 150)
+    
+    # Right Header
+    builder.draw_text("REMITO DE RESERVA", 335, 80, font_name="Helvetica-Bold", font_size=16)
+    builder.draw_text(f"Nro: {preventa.sucursal.numero|stringformat:'05d'}-{preventa.preventa_id|stringformat:'08d'}", 335, 105, font_name="Helvetica-Bold", font_size=12)
+    builder.draw_text(f"Fecha: {preventa.fecha.strftime('%d/%m/%Y')}", 335, 120)
+    builder.draw_text(f"CUIT: {empresa.cuit or ''}", 335, 135)
+    builder.draw_text(f"Ingresos Brutos: {empresa.cuit or ''}", 335, 150)
+    builder.draw_text(f"Inicio Actividades: {empresa.fecha_inicio.strftime('%d/%m/%Y') if empresa.fecha_inicio else '-'}", 335, 165)
+    
+    # Client info
+    builder.draw_text(f"Cliente: {preventa.cliente_razon_social or cliente.razon_social}", 20, 195, font_name="Helvetica-Bold")
+    builder.draw_text(f"Domicilio: {get_domicilio_completo_cliente(preventa, cliente)}", 20, 210)
+    builder.draw_text(f"CUIT: {preventa.cliente_cuit or cliente.cuit or 'Consumidor Final'}", 20, 225)
+    builder.draw_text(f"Cond. IVA: {cliente.condicion_iva or ''}", 300, 225)
+    
+    # Items header
+    builder.draw_text("Cod.", 20, 265, font_name="Helvetica-Bold")
+    builder.draw_text("Producto / Detalle", 90, 265, font_name="Helvetica-Bold")
+    builder.draw_text("Cant.", 420, 265, font_name="Helvetica-Bold", align="right")
+    builder.draw_text("Unitario", 480, 265, font_name="Helvetica-Bold", align="right")
+    builder.draw_text("Subtotal", 565, 265, font_name="Helvetica-Bold", align="right")
+    
+    # Items
+    y_pos = 290
+    for item in preventa.items.all():
+        builder.draw_text(item.producto.codigo_id, 20, y_pos)
+        detalle = item.producto.detalle[:50]
+        if item.credencial:
+            detalle += f" (Cred: {item.credencial})"
+        builder.draw_text(detalle, 90, y_pos)
+        builder.draw_text(format_arg(item.cantidad), 420, y_pos, align="right")
+        builder.draw_text(format_arg(item.precio_unitario), 480, y_pos, align="right")
+        builder.draw_text(format_arg(item.total), 565, y_pos, align="right")
+        y_pos += 15
+        
+    # Totals
+    builder.draw_text("Importe Neto:", 400, 720, font_name="Helvetica-Bold")
+    builder.draw_text(f"$ {format_arg(preventa.neto)}", 565, 720, align="right")
+    
+    if preventa.descuento_global > 0:
+        builder.draw_text("Descuentos:", 400, 735)
+        builder.draw_text(f"$ {format_arg(preventa.descuento_global)}", 565, 735, align="right")
+        
+    builder.draw_text("Total:", 400, 760, font_name="Helvetica-Bold", font_size=14)
+    builder.draw_text(f"$ {format_arg(preventa.total)}", 565, 760, font_name="Helvetica-Bold", font_size=14, align="right")
+    
+    # Legal
+    builder.draw_text("DOCUMENTO NO VÁLIDO COMO FACTURA", 297.5, 775, font_name="Helvetica-Bold", align="center")
+    
+    builder.save()
+    packet.seek(0)
+    return packet.read()

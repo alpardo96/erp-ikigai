@@ -103,7 +103,8 @@ def eliminar_producto(request, id):
     empresa_id = request.session.get('empresa_id')
     if request.method == 'DELETE' and empresa_id:
         producto = get_object_or_404(Producto, id=id, empresa_id=empresa_id)
-        producto.delete()
+        producto.activo = False
+        producto.save()
         response = HttpResponse()
         response['HX-Trigger'] = 'productosActualizados'
         return response

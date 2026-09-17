@@ -127,6 +127,11 @@ def buscar_clientes(request):
     empresa_id = _obtener_empresa_id(request)
     clientes = ClienteProveedor.objects.filter(empresa_id=empresa_id)
     
+    from empresas.models import Empresa
+    empresa = Empresa.objects.filter(id=empresa_id).first()
+    if empresa and empresa.tipo_actividad == 'ARMERIA':
+        clientes = clientes.exclude(armeria__activo=False)
+    
     if q:
         clientes = clientes.filter(Q(razon_social__icontains=q) | Q(cuit__icontains=q)).order_by('razon_social')
     elif tipo_entidad in ('1', '2'):
@@ -410,8 +415,18 @@ def eliminar_cliente(request, id):
     ELIMINAR CLIENTE/PROVEEDOR
     """
     if request.method == 'POST':
-        cliente = get_object_or_404(ClienteProveedor, codigo_id=id, empresa_id=request.session.get('empresa_id'))
-        cliente.delete()
+        empresa_id = request.session.get('empresa_id')
+        cliente = get_object_or_404(ClienteProveedor, codigo_id=id, empresa_id=empresa_id)
+        
+        from empresas.models import Empresa
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        if empresa and empresa.tipo_actividad == 'ARMERIA':
+            from verticalidades.armeria.models import ExtensionArmeria
+            armeria, created = ExtensionArmeria.objects.get_or_create(cliente=cliente)
+            armeria.activo = False
+            armeria.save()
+        else:
+            cliente.delete()
         response = HttpResponse()
         response['HX-Trigger'] = json.dumps({'reloadClientes': True})
         return response
@@ -1393,7 +1408,8 @@ def venta_cliente_detalle(request, id):
     Devuelve los detalles de un cliente para ser editados en la Carga de Ventas.
     """
     cliente = get_object_or_404(ClienteProveedor, pk=id)
-    from .models import Jurisdiccion, ExtensionArmeria
+    from .models import Jurisdiccion
+    from verticalidades.armeria.models import ExtensionArmeria
     from empresas.models import Empresa
     from django.utils import timezone
     jurisdicciones = Jurisdiccion.objects.all()

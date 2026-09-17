@@ -11,7 +11,7 @@ from usuarios.views_htmx import usuario_modal, buscar_usuarios, eliminar_usuario
 from facturacion.views import ClientesProveedoresIndexView, ComprasIndexView, VentasIndexView, ComprasCargaView, VentasCargaView, PreventaCargaView, AutorizacionesIndexView, ComprasListView, CompraBajaView, CompraDetalleModalView, VentasListView, VentaAnularModalView, VentaEmitirNotaCreditoView, VentaPrevisualizarModalView, VentaSincronizarClienteView
 from facturacion.views_procesamiento import CargaCompraAutomaticaView, ProcesarRecorteOCRView
 from facturacion.views_ia import CargaCompraIAView, ProcesarFacturaIAView
-from facturacion.views_impresion import imprimir_factura
+from facturacion.views_impresion import imprimir_factura, imprimir_preventa
 from facturacion.views_reportes import (
     ReporteVentasProductoView, buscar_reporte_ventas_producto,
     exportar_ventas_producto_csv, exportar_ventas_producto_excel,
@@ -240,6 +240,7 @@ urlpatterns = [
     path('facturas-pendientes/exportar-pdf/', facturas_pendientes_pdf, name='facturas_pendientes_pdf'),
 
     path('facturacion/imprimir/<int:venta_id>/', imprimir_factura, name='imprimir_factura'),
+    path('facturacion/imprimir-preventa/<int:preventa_id>/', imprimir_preventa, name='imprimir_preventa'),
 
     path('contable/', include('contable.urls')),
     path('tesoreria/', include('tesoreria.urls')),

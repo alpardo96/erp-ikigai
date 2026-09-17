@@ -133,6 +133,7 @@ class Producto(AuditModel):
     ]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    activo = models.BooleanField(default=True, verbose_name="Activo", db_index=True)
     
     # Campos para Carga
     cod_prov = models.CharField(max_length=50, null=True, blank=True, verbose_name="Cód. Prov", db_index=True)

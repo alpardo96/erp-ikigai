@@ -416,20 +416,47 @@ class PreventaCargaView(LoginRequiredMixin, View):
                 es_armeria = Empresa.objects.filter(id=empresa_id, tipo_actividad__iexact="ARMERIA").exists()
                 if es_armeria:
                     cliente_sel = form.cleaned_data.get('cliente')
+                    
+                    tiene_municion = False
+                    
                     if cliente_sel and (cliente_sel.tipo_documento == '99' or cliente_sel.codigo_id == 1):
                         tiene_creden = False
                         for item_t in items_temp:
                             p_obj = Producto.objects.filter(id=item_t['producto_id']).first()
                             if p_obj and p_obj.creden:
                                 tiene_creden = True
-                                break
+                            if p_obj and (
+                                (p_obj.rubro and 'MUNICION' in p_obj.rubro.detalle.upper()) or 
+                                (p_obj.familia and 'MUNICION' in p_obj.familia.detalle.upper()) or 
+                                'MUNICION' in p_obj.detalle.upper()
+                            ):
+                                tiene_municion = True
+                                
                         if tiene_creden:
                             messages.error(request, "Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.")
+                            return redirect('preventas_carga')
+                    else:
+                        for item_t in items_temp:
+                            p_obj = Producto.objects.filter(id=item_t['producto_id']).first()
+                            if p_obj and (
+                                (p_obj.rubro and 'MUNICION' in p_obj.rubro.detalle.upper()) or 
+                                (p_obj.familia and 'MUNICION' in p_obj.familia.detalle.upper()) or 
+                                'MUNICION' in p_obj.detalle.upper()
+                            ):
+                                tiene_municion = True
+                                break
+
+                    if tiene_municion and cliente_sel:
+                        from facturacion.helpers import validar_clu_cliente_armeria
+                        es_valido, msj_err = validar_clu_cliente_armeria(cliente_sel, empresa_id)
+                        if not es_valido:
+                            messages.error(request, f"Error (Munición): {msj_err}")
                             return redirect('preventas_carga')
 
                 # Nota: En Preventas no opera la restricción de CLU vigente ya que aquí
                 # no se factura ni entrega el arma, sólo se genera la preventa/reserva (la traba
-                # opera de forma estricta en Ventas con Trazabilidad al facturar).
+                # opera de forma estricta en Ventas con Trazabilidad al facturar). Sin embargo,
+                # para Munición sí se bloquea desde la preventa según las reglas de Armería.
 
                 with transaction.atomic():
                     preventa = form.save(commit=False)
@@ -449,6 +476,12 @@ class PreventaCargaView(LoginRequiredMixin, View):
                     # Requiere autorización?
                     requiere_autorizacion = any(item.get('requiere_autorizacion', False) for item in items_temp)
                     preventa.estado = 1 if requiere_autorizacion else 2 # 1=Pendiente, 2=Autorizada
+                    
+                    # Notas SIGIMAC
+                    notas_sigimac = request.POST.get('notas_sigimac', '').strip()
+                    if notas_sigimac:
+                        preventa.notas_sigimac = notas_sigimac
+                        
                     preventa.save()
                     
                     for item in items_temp:

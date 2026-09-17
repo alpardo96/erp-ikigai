@@ -12,7 +12,7 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
     Optimiza la consulta precargando relaciones y calculando el stock global en la misma query.
     Retorna: (queryset_filtrado, tiene_orden_relevancia)
     """
-    empresa_filtros = Q(empresa_id=empresa_id)
+    empresa_filtros = Q(empresa_id=empresa_id, activo=True)
     if excluir_subprod:
         empresa_filtros &= Q(subprod=False)
     if proveedor_id:

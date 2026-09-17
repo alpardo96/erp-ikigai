@@ -46,10 +46,11 @@
                             Social</label>
                         <div class="relative flex gap-1" x-data="{ open: false }">
                             <!-- Input oculto para el ID real que va al form -->
-                            <input type="hidden" id="id_cliente" name="cliente" required>
+                            <input type="hidden" id="id_cliente" name="cliente" value="{% if cliente_seleccionado %}{{ cliente_seleccionado.pk }}{% else %}{{ form.cliente.value|default:'' }}{% endif %}" required>
 
                             <!-- Input visual -->
                             <input type="text" id="cliente_nombre_display" name="q"
+                                value="{% if cliente_seleccionado %}{{ cliente_seleccionado.razon_social }}{% endif %}"
                                 class="w-full h-7 px-2 bg-slate-50 border border-slate-200 rounded text-[11px] font-black text-slate-900 outline-none placeholder:text-slate-400"
                                 placeholder="Buscar Cliente..."
                                 hx-get="{% url 'typeahead_clientes' %}" 
@@ -151,6 +152,7 @@
                             class="w-full h-10 pl-4 pr-10 bg-white border-2 border-blue-200 rounded text-sm font-black text-blue-700 outline-none focus:border-blue-600 focus:ring focus:ring-blue-100 uppercase shadow-sm"
                             {% if empresa_actual.tipo_actividad == "ARMERIA" %} placeholder="Ingrese serie / CUIM y presione Enter..." {% else %} placeholder="Ingrese serie / Dominio y presione Enter..." {% endif %}
                             oninput="buscarSerieTypeahead(this.value)"
+                            onfocus="buscarSerieTypeahead(this.value)"
                             onkeydown="if(event.key === 'Enter') { 
                                 document.getElementById('serie-typeahead-results').innerHTML = '';
                                 htmx.trigger(this, 'serie-escaneada'); 
@@ -495,12 +497,13 @@
     let _timerSerie = null;
     function buscarSerieTypeahead(val) {
         clearTimeout(_timerSerie);
-        if (!val || val.trim().length < 1) {
+        const clienteId = document.getElementById('id_cliente').value;
+        if ((!val || val.trim().length < 1) && !clienteId) {
             document.getElementById('serie-typeahead-results').innerHTML = '';
             return;
         }
         _timerSerie = setTimeout(() => {
-            fetch("{% url 'typeahead_series_trazabilidad' %}?serie_escaneada=" + encodeURIComponent(val.trim()))
+            fetch("{% url 'typeahead_series_trazabilidad' %}?serie_escaneada=" + encodeURIComponent(val ? val.trim() : '') + "&cliente_id=" + encodeURIComponent(clienteId))
                 .then(r => r.text())
                 .then(html => {
                     document.getElementById('serie-typeahead-results').innerHTML = html;
@@ -518,7 +521,7 @@
     }
 
     // Escuchar selección de cliente para alertar reservas SIGIMAC pendientes
-    window.addEventListener('clienteVentaSeleccionado', function(e) {
+    document.body.addEventListener('clienteVentaSeleccionado', function(e) {
         if (e.detail && e.detail.id) {
             fetch("{% url 'armeria_verificar_reserva_cliente' %}?cliente_id=" + e.detail.id)
                 .then(r => r.text())
@@ -528,6 +531,19 @@
                 });
         }
     });
+
+    {% if cliente_seleccionado %}
+    document.addEventListener("DOMContentLoaded", function() {
+        document.body.dispatchEvent(new CustomEvent('clienteVentaSeleccionado', { 
+            detail: { 
+                id: '{{ cliente_seleccionado.pk }}', 
+                razon_social: '{{ cliente_seleccionado.razon_social|escapejs }}',
+                condicion_iva: '{{ cliente_seleccionado.condicion_iva|escapejs }}'
+            },
+            bubbles: true
+        }));
+    });
+    {% endif %}
 </script>
 {% endblock %}
 {% endblock %}
