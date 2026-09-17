@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mapeos y Parámetros de Granos ARCA | ERP Ikigai{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full space-y-6">
+    <!-- Migas de pan y cabecera -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+            <nav class="flex text-xs text-slate-500 mb-1 space-x-2">
+                <span class="text-slate-800 font-semibold">Agrícola</span>
+                <span>/</span>
+                <span class="text-slate-800 font-semibold">Granos</span>
+                <span>/</span>
+                <span class="text-slate-800 font-semibold">Configuración de Mapeos</span>
+            </nav>
+            <h1 class="text-2xl font-bold text-slate-900">Mapeos de Liquidaciones de Granos ARCA</h1>
+            <p class="text-sm text-slate-500">
+                Parametrización de Cultivos ARCA (código -> producto + cuenta ventas) y reglas de deducciones/gastos comerciales.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'agricola_granos_importar_lpg' %}" style="background-color: #059669 !important; color: #ffffff !important;" class="px-4 py-2 text-sm font-semibold rounded-xl shadow transition-all flex items-center gap-2 hover:opacity-90">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+                <span>Importar Liquidaciones PDF</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Mensajes de feedback -->
+    {% if messages %}
+    <div class="space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-xl text-sm font-medium {% if message.tags == 'success' %}bg-emerald-50 text-emerald-800 border border-emerald-200{% else %}bg-rose-50 text-rose-800 border border-rose-200{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Card Informativo de Parámetros Contables del Sistema -->
+    <div class="bg-slate-50 rounded-2xl border border-slate-200 p-5">
+        <div class="flex items-start gap-4">
+            <div class="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl mt-0.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="space-y-1 text-xs text-slate-600">
+                <h4 class="font-bold text-slate-800 text-sm">Cuentas Maestras del Sistema (Parámetros Contables)</h4>
+                <p>Las siguientes cuentas se aplican automáticamente en la contabilización de liquidaciones:</p>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-2 pt-2">
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span class="font-semibold text-slate-500 block">IVA Débito Fiscal (Venta):</span>
+                        <span class="font-bold text-slate-800">{% if params_contables.cta_iva_debito %}{{ params_contables.cta_iva_debito.jerarquia }} - {{ params_contables.cta_iva_debito.cuenta }}{% else %}<span class="text-rose-600 font-bold">No configurada</span>{% endif %}</span>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span class="font-semibold text-slate-500 block">IVA Crédito Fiscal (Gastos):</span>
+                        <span class="font-bold text-slate-800">{% if params_contables.cta_iva_credito %}{{ params_contables.cta_iva_credito.jerarquia }} - {{ params_contables.cta_iva_credito.cuenta }}{% else %}<span class="text-rose-600 font-bold">No configurada</span>{% endif %}</span>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span class="font-semibold text-slate-500 block">Retención Sufrida IVA (RG 4310):</span>
+                        <span class="font-bold text-slate-800">{% if params_contables.cta_ret_iva %}{{ params_contables.cta_ret_iva.jerarquia }} - {{ params_contables.cta_ret_iva.cuenta }}{% else %}<span class="text-rose-600 font-bold">No configurada</span>{% endif %}</span>
+                    </div>
+                    <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                        <span class="font-semibold text-slate-500 block">Retención Sufrida Ganancias:</span>
+                        <span class="font-bold text-slate-800">{% if params_contables.cta_ret_ganancias %}{{ params_contables.cta_ret_ganancias.jerarquia }} - {{ params_contables.cta_ret_ganancias.cuenta }}{% else %}<span class="text-rose-600 font-bold">No configurada</span>{% endif %}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 1: MAPEO DE GRANOS ARCA -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+                <h3 class="text-lg font-bold text-slate-900">1. Mapeo de Cultivos ARCA</h3>
+                <p class="text-xs text-slate-500">Homologación entre el código oficial de grano ARCA, el producto en el ERP y la cuenta contable de ventas.</p>
+            </div>
+            <button type="button" onclick="abrirModalGrano()" style="background-color: #059669 !important; color: #ffffff !important;" class="px-4 py-2 text-xs font-bold rounded-xl shadow flex items-center gap-2 cursor-pointer hover:opacity-90">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>Nuevo Mapeo de Grano</span>
+            </button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+                <thead class="bg-slate-50 text-slate-700 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
+                    <tr>
+                        <th class="py-3 px-4">Cód. ARCA</th>
+                        <th class="py-3 px-4">Descripción ARCA</th>
+                        <th class="py-3 px-4">Producto ERP</th>
+                        <th class="py-3 px-4">Cuenta Contable de Ventas</th>
+                        <th class="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    {% for gm in granos_mapeos %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-bold text-emerald-800">
+                            <span class="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs">{{ gm.codigo_arca }}</span>
+                        </td>
+                        <td class="py-3.5 px-4 font-bold text-slate-900">{{ gm.descripcion_arca }}</td>
+                        <td class="py-3.5 px-4 text-slate-700">[{{ gm.producto.id }}] {{ gm.producto.detalle }}</td>
+                        <td class="py-3.5 px-4 text-slate-700 font-mono text-xs">{{ gm.cta_ventas.jerarquia }} - {{ gm.cta_ventas.cuenta }}</td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button type="button" onclick="editarGrano('{{ gm.id }}', '{{ gm.codigo_arca }}', '{{ gm.descripcion_arca }}', '{{ gm.producto_id }}', '{{ gm.cta_ventas_id }}')" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition-colors" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                </button>
+                                <form method="POST" onsubmit="return confirm('¿Confirma eliminar este mapeo de grano?');" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="eliminar_grano">
+                                    <input type="hidden" name="grano_id" value="{{ gm.id }}">
+                                    <button type="submit" class="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors" title="Eliminar">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-400 text-xs">
+                            No hay granos mapeados aún. Presiona "Nuevo Mapeo de Grano" para dar de alta (ej. 19 - Maíz, 23 - Soja).
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 2: MAPEO DE CONCEPTOS DE GASTOS / DEDUCCIONES -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+                <h3 class="text-lg font-bold text-slate-900">2. Mapeo de Conceptos de Gastos / Deducciones</h3>
+                <p class="text-xs text-slate-500">Reglas de imputación contable por patrón de texto (Flete, Comisión, Sellado, etc.) con auto-aprendizaje.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <form method="POST" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="precargar_semilla">
+                    <button type="submit" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors">
+                        Precargar Conceptos Estándar
+                    </button>
+                </form>
+                <button type="button" onclick="abrirModalGasto()" style="background-color: #059669 !important; color: #ffffff !important;" class="px-4 py-2 text-xs font-bold rounded-xl shadow flex items-center gap-2 cursor-pointer hover:opacity-90">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <span>Nueva Regla de Gasto</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+                <thead class="bg-slate-50 text-slate-700 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
+                    <tr>
+                        <th class="py-3 px-4">Patrón de Búsqueda</th>
+                        <th class="py-3 px-4">Descripción Legible</th>
+                        <th class="py-3 px-4">Cuenta Contable de Gasto</th>
+                        <th class="py-3 px-4">Alícuota Sugerida</th>
+                        <th class="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    {% for gm in gastos_mapeos %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-mono font-bold text-indigo-700">
+                            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs">{{ gm.patron }}</span>
+                        </td>
+                        <td class="py-3.5 px-4 font-bold text-slate-900">{{ gm.descripcion }}</td>
+                        <td class="py-3.5 px-4 text-slate-700 font-mono text-xs">{{ gm.cta_gasto.jerarquia }} - {{ gm.cta_gasto.cuenta }}</td>
+                        <td class="py-3.5 px-4 text-slate-700">{{ gm.alicuota_sugerida }}%</td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button type="button" onclick="editarGasto('{{ gm.id }}', '{{ gm.patron }}', '{{ gm.descripcion }}', '{{ gm.cta_gasto_id }}', '{{ gm.alicuota_sugerida }}')" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition-colors" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                </button>
+                                <form method="POST" onsubmit="return confirm('¿Confirma eliminar esta regla de gasto?');" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="eliminar_gasto">
+                                    <input type="hidden" name="gasto_id" value="{{ gm.id }}">
+                                    <button type="submit" class="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-colors" title="Eliminar">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-400 text-xs">
+                            No hay reglas de gastos configuradas. Presiona "Precargar Conceptos Estándar" o crea una nueva regla.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 1: ALTA / EDICIÓN DE GRANO -->
+<div id="modalGrano" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 id="modalGranoTitulo" class="text-lg font-bold text-slate-900">Mapeo de Cultivo ARCA</h3>
+            <button type="button" onclick="cerrarModalGrano()" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="guardar_grano">
+            <input type="hidden" id="grano_id" name="grano_id" value="">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Cód. Grano ARCA</label>
+                    <input type="number" id="codigo_arca" name="codigo_arca" required placeholder="Ej: 19 o 23"
+                           class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-slate-800 focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Descripción ARCA</label>
+                    <input type="text" id="descripcion_arca" name="descripcion_arca" required placeholder="Ej: MAIZ, SOJA"
+                           class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-slate-800 uppercase focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Producto ERP Correspondiente</label>
+                <select id="producto_id" name="producto_id" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-semibold text-slate-800 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">-- Seleccione un Producto --</option>
+                    {% for p in productos %}
+                    <option value="{{ p.id }}">{{ p.detalle }} (ID: {{ p.id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Cuenta Contable de Ventas</label>
+                <select id="cta_ventas_id" name="cta_ventas_id" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-semibold text-slate-800 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">-- Seleccione Cuenta de Ventas --</option>
+                    {% for c in cuentas %}
+                    <option value="{{ c.id }}">{{ c.jerarquia }} - {{ c.cuenta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onclick="cerrarModalGrano()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm">Cancelar</button>
+                <button type="submit" style="background-color: #059669 !important; color: #ffffff !important;" class="px-6 py-2 text-sm font-bold rounded-xl shadow hover:opacity-90">Guardar Mapeo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL 2: ALTA / EDICIÓN DE GASTO -->
+<div id="modalGasto" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 id="modalGastoTitulo" class="text-lg font-bold text-slate-900">Regla de Gasto / Deducción</h3>
+            <button type="button" onclick="cerrarModalGasto()" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="guardar_gasto">
+            <input type="hidden" id="gasto_id" name="gasto_id" value="">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Patrón de Búsqueda (Palabra Clave)</label>
+                    <input type="text" id="gasto_patron" name="patron" required placeholder="Ej: FLETE, COMISION, SELLADO"
+                           class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-indigo-700 uppercase focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Alícuota IVA Sugerida (%)</label>
+                    <input type="number" step="0.01" id="gasto_alicuota" name="alicuota_sugerida" value="10.50" required
+                           class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-bold text-slate-800 focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Descripción Legible</label>
+                <input type="text" id="gasto_descripcion" name="descripcion" required placeholder="Ej: Fletes de Granos, Comisión Acopio"
+                       class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-semibold text-slate-800 focus:ring-emerald-500 focus:border-emerald-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Cuenta Contable de Gasto</label>
+                <select id="gasto_cta_id" name="cta_gasto_id" required class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm font-semibold text-slate-800 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">-- Seleccione Cuenta de Gasto --</option>
+                    {% for c in cuentas %}
+                    <option value="{{ c.id }}">{{ c.jerarquia }} - {{ c.cuenta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onclick="cerrarModalGasto()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm">Cancelar</button>
+                <button type="submit" style="background-color: #059669 !important; color: #ffffff !important;" class="px-6 py-2 text-sm font-bold rounded-xl shadow hover:opacity-90">Guardar Regla</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function abrirModalGrano() {
+    document.getElementById('modalGranoTitulo').innerText = 'Nuevo Mapeo de Grano ARCA';
+    document.getElementById('grano_id').value = '';
+    document.getElementById('codigo_arca').value = '';
+    document.getElementById('descripcion_arca').value = '';
+    document.getElementById('producto_id').value = '';
+    document.getElementById('cta_ventas_id').value = '';
+    document.getElementById('modalGrano').classList.remove('hidden');
+}
+
+function editarGrano(id, cod, desc, prodId, ctaId) {
+    document.getElementById('modalGranoTitulo').innerText = 'Editar Mapeo de Grano ARCA';
+    document.getElementById('grano_id').value = id;
+    document.getElementById('codigo_arca').value = cod;
+    document.getElementById('descripcion_arca').value = desc;
+    document.getElementById('producto_id').value = prodId;
+    document.getElementById('cta_ventas_id').value = ctaId;
+    document.getElementById('modalGrano').classList.remove('hidden');
+}
+
+function cerrarModalGrano() {
+    document.getElementById('modalGrano').classList.add('hidden');
+}
+
+function abrirModalGasto() {
+    document.getElementById('modalGastoTitulo').innerText = 'Nueva Regla de Gasto';
+    document.getElementById('gasto_id').value = '';
+    document.getElementById('gasto_patron').value = '';
+    document.getElementById('gasto_descripcion').value = '';
+    document.getElementById('gasto_cta_id').value = '';
+    document.getElementById('gasto_alicuota').value = '10.50';
+    document.getElementById('modalGasto').classList.remove('hidden');
+}
+
+function editarGasto(id, patron, desc, ctaId, alic) {
+    document.getElementById('modalGastoTitulo').innerText = 'Editar Regla de Gasto';
+    document.getElementById('gasto_id').value = id;
+    document.getElementById('gasto_patron').value = patron;
+    document.getElementById('gasto_descripcion').value = desc;
+    document.getElementById('gasto_cta_id').value = ctaId;
+    document.getElementById('gasto_alicuota').value = alic;
+    document.getElementById('modalGasto').classList.remove('hidden');
+}
+
+function cerrarModalGasto() {
+    document.getElementById('modalGasto').classList.add('hidden');
+}
+</script>
+{% endblock %}

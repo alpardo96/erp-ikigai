@@ -1,0 +1,453 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Importador de Liquidaciones de Granos PDF | ERP Ikigai{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full space-y-6">
+    <!-- Migas de pan y cabecera -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-4">
+        <div>
+            <nav class="flex text-xs text-slate-500 mb-1 space-x-2">
+                <span class="text-slate-800 font-semibold">Agrícola</span>
+                <span>/</span>
+                <span class="text-slate-800 font-semibold">Granos</span>
+                <span>/</span>
+                <span class="text-slate-800 font-semibold">Importador de Liquidaciones PDF</span>
+            </nav>
+            <h1 class="text-2xl font-bold text-slate-900">Importación de Liquidaciones Primarias de Granos</h1>
+            <p class="text-sm text-slate-500">
+                Lectura automatizada de PDFs oficiales de ARCA (LPG y Ajustes), validación de cuentas y contabilización integral unificada.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'agricola_granos_mapeos' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <span>Configuración de Mapeos</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- ZONA 1: DRAG & DROP DE ARCHIVOS PDF -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+        <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
+            <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-slate-900">Cargar Archivos PDF de Liquidaciones</h3>
+                <p class="text-xs text-slate-500">Arrastra uno o varios comprobantes PDF emitidos por ARCA/AFIP o presiona para seleccionar.</p>
+            </div>
+        </div>
+
+        <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/20 rounded-2xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center space-y-3">
+            <div class="p-4 bg-white shadow-sm rounded-full text-slate-400 group-hover:text-emerald-600">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <p class="text-sm font-bold text-slate-800">Arrastra aquí tus archivos PDF de liquidaciones de granos</p>
+                <p class="text-xs text-slate-500">Soporta liquidaciones primarias estándar y notas de ajuste débito/crédito.</p>
+            </div>
+            <input type="file" id="pdfFileInput" multiple accept=".pdf" class="hidden">
+            <button type="button" onclick="document.getElementById('pdfFileInput').click()" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold shadow-sm">
+                Seleccionar archivos desde el disco
+            </button>
+        </div>
+
+        <!-- Barra de progreso / Spinner -->
+        <div id="loadingBox" class="hidden p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+            <div class="animate-spin rounded-full h-5 w-5 border-2 border-emerald-600 border-t-transparent"></div>
+            <span class="text-xs font-semibold text-slate-700" id="loadingText">Leyendo y analizando comprobantes PDF...</span>
+        </div>
+    </div>
+
+    <!-- ZONA 2: PREVISUALIZACIÓN Y RESOLUCIÓN INTERACTIVA -->
+    <div id="previewContainer" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <span class="p-2 bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs" id="contadorLiquidaciones">0 Comprobantes</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Previsualización y Validación de Liquidaciones</h3>
+                        <p class="text-xs text-slate-500">Verifica los datos detectados, resuelve conceptos nuevos y confirma la importación contable.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="limpiarTodo()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors">
+                        Limpiar Lote
+                    </button>
+                    <button type="button" id="btnConfirmarImportacion" onclick="confirmarImportacion()" style="background-color: #059669 !important; color: #ffffff !important;" class="px-6 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 cursor-pointer hover:opacity-90">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span>Confirmar e Importar al ERP</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de Liquidaciones Procesadas -->
+            <div id="liquidacionesList" class="space-y-4">
+                <!-- Se insertarán dinámicamente las tarjetas de cada liquidación -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE RESULTADOS DE IMPORTACIÓN -->
+<div id="modalResultados" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl p-6 space-y-5">
+        <div class="flex items-center gap-3 pb-3 border-b border-slate-100">
+            <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-slate-900">Resultado de la Importación Contable</h3>
+                <p class="text-xs text-slate-500">Comprobantes y asientos generados exitosamente.</p>
+            </div>
+        </div>
+
+        <div id="resultadosDetalle" class="space-y-3 max-h-80 overflow-y-auto">
+            <!-- Detalle de asientos creados -->
+        </div>
+
+        <div class="flex justify-end pt-4 border-t border-slate-100">
+            <button type="button" onclick="cerrarModalResultados()" style="background-color: #059669 !important; color: #ffffff !important;" class="px-6 py-2 rounded-xl text-sm font-bold shadow hover:opacity-90">
+                Aceptar y Finalizar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let globalMatchedData = [];
+let globalCuentas = [];
+let globalProductos = [];
+
+// Drag and drop listeners
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('pdfFileInput');
+
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-emerald-500', 'bg-emerald-50/30');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/30');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/30');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        procesarArchivos(e.dataTransfer.files);
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+        procesarArchivos(e.target.files);
+    }
+});
+
+function procesarArchivos(files) {
+    const formData = new FormData();
+    formData.append('action', 'preview_ajax');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    for (let i = 0; i < files.length; i++) {
+        formData.append('archivos_pdf', files[i]);
+    }
+
+    document.getElementById('loadingBox').classList.remove('hidden');
+    document.getElementById('loadingText').innerText = `Analizando ${files.length} archivo(s) PDF de liquidación...`;
+
+    fetch("{% url 'agricola_granos_importar_lpg' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        document.getElementById('loadingBox').classList.add('hidden');
+        if (data.success) {
+            globalMatchedData = data.liquidaciones;
+            globalCuentas = data.cuentas;
+            globalProductos = data.productos;
+            renderizarPrevisualizacion();
+        } else {
+            alert("Error al procesar archivos: " + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(err => {
+        document.getElementById('loadingBox').classList.add('hidden');
+        alert("Error de conexión al procesar los PDFs: " + err);
+    });
+}
+
+function renderizarPrevisualizacion() {
+    const container = document.getElementById('previewContainer');
+    const list = document.getElementById('liquidacionesList');
+    container.classList.remove('hidden');
+    list.innerHTML = '';
+
+    document.getElementById('contadorLiquidaciones').innerText = `${globalMatchedData.length} Comprobante(s)`;
+
+    globalMatchedData.forEach((item, index) => {
+        const p = item.parsed;
+        const isDup = item.es_duplicado;
+        const isReady = item.estado === 'LISTO';
+
+        let badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        let badgeText = 'Listo para Importar';
+        if (isDup) {
+            badgeClass = 'bg-rose-100 text-rose-800 border-rose-200';
+            badgeText = 'DUPLICADO';
+        } else if (!isReady) {
+            badgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
+            badgeText = 'Requiere Configuración';
+        }
+
+        const card = document.createElement('div');
+        card.className = `border rounded-2xl p-5 space-y-4 transition-all ${isDup ? 'bg-rose-50/30 border-rose-200' : (isReady ? 'bg-white border-slate-200 hover:border-emerald-300' : 'bg-amber-50/20 border-amber-200')}`;
+
+        card.innerHTML = `
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="check_${index}" ${isDup ? 'disabled' : (isReady ? 'checked' : '')} class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500">
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">${p.tipo_operacion || 'LIQUIDACIÓN DE GRANOS'}</span>
+                        <h4 class="font-bold text-slate-900 text-base">COE: ${p.coe} ${p.es_ajuste ? `<span class="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-md ml-2 font-semibold">AJUSTE ${p.tipo_ajuste || ''} (Orig: ${p.coe_original})</span>` : ''}</h4>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-semibold text-slate-600">Fecha: <b>${p.fecha || 'Sin fecha'}</b></span>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold border ${badgeClass}">${badgeText}</span>
+                </div>
+            </div>
+
+            <!-- Datos principales de Sujetos y Grano -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                    <span class="font-bold text-slate-700 block uppercase tracking-wider">Comprador / Acopiador:</span>
+                    <p class="font-bold text-slate-900">${p.comprador.razon_social || 'Desconocido'}</p>
+                    <p class="text-slate-500">CUIT: ${p.comprador.cuit || 'Sin CUIT'}</p>
+                    ${item.requiere_crear_comprador ? `
+                        <div class="pt-1">
+                            <span class="text-amber-700 font-semibold block">⚠️ Comprador nuevo. Asignar Cta. Patrimonial:</span>
+                            <select id="cta_pat_${index}" class="w-full mt-1 bg-white border border-amber-300 text-xs rounded-lg p-1.5 font-medium">
+                                <option value="">-- Seleccionar Cta. Patrimonial --</option>
+                                ${globalCuentas.map(c => `<option value="${c.id}">${c.jerarquia} - ${c.cuenta}</option>`).join('')}
+                            </select>
+                        </div>
+                    ` : `<span class="text-emerald-700 font-semibold">✓ Cliente registrado (Cta: ${item.comprador_match ? item.comprador_match.cta_pat : ''})</span>`}
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                    <span class="font-bold text-slate-700 block uppercase tracking-wider">Cultivo Liquidado:</span>
+                    <p class="font-bold text-slate-900">[${p.grano.codigo_arca}] ${p.grano.descripcion_arca}</p>
+                    <p class="text-slate-600">${p.grano.kilos} Kg @ $${p.grano.precio_unitario}/Kg</p>
+                    <p class="font-bold text-emerald-800">Neto: $${p.grano.subtotal} | IVA 10.5%: $${p.grano.importe_iva}</p>
+                    ${item.requiere_mapeo_grano ? `
+                        <div class="pt-1 space-y-1">
+                            <span class="text-amber-700 font-semibold block">⚠️ Mapear Cultivo:</span>
+                            <select id="prod_grano_${index}" class="w-full bg-white border border-amber-300 text-xs rounded-lg p-1">
+                                <option value="">-- Seleccionar Producto ERP --</option>
+                                ${globalProductos.map(pr => `<option value="${pr.id}">${pr.detalle}</option>`).join('')}
+                            </select>
+                            <select id="cta_grano_${index}" class="w-full bg-white border border-amber-300 text-xs rounded-lg p-1">
+                                <option value="">-- Cuenta de Ventas --</option>
+                                ${globalCuentas.map(c => `<option value="${c.id}">${c.jerarquia} - ${c.cuenta}</option>`).join('')}
+                            </select>
+                        </div>
+                    ` : `<span class="text-emerald-700 font-semibold">✓ ${item.grano_match ? item.grano_match.producto_detalle : ''}</span>`}
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                    <span class="font-bold text-slate-700 block uppercase tracking-wider">Totales de Liquidación:</span>
+                    <div class="flex justify-between"><span class="text-slate-500">Total Venta c/IVA:</span> <b class="text-slate-900">$${p.totales.total_operacion || p.grano.total_operacion}</b></div>
+                    <div class="flex justify-between"><span class="text-slate-500">(-) Deducciones Gastos:</span> <b class="text-rose-700">$${p.totales.total_deducciones || '0.00'}</b></div>
+                    <div class="flex justify-between"><span class="text-slate-500">(-) Retenciones Sufridas:</span> <b class="text-rose-700">$${p.totales.total_retenciones_afip || '0.00'}</b></div>
+                    <div class="flex justify-between pt-1 border-t border-slate-200"><span class="font-bold text-slate-800">(=) Neto a Pagar:</span> <b class="text-emerald-800 font-extrabold">$${p.totales.importe_neto_pagar || '0.00'}</b></div>
+                </div>
+            </div>
+
+            <!-- Detalle de Deducciones / Gastos si existen -->
+            ${item.deducciones_matched && item.deducciones_matched.length > 0 ? `
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-3 py-2 border-b border-slate-200 font-bold text-xs text-slate-700 uppercase">
+                        Deducciones Comerciales / Gastos (${item.deducciones_matched.length})
+                    </div>
+                    <div class="divide-y divide-slate-100 text-xs">
+                        ${item.deducciones_matched.map((d, dIdx) => `
+                            <div class="p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-2 hover:bg-slate-50/50">
+                                <div>
+                                    <span class="font-bold text-slate-900">${d.concepto_original}</span>
+                                    <span class="text-slate-500 ml-2">Base: $${d.base_calculo} | IVA ${d.alicuota_iva}% ($${d.importe_iva})</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-800 mr-2">$${d.total}</span>
+                                    ${d.es_nuevo ? `
+                                        <div class="flex items-center gap-2 bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+                                            <span class="text-amber-800 font-bold text-[11px]">Nuevo:</span>
+                                            <select id="cta_ded_${index}_${dIdx}" class="bg-white border border-amber-300 text-xs rounded-md p-1 font-semibold">
+                                                <option value="">-- Imputar a Cuenta Gasto --</option>
+                                                ${globalCuentas.map(c => `<option value="${c.id}">${c.jerarquia} - ${c.cuenta}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                    ` : `<span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-mono">${d.cta_gasto_nombre}</span>`}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Mensajes de advertencia si existen -->
+            ${item.mensajes_advertencia && item.mensajes_advertencia.length > 0 ? `
+                <div class="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                    ${item.mensajes_advertencia.map(m => `<div>⚠️ ${m}</div>`).join('')}
+                </div>
+            ` : ''}
+        `;
+
+        list.appendChild(card);
+    });
+}
+
+function confirmarImportacion() {
+    const itemsConfirmados = [];
+
+    globalMatchedData.forEach((item, index) => {
+        const checkbox = document.getElementById(`check_${index}`);
+        if (checkbox && checkbox.checked && !checkbox.disabled) {
+            const overrides = {};
+
+            // Comprador cta_pat si fue seleccionada
+            const ctaPatSelect = document.getElementById(`cta_pat_${index}`);
+            if (ctaPatSelect && ctaPatSelect.value) {
+                overrides.cta_pat_cliente_id = parseInt(ctaPatSelect.value);
+            }
+
+            // Grano producto y cta_ventas si fueron seleccionados
+            const prodGranoSelect = document.getElementById(`prod_grano_${index}`);
+            const ctaGranoSelect = document.getElementById(`cta_grano_${index}`);
+            if (prodGranoSelect && prodGranoSelect.value) {
+                overrides.grano_producto_id = parseInt(prodGranoSelect.value);
+            }
+            if (ctaGranoSelect && ctaGranoSelect.value) {
+                overrides.grano_cta_ventas_id = parseInt(ctaGranoSelect.value);
+            }
+
+            // Gastos nuevos asignados (Auto-aprendizaje)
+            const nuevosGastosMapeo = [];
+            if (item.deducciones_matched) {
+                item.deducciones_matched.forEach((d, dIdx) => {
+                    const ctaDedSelect = document.getElementById(`cta_ded_${index}_${dIdx}`);
+                    if (ctaDedSelect && ctaDedSelect.value) {
+                        d.cta_gasto_id = parseInt(ctaDedSelect.value);
+                        // Extraer primera palabra relevante como patrón
+                        const patronSugerido = d.concepto_original.split(':')[0].trim().toUpperCase();
+                        nuevosGastosMapeo.push({
+                            patron: patronSugerido,
+                            descripcion: d.concepto_original,
+                            cta_gasto_id: parseInt(ctaDedSelect.value),
+                            alicuota_sugerida: d.alicuota_iva
+                        });
+                    }
+                });
+            }
+            if (nuevosGastosMapeo.length > 0) {
+                overrides.nuevos_gastos_mapeo = nuevosGastosMapeo;
+            }
+
+            itemsConfirmados.push({
+                matched_data: item,
+                overrides: overrides
+            });
+        }
+    });
+
+    if (itemsConfirmados.length === 0) {
+        alert("No has seleccionado ninguna liquidación para importar o todas son duplicadas.");
+        return;
+    }
+
+    const btn = document.getElementById('btnConfirmarImportacion');
+    btn.disabled = true;
+    btn.innerHTML = `<div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div><span>Importando al ERP...</span>`;
+
+    const formData = new FormData();
+    formData.append('action', 'confirm_ajax');
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    formData.append('payload', JSON.stringify({ items: itemsConfirmados }));
+
+    fetch("{% url 'agricola_granos_importar_lpg' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Confirmar e Importar al ERP</span>`;
+
+        if (data.success) {
+            mostrarResultadosModal(data);
+        } else {
+            alert("Error al importar: " + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Confirmar e Importar al ERP</span>`;
+        alert("Error de conexión al persistir: " + err);
+    });
+}
+
+function mostrarResultadosModal(data) {
+    const modal = document.getElementById('modalResultados');
+    const detalle = document.getElementById('resultadosDetalle');
+    detalle.innerHTML = '';
+
+    if (data.importados && data.importados.length > 0) {
+        data.importados.forEach(imp => {
+            const row = document.createElement('div');
+            row.className = 'p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex justify-between items-center';
+            row.innerHTML = `
+                <div>
+                    <span class="font-bold text-sm block">COE ${imp.coe} - ${imp.cliente}</span>
+                    <span class="text-slate-600">Asiento Contable #${imp.asiento_id} | Venta #${imp.ventas_id} ${imp.compras_id ? `| Compra Gastos #${imp.compras_id}` : ''}</span>
+                </div>
+                <div class="text-right font-bold text-emerald-800">
+                    Neto Liquidado: $${imp.neto_a_pagar}
+                </div>
+            `;
+            detalle.appendChild(row);
+        });
+    }
+
+    if (data.errores && data.errores.length > 0) {
+        data.errores.forEach(err => {
+            const row = document.createElement('div');
+            row.className = 'p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900';
+            row.innerHTML = `<b>Error en COE ${err.coe}:</b> ${err.error}`;
+            detalle.appendChild(row);
+        });
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function cerrarModalResultados() {
+    document.getElementById('modalResultados').classList.add('hidden');
+    window.location.reload();
+}
+
+function limpiarTodo() {
+    globalMatchedData = [];
+    document.getElementById('previewContainer').classList.add('hidden');
+    document.getElementById('liquidacionesList').innerHTML = '';
+    document.getElementById('pdfFileInput').value = '';
+}
+</script>
+{% endblock %}

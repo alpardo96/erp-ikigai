@@ -148,6 +148,7 @@ class Producto(AuditModel):
     rubro = models.ForeignKey(Rubro, on_delete=models.SET_NULL, null=True, blank=True)
     familia = models.ForeignKey(Familia, on_delete=models.SET_NULL, null=True, blank=True)
     subprod = models.BooleanField(default=False)
+    activo = models.BooleanField(default=True, verbose_name="Activo")
 
     # --- Distribución (Plan 074 §5.F) ---
     # `peso_unitario_kg` es la columna "Kgs" del Consolidado de Artículos, con el que el
