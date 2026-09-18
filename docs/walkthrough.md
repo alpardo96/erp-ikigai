@@ -5271,3 +5271,17 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - Se implemento Infinite Scroll en la grilla principal de Productos. Anteriormente estaba limitada de forma fija a los primeros 100 resultados.
 - Se reemplazo el boton manual de Cargar mas resultados por un activador automatico en las grillas de trazabilidad y stock de armas.
 - Esto resuelve el problema de visibilidad de items paginados, garantizando que el usuario pueda recorrer el inventario completo sin bloqueos ni requerir clics adicionales.
+
+## [Cristian - PC CASA] 18/Sep/2026 - Permisos de Rol para Stock de Armas y Trazabilidad en Verticalidad
+**Objetivo:** Separar y registrar correctamente los permisos de 'Stock de Armas' y 'Trazabilidad Productos' respetando la verticalidad de Armeria.
+
+**Archivos modificados:**
+- verticalidades/armeria/models.py [MODIFY]: Se agrego el permiso 'menu_armeria_trazabilidad' a ExtensionArmeria, separandolo de ventas.
+- verticalidades/armeria/templates/armeria/hooks/menu_stock.html [MODIFY]: Se envolvio la trazabilidad bajo su propio chequeo de permiso (menu_armeria_trazabilidad).
+- usuarios/middleware.py [MODIFY]: Se agregaron al EXACT_MAP las URLs de armeria protegiendolas bajo los permisos de la verticalidad de armeria.
+
+**Detalles Tecnicos:**
+- Se generaron (0007_alter_extensionarmeria_options.py) y aplicaron migraciones para armeria.
+- Los menus ahora se visualizaran bajo la categoria 'Armeria (Verticalidad)' en el modal de Roles.
+
+**Estado y Siguientes Pasos:** Completado.

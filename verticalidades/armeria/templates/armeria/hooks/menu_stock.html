@@ -1,9 +1,11 @@
 {% if empresa_actual.usa_trazabilidad or empresa_actual.tipo_actividad == 'ARMERIA' or empresa_actual.tipo_actividad == 'AUTOMOTOR' %}
-{% if perms.armeria.menu_armeria_stock or user.perfil.es_admin_sistema or user.is_staff %}
+{% if perms.armeria.menu_armeria_trazabilidad or user.perfil.es_admin_sistema or user.is_staff %}
 <a href="{% url 'subproducto_trazabilidad_listado' %}"
     class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'subproducto_trazabilidad_listado' %}text-amber-400 font-bold{% endif %}">
     Trazabilidad de Productos
 </a>
+{% endif %}
+{% if perms.armeria.menu_armeria_stock or user.perfil.es_admin_sistema or user.is_staff %}
 <a href="{% url 'stock_armas_listado' %}"
     class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'stock_armas_listado' %}text-amber-400 font-bold{% endif %}">
     Stock de Armas

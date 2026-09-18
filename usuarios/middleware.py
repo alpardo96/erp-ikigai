@@ -40,6 +40,15 @@ class RolePermissionMiddleware:
         'recepcion_listado': 'usuarios.menu_stock_recepciones',
         'remito_interno_listado': 'usuarios.menu_stock_remitos_internos',
         'recepcion_interna_listado': 'usuarios.menu_stock_recepcion_interna',
+        
+        # Armería (Stock y Trazabilidad)
+        'stock_armas_listado': 'armeria.menu_armeria_stock',
+        'stock_armas_detalle_modal': 'armeria.menu_armeria_stock',
+        'subproducto_trazabilidad_listado': 'armeria.menu_armeria_trazabilidad',
+        'subproducto_trazabilidad_modal': 'armeria.menu_armeria_trazabilidad',
+        'subproducto_detalle_modal': 'armeria.menu_armeria_trazabilidad',
+        'movimiento_detalle_modal': 'armeria.menu_armeria_trazabilidad',
+        'subproducto_editar_modal': 'armeria.menu_armeria_trazabilidad',
 
         # Tesoreria
         'caja_diaria_index': 'usuarios.menu_tesoreria_caja_diaria',

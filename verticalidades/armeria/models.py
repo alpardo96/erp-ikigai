@@ -20,6 +20,7 @@ class ExtensionArmeria(models.Model):
         permissions = [
             ('menu_armeria_compras', 'Acceso: Compra de Armas'),
             ('menu_armeria_ventas', 'Acceso: Venta Trazabilidad (Armas)'),
+            ('menu_armeria_trazabilidad', 'Acceso: Trazabilidad Productos'),
             ('menu_armeria_reservas', 'Acceso: Reservas por Venta de Armas'),
             ('menu_armeria_stock', 'Acceso: Stock de Armas'),
         ]
