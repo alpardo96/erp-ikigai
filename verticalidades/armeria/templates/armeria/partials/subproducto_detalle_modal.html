@@ -157,8 +157,11 @@
                     Editar SERIE / CUIM
                 </button>
 
-                <button type="button" onclick="closeModal()" class="inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-6 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-all">
-                    Cerrar
+                <button type="button" 
+                        hx-get="{% url 'subproducto_trazabilidad_modal' subproducto.serie %}"
+                        hx-target="#modal-container"
+                        class="inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-6 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-all">
+                    Volver
                 </button>
             </div>
         </div>

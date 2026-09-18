@@ -35,6 +35,18 @@
                         {{ form.categoria }}
                         {% if form.categoria.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.categoria.errors.0 }}</p>{% endif %}
                     </div>
+                    
+                    <div class="col-span-1">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Ajuste</label>
+                        {{ form.tipo_ajuste }}
+                        {% if form.tipo_ajuste.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.tipo_ajuste.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="col-span-1" id="div_porcentaje_ajuste">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Porcentaje (%)</label>
+                        {{ form.porcentaje_ajuste }}
+                        {% if form.porcentaje_ajuste.errors %}<p class="text-red-500 text-[10px] mt-1 italic">{{ form.porcentaje_ajuste.errors.0 }}</p>{% endif %}
+                    </div>
+
                     <div class="col-span-2">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Cuenta Contable (Opcional)</label>
                         {{ form.cuenta_contable }}
@@ -66,3 +78,24 @@
         </form>
     </div>
 </div>
+
+<script>
+    function togglePorcentaje() {
+        const select = document.getElementById('id_tipo_ajuste');
+        const divPorcentaje = document.getElementById('div_porcentaje_ajuste');
+        if (select && divPorcentaje) {
+            if (select.value === 'N') {
+                divPorcentaje.style.display = 'none';
+                document.getElementById('id_porcentaje_ajuste').value = '';
+            } else {
+                divPorcentaje.style.display = 'block';
+            }
+        }
+    }
+    
+    var tipoAjusteSelect = document.getElementById('id_tipo_ajuste');
+    if (tipoAjusteSelect) {
+        tipoAjusteSelect.addEventListener('change', togglePorcentaje);
+        togglePorcentaje();
+    }
+</script>

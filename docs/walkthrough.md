@@ -5224,3 +5224,50 @@ Se implementó el flujo donde al presionar "Detalle" en la grilla principal, se 
 Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cumplir el regex de validación (por ej. ingresar letras en el teléfono) y el usuario no entendía por qué no se guardaba la entidad.
 **Pruebas:** Servidor corriendo, inspección visual del código HTML modificado.
 **Estado y Siguientes Pasos:** Completado.
+
+## [Codex] 18/Sep/2026 - Ajustes de Ajuste en Medio de Pago y Stock de Armas
+**Objetivo:** Implementar campo de ajuste en medio de pago y crear vista específica para operarios (Stock de Armas) excluyendo histórico de venta, junto con un desglose de precios dinámico. Modificar Trazabilidad para adaptarla al uso administrativo.
+
+**Archivos modificados:**
+- 	esoreria/models.py [MODIFY]: Agregado campo juste en MedioPago para soportar porcentajes de recargo/descuento.
+- 	esoreria/forms.py [MODIFY]: Añadidos 	ipo_ajuste y porcentaje_ajuste virtuales con lógica de guardado y carga inicial.
+- 	emplates/configuracion/modals/mediopago_form.html [MODIFY]: Incorporado script JS y campos para reflejar la interfaz dinámica del ajuste.
+- erticalidades/armeria/templates/armeria/hooks/menu_stock.html [MODIFY]: Cambio de nombre de menú a Trazabilidad de Productos.
+- erticalidades/armeria/urls.py [MODIFY]: Creadas URLs stock_armas_listado y stock_armas_detalle_modal.
+- erticalidades/armeria/views.py [MODIFY]: Agregadas las vistas StockArmasListView y stock_armas_detalle_modal (con cálculo matemático).
+- erticalidades/armeria/templates/armeria/partials/trazabilidad_grilla.html [MODIFY]: Eliminado botón Detalle.
+- 	emplates/productos/partials/trazabilidad_grilla.html [MODIFY]: Eliminado botón Detalle.
+- erticalidades/armeria/templates/armeria/partials/subproducto_detalle_modal.html [MODIFY]: Cambiado botón Cerrar por Volver.
+- 	emplates/productos/partials/subproducto_detalle_modal.html [MODIFY]: Cambiado botón Cerrar por Volver.
+- erticalidades/armeria/templates/armeria/stock_armas_list.html [NEW]: Plantilla principal para la vista de operarios, eliminando filtro de estado y cambiando targets HTMX.
+- erticalidades/armeria/templates/armeria/partials/stock_armas_grilla.html [NEW]: Grilla para la vista de operarios sin botón Historial y con nuevo botón Detalle.
+- erticalidades/armeria/templates/armeria/partials/stock_armas_detalle_modal.html [NEW]: Modal mostrando info del producto y la tabla con Desglose de Precios (Medio de Pago vs Precio Final).
+
+**Detalles Técnicos:**
+- Se generaron las migraciones (makemigrations) y se corrió la migración para 	esoreria.
+- Se validó el recargo/descuento multiplicando por 10 o -10, con la fórmula precio_final = precio_lista * (1 + ajuste / 1000).
+
+**Siguientes pasos sugeridos:**
+- Validar el frontend abriendo un subproducto en /stock/armas/ y crear un nuevo Medio de Pago para verificar el campo.
+
+**Ajustes Posteriores:**
+- Se corrigió error AttributeError en la vista stock_armas_detalle_modal cambiando precio_vta_1 y moneda_vta por sus respectivos campos correctos (precio_neto y moneda).
+- Se modificaron las columnas de stock_armas_list.html y stock_armas_grilla.html a: Producto, Serie, Cuim, Marca, Calibre, Condición, Sucursal, Estado Sigimac.
+- Se eliminó la columna Acciones, haciendo toda la fila clickeable (con hx-get y cursor-pointer) para abrir el Detalle de Desglose.
+- Se agregaron accesos directos de Stock de Armas en el Menú lateral y el Dashboard de Stock.
+
+**Ajustes Posteriores II:**
+- Se rediseñó el modal de Detalle de Stock de Armas (stock_armas_detalle_modal.html) para tener formato horizontal (max-w-4xl).
+- En la vista stock_armas_detalle_modal, se agregó la consulta otros_subproductos excluyendo la serie actual pero coincidiendo el producto base en estados DEPOSITO y CONSIGNACION.
+- El panel izquierdo contiene la información del arma seleccionada y el Desglose de Precios.
+- El panel derecho lista dinámicamente 'Mismo Artículo (En Stock)' enumerando ID de serie, Estado, Sucursal en la que se encuentra y el Precio Referencia.
+
+**Ajustes de Modularidad (Core vs Verticalidad):**
+- Se eliminaron definitivamente las vistas residuales de trazabilidad en el Core (productos/views_trazabilidad.py).
+- Se eliminaron todos los templates residuales en 	emplates/productos/ y 	emplates/productos/partials/ que pertenecían a Trazabilidad, tales como 	razabilidad_list.html, 	razabilidad_grilla.html, subproducto_detalle_modal.html, movimiento_detalle_modal.html, 	razabilidad_modal_timeline.html y subproducto_editar_modal.html.
+- Se aseguró que todo el ecosistema de **Trazabilidad de Subproductos** quede aislado funcional y visualmente en la verticalidad de Armería (erticalidades/armeria/), garantizando la separación de dominio.
+
+**Ajustes en Paginacion (Infinite Scroll) en Core y Verticalidad:**
+- Se implemento Infinite Scroll en la grilla principal de Productos. Anteriormente estaba limitada de forma fija a los primeros 100 resultados.
+- Se reemplazo el boton manual de Cargar mas resultados por un activador automatico en las grillas de trazabilidad y stock de armas.
+- Esto resuelve el problema de visibilidad de items paginados, garantizando que el usuario pueda recorrer el inventario completo sin bloqueos ni requerir clics adicionales.

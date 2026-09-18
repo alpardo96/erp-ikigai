@@ -852,6 +852,7 @@ from empresas.models import Empresa, Sucursal
 class SubproductoTrazabilidadListView(LoginRequiredMixin, ListView):
     template_name = "armeria/trazabilidad_list.html"
     context_object_name = "subproductos"
+    paginate_by = 50
 
     def dispatch(self, request, *args, **kwargs):
         empresa_id = request.session.get('empresa_id')
@@ -882,9 +883,10 @@ class SubproductoTrazabilidadListView(LoginRequiredMixin, ListView):
         
         qs = Subproducto.objects.filter(empresa_id=empresa_id)
         
-        sucursal_id = self.request.session.get('sucursal_id')
-        if sucursal_id:
-            qs = qs.filter(sucursal_id=sucursal_id)
+        # Ya no forzamos la sucursal de la sesión, dejamos que el filtro search_sucursal haga el trabajo
+        # sucursal_id = self.request.session.get('sucursal_id')
+        # if sucursal_id:
+        #     qs = qs.filter(sucursal_id=sucursal_id)
 
         # Si se busca por CliPro, primero encontramos las series que tienen ese CliPro en su historia
         if search_clipro:
@@ -932,11 +934,10 @@ class SubproductoTrazabilidadListView(LoginRequiredMixin, ListView):
             '-fecha': '-feccpra',
         }
         
+        
         qs = qs.select_related('producto', 'compra', 'compra__proveedor', 'venta', 'venta__cliente')
         qs = qs.order_by(sort_map.get(sort, '-feccpra'))
-        
-        # Limitamos a 50 registros para optimizar carga
-        return qs[:50]
+        return qs
 
     def get_template_names(self):
         if self.request.headers.get('HX-Request') or self.request.META.get('HTTP_HX_REQUEST'):
@@ -1322,3 +1323,147 @@ def reserva_arma_anular_procesar(request, reserva_id):
     return redirect('armeria_reservas_list')
 
 
+
+
+class StockArmasListView(LoginRequiredMixin, ListView):
+    template_name = "armeria/stock_armas_list.html"
+    context_object_name = "subproductos"
+    paginate_by = 50
+
+    def dispatch(self, request, *args, **kwargs):
+        empresa_id = request.session.get('empresa_id')
+        if not empresa_id:
+            return redirect('seleccion_empresa')
+        
+        empresa = Empresa.objects.filter(pk=empresa_id).first()
+        if not empresa or (empresa.tipo_actividad and empresa.tipo_actividad.lower() not in ['armeria', 'automotor']):
+            from django.contrib import messages
+            messages.warning(request, "El módulo de Trazabilidad es exclusivo para empresas tipo Armería o Automotor.")
+            return redirect('stock_index')
+
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        empresa_id = self.request.session.get('empresa_id')
+        
+        # Filtros
+        search_serie = self.request.GET.get('serie', '').strip()
+        search_cuim = self.request.GET.get('cuim', '').strip()
+        search_producto = self.request.GET.get('producto', '').strip()
+        search_sucursal = self.request.GET.get('sucursal', '').strip()
+
+        from django.db.models import Subquery, Q
+        
+        qs = Subproducto.objects.filter(empresa_id=empresa_id)
+        
+        # Ya no forzamos la sucursal de la sesión, dejamos que el filtro search_sucursal haga el trabajo
+        # sucursal_id = self.request.session.get('sucursal_id')
+        # if sucursal_id:
+        #     qs = qs.filter(sucursal_id=sucursal_id)
+
+        if search_serie and len(search_serie) >= 3:
+            qs = qs.filter(serie__icontains=search_serie)
+        if search_cuim and len(search_cuim) >= 3:
+            qs = qs.filter(cuim__icontains=search_cuim)
+        if search_producto:
+            qs = qs.filter(producto__detalle__icontains=search_producto)
+        if search_sucursal:
+            qs = qs.filter(sucursal_id=search_sucursal)
+
+        latest_ids = qs.order_by('serie', '-feccpra', '-subpro').distinct('serie').values('subpro')
+        qs = Subproducto.objects.filter(subpro__in=Subquery(latest_ids))
+
+        # Filtro estricto para En Deposito (y en consignación, que están en DEPOSITO)
+        qs = qs.filter(situacion='DEPOSITO')
+
+        sort = self.request.GET.get('sort', '-fecha')
+        sort_map = {
+            'producto': 'producto__detalle',
+            '-producto': '-producto__detalle',
+            'serie': 'serie',
+            '-serie': '-serie',
+            'cuim': 'cuim',
+            '-cuim': '-cuim',
+            'sucursal': 'sucursal__nombre',
+            '-sucursal': '-sucursal__nombre',
+            'situacion': 'situacion',
+            '-situacion': '-situacion',
+            'fecha': 'feccpra',
+            '-fecha': '-feccpra',
+        }
+        
+        qs = qs.select_related('producto', 'compra', 'compra__proveedor', 'venta', 'venta__cliente')
+        qs = qs.order_by(sort_map.get(sort, '-feccpra'))
+        return qs
+
+    def get_template_names(self):
+        if self.request.headers.get('HX-Request') or self.request.META.get('HTTP_HX_REQUEST'):
+            return ["armeria/partials/stock_armas_grilla.html"]
+        return super().get_template_names()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        empresa_id = self.request.session.get('empresa_id')
+        if empresa_id:
+            context['sucursales'] = Sucursal.objects.filter(empresa_id=empresa_id).order_by('nombre')
+        return context
+
+@login_required
+def stock_armas_detalle_modal(request, subpro_id):
+    empresa_id = request.session.get('empresa_id')
+    subproducto = get_object_or_404(
+        Subproducto.objects.select_related('producto', 'compra', 'compra__proveedor'), 
+        subpro=subpro_id, empresa_id=empresa_id
+    )
+    
+    # Obtener cotizacion dolar
+    from empresas.models import CotizacionMoneda
+    cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
+    cotizacion_dolar = float(cotiz.dolar_venta) if cotiz else 1.0
+
+    # Obtener Medios de Pago
+    from tesoreria.models import MedioPago
+    from django.db.models import Q
+    medios_pago = MedioPago.objects.filter(
+        empresa_id=empresa_id, 
+        activo=True
+    ).filter(
+        Q(nombre__icontains='peso') |
+        Q(nombre__icontains='dolar') |
+        Q(nombre__icontains='dólar') |
+        Q(nombre__icontains='tarjeta') |
+        Q(nombre__icontains='transferencia')
+    ).order_by('nombre')
+    
+    # Precio base del producto
+    precio_lista = 0.0
+    if subproducto.producto.precio_neto:
+        precio_lista = float(subproducto.producto.precio_neto)
+            
+    # Si el producto se cobra en dolares y tenemos cotizacion
+    if subproducto.producto.moneda == 'DOL' and cotizacion_dolar > 0:
+        precio_lista = precio_lista * cotizacion_dolar
+
+    # Desglose de precios
+    desglose = []
+    for mp in medios_pago:
+        if mp.ajuste != 0:
+            precio_final = precio_lista * (1 + (mp.ajuste / 1000.0))
+        else:
+            precio_final = precio_lista
+        desglose.append({'medio': mp, 'precio_final': precio_final})
+
+    # Otros subproductos del mismo producto
+    otros_subproductos = Subproducto.objects.filter(
+        empresa_id=empresa_id,
+        producto=subproducto.producto,
+        situacion__in=['DEPOSITO', 'CONSIGNACION']
+    ).exclude(subpro=subpro_id).select_related('sucursal')
+
+    return render(request, 'armeria/partials/stock_armas_detalle_modal.html', {
+        'subproducto': subproducto,
+        'desglose': desglose,
+        'cotizacion_dolar': cotizacion_dolar,
+        'precio_lista': precio_lista,
+        'otros_subproductos': otros_subproductos
+    })

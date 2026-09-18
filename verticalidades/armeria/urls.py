@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    SubproductoTrazabilidadListView, trazabilidad_modal_timeline,
+    SubproductoTrazabilidadListView, trazabilidad_modal_timeline, StockArmasListView, stock_armas_detalle_modal,
     subproducto_detalle_modal, movimiento_detalle_modal, subproducto_editar_modal,
     ComprasTrazabilidadCargaView, compras_trazabilidad_item_add,
     compras_trazabilidad_item_remove, typeahead_series_trazabilidad,
@@ -11,6 +11,10 @@ from .views import (
 )
 
 urlpatterns = [
+    # Stock Armas
+    path('stock/armas/', StockArmasListView.as_view(), name='stock_armas_listado'),
+    path('stock/armas/subproducto/<int:subpro_id>/detalle/', stock_armas_detalle_modal, name='stock_armas_detalle_modal'),
+
     # Stock Trazabilidad
     path('stock/trazabilidad/', SubproductoTrazabilidadListView.as_view(), name='subproducto_trazabilidad_listado'),
     path('stock/trazabilidad/modal/<str:serie>/', trazabilidad_modal_timeline, name='subproducto_trazabilidad_modal'),

@@ -96,9 +96,19 @@ def buscar_productos(request):
 
     q = request.GET.get('q', '').strip()
     campo = request.GET.get('campo', 'todos').strip()
-    productos = buscar_productos_inteligente(q=q, empresa_id=empresa_id, campo=campo, limit=100)
+    page_number = request.GET.get('page', 1)
 
-    return render(request, 'productos/partials/producto_list.html', {'productos': productos})
+    # Buscamos sin límite fijo para poder paginar
+    productos_qs = buscar_productos_inteligente(q=q, empresa_id=empresa_id, campo=campo, limit=0)
+    
+    from django.core.paginator import Paginator
+    paginator = Paginator(productos_qs, 50)
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'productos/partials/producto_list.html', {
+        'productos': page_obj.object_list,
+        'page_obj': page_obj
+    })
 
 def eliminar_producto(request, id):
     empresa_id = request.session.get('empresa_id')

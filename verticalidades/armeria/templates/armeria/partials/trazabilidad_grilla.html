@@ -25,17 +25,6 @@
     </td>
     
     <td class="relative py-1.5 pl-2 pr-4 text-right text-xs font-medium space-x-1">
-        <!-- Botón Ver Detalle -->
-        <button hx-get="{% url 'subproducto_detalle_modal' sp.subpro %}" hx-target="#modal-container"
-            title="Ver Detalle de Compra y Venta"
-            class="inline-flex items-center px-2 py-1 border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 rounded-md transition-colors text-[11px] font-semibold">
-            <svg class="h-3.5 w-3.5 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-            </svg>
-            Detalle
-        </button>
-
         <!-- Botón Editar Serie / CUIM -->
         <button hx-get="{% url 'subproducto_editar_modal' sp.subpro %}" hx-target="#modal-container"
             title="Editar Serie y CUIM"
@@ -71,14 +60,11 @@
 </tr>
 {% endfor %}
 
-<!-- Paginación con HTMX (Opcional, si paginamos en ListView) -->
+<!-- Paginación con HTMX (Infinite Scroll) -->
 {% if page_obj.has_next %}
-<tr id="row-cargando-mas">
+<tr id="row-cargando-mas" hx-get="?page={{ page_obj.next_page_number }}" hx-trigger="revealed" hx-swap="outerHTML" hx-include="#form-filtros-trazabilidad">
     <td colspan="7" class="text-center py-4">
-        <button hx-get="?page={{ page_obj.next_page_number }}" hx-target="#row-cargando-mas" hx-swap="outerHTML" hx-include="#form-filtros-trazabilidad"
-            class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
-            Cargar más resultados...
-        </button>
+        <span class="text-sm text-indigo-600 font-medium">Cargando más resultados...</span>
     </td>
 </tr>
 {% endif %}

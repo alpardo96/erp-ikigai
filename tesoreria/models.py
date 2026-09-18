@@ -56,6 +56,7 @@ class MedioPago(AuditModel):
         null=True, blank=True,
         verbose_name="Cuenta Contable Vinculada"
     )
+    ajuste = models.IntegerField(default=0, verbose_name="Ajuste de Precio", help_text="Ej: 100 = 10% Recargo, -100 = 10% Descuento")
     activo = models.BooleanField(default=True)
 
     class Meta:
