@@ -311,6 +311,8 @@ class VentasCargaView(LoginRequiredMixin, View):
                         )
 
                     request.session['venta_items_temp'] = []
+                    if venta.condic != 2:
+                        request.session['auto_print_url'] = reverse('imprimir_factura', kwargs={'venta_id': venta.ventas_id})
                     messages.success(request, f"¡Venta {venta.numero} registrada con éxito! Stock actualizado.")
                     return redirect('ventas_carga')
 
@@ -1405,6 +1407,8 @@ class VentaEmitirNotaCreditoView(LoginRequiredMixin, View):
                     nc.vto_cae = res_afip.get('vto_cae')
                     nc.cod_qr = res_afip.get('cod_qr')
                     nc.save(update_fields=['cae', 'vto_cae', 'cod_qr'])
+                if nc.condic != 2:
+                    request.session['auto_print_url'] = reverse('imprimir_factura', kwargs={'venta_id': nc.ventas_id})
                 messages.success(request, f"Nota de Crédito generada exitosamente: {nc.tipo.detalle} {nc.punto:04d}-{nc.numero}")
         except ValidationError as e:
             error_msg = e.message if hasattr(e, 'message') else (e.messages[0] if hasattr(e, 'messages') and e.messages else str(e))

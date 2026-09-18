@@ -148,6 +148,7 @@ class RecepcionCargaView(LoginRequiredMixin, View):
 
         request.session[SESSION_ITEMS] = []
         request.session[SESSION_OCS] = []
+        request.session['auto_print_url'] = reverse('recepcion_imprimir', kwargs={'recepcion_id': recepcion.pk})
         messages.success(request, f"Informe de Recepción {recepcion.punto:04d}-{recepcion.numero:08d} generado. Stock actualizado.")
         return redirect('recepcion_listado')
 

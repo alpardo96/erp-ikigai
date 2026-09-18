@@ -111,6 +111,7 @@ class RemitoInternoCargaView(LoginRequiredMixin, View):
                 )
 
         request.session[RI_ITEMS] = []
+        request.session['auto_print_url'] = reverse('remito_interno_imprimir', kwargs={'ri_id': ri.pk})
         messages.success(request, f"Remito Interno {ri.punto:04d}-{ri.numero:08d} emitido. Stock en tránsito.")
         return redirect('remito_interno_listado')
 
@@ -485,8 +486,9 @@ class RecepcionInternaCargaView(LoginRequiredMixin, View):
 
         request.session[RECI_ITEMS] = []
         request.session[RECI_RIS] = []
+        request.session['auto_print_url'] = reverse('recepcion_interna_imprimir', kwargs={'rec_id': recepcion.pk})
         messages.success(request, f"Informe de Recepción {recepcion.punto:04d}-{recepcion.numero:08d} (interno) generado. Stock actualizado.")
-        return redirect('recepcion_interna_imprimir', rec_id=recepcion.pk)
+        return redirect('recepcion_interna_listado')
 
 
 class RecepcionInternaVincularModalView(LoginRequiredMixin, View):

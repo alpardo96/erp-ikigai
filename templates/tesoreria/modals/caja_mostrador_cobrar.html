@@ -164,6 +164,9 @@
                 
                 if (response.ok) {
                     this.cerrarModal();
+                    if (data.recibo_url) {
+                        window.open(data.recibo_url, '_blank');
+                    }
                     window.location.reload();
                 } else {
                     this.error = data.message || 'Error al procesar el cobro.';
@@ -252,6 +255,20 @@
             <!-- BODY CONTENT: MEDIOS DE PAGO -->
             <div class="px-6 py-6 overflow-y-auto flex-1">
                 
+                {% if preventa.notas_sigimac %}
+                <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg mb-6 shadow-xs">
+                    <div class="flex items-start gap-3">
+                        <div class="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <i class="fa-solid fa-note-sticky text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-black text-amber-900 uppercase tracking-wider">Nota / Instrucción del Vendedor</h4>
+                            <p class="text-xs text-amber-800 mt-1 font-semibold whitespace-pre-line">{{ preventa.notas_sigimac }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div x-show="error" class="bg-red-50 text-red-600 border border-red-200 p-4 rounded-lg text-sm font-bold mb-6 flex items-center gap-2" style="display: none;">
                     <i class="fa-solid fa-triangle-exclamation text-lg"></i> <span x-text="error"></span>
                 </div>

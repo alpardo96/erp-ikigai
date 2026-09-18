@@ -118,7 +118,9 @@ class RolePermissionMiddleware:
         return self.get_response(request)
 
     def process_view(self, request, view_func, view_args, view_kwargs):
-        if request.user.is_authenticated and not (request.user.is_superuser or getattr(request.user.perfil, 'es_admin_sistema', False)):
+        perfil = getattr(request.user, 'perfil', None) if request.user.is_authenticated else None
+        es_admin = request.user.is_superuser or (getattr(perfil, 'es_admin_sistema', False) if perfil else False)
+        if request.user.is_authenticated and not es_admin:
             url_name = request.resolver_match.url_name if request.resolver_match else None
             
             if url_name:

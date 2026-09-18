@@ -68,6 +68,7 @@
                     <th class="col-total px-3 py-3.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total</th>
                     <th class="col-rubro px-3 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Rubro</th>
                     <th class="col-familia px-3 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Familia</th>
+                    <th class="col-subfamilia px-3 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Subfamilia</th>
                     <th class="col-marca px-3 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Marca</th>
                     <th class="col-vendedor px-3 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Vendedor</th>
                     <th class="col-sucursal px-3 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Sucursal</th>
@@ -125,6 +126,7 @@
                     <td class="col-total px-3 py-3 text-right font-bold text-emerald-600">$ {{ item.total|floatformat:2 }}</td>
                     <td class="col-rubro px-3 py-3 text-gray-600">{{ item.producto.rubro.detalle|default:"—" }}</td>
                     <td class="col-familia px-3 py-3 text-gray-600">{{ item.producto.familia.detalle|default:"—" }}</td>
+                    <td class="col-subfamilia px-3 py-3 text-gray-600">{{ item.producto.subfamilia.detalle|default:"—" }}</td>
                     <td class="col-marca px-3 py-3 text-gray-600">{{ item.producto.marca.detalle|default:"—" }}</td>
                     <td class="col-vendedor px-3 py-3 text-gray-600">{{ item.venta.vendedor.username|default:"—" }}</td>
                     <td class="col-sucursal px-3 py-3 text-gray-600">{{ item.venta.sucursal.nombre }}</td>
@@ -161,7 +163,7 @@
                     <td class="col-neto px-3 py-4 text-right font-extrabold">$ {{ totales.neto|floatformat:2 }}</td>
                     <td class="col-iva px-3 py-4 text-right font-extrabold text-indigo-700">$ {{ totales.iva|floatformat:2 }}</td>
                     <td class="col-total px-3 py-4 text-right font-extrabold text-emerald-700">$ {{ totales.total|floatformat:2 }}</td>
-                    <td colspan="6"></td>
+                    <td colspan="7"></td>
                 </tr>
             </tfoot>
         </table>

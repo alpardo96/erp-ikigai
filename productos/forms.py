@@ -1,5 +1,5 @@
 from django import forms
-from .models import Producto, Marca, Rubro, Familia
+from .models import Producto, Marca, Rubro, Familia, Subfamilia
 from core.forms import DecimalARField
 from empresas.models import Sucursal
 
@@ -56,6 +56,22 @@ class FamiliaForm(forms.ModelForm):
         if empresa:
             self.fields['rubro'].queryset = Rubro.objects.filter(empresa=empresa)
 
+class SubfamiliaForm(forms.ModelForm):
+    class Meta:
+        model = Subfamilia
+        fields = ['familia', 'detalle', 'margen']
+        widgets = {
+            'familia': forms.Select(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2'}),
+            'detalle': forms.TextInput(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2'}),
+            'margen': forms.NumberInput(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2', 'step': '0.01'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
+        super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['familia'].queryset = Familia.objects.filter(empresa=empresa)
+
 class ProductoForm(forms.ModelForm):
     # Distribución (Plan 074): llegan en formato es-AR desde inputs `.fInputAR`.
     peso_unitario_kg = DecimalARField(
@@ -95,7 +111,7 @@ class ProductoForm(forms.ModelForm):
         model = Producto
         fields = [
             'cod_prov', 'cod_fab', 'detalle', 'proveedor', 'minimo', 'ptopedir',
-            'creden', 'moneda', 'alic_iva', 'margen', 'marca', 'rubro', 'familia', 'subprod',
+            'creden', 'moneda', 'alic_iva', 'margen', 'marca', 'rubro', 'familia', 'subfamilia', 'subprod',
             # Distribución (Plan 074). Sólo se muestran si la empresa es DISTRIBUIDORA;
             # en el resto quedan en su valor por defecto.
             'codigo_anterior', 'unidad_venta', 'peso_unitario_kg', 'unidades_por_bulto',
@@ -130,6 +146,14 @@ class ProductoForm(forms.ModelForm):
                 'hx-get': '/productos/obtener-margen/',
                 'hx-target': '#familia-margen',
                 'hx-vals': 'js:{tipo: "familia", id: event.target.value}',
+                'hx-trigger': 'change',
+                'hx-on:change': 'htmx.ajax("GET", "/productos/filtrar-subfamilias/", {target: "#id_subfamilia", swap: "innerHTML", values: {id: this.value}})'
+            }),
+            'subfamilia': forms.Select(attrs={
+                'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2',
+                'hx-get': '/productos/obtener-margen/',
+                'hx-target': '#subfamilia-margen',
+                'hx-vals': 'js:{tipo: "subfamilia", id: event.target.value}',
                 'hx-trigger': 'change'
             }),
             'creden': forms.CheckboxInput(attrs={'class': 'w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500'}),

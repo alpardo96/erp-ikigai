@@ -122,8 +122,33 @@ class Familia(AuditModel):
             self.detalle = self.detalle.upper().strip()
         super().save(*args, **kwargs)
 
+class Subfamilia(AuditModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
+    # Nota: El catálogo de subfamilias pertenece globalmente a la Empresa y se desprende de una Familia.
+    familia = models.ForeignKey(Familia, on_delete=models.CASCADE, related_name="subfamilias", verbose_name="Familia")
+    detalle = models.CharField(max_length=100, verbose_name="Detalle de Subfamilia")
+    margen = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Margen Sugerido (%)")
+    # Trazabilidad: ID original del sistema VFP anterior, para la migración de datos.
+    codigo_anterior = models.CharField(
+        max_length=50, null=True, blank=True,
+        verbose_name="Código Sistema Anterior",
+        help_text="ID histórico del sistema VFP para trazabilidad de migración",
+        db_index=True
+    )
+
+    class Meta:
+        db_table = "productos_subfamilia"
+        verbose_name = "Subfamilia"
+        verbose_name_plural = "Subfamilias"
+        ordering = ['familia__detalle', 'detalle']
+
+    def save(self, *args, **kwargs):
+        if self.detalle:
+            self.detalle = self.detalle.upper().strip()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.detalle
+        return f"{self.familia.detalle} - {self.detalle}" if self.familia else self.detalle
 
 class Producto(AuditModel):
     MONEDA_CHOICES = [
@@ -148,6 +173,7 @@ class Producto(AuditModel):
     marca = models.ForeignKey(Marca, on_delete=models.SET_NULL, null=True, blank=True)
     rubro = models.ForeignKey(Rubro, on_delete=models.SET_NULL, null=True, blank=True)
     familia = models.ForeignKey(Familia, on_delete=models.SET_NULL, null=True, blank=True)
+    subfamilia = models.ForeignKey(Subfamilia, on_delete=models.SET_NULL, null=True, blank=True, related_name="productos", verbose_name="Subfamilia")
     subprod = models.BooleanField(default=False)
     activo = models.BooleanField(default=True, db_index=True, verbose_name="Activo")
 

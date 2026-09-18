@@ -66,7 +66,12 @@
             <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=familias" hx-target="#config-content"
                 class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
                 <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Familias</div>
-                <div class="text-sm text-amber-600/80 mt-1">Subclasificación detallada de productos.</div>
+                <div class="text-sm text-amber-600/80 mt-1">Subclasificación de productos por rubro.</div>
+            </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=subfamilias" hx-target="#config-content"
+                class="text-left group bg-amber-50/50 border border-amber-100 p-5 rounded-2xl hover:bg-amber-100 transition-all shadow-sm">
+                <div class="text-amber-700 font-semibold text-lg group-hover:text-amber-800">Subfamilias</div>
+                <div class="text-sm text-amber-600/80 mt-1">Subclasificación detallada por familia.</div>
             </button>
             <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=jurisdicciones"
                 hx-target="#config-content"

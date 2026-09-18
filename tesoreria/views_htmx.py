@@ -580,6 +580,7 @@ def procesar_recibo(request):
             return HttpResponse(json.dumps({
                 'status': 'success',
                 'recibo_id': recibo.numero,
+                'recibo_url': reverse('recibo_pdf', args=[recibo.pk]),
                 'asiento_id': asiento.asiento_id if asiento else None,
             }), content_type="application/json")
         except Exception as e:
@@ -836,6 +837,7 @@ def procesar_orden_pago(request):
             return HttpResponse(json.dumps({
                 'status': 'success',
                 'op_id': op.numero,
+                'op_url': reverse('ordenpago_pdf', args=[op.pk]),
                 'asiento_id': asiento.asiento_id if asiento else None,
             }), content_type="application/json")
         except Exception as e:
@@ -968,6 +970,11 @@ def _guardar_reserva_preventa_transaccional(
     pv_caja = getattr(sesion_caja.caja, 'punto_venta', None)
     punto_rc = pv_caja.numero if pv_caja else 1
 
+    # Armar observaciones combinando detalle del producto y notas del vendedor
+    obs_recibo = f"Reserva Preventa #{preventa.preventa_id} - {producto_reservado.detalle} (SIGIMAC)"
+    if getattr(preventa, 'notas_sigimac', None):
+        obs_recibo += f" | Obs: {preventa.notas_sigimac.strip()}"
+
     # 2. Crear Recibo por Reserva
     recibo = Recibo(
         empresa_id=empresa_id,
@@ -981,7 +988,7 @@ def _guardar_reserva_preventa_transaccional(
         tipo='C',
         total=total_ingresado,
         condic=1,
-        observaciones=f"Reserva Preventa #{preventa.preventa_id} - {producto_reservado.detalle} (SIGIMAC)",
+        observaciones=obs_recibo,
         creado_por=request.user,
         modificado_por=request.user
     )
@@ -1047,7 +1054,7 @@ def _guardar_reserva_preventa_transaccional(
 
     # Tarjetas
     if tarjetas:
-        mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, categoria='TAR').first()
+        mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TAR').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TAR').first()
         for tarj in tarjetas:
             t_imp = Decimal(str(tarj.get('importe', 0) or 0))
             if t_imp > 0 and mp_tarjeta:
@@ -1069,7 +1076,7 @@ def _guardar_reserva_preventa_transaccional(
 
     # Transferencias
     if transferencias:
-        mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
+        mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TRA-BCO').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
         for transf in transferencias:
             tr_imp = Decimal(str(transf.get('importe', 0) or 0))
             if tr_imp > 0 and mp_tra:
@@ -1095,7 +1102,7 @@ def _guardar_reserva_preventa_transaccional(
 
     # Valores (Cheques)
     if valores:
-        mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
+        mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, codigo='CHQ-TER').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
         for ch in valores:
             ch_imp = Decimal(str(ch.get('importe', 0) or 0))
             if ch_imp > 0 and mp_chq:
@@ -1149,7 +1156,20 @@ def _guardar_reserva_preventa_transaccional(
     preventa.estado = 3
     preventa.save(update_fields=['estado'])
 
-    return HttpResponse(json.dumps({'status': 'success', 'message': f'Reserva registrada exitosamente. Recibo #{recibo.numero} emitido.'}), content_type="application/json")
+    from django.urls import reverse
+    recibo_url = reverse('recibo_pdf', args=[recibo.id])
+
+    return HttpResponse(
+        json.dumps({
+            'status': 'success',
+            'message': f'Reserva registrada exitosamente. Recibo #{recibo.numero} emitido.',
+            'recibo_id': recibo.id,
+            'recibo_numero': recibo.numero,
+            'recibo_url': recibo_url,
+            'es_reserva': True
+        }),
+        content_type="application/json"
+    )
 
 @login_required
 def caja_mostrador_procesar_cobro(request, preventa_id):
@@ -1381,7 +1401,7 @@ def _crear_asientos_y_movimientos_cobro(
 
             # Efectivo ARS
             if efectivo > 0:
-                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-ARS').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
                 if mp_efe:
                     MovimientoCajaDetalle.objects.create(
                         movimiento_caja=mov_caja,
@@ -1393,7 +1413,7 @@ def _crear_asientos_y_movimientos_cobro(
             
             # Efectivo USD
             if dolares > 0:
-                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
                 if mp_efe:
                     MovimientoCajaDetalle.objects.create(
                         movimiento_caja=mov_caja,
@@ -1404,7 +1424,7 @@ def _crear_asientos_y_movimientos_cobro(
                     )
             
             # Tarjetas
-            mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, categoria='TAR').first()
+            mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TAR').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TAR').first()
             for t in tarjetas:
                 imp = Decimal(str(t.get('importe', 0) or 0))
                 if imp > 0 and mp_tarjeta:
@@ -1425,7 +1445,7 @@ def _crear_asientos_y_movimientos_cobro(
                     )
             
             # Valores a Terceros (Cheques)
-            mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
+            mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, codigo='CHQ-TER').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
             for v in valores:
                 imp = Decimal(str(v.get('importe', 0) or 0))
                 if imp > 0 and mp_chq:
@@ -1450,7 +1470,7 @@ def _crear_asientos_y_movimientos_cobro(
                     )
                     
             # Transferencias
-            mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
+            mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TRA-BCO').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
             for t in transferencias:
                 imp = Decimal(str(t.get('importe', 0) or 0))
                 if imp > 0 and mp_tra:

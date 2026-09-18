@@ -120,6 +120,7 @@ class OrdenCompraCargaView(LoginRequiredMixin, View):
             oc.save(update_fields=['total'])
 
         request.session[SESSION_KEY] = []
+        request.session['auto_print_url'] = reverse('oc_imprimir', kwargs={'pk': oc.pk})
         messages.success(request, f"Orden de Compra {oc.punto:04d}-{oc.numero:08d} generada correctamente.")
         return redirect('oc_listado')
 

@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 
 from facturacion.models import VentaItem, ClienteProveedor, Venta
-from productos.models import Producto, Rubro, Familia
+from productos.models import Producto, Rubro, Familia, Subfamilia
 from empresas.models import Sucursal, Ejercicio, Empresa
 from facturacion.services.ventas_reportes_excel import exportar_ventas_producto_excel_service
 from facturacion.services.clientes_excel import exportar_clientes_excel_service
@@ -45,6 +45,7 @@ def obtener_items_ventas_filtrados(request):
     sucursal_id = (GET.get('sucursal') or '').strip()
     rubro_id = (GET.get('rubro') or '').strip()
     familia_id = (GET.get('familia') or '').strip()
+    subfamilia_id = (GET.get('subfamilia') or '').strip()
     vendedor_id = (GET.get('vendedor') or '').strip()
 
     is_filtered_request = 'filtering' in GET or 'desde' in GET and ('cliente' in GET or 'sucursal' in GET or 'producto' in GET or 'rubro' in GET)
@@ -82,6 +83,7 @@ def obtener_items_ventas_filtrados(request):
         'producto_nombre': producto_nombre,
         'rubro_id': rubro_id,
         'familia_id': familia_id,
+        'subfamilia_id': subfamilia_id,
         'vendedor_id': vendedor_id,
         'fiscal': fiscal,
         'no_fiscal': no_fiscal,
@@ -101,7 +103,7 @@ def obtener_items_ventas_filtrados(request):
         .select_related(
             'venta', 'venta__cliente', 'venta__tipo', 'venta__sucursal', 'venta__vendedor',
             'venta__cliente__jurisdiccion', 'producto', 'producto__rubro', 'producto__familia',
-            'producto__marca', 'producto__proveedor', 'subproducto'
+            'producto__subfamilia', 'producto__marca', 'producto__proveedor', 'subproducto'
         )
     )
 
@@ -120,6 +122,8 @@ def obtener_items_ventas_filtrados(request):
         items = items.filter(producto__rubro_id=rubro_id)
     if familia_id:
         items = items.filter(producto__familia_id=familia_id)
+    if subfamilia_id:
+        items = items.filter(producto__subfamilia_id=subfamilia_id)
     if vendedor_id:
         items = items.filter(venta__vendedor_id=vendedor_id)
 
@@ -157,6 +161,7 @@ class ReporteVentasProductoView(LoginRequiredMixin, View):
         sucursales = Sucursal.objects.filter(empresa_id=empresa_id).only('id', 'nombre')
         rubros = Rubro.objects.filter(empresa_id=empresa_id).only('id', 'detalle')
         familias = Familia.objects.filter(empresa_id=empresa_id).only('id', 'detalle')
+        subfamilias = Subfamilia.objects.filter(empresa_id=empresa_id).only('id', 'detalle')
         vendedores = User.objects.filter(is_active=True).only('id', 'username').order_by('username')
 
         # Totales calculados para resumen superior
@@ -168,6 +173,7 @@ class ReporteVentasProductoView(LoginRequiredMixin, View):
             'sucursales': sucursales,
             'rubros': rubros,
             'familias': familias,
+            'subfamilias': subfamilias,
             'vendedores': vendedores,
             'totales': totales_resumen,
         }

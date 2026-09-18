@@ -82,11 +82,15 @@ def context_context(request):
         if estado_crt.get('es_advertencia'):
             alerta_certificado_afip = estado_crt
 
+    # Auto-impresión de comprobantes emitidos
+    auto_print_url = request.session.pop('auto_print_url', None)
+
     return {
         'empresa_actual': empresa_actual,
         'sucursal_actual': sucursal_actual,
         'ejercicio_actual': ejercicio_actual,
         'ejercicios_disponibles': ejercicios_disponibles,
         'alerta_certificado_afip': alerta_certificado_afip,
+        'auto_print_url': auto_print_url,
         'css_version': _css_version(),
     }

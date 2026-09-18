@@ -769,8 +769,11 @@ document.addEventListener('alpine:init', () => {
                 body: JSON.stringify(this.data)
             }).then(res => res.json()).then(res => {
                 if(res.status === 'success') {
-                    // Se muestra en pantalla el número de asiento asignado en lugar de redirigir
-                    // de inmediato, para que el operador pueda anotarlo o ir al Libro Diario.
+                    // Abrir PDF para impresión inmediata del recibo
+                    if (res.recibo_url) {
+                        window.open(res.recibo_url, '_blank');
+                    }
+                    // Se muestra en pantalla el número de asiento asignado
                     this.resultado = {
                         visible: true,
                         recibo: res.recibo_id,

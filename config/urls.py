@@ -61,7 +61,8 @@ from productos.views_htmx import (
     marca_modal, buscar_marcas, eliminar_marca,
     rubro_prod_modal, buscar_rubros_prod, eliminar_rubro_prod,
     familia_modal, buscar_familias, eliminar_familia,
-    obtener_margen, filtrar_familias,
+    subfamilia_modal, buscar_subfamilias, eliminar_subfamilia,
+    obtener_margen, filtrar_familias, filtrar_subfamilias,
     exportar_productos_excel_completo,
     modal_capturar_excel, capturar_productos_excel
 )
@@ -306,8 +307,15 @@ urlpatterns = [
     path('configuracion/familias/crear/', familia_modal, name='config_familia_add'),
     path('configuracion/familias/<int:id>/editar/', familia_modal, name='config_familia_edit'),
     path('configuracion/familias/<int:id>/eliminar/', eliminar_familia, name='config_familia_delete'),
+
+    path('configuracion/subfamilias/buscar/', buscar_subfamilias, name='config_subfamilia_search'),
+    path('configuracion/subfamilias/crear/', subfamilia_modal, name='config_subfamilia_add'),
+    path('configuracion/subfamilias/<int:id>/editar/', subfamilia_modal, name='config_subfamilia_edit'),
+    path('configuracion/subfamilias/<int:id>/eliminar/', eliminar_subfamilia, name='config_subfamilia_delete'),
+
     path('productos/obtener-margen/', obtener_margen, name='producto_obtener_margen'),
     path('productos/filtrar-familias/', filtrar_familias, name='producto_filtrar_familias'),
+    path('productos/filtrar-subfamilias/', filtrar_subfamilias, name='producto_filtrar_subfamilias'),
 
     # Productos HTMX
     path('productos/buscar/', buscar_productos, name='producto_search'),

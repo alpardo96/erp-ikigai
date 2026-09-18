@@ -118,6 +118,17 @@
                     </select>
                 </div>
 
+                <!-- Subfamilia -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Subfamilia</label>
+                    <select name="subfamilia" class="w-full text-sm border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">-- Todas --</option>
+                        {% for sf in subfamilias %}
+                        <option value="{{ sf.id }}" {% if filtros.subfamilia_id == sf.id|stringformat:"s" %}selected{% endif %}>{{ sf.detalle }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <!-- Vendedor -->
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Vendedor</label>
@@ -253,6 +264,10 @@
                                 <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
                                     <input type="checkbox" data-column="col-familia" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
                                     <span class="text-xs text-gray-700 font-medium">Familia</span>
+                                </label>
+                                <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input type="checkbox" data-column="col-subfamilia" checked class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">
+                                    <span class="text-xs text-gray-700 font-medium">Subfamilia</span>
                                 </label>
                                 <label class="flex items-center p-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
                                     <input type="checkbox" data-column="col-marca" class="rounded text-indigo-600 focus:ring-indigo-500 mr-2.5">

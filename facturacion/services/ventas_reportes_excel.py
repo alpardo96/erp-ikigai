@@ -15,13 +15,13 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
     ws = wb.active
     ws.title = "Productos Vendidos"
 
-    # Encabezados de 38 columnas (sin subfamilia)
+    # Encabezados de 40 columnas (con subfamilia)
     headers = [
         'ID.Vta', 'ID.Asto', 'Fecha', 'Comprobante', 'id.cod', 'Cliente', 'Domicilio', 'Credencial',
         'Codigo', 'Cod Prov', 'Producto', 'Calibre', 'Serie', 'CUIM', 'Cantidad', 'cto.Rep.',
         'fec.Act.', 'moneda', 'cotiz', 'alic.iva', 'pcio.T.', 'Neto', 'Total',
         'Stock', 'id.pro', 'Proveedor', 'id.rubro', 'rubro', 'id.flia', 'familia',
-        'id.marca', 'marca', 'id.vdor', 'Vendedor',
+        'id.subflia', 'subfamilia', 'id.marca', 'marca', 'id.vdor', 'Vendedor',
         'Cto.Adq.', 'Margen', 'Mg.Rubro', 'Sucursal'
     ]
 
@@ -85,6 +85,7 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
         prov_obj = prod.proveedor if prod else None
         rubro_obj = prod.rubro if prod else None
         flia_obj = prod.familia if prod else None
+        subflia_obj = prod.subfamilia if prod else None
         marca_obj = prod.marca if prod else None
         vendedor_obj = vta.vendedor if vta else None
 
@@ -170,14 +171,16 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
             rubro_obj.detalle if rubro_obj else '',                  # 28. rubro (AB)
             flia_obj.pk if flia_obj else '',                         # 29. id.flia (AC)
             flia_obj.detalle if flia_obj else '',                    # 30. familia (AD)
-            marca_obj.pk if marca_obj else '',                       # 31. id.marca (AE)
-            marca_obj.detalle if marca_obj else '',                  # 32. marca (AF)
-            vendedor_obj.pk if vendedor_obj else '',                 # 33. id.vdor (AG)
-            vendedor_obj.username if vendedor_obj else '',           # 34. Vendedor (AH)
-            float(prod.cto_adq) if prod and prod.cto_adq else 0.0,   # 35. Cto.Adq. (AI)
-            float(prod.margen) if prod and prod.margen else 0.0,     # 36. Margen (AJ)
-            float(rubro_obj.margen) if rubro_obj and rubro_obj.margen else 0.0, # 37. Mg.Rubro (AK)
-            vta.sucursal.nombre if vta and vta.sucursal else ''      # 38. Sucursal (AL)
+            subflia_obj.pk if subflia_obj else '',                   # 31. id.subflia (AE)
+            subflia_obj.detalle if subflia_obj else '',              # 32. subfamilia (AF)
+            marca_obj.pk if marca_obj else '',                       # 33. id.marca (AG)
+            marca_obj.detalle if marca_obj else '',                  # 34. marca (AH)
+            vendedor_obj.pk if vendedor_obj else '',                 # 35. id.vdor (AI)
+            vendedor_obj.username if vendedor_obj else '',           # 36. Vendedor (AJ)
+            float(prod.cto_adq) if prod and prod.cto_adq else 0.0,   # 37. Cto.Adq. (AK)
+            float(prod.margen) if prod and prod.margen else 0.0,     # 38. Margen (AL)
+            float(rubro_obj.margen) if rubro_obj and rubro_obj.margen else 0.0, # 39. Mg.Rubro (AM)
+            vta.sucursal.nombre if vta and vta.sucursal else ''      # 40. Sucursal (AN)
         ]
 
         for col_idx, val in enumerate(row_data, 1):
@@ -191,7 +194,7 @@ def exportar_ventas_producto_excel_service(items, empresa, filtros):
             elif col_idx == 15:  # Cantidad
                 cell.number_format = '#,##0.00'
                 cell.alignment = Alignment(horizontal='right', vertical='center')
-            elif col_idx in [16, 19, 20, 21, 22, 23, 24, 35, 36, 37]:  # Moneda / importes / porcentajes
+            elif col_idx in [16, 19, 20, 21, 22, 23, 24, 37, 38, 39]:  # Moneda / importes / porcentajes
                 cell.number_format = '#,##0.00'
                 cell.alignment = Alignment(horizontal='right', vertical='center')
 

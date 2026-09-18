@@ -69,9 +69,15 @@
                         </div>
                     </td>
                     <td class="px-3.5 py-3 font-semibold text-slate-700">
-                        <div class="flex items-center gap-1.5 font-bold text-slate-800">
-                            <i class="fa-solid fa-receipt text-slate-400"></i>
-                            RC #{{ r.recibo_reserva.numero|stringformat:"08d" }}
+                        <div class="flex items-center justify-between gap-1">
+                            <div class="flex items-center gap-1.5 font-bold text-slate-800">
+                                <i class="fa-solid fa-receipt text-slate-400"></i>
+                                RC #{{ r.recibo_reserva.numero|stringformat:"08d" }}
+                            </div>
+                            <a href="{% url 'recibo_pdf' r.recibo_reserva.pk %}" target="_blank" title="Imprimir Recibo de Seña"
+                               class="p-1 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors">
+                                <i class="fa-solid fa-print text-xs"></i>
+                            </a>
                         </div>
                         <span class="block text-[10px] text-slate-400 mt-0.5">{{ r.recibo_reserva.fecha|date:"d/m/Y" }}</span>
                     </td>

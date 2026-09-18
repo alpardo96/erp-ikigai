@@ -657,6 +657,16 @@
         document.addEventListener('DOMContentLoaded', () => attachFormValidation(document));
         document.addEventListener('htmx:afterSettle', (e) => attachFormValidation(e.target));
     </script>
+    {% if auto_print_url %}
+    <script>
+        (function() {
+            var url = "{{ auto_print_url|escapejs }}";
+            if (url) {
+                window.open(url, '_blank');
+            }
+        })();
+    </script>
+    {% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 

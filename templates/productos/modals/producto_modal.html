@@ -149,13 +149,16 @@
                         </div>
 
 
-                        <div class="sm:col-span-2">
+                        <div class="sm:col-span-3">
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.marca.label }}</label>
                             {{ form.marca }}
                             <div class="mt-1 flex items-center px-1">
                                 <span class="text-[10px] text-gray-400 uppercase font-bold mr-1">Margen Sugerido:</span>
                                 <span id="margen-marca" class="text-xs font-bold text-indigo-600">0</span><span class="text-xs font-bold text-indigo-600">%</span>
                             </div>
+                        </div>
+                        <div class="sm:col-span-3">
+                            <!-- Espacio visual o reservado -->
                         </div>
                         <div class="sm:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.rubro.label }}</label>
@@ -171,6 +174,14 @@
                             <div class="mt-1 flex items-center px-1">
                                 <span class="text-[10px] text-gray-400 uppercase font-bold mr-1">Margen Sugerido:</span>
                                 <span id="familia-margen" class="text-xs font-bold text-indigo-600">0</span><span class="text-xs font-bold text-indigo-600">%</span>
+                            </div>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ form.subfamilia.label }}</label>
+                            {{ form.subfamilia }}
+                            <div class="mt-1 flex items-center px-1">
+                                <span class="text-[10px] text-gray-400 uppercase font-bold mr-1">Margen Sugerido:</span>
+                                <span id="subfamilia-margen" class="text-xs font-bold text-indigo-600">0</span><span class="text-xs font-bold text-indigo-600">%</span>
                             </div>
                         </div>
 

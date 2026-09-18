@@ -1,8 +1,8 @@
 import json
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
-from .models import Producto, Marca, Rubro, Familia
-from .forms import ProductoForm, MarcaForm, RubroForm, FamiliaForm
+from .models import Producto, Marca, Rubro, Familia, Subfamilia
+from .forms import ProductoForm, MarcaForm, RubroForm, FamiliaForm, SubfamiliaForm
 from .services.busqueda_service import buscar_productos_inteligente
 from empresas.models import Empresa
 
@@ -67,6 +67,7 @@ def producto_modal(request, id=None):
                 'marca': producto_base.marca_id,
                 'rubro': producto_base.rubro_id,
                 'familia': producto_base.familia_id,
+                'subfamilia': producto_base.subfamilia_id,
                 'unidad_venta': producto_base.unidad_venta or '',
                 'peso_unitario_kg': producto_base.peso_unitario_kg,
                 'unidades_por_bulto': producto_base.unidades_por_bulto,
@@ -227,6 +228,47 @@ def eliminar_familia(request, id):
     return HttpResponse(status=400)
 
 
+# --- GESTIÓN DE SUBFAMILIAS ---
+def subfamilia_modal(request, id=None):
+    empresa_id = request.session.get('empresa_id')
+    empresa = get_object_or_404(Empresa, id=empresa_id)
+    subfamilia = get_object_or_404(Subfamilia, id=id, empresa=empresa) if id else None
+
+    if request.method == 'POST':
+        form = SubfamiliaForm(request.POST, instance=subfamilia, empresa=empresa)
+        if form.is_valid():
+            instancia = form.save(commit=False)
+            instancia.empresa = empresa
+            if not id:
+                instancia.creado_por = request.user
+            instancia.modificado_por = request.user
+            instancia.save()
+            response = HttpResponse()
+            response['HX-Trigger'] = 'subfamiliasActualizadas'
+            return response
+    else:
+        form = SubfamiliaForm(instance=subfamilia, empresa=empresa)
+
+    return render(request, 'productos/modals/subfamilia_modal.html', {'form': form, 'subfamilia': subfamilia})
+
+def buscar_subfamilias(request):
+    empresa_id = request.session.get('empresa_id')
+    q = request.GET.get('q', '').strip()
+    subfamilias = Subfamilia.objects.filter(empresa_id=empresa_id).select_related('familia')
+    if q:
+        subfamilias = subfamilias.filter(detalle__icontains=q)
+    return render(request, 'configuracion/partials/subfamilias_list.html', {'subfamilias': subfamilias})
+
+def eliminar_subfamilia(request, id):
+    empresa_id = request.session.get('empresa_id')
+    if request.method == 'DELETE' and empresa_id:
+        get_object_or_404(Subfamilia, id=id, empresa_id=empresa_id).delete()
+        response = HttpResponse()
+        response['HX-Trigger'] = 'subfamiliasActualizadas'
+        return response
+    return HttpResponse(status=400)
+
+
 def obtener_margen(request):
     tipo = request.GET.get('tipo')
     id_obj = request.GET.get('id')
@@ -244,6 +286,11 @@ def obtener_margen(request):
             return response
         elif tipo == 'familia':
             obj = Familia.objects.get(id=id_obj, empresa_id=request.session.get('empresa_id'))
+            response = HttpResponse(str(obj.margen))
+            response['HX-Trigger'] = 'familiaCambiada'
+            return response
+        elif tipo == 'subfamilia':
+            obj = Subfamilia.objects.get(id=id_obj, empresa_id=request.session.get('empresa_id'))
         else:
             return HttpResponse("0")
         return HttpResponse(str(obj.margen))
@@ -258,6 +305,15 @@ def filtrar_familias(request):
         familias = Familia.objects.filter(rubro_id=rubro_id, empresa_id=request.session.get('empresa_id'))
     
     return render(request, 'productos/partials/familia_options.html', {'familias': familias})
+
+def filtrar_subfamilias(request):
+    familia_id = request.GET.get('id')
+    if not familia_id:
+        subfamilias = Subfamilia.objects.filter(empresa_id=request.session.get('empresa_id'))
+    else:
+        subfamilias = Subfamilia.objects.filter(familia_id=familia_id, empresa_id=request.session.get('empresa_id'))
+    
+    return render(request, 'productos/partials/subfamilia_options.html', {'subfamilias': subfamilias})
 
 
 # --- EXPORTACIÓN E IMPORTACIÓN EN EXCEL DE PRODUCTOS ---

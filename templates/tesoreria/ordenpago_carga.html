@@ -823,8 +823,11 @@ document.addEventListener('alpine:init', () => {
                 body: JSON.stringify(this.data)
             }).then(res => res.json()).then(res => {
                 if(res.status === 'success') {
-                    // Se muestra en pantalla el número de asiento asignado en lugar de redirigir
-                    // de inmediato, para que el operador pueda anotarlo o ir al Libro Diario.
+                    // Abrir PDF para impresión inmediata de la orden de pago
+                    if (res.op_url) {
+                        window.open(res.op_url, '_blank');
+                    }
+                    // Se muestra en pantalla el número de asiento asignado
                     this.resultado = {
                         visible: true,
                         op: res.op_id,

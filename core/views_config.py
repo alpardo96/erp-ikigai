@@ -4,7 +4,7 @@ from empresas.models import Empresa, Sucursal, Ejercicio, PuntoVenta
 from django.contrib.auth.models import User
 from facturacion.models import Jurisdiccion, TipoComprobante
 
-from productos.models import Marca, Rubro, Familia
+from productos.models import Marca, Rubro, Familia, Subfamilia
 
 class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     template_name = 'configuracion/index.html'
@@ -48,6 +48,9 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         elif tab == 'familias':
             # Familia pertenece a Empresa y se relaciona con Rubro
             context['familias'] = Familia.objects.filter(empresa_id=empresa_id).select_related('rubro').order_by('rubro__detalle', 'detalle')
+        elif tab == 'subfamilias':
+            # Subfamilia pertenece a Empresa y se relaciona con Familia
+            context['subfamilias'] = Subfamilia.objects.filter(empresa_id=empresa_id).select_related('familia__rubro').order_by('familia__detalle', 'detalle')
         elif tab == 'comprobantes':
             context['comprobantes'] = TipoComprobante.objects.all()
         # --- Maestros de Distribución (Plan 074). Sólo se muestran en el hub si la
