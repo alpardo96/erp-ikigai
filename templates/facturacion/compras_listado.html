@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load l10n %}
+{% load formato_tags %}
 
 {% block title %}Listado de Compras{% endblock %}
 
@@ -118,9 +119,9 @@
                     <td class="px-4 py-2 font-bold text-slate-600">{{ c.fecha|date:"d/m/Y" }}</td>
                     <td class="px-4 py-2 font-bold text-slate-800">{{ c.tipo.codigo }} {{ c.punto|stringformat:"05d" }}-{{ c.numero|stringformat:"08d" }}</td>
                     <td class="px-4 py-2 uppercase text-slate-700">{{ c.proveedor.razon_social }}</td>
-                    <td class="px-4 py-2 text-right tabular-nums">$ {{ c.neto|floatformat:2 }}</td>
-                    <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ c.iva|floatformat:2 }}</td>
-                    <td class="px-4 py-2 text-right font-black tabular-nums">$ {{ c.total|floatformat:2 }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums">$ {{ c.neto|formato_ar }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ c.iva|formato_ar }}</td>
+                    <td class="px-4 py-2 text-right font-black tabular-nums">$ {{ c.total|formato_ar }}</td>
                     <td class="px-4 py-2 text-center">
                         {% if c.condic == 1 %}
                         <span class="text-[9px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full uppercase">Fiscal</span>
@@ -159,9 +160,9 @@
             <tfoot class="bg-slate-50 border-t-2 border-slate-200 font-black">
                 <tr>
                     <td class="px-4 py-2 text-right uppercase text-[10px] tracking-widest text-slate-500" colspan="3">Totales</td>
-                    <td class="px-4 py-2 text-right tabular-nums">$ {{ totales.neto|default:0|floatformat:2 }}</td>
-                    <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ totales.iva|default:0|floatformat:2 }}</td>
-                    <td class="px-4 py-2 text-right tabular-nums">$ {{ totales.total|default:0|floatformat:2 }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums">$ {{ totales.neto|formato_ar }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ totales.iva|formato_ar }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums">$ {{ totales.total|formato_ar }}</td>
                     <td colspan="2"></td>
                 </tr>
             </tfoot>

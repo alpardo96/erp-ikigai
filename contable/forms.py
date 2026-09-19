@@ -55,8 +55,17 @@ class CuentaForm(forms.ModelForm):
             'id_fc': forms.NumberInput(),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, empresa=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Por defecto al crear una cuenta nueva, sugerir que es Imputable
+        if not self.instance or not self.instance.pk:
+            if 'imputable' not in self.initial:
+                self.initial['imputable'] = 1
+
+        if empresa:
+            self.fields['sumariza'].queryset = Cuenta.objects.filter(empresa=empresa, imputable=0).order_by('jerarquia')
+        self.fields['sumariza'].empty_label = "-- Sin Sumarizadora (Nivel Superior) --"
+
         # Aplicamos diseño premium (Tailwind)
         for field_name, field in self.fields.items():
             clase_actual = field.widget.attrs.get('class', '')

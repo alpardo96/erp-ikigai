@@ -562,11 +562,11 @@
         // Escucha el evento global 'cerrarModal' y limpia el contenedor
         document.body.addEventListener('cerrarModal', function () {
             const mc2 = document.getElementById('modal-container-2');
-            if (mc2 && mc2.innerHTML.trim() !== '') {
+            const mc1 = document.getElementById('modal-container');
+            if (mc2 && mc2.children.length > 0) {
                 mc2.innerHTML = '';
-            } else {
-                const mc1 = document.getElementById('modal-container');
-                if (mc1) mc1.innerHTML = '';
+            } else if (mc1) {
+                mc1.innerHTML = '';
             }
         });
 

@@ -13,11 +13,11 @@ from .forms import CuentaForm
 # --- CRUD DE CUENTAS CONTABLES ---
 @login_required
 def cuenta_modal(request, id=None):
-    cuenta = get_object_or_404(Cuenta, id=id, empresa_id=request.session.get('empresa_id')) if id else None
     empresa_id = request.session.get('empresa_id')
+    cuenta = get_object_or_404(Cuenta, id=id, empresa_id=empresa_id) if id else None
     
     if request.method == 'POST':
-        form = CuentaForm(request.POST, instance=cuenta)
+        form = CuentaForm(request.POST, instance=cuenta, empresa=empresa_id)
         if form.is_valid():
             obj = form.save(commit=False)
             if not obj.pk:
@@ -30,10 +30,9 @@ def cuenta_modal(request, id=None):
             response['HX-Reswap'] = 'none'
             return response
     else:
-        form = CuentaForm(instance=cuenta)
+        form = CuentaForm(instance=cuenta, empresa=empresa_id)
         
     cuentas_padres = Cuenta.objects.filter(empresa_id=empresa_id, imputable=0).order_by('jerarquia')
-    form.fields['sumariza'].queryset = cuentas_padres
     
     return render(request, 'configuracion/modals/cuentacontable_form.html', {
         'form': form, 

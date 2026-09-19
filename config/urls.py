@@ -15,7 +15,7 @@ from facturacion.views_impresion import imprimir_factura, imprimir_preventa
 from facturacion.views_reportes import (
     ReporteVentasProductoView, buscar_reporte_ventas_producto,
     exportar_ventas_producto_csv, exportar_ventas_producto_excel,
-    exportar_clientes_excel
+    exportar_clientes_excel, exportar_ventas_listado_excel
 )
 from facturacion.views_oc import (
     OrdenCompraCargaView, OrdenCompraListView, OrdenCompraBajaView, OrdenCompraImprimirView,
@@ -203,6 +203,7 @@ urlpatterns = [
     # 🔹 VENTAS 🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹🔹
     path('ventas/', VentasIndexView.as_view(), name='ventas_index'),
     path('ventas/listado/', VentasListView.as_view(), name='ventas_listado'),
+    path('ventas/listado/exportar-excel/', exportar_ventas_listado_excel, name='exportar_ventas_listado_excel'),
     path('ventas/<int:id>/sincronizar-cliente/', VentaSincronizarClienteView.as_view(), name='venta_sincronizar_cliente'),
     path('ventas/<int:id>/anular/modal/', VentaAnularModalView.as_view(), name='venta_anular_modal'),
     path('ventas/<int:id>/previsualizar/modal/', VentaPrevisualizarModalView.as_view(), name='venta_previsualizar_modal'),

@@ -5000,68 +5000,79 @@ Hacer mÃ¡s inteligente la bÃºsqueda de productos en la carga de preventa, autoco
 
 **Migraciones**: usuarios.0004_permisodenegado.
 **Siguientes pasos**: Comprobar el funcionamiento del submodal de exclusiones en la UI y la re-renderizaciÃ³n de la navbar.
- 
+
+ 
  # #   A n t i g r a v i t y 
- -   * * F e c h a / D í a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
- -   * * O b j e t i v o   o   T a r e a * * :   C o r r e g i r   e r r o r   c o n c e p t u a l   e n   l a   a s i g n a c i ó n   d e   p e r m i s o s   d e n e g a d o s   a l   a g r e g a r   r o l e s   a   u n   u s u a r i o . 
+ -   * * F e c h a / D ï¿½ a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
+ -   * * O b j e t i v o   o   T a r e a * * :   C o r r e g i r   e r r o r   c o n c e p t u a l   e n   l a   a s i g n a c i ï¿½ n   d e   p e r m i s o s   d e n e g a d o s   a l   a g r e g a r   r o l e s   a   u n   u s u a r i o . 
  -   * * A r c h i v o s   c r e a d o s   o   m o d i f i c a d o s * * : 
      -   \ u s u a r i o s / v i e w s _ h t m x . p y \   [ M O D I F Y ] 
- -   * * D e t a l l e   T é c n i c o   e   i m p l i c a c i o n e s * * : 
-     -   C u a n d o   s e   a s i g n a b a   u n   n u e v o   g r u p o   ( r o l )   a   u n   u s u a r i o ,   l o s   c h e c k b o x e s   i n d i v i d u a l e s   d e   l o s   p e r m i s o s   h e r e d a d o s   d e   e s e   r o l   n o   a p a r e c í a n   m a r c a d o s   e n   e l   D O M   o r i g i n a l   d e l   f r o n t e n d   a l   m o m e n t o   d e   e n v i a r   e l   f o r m u l a r i o . 
-     -   E l   b a c k e n d   c a l c u l a b a   \ d e n e g a d o s   =   p e r m i s o s _ h e r e d a d o s   -   m a r c a d o s \ ,   p o r   l o   q u e   a u t o m á t i c a m e n t e   c a t a l o g a b a   t o d o s   l o s   p e r m i s o s   d e l   g r u p o   r e c i é n   a s i g n a d o   c o m o   d e n e g a d o s   ( y a   q u e   n o   v i a j a b a n   e n   \ m a r c a d o s \ ) . 
-     -   S e   m o d i f i c ó   l a   l ó g i c a   p a r a   c r u z a r   e s t o   c o n   e l   e s t a d o   a n t e r i o r   d e   l a   b a s e   d e   d a t o s   ( \ p e r m i s o s _ h e r e d a d o s _ a n t e s \ ) .   A h o r a   u n   p e r m i s o   s o l o   p a s a   a   d e n e g a d o   s i   e l   u s u a r i o   * * y a   l o   t e n í a   h e r e d a d o   d e s d e   a n t e s   d e   a b r i r   e l   m o d a l * *   y   e x p l í c i t a m e n t e   l o   d e s m a r c ó . 
- -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   L a   a d i c i ó n   d e   u n   n u e v o   r o l   y a   n o   n i e g a   l o s   p e r m i s o s   a u t o m á t i c a m e n t e ,   p e r o   s í   r e s p e t a   l a s   d e n e g a c i o n e s   o   r e v o c a c i o n e s   m a n u a l e s   p o s t e r i o r e s .  
+ -   * * D e t a l l e   T ï¿½ c n i c o   e   i m p l i c a c i o n e s * * : 
+     -   C u a n d o   s e   a s i g n a b a   u n   n u e v o   g r u p o   ( r o l )   a   u n   u s u a r i o ,   l o s   c h e c k b o x e s   i n d i v i d u a l e s   d e   l o s   p e r m i s o s   h e r e d a d o s   d e   e s e   r o l   n o   a p a r e c ï¿½ a n   m a r c a d o s   e n   e l   D O M   o r i g i n a l   d e l   f r o n t e n d   a l   m o m e n t o   d e   e n v i a r   e l   f o r m u l a r i o . 
+     -   E l   b a c k e n d   c a l c u l a b a   \ d e n e g a d o s   =   p e r m i s o s _ h e r e d a d o s   -   m a r c a d o s \ ,   p o r   l o   q u e   a u t o m ï¿½ t i c a m e n t e   c a t a l o g a b a   t o d o s   l o s   p e r m i s o s   d e l   g r u p o   r e c i ï¿½ n   a s i g n a d o   c o m o   d e n e g a d o s   ( y a   q u e   n o   v i a j a b a n   e n   \ m a r c a d o s \ ) . 
+     -   S e   m o d i f i c ï¿½   l a   l ï¿½ g i c a   p a r a   c r u z a r   e s t o   c o n   e l   e s t a d o   a n t e r i o r   d e   l a   b a s e   d e   d a t o s   ( \ p e r m i s o s _ h e r e d a d o s _ a n t e s \ ) .   A h o r a   u n   p e r m i s o   s o l o   p a s a   a   d e n e g a d o   s i   e l   u s u a r i o   * * y a   l o   t e n ï¿½ a   h e r e d a d o   d e s d e   a n t e s   d e   a b r i r   e l   m o d a l * *   y   e x p l ï¿½ c i t a m e n t e   l o   d e s m a r c ï¿½ . 
+ -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   L a   a d i c i ï¿½ n   d e   u n   n u e v o   r o l   y a   n o   n i e g a   l o s   p e r m i s o s   a u t o m ï¿½ t i c a m e n t e ,   p e r o   s ï¿½   r e s p e t a   l a s   d e n e g a c i o n e s   o   r e v o c a c i o n e s   m a n u a l e s   p o s t e r i o r e s . 
+ 
  # #   A n t i g r a v i t y 
- -   * * F e c h a / D í a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
- -   * * O b j e t i v o   o   T a r e a * * :   M e j o r a r   l a   U X   d e   a s i g n a c i ó n   d e   p e r m i s o s   y   v i s i b i l i d a d   d e l   N a v b a r . 
+ -   * * F e c h a / D ï¿½ a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
+ -   * * O b j e t i v o   o   T a r e a * * :   M e j o r a r   l a   U X   d e   a s i g n a c i ï¿½ n   d e   p e r m i s o s   y   v i s i b i l i d a d   d e l   N a v b a r . 
  -   * * A r c h i v o s   c r e a d o s   o   m o d i f i c a d o s * * : 
      -   \ 	 e m p l a t e s / b a s e . h t m l \   [ M O D I F Y ] 
      -   \ 	 e m p l a t e s / c o n f i g u r a c i o n / m o d a l s / u s u a r i o _ f o r m . h t m l \   [ M O D I F Y ] 
- -   * * D e t a l l e   T é c n i c o   e   i m p l i c a c i o n e s * * : 
-     -   S e   a g r e g ó   l ó g i c a   J a v a S c r i p t   e n   \ u s u a r i o _ f o r m . h t m l \   p a r a   q u e   a l   t i l d a r / d e s t i l d a r   u n   p e r m i s o   ' P a d r e '   ( e j .   \ m e n u _ v e n t a s \ ) ,   a u t o m á t i c a m e n t e   s e l e c c i o n e   o   d e s e l e c c i o n e   t o d o s   s u s   p e r m i s o s   h i j o s   ( \ m e n u _ v e n t a s _ * \ ) ,   h a c i é n d o l o   u n   c o m p o r t a m i e n t o   e x p l í c i t o   e n   l a   U I . 
-     -   E n   \  a s e . h t m l \ ,   l o s   a c c e s o s   a   l o s   m ó d u l o s   p r i n c i p a l e s   d e l   N a v b a r   a h o r a   v a l i d a n   s i   e l   u s u a r i o   p o s e e   * * c u a l q u i e r a * *   d e   l o s   p e r m i s o s   h i j o s ,   n o   s o l o   e l   p e r m i s o   ' P a d r e '   e s t r i c t o .   E s t o   p e r m i t e   q u e   u n   u s u a r i o   c o n   s o l o   u n   p e r m i s o   e s p e c í f i c o   ( c o m o   P r e v e n t a )   p u e d a   v e r   e l   m e n ú   r a í z   c o r r e s p o n d i e n t e   e n   e l   s i d e b a r . 
- -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   N a v b a r   v i s i b l e   c o r r e c t a m e n t e   a l   h e r e d a r   s o l o   p e r m i s o s   s e c u n d a r i o s .   M o d a l   a u t o c o m p l e t a   s e l e c c i o n e s .  
+ -   * * D e t a l l e   T ï¿½ c n i c o   e   i m p l i c a c i o n e s * * : 
+     -   S e   a g r e g ï¿½   l ï¿½ g i c a   J a v a S c r i p t   e n   \ u s u a r i o _ f o r m . h t m l \   p a r a   q u e   a l   t i l d a r / d e s t i l d a r   u n   p e r m i s o   ' P a d r e '   ( e j .   \ m e n u _ v e n t a s \ ) ,   a u t o m ï¿½ t i c a m e n t e   s e l e c c i o n e   o   d e s e l e c c i o n e   t o d o s   s u s   p e r m i s o s   h i j o s   ( \ m e n u _ v e n t a s _ * \ ) ,   h a c i ï¿½ n d o l o   u n   c o m p o r t a m i e n t o   e x p l ï¿½ c i t o   e n   l a   U I . 
+     -   E n   \  a s e . h t m l \ ,   l o s   a c c e s o s   a   l o s   m ï¿½ d u l o s   p r i n c i p a l e s   d e l   N a v b a r   a h o r a   v a l i d a n   s i   e l   u s u a r i o   p o s e e   * * c u a l q u i e r a * *   d e   l o s   p e r m i s o s   h i j o s ,   n o   s o l o   e l   p e r m i s o   ' P a d r e '   e s t r i c t o .   E s t o   p e r m i t e   q u e   u n   u s u a r i o   c o n   s o l o   u n   p e r m i s o   e s p e c ï¿½ f i c o   ( c o m o   P r e v e n t a )   p u e d a   v e r   e l   m e n ï¿½   r a ï¿½ z   c o r r e s p o n d i e n t e   e n   e l   s i d e b a r . 
+ -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   N a v b a r   v i s i b l e   c o r r e c t a m e n t e   a l   h e r e d a r   s o l o   p e r m i s o s   s e c u n d a r i o s .   M o d a l   a u t o c o m p l e t a   s e l e c c i o n e s . 
+ 
  # #   A n t i g r a v i t y 
- -   * * F e c h a / D í a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
+ -   * * F e c h a / D ï¿½ a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
  -   * * O b j e t i v o   o   T a r e a * * :   D e s a c o p l a r   c o m p r o b a c i o n e s   d e   p e r m i s o s   a n i d a d o s   e n   e l   N a v b a r . 
  -   * * A r c h i v o s   c r e a d o s   o   m o d i f i c a d o s * * : 
      -   \ 	 e m p l a t e s / b a s e . h t m l \   [ M O D I F Y ] 
- -   * * D e t a l l e   T é c n i c o   e   i m p l i c a c i o n e s * * : 
-     -   S e   d e s c u b r i ó   q u e   v a r i o s   l i n k s   a   s u b - m ó d u l o s   e s t a b a n   e n g l o b a d o s   e r r ó n e a m e n t e   d e n t r o   d e l   b l o q u e   \ { %   i f   % } \   d e   s u   m ó d u l o   \  
+ -   * * D e t a l l e   T ï¿½ c n i c o   e   i m p l i c a c i o n e s * * : 
+     -   S e   d e s c u b r i ï¿½   q u e   v a r i o s   l i n k s   a   s u b - m ï¿½ d u l o s   e s t a b a n   e n g l o b a d o s   e r r ï¿½ n e a m e n t e   d e n t r o   d e l   b l o q u e   \ { %   i f   % } \   d e   s u   m ï¿½ d u l o   \ 
+ 
  h e r m a n o \   ( e j .   \ m e n u _ v e n t a s _ p r e v e n t a s \   e s t a b a   a d e n t r o   d e l   b l o q u e   q u e   v e r i f i c a b a   \ m e n u _ v e n t a s _ c a r g a \ ) .   
-     -   A l   s e p a r a r   e s t o s   c o n d i c i o n a l e s   a   s u   p r o p i o   \ { %   i f   % } \   i n d i v i d u a l ,   a s e g u r a m o s   q u e   s i   u n   u s u a r i o   s o l o   t i e n e   a c c e s o   a   \ C a r g a  
- d e  
- P r e V e n t a s \   o   \ Ó r d e n e s  
- d e  
+     -   A l   s e p a r a r   e s t o s   c o n d i c i o n a l e s   a   s u   p r o p i o   \ { %   i f   % } \   i n d i v i d u a l ,   a s e g u r a m o s   q u e   s i   u n   u s u a r i o   s o l o   t i e n e   a c c e s o   a   \ C a r g a 
+ 
+ d e 
+ 
+ P r e V e n t a s \   o   \ ï¿½ r d e n e s 
+ 
+ d e 
+ 
  C o m p r a \ ,   e l   l i n k   s e   m u e s t r e   d e   m a n e r a   i n d e p e n d i e n t e   e n   e l   N a v b a r   s i n   r e q u e r i r   t e n e r   a c c e s o   a   l a   c a r g a   d e   v e n t a s / c o m p r a s   g e n e r a l . 
- -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   N a v b a r   r e n d e r i z a   a p r o p i a d a m e n t e   l o s   a c c e s o s   d e   m e n ú s   e s p e c í f i c o s   q u e   a n t e s   q u e d a b a n   o c u l t o s   p o r   e l   a c o p l a m i e n t o .  
+ -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   N a v b a r   r e n d e r i z a   a p r o p i a d a m e n t e   l o s   a c c e s o s   d e   m e n ï¿½ s   e s p e c ï¿½ f i c o s   q u e   a n t e s   q u e d a b a n   o c u l t o s   p o r   e l   a c o p l a m i e n t o . 
+ 
  # #   A n t i g r a v i t y 
- -   * * F e c h a / D í a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
- -   * * O b j e t i v o   o   T a r e a * * :   V a l i d a r   p e r m i s o s   e n   l o s   D a s h b o a r d   d e   l o s   M ó d u l o s   ( V e n t a s ,   C o m p r a s )   y   C o n f i g u r a c i ó n . 
+ -   * * F e c h a / D ï¿½ a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
+ -   * * O b j e t i v o   o   T a r e a * * :   V a l i d a r   p e r m i s o s   e n   l o s   D a s h b o a r d   d e   l o s   M ï¿½ d u l o s   ( V e n t a s ,   C o m p r a s )   y   C o n f i g u r a c i ï¿½ n . 
  -   * * A r c h i v o s   c r e a d o s   o   m o d i f i c a d o s * * : 
      -   \ 	 e m p l a t e s / f a c t u r a c i o n / v e n t a s _ i n d e x . h t m l \   [ M O D I F Y ] 
      -   \ 	 e m p l a t e s / f a c t u r a c i o n / c o m p r a s _ i n d e x . h t m l \   [ M O D I F Y ] 
      -   \ 	 e m p l a t e s / c o n f i g u r a c i o n / p a r t i a l s / h u b . h t m l \   [ M O D I F Y ] 
- -   * * D e t a l l e   T é c n i c o   e   i m p l i c a c i o n e s * * : 
-     -   A n t e r i o r m e n t e ,   a u n q u e   e l   s i d e b a r   c o n t r o l a b a   l a   v i s i b i l i d a d   d e   l a s   o p c i o n e s ,   l o s   _ D a s h b o a r d s _   d e   i n i c i o   d e   c a d a   m ó d u l o   ( e j .   \  e n t a s _ i n d e x \ ,   \ c o m p r a s _ i n d e x \ )   m o s t r a b a n   * * t o d a s * *   l a s   t a r j e t a s   d e   a c c e s o s   d i r e c t o s   s i n   i m p o r t a r   l o s   p e r m i s o s   d e l   u s u a r i o . 
-     -   S e   a ñ a d i e r o n   b l o q u e s   \ { %   i f   p e r m s . u s u a r i o s . . .   % } \   a l r e d e d o r   d e   c a d a   _ c a r d _   ( C a r g a   d e   V e n t a s ,   L i s t a d o ,   P r e v e n t a s ,   Ó r d e n e s   d e   C o m p r a ,   C a r g a   I A ,   e t c . )   e n   l a s   p l a n t i l l a s   d e   l o s   m ó d u l o s   c o r r e s p o n d i e n t e s . 
-     -   S e   r e p l i c ó   l a   s e g u r i d a d   v i s u a l   p a r a   l a s   t a r j e t a s   d e   G e s t i ó n   d e   U s u a r i o s   y   R o l e s   e n   e l   \ h u b . h t m l \   d e   c o n f i g u r a c i ó n ,   a s e g u r a n d o   q u e   s o l o   a d m i n i s t r a d o r e s   p u e d a n   v e r   e s t o s   r e c u a d r o s . 
- -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   L o s   D a s h b o a r d s   d e   l o s   m ó d u l o s   s o l o   r e n d e r i z a n   l a s   t a r j e t a s   d e   f u n c i o n a l i d a d e s   a   l a s   q u e   e l   u s u a r i o   p o s e e   p e r m i s o .  
+ -   * * D e t a l l e   T ï¿½ c n i c o   e   i m p l i c a c i o n e s * * : 
+     -   A n t e r i o r m e n t e ,   a u n q u e   e l   s i d e b a r   c o n t r o l a b a   l a   v i s i b i l i d a d   d e   l a s   o p c i o n e s ,   l o s   _ D a s h b o a r d s _   d e   i n i c i o   d e   c a d a   m ï¿½ d u l o   ( e j .   \  e n t a s _ i n d e x \ ,   \ c o m p r a s _ i n d e x \ )   m o s t r a b a n   * * t o d a s * *   l a s   t a r j e t a s   d e   a c c e s o s   d i r e c t o s   s i n   i m p o r t a r   l o s   p e r m i s o s   d e l   u s u a r i o . 
+     -   S e   a ï¿½ a d i e r o n   b l o q u e s   \ { %   i f   p e r m s . u s u a r i o s . . .   % } \   a l r e d e d o r   d e   c a d a   _ c a r d _   ( C a r g a   d e   V e n t a s ,   L i s t a d o ,   P r e v e n t a s ,   ï¿½ r d e n e s   d e   C o m p r a ,   C a r g a   I A ,   e t c . )   e n   l a s   p l a n t i l l a s   d e   l o s   m ï¿½ d u l o s   c o r r e s p o n d i e n t e s . 
+     -   S e   r e p l i c ï¿½   l a   s e g u r i d a d   v i s u a l   p a r a   l a s   t a r j e t a s   d e   G e s t i ï¿½ n   d e   U s u a r i o s   y   R o l e s   e n   e l   \ h u b . h t m l \   d e   c o n f i g u r a c i ï¿½ n ,   a s e g u r a n d o   q u e   s o l o   a d m i n i s t r a d o r e s   p u e d a n   v e r   e s t o s   r e c u a d r o s . 
+ -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   L o s   D a s h b o a r d s   d e   l o s   m ï¿½ d u l o s   s o l o   r e n d e r i z a n   l a s   t a r j e t a s   d e   f u n c i o n a l i d a d e s   a   l a s   q u e   e l   u s u a r i o   p o s e e   p e r m i s o . 
+ 
  # #   A n t i g r a v i t y 
- -   * * F e c h a / D í a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
+ -   * * F e c h a / D ï¿½ a * * :   1 5   d e   S e p t i e m b r e   d e   2 0 2 6 
  -   * * O b j e t i v o   o   T a r e a * * :   I m p l e m e n t a r   M i d d l e w a r e   G l o b a l   d e   P e r m i s o s . 
  -   * * A r c h i v o s   c r e a d o s   o   m o d i f i c a d o s * * : 
      -   \ 	 e m p l a t e s / b a s e . h t m l \   [ M O D I F Y ] 
      -   \ u s u a r i o s / m i d d l e w a r e . p y \   [ N E W ] 
      -   \ c o n f i g / s e t t i n g s . p y \   [ M O D I F Y ] 
- -   * * D e t a l l e   T é c n i c o   e   i m p l i c a c i o n e s * * : 
-     -   S e   e x t r a j e r o n   l o s   \ { %   h o o k _ m e n u   % } \   d e l   c o n d i c i o n a l   d e   C a r g a   e n   \  a s e . h t m l \   p a r a   g a r a n t i z a r   q u e   l a   v e r t i c a l i d a d   s e   m u e s t r e   s i   e l   u s u a r i o   t i e n e   o t r o s   p e r m i s o s   d e l   m ó d u l o   p e r o   n o   n e c e s a r i a m e n t e   e l   d e   c a r g a . 
-     -   S e   c r e ó   \ R o l e P e r m i s s i o n M i d d l e w a r e \   c o n   t r e s   n i v e l e s   d e   c h e q u e o : 
-         1 .   M a p a   e x a c t o   d e   U R L   ( \ E X A C T _ M A P \ )   p a r a   v i s t a s   c r í t i c a s . 
-         2 .   M a p a   d e   p r e f i j o   ( \ P R E F I X _ M A P \ )   p a r a   a g r u p a r   e n d p o i n t s   d e   c o n f i g u r a c i ó n   o   d e   s e g u r i d a d . 
-         3 .   V a l i d a c i ó n   p o r   p r e f i j o   d e   m ó d u l o   ( \ M O D U L E _ P R E F I X _ P E R M S \ )   p a r a   g a r a n t i z a r   q u e   e n d p o i n t s   g e n é r i c o s   ( e j .   l l a m a d a s   A J A X )   e x i j a n   a l   m e n o s   u n   p e r m i s o   d e n t r o   d e   e s a   f a m i l i a . 
-     -   S e   a g r e g ó   a   \ M I D D L E W A R E \   e n   \ s e t t i n g s . p y \ . 
- -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   L i s t o   p a r a   v e r i f i c a c i ó n   m a n u a l .   L a   i n t r u s i ó n   d i r e c t a   v í a   U R L   p o r   u s u a r i o s   n o   a u t o r i z a d o s   a r r o j a r á   u n   4 0 3   ( A c c e s o   D e n e g a d o ) .  
+ -   * * D e t a l l e   T ï¿½ c n i c o   e   i m p l i c a c i o n e s * * : 
+     -   S e   e x t r a j e r o n   l o s   \ { %   h o o k _ m e n u   % } \   d e l   c o n d i c i o n a l   d e   C a r g a   e n   \  a s e . h t m l \   p a r a   g a r a n t i z a r   q u e   l a   v e r t i c a l i d a d   s e   m u e s t r e   s i   e l   u s u a r i o   t i e n e   o t r o s   p e r m i s o s   d e l   m ï¿½ d u l o   p e r o   n o   n e c e s a r i a m e n t e   e l   d e   c a r g a . 
+     -   S e   c r e ï¿½   \ R o l e P e r m i s s i o n M i d d l e w a r e \   c o n   t r e s   n i v e l e s   d e   c h e q u e o : 
+         1 .   M a p a   e x a c t o   d e   U R L   ( \ E X A C T _ M A P \ )   p a r a   v i s t a s   c r ï¿½ t i c a s . 
+         2 .   M a p a   d e   p r e f i j o   ( \ P R E F I X _ M A P \ )   p a r a   a g r u p a r   e n d p o i n t s   d e   c o n f i g u r a c i ï¿½ n   o   d e   s e g u r i d a d . 
+         3 .   V a l i d a c i ï¿½ n   p o r   p r e f i j o   d e   m ï¿½ d u l o   ( \ M O D U L E _ P R E F I X _ P E R M S \ )   p a r a   g a r a n t i z a r   q u e   e n d p o i n t s   g e n ï¿½ r i c o s   ( e j .   l l a m a d a s   A J A X )   e x i j a n   a l   m e n o s   u n   p e r m i s o   d e n t r o   d e   e s a   f a m i l i a . 
+     -   S e   a g r e g ï¿½   a   \ M I D D L E W A R E \   e n   \ s e t t i n g s . p y \ . 
+ -   * * R e s u l t a d o   d e   l a s   p r u e b a s * * :   L i s t o   p a r a   v e r i f i c a c i ï¿½ n   m a n u a l .   L a   i n t r u s i ï¿½ n   d i r e c t a   v ï¿½ a   U R L   p o r   u s u a r i o s   n o   a u t o r i z a d o s   a r r o j a r ï¿½   u n   4 0 3   ( A c c e s o   D e n e g a d o ) . 
+ 
  
 ## Antigravity
 - **Fecha/DÃ­a**: 15 de Septiembre de 2026
@@ -5086,8 +5097,8 @@ Hacer mÃ¡s inteligente la bÃºsqueda de productos en la carga de preventa, autoco
 - **Resultado de las pruebas**: Vistas HTMX, forms y modelos actualizados correctamente, migraciones ejecutadas exitosamente.
 
 ## Antigravity
-- **Fecha/Día**: 16 de Septiembre de 2026
-- **Objetivo o Tarea**: Implementación de Extensiones Armería, Trazabilidad, e Impresión de Preventas
+- **Fecha/Dï¿½a**: 16 de Septiembre de 2026
+- **Objetivo o Tarea**: Implementaciï¿½n de Extensiones Armerï¿½a, Trazabilidad, e Impresiï¿½n de Preventas
 - **Archivos creados o modificados**:
     - \acturacion/views.py\ [MODIFY]
     - \erticalidades/armeria/views.py\ [MODIFY]
@@ -5098,76 +5109,77 @@ Hacer mÃ¡s inteligente la bÃºsqueda de productos en la carga de preventa, autoco
     - \	emplates/facturacion/ventas_carga.html\ [MODIFY]
     - \	emplates/facturacion/autorizaciones_index.html\ [MODIFY]
     - \erticalidades/armeria/templates/armeria/partials/trazabilidad_modal_timeline.html\ [MODIFY]
-- **Detalle Técnico e implicaciones**:
-    - Se agregó botón de edición de cliente en modal en las vistas de carga de ventas y preventas.
+- **Detalle Tï¿½cnico e implicaciones**:
+    - Se agregï¿½ botï¿½n de ediciï¿½n de cliente en modal en las vistas de carga de ventas y preventas.
     - Se reemplazaron alertas de bucle infinito (alert) por notificaciones Swal.fire.
-    - Se incorporó soporte de impresión de Remitos de Preventa con \generar_pdf_preventa\.
-    - Se añadió botón PDF en el modal de Trazabilidad (Timeline) y en la bandeja de Autorizaciones para descargar el comprobante en nueva pestaña.
-    - Se ejecutó script de reset de secuencias para arreglar error de ID ya existente y se aplicaron migraciones para los borrados lógicos.
+    - Se incorporï¿½ soporte de impresiï¿½n de Remitos de Preventa con \generar_pdf_preventa\.
+    - Se aï¿½adiï¿½ botï¿½n PDF en el modal de Trazabilidad (Timeline) y en la bandeja de Autorizaciones para descargar el comprobante en nueva pestaï¿½a.
+    - Se ejecutï¿½ script de reset de secuencias para arreglar error de ID ya existente y se aplicaron migraciones para los borrados lï¿½gicos.
 - **Resultado de las pruebas**: Vistas actualizadas, PDF generando correctamente y bug de alertas JS solucionado.
 
 
 ## Antigravity
-- **Fecha/Día**: 16 de Septiembre de 2026
-- **Objetivo o Tarea**: Arreglar selección de cliente en Armería y automatizar facturación de reservas SIGIMAC.
+- **Fecha/Dï¿½a**: 16 de Septiembre de 2026
+- **Objetivo o Tarea**: Arreglar selecciï¿½n de cliente en Armerï¿½a y automatizar facturaciï¿½n de reservas SIGIMAC.
 - **Archivos creados o modificados**:
     - \	emplates/facturacion/partials/clientes_typeahead.html\ [MODIFY]
     - \erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html\ [MODIFY]
     - \erticalidades/armeria/views.py\ [MODIFY]
     - \erticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html\ [MODIFY]
-- **Detalle Técnico e implicaciones**:
-    - Se solucionó el bug donde \clienteVentaSeleccionado\ no llegaba a \document.body\ al seleccionarse desde el typeahead, haciendo que el evento se dispare sobre \document.body\ y burbujee de forma correcta. Esto arregló la alerta de reserva pendiente "que no estaba funcionando".
-    - El botón "Facturar" en SIGIMAC ahora añade \?cliente_id=X\ a la URL.
-    - \VentasTrazabilidadCargaView\ lee el parámetro y auto-asigna al cliente en la vista, despachando el evento HTMX al terminar de cargar la página, de modo que se rellenan sus datos e impuestos automáticamente.
-    - El autocompletado de serie \	ypeahead_series_trazabilidad\ ahora intercepta el \cliente_id\ seleccionado en la factura y, de estar el campo de serie vacío (cuando el usuario hace focus/clic), carga directamente los subproductos (series) que ese cliente tenga en sus reservas PENDIENTES, facilitando seleccionar el arma reservada sin escribir nada.
-- **Resultado de las pruebas**: Navegación directa desde bandeja SIGIMAC hasta Trazabilidad con cliente precargado y arma lista para ser seleccionada al hacer clic en el buscador de series.
+- **Detalle Tï¿½cnico e implicaciones**:
+    - Se solucionï¿½ el bug donde \clienteVentaSeleccionado\ no llegaba a \document.body\ al seleccionarse desde el typeahead, haciendo que el evento se dispare sobre \document.body\ y burbujee de forma correcta. Esto arreglï¿½ la alerta de reserva pendiente "que no estaba funcionando".
+    - El botï¿½n "Facturar" en SIGIMAC ahora aï¿½ade \?cliente_id=X\ a la URL.
+    - \VentasTrazabilidadCargaView\ lee el parï¿½metro y auto-asigna al cliente en la vista, despachando el evento HTMX al terminar de cargar la pï¿½gina, de modo que se rellenan sus datos e impuestos automï¿½ticamente.
+    - El autocompletado de serie \	ypeahead_series_trazabilidad\ ahora intercepta el \cliente_id\ seleccionado en la factura y, de estar el campo de serie vacï¿½o (cuando el usuario hace focus/clic), carga directamente los subproductos (series) que ese cliente tenga en sus reservas PENDIENTES, facilitando seleccionar el arma reservada sin escribir nada.
+- **Resultado de las pruebas**: Navegaciï¿½n directa desde bandeja SIGIMAC hasta Trazabilidad con cliente precargado y arma lista para ser seleccionada al hacer clic en el buscador de series.
 
 
-## Antigravity (Corrección)
-- **Fecha/Día**: 16 de Septiembre de 2026
-- **Objetivo o Tarea**: Arreglar error de ID vacío al clickear 'Facturar' y alerta no renderizada.
+## Antigravity (Correcciï¿½n)
+- **Fecha/Dï¿½a**: 16 de Septiembre de 2026
+- **Objetivo o Tarea**: Arreglar error de ID vacï¿½o al clickear 'Facturar' y alerta no renderizada.
 - **Archivos modificados**:
     - \erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html\ [MODIFY]
     - \erticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html\ [MODIFY]
-- **Detalle Técnico**:
-    - Se cambió \{{ r.cliente.id }}\ por \{{ r.cliente.pk }}\ en el botón Facturar de la tabla de reservas. Esto ocurría porque el modelo \ClienteProveedor\ tiene un primary key personalizado (\codigo_id\), lo que provocaba que Django devolviera un string vacío al usar \.id\ en el template, arruinando la URL generada.
-    - Se cambió el uso de \etch()\ crudo en JS por \htmx.ajax()\ al escuchar el evento de cliente seleccionado. Esto asegura que la petición de validación de reserva SIGIMAC viaje con todas las cookies de sesión y cabeceras necesarias, evitando que la vista de verificación fallara al no reconocer la sesión (\empresa_id\).
+- **Detalle Tï¿½cnico**:
+    - Se cambiï¿½ \{{ r.cliente.id }}\ por \{{ r.cliente.pk }}\ en el botï¿½n Facturar de la tabla de reservas. Esto ocurrï¿½a porque el modelo \ClienteProveedor\ tiene un primary key personalizado (\codigo_id\), lo que provocaba que Django devolviera un string vacï¿½o al usar \.id\ en el template, arruinando la URL generada.
+    - Se cambiï¿½ el uso de \etch()\ crudo en JS por \htmx.ajax()\ al escuchar el evento de cliente seleccionado. Esto asegura que la peticiï¿½n de validaciï¿½n de reserva SIGIMAC viaje con todas las cookies de sesiï¿½n y cabeceras necesarias, evitando que la vista de verificaciï¿½n fallara al no reconocer la sesiï¿½n (\empresa_id\).
 
 
-    - Se regresó el sistema de alerta al método \etch()\ (el cual funcionaba antes) pero montado sobre el \document.body\, debido a que HTMX por defecto cancela las peticiones asíncronas concurrentes originadas en el mismo elemento (o si no se les especifica un 'source' explícito). Al volver a usar la API nativa de JavaScript, permitimos que la carga de los detalles fiscales del cliente y la alerta de reserva se procesen en paralelo sin chocarse ni cancelarse.
-    - **Protección de Concurrencia (Doble Venta)**: Se añadió una validación temprana en \VentasTrazabilidadCargaView\ al momento de hacer un POST. Si se envía un \eserva_id\, se verifica en milisegundos que siga en estado 'PENDIENTE' antes de tocar AFIP. Si otra PC ya la facturó mientras esta tenía la pestaña abierta, el sistema bloqueará la venta y devolverá un mensaje de error amigable, previniendo así un doble cobro y doble baja de stock.
+    - Se regresï¿½ el sistema de alerta al mï¿½todo \etch()\ (el cual funcionaba antes) pero montado sobre el \document.body\, debido a que HTMX por defecto cancela las peticiones asï¿½ncronas concurrentes originadas en el mismo elemento (o si no se les especifica un 'source' explï¿½cito). Al volver a usar la API nativa de JavaScript, permitimos que la carga de los detalles fiscales del cliente y la alerta de reserva se procesen en paralelo sin chocarse ni cancelarse.
+    - **Protecciï¿½n de Concurrencia (Doble Venta)**: Se aï¿½adiï¿½ una validaciï¿½n temprana en \VentasTrazabilidadCargaView\ al momento de hacer un POST. Si se envï¿½a un \
+eserva_id\, se verifica en milisegundos que siga en estado 'PENDIENTE' antes de tocar AFIP. Si otra PC ya la facturï¿½ mientras esta tenï¿½a la pestaï¿½a abierta, el sistema bloquearï¿½ la venta y devolverï¿½ un mensaje de error amigable, previniendo asï¿½ un doble cobro y doble baja de stock.
 
 
 ## [16 de Septiembre de 2026] - Notas de Reservas SIGIMAC
-**Objetivo:** Permitir al vendedor añadir una nota interna al confirmar la preventa de un arma (producto trazable), y visualizarla en la bandeja del cajero de Reservas SIGIMAC.
+**Objetivo:** Permitir al vendedor aï¿½adir una nota interna al confirmar la preventa de un arma (producto trazable), y visualizarla en la bandeja del cajero de Reservas SIGIMAC.
 **Archivos Modificados:**
-- \acturacion/models.py\: Añadido \
+- \acturacion/models.py\: Aï¿½adido \
 otas_sigimac\ a \Preventa\.
-- \erticalidades/armeria/models.py\: Añadido \
+- \erticalidades/armeria/models.py\: Aï¿½adido \
 otas\ a \ReservaArma\.
 - \acturacion/migrations/0004_preventa_notas_sigimac.py\ y \rmeria/migrations/0006_reservaarma_notas.py\: Migraciones generadas y aplicadas.
-- \	emplates/facturacion/partials/preventa_items_tabla.html\: Inyectado flag oculto \	iene_arma_flag\ si algún producto tiene \subprod = True\.
-- \	emplates/facturacion/preventa_carga.html\: Interceptado el botón de Confirmar Preventa para levantar el modal \Swal.fire\ solicitando la nota.
+- \	emplates/facturacion/partials/preventa_items_tabla.html\: Inyectado flag oculto \	iene_arma_flag\ si algï¿½n producto tiene \subprod = True\.
+- \	emplates/facturacion/preventa_carga.html\: Interceptado el botï¿½n de Confirmar Preventa para levantar el modal \Swal.fire\ solicitando la nota.
 - \acturacion/views.py\ (\PreventaCargaView\): Captura de \
 otas_sigimac\ por POST.
 - \	esoreria/views_htmx.py\ (\procesar_recibo_preventa_trazable\): Se copia el campo \preventa.notas_sigimac\ al crear la \ReservaArma\.
-- \erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html\: Añadida columna Notas y botón interactivo para visualizar el contenido con \Swal.fire\.
-**Resultado:** Al facturar un arma, salta el modal de notas y las notas son copiadas a la bandeja de Armería, reemplazando el flujo físico de anotaciones en papel.
+- \erticalidades/armeria/templates/armeria/partials/reservas_tabla_parcial.html\: Aï¿½adida columna Notas y botï¿½n interactivo para visualizar el contenido con \Swal.fire\.
+**Resultado:** Al facturar un arma, salta el modal de notas y las notas son copiadas a la bandeja de Armerï¿½a, reemplazando el flujo fï¿½sico de anotaciones en papel.
 
 
 - **Ajustes Adicionales (16 Sep)**: 
-  - Se configuró \llowOutsideClick: false\ en el modal de notas para evitar cierres accidentales por miss-clicks.
-  - Se añadieron explícitamente los botones de Aceptar (Confirmar) y Cancelar (Cerrar).
-  - Se implementó validación de campo obligatorio dentro de \preConfirm\: no se permite avanzar si la nota está vacía, arrojando un mensaje de error visual dentro del modal de SweetAlert.
+  - Se configurï¿½ \llowOutsideClick: false\ en el modal de notas para evitar cierres accidentales por miss-clicks.
+  - Se aï¿½adieron explï¿½citamente los botones de Aceptar (Confirmar) y Cancelar (Cerrar).
+  - Se implementï¿½ validaciï¿½n de campo obligatorio dentro de \preConfirm\: no se permite avanzar si la nota estï¿½ vacï¿½a, arrojando un mensaje de error visual dentro del modal de SweetAlert.
 
 
-  - Se forzó el color del texto de los botones del modal (\	ext-white !font-bold\) a través de \customClass\ para evitar que TailwindCSS sobreescriba los colores por defecto de SweetAlert2, corrigiendo el error visual de que los botones de Aceptar/Cancelar se vieran oscuros o invisibles.
+  - Se forzï¿½ el color del texto de los botones del modal (\	ext-white !font-bold\) a travï¿½s de \customClass\ para evitar que TailwindCSS sobreescriba los colores por defecto de SweetAlert2, corrigiendo el error visual de que los botones de Aceptar/Cancelar se vieran oscuros o invisibles.
 
 
-  - Se corrigió la visibilidad del botón en la columna de Notas de la bandeja de Reservas. El ícono previo (\a-note-sticky\) no estaba siendo renderizado por la versión de FontAwesome en uso, lo que causaba que el botón tuviera dimensiones 0x0 y la celda apareciera vacía. Se reemplazó por \a-comment-dots\ y se le dio estilo estructurado (padding, fondo y borde) para asegurar su correcta renderización e interactividad.
+  - Se corrigiï¿½ la visibilidad del botï¿½n en la columna de Notas de la bandeja de Reservas. El ï¿½cono previo (\a-note-sticky\) no estaba siendo renderizado por la versiï¿½n de FontAwesome en uso, lo que causaba que el botï¿½n tuviera dimensiones 0x0 y la celda apareciera vacï¿½a. Se reemplazï¿½ por \a-comment-dots\ y se le dio estilo estructurado (padding, fondo y borde) para asegurar su correcta renderizaciï¿½n e interactividad.
 
 
-  - Se cambió el ícono del botón de Notas en la tabla de Reservas por un SVG nativo embebido, ya que hubo problemas de compatibilidad con la versión de FontAwesome local que impedían la correcta renderización de cualquier ícono en esa vista, mostrando un botón vacío.
+  - Se cambiï¿½ el ï¿½cono del botï¿½n de Notas en la tabla de Reservas por un SVG nativo embebido, ya que hubo problemas de compatibilidad con la versiï¿½n de FontAwesome local que impedï¿½an la correcta renderizaciï¿½n de cualquier ï¿½cono en esa vista, mostrando un botï¿½n vacï¿½o.
 
 
 
@@ -5285,3 +5297,21 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - Los menus ahora se visualizaran bajo la categoria 'Armeria (Verticalidad)' en el modal de Roles.
 
 **Estado y Siguientes Pasos:** Completado.
+
+## [Cristian - PC CASA] 19/Sep/2026 - Separador de Miles en Reportes en Pantalla (Listados Ventas y Compras)
+**Objetivo:** Formatear todos los importes monetarios con separador de miles y 2 decimales fijos (ej: $ 1.234.567,89) en las grillas y reportes visuales de Ventas y Compras, garantizando aislamiento total del backend para no afectar capturas ni exportaciones.
+
+**Archivos modificados:**
+- core/templatetags/formato_tags.py [MODIFY]: Se optimizÃ³ el filtro formato_ar para formatear con precisiÃ³n y sustituciÃ³n directa de separadores a partir de cadenas float/Decimal, soportando valores nulos, vacÃ­os y ceros.
+- templates/facturacion/ventas_listado.html [MODIFY]: Se cargÃ³ formato_tags y se aplicÃ³ |formato_ar en Neto, IVA, Total y la fila de Totales del tfoot.
+- templates/facturacion/compras_listado.html [MODIFY]: Se cargÃ³ formato_tags y se aplicÃ³ |formato_ar en Neto, IVA, Total y la fila de Totales del tfoot.
+- docs/planes/091_separador_miles_reportes.md [NEW]: Plan de implementaciÃ³n consensuado en sesiÃ³n Grill-Me.
+
+**Detalles TÃ©cnicos:**
+- No se modificaron settings globales ni parsers de backend para asegurar que ningÃºn proceso de captura (OCR, Excel) o formularios HTMX (.fInputAR) sufran efectos colaterales.
+- Las exportaciones a Excel (.xlsx) conservan sus valores numÃ©ricos originales (float/Decimal) con mÃ¡scaras de celda (#,##0.00) para preservar la capacidad de cÃ¡lculo en hojas de cÃ¡lculo.
+
+**Resultado de las pruebas:**
+- Se ejecutÃ³ script de verificaciÃ³n sobre templates reales renderizando importes superiores a $ 80M y comprobando la presencia exacta de puntos de miles y comas decimales ($ 84.981.702,00, $ 1.234.567,89, etc.).
+
+**Estado y Siguientes Pasos:** Completado y verificado.

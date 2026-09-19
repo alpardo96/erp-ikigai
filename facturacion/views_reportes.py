@@ -15,6 +15,7 @@ from productos.models import Producto, Rubro, Familia, Subfamilia
 from empresas.models import Sucursal, Ejercicio, Empresa
 from facturacion.services.ventas_reportes_excel import exportar_ventas_producto_excel_service
 from facturacion.services.clientes_excel import exportar_clientes_excel_service
+from facturacion.services.ventas_listado_excel import exportar_ventas_listado_excel_service
 
 User = get_user_model()
 
@@ -416,4 +417,99 @@ def exportar_clientes_excel(request):
     }
 
     return exportar_clientes_excel_service(clientes, empresa, filtros)
+
+
+@login_required
+def exportar_ventas_listado_excel(request):
+    """
+    Endpoint HTTP para exportar el listado completo de Ventas en formato Excel (.xlsx).
+    Aplica los mismos filtros que VentasListView sin límite de filas (exporta el 100% de los registros).
+    """
+    empresa_id = request.session.get('empresa_id')
+    if not empresa_id:
+        messages.warning(request, "Por favor, seleccione una empresa primero.")
+        return redirect('seleccion_empresa')
+
+    empresa = Empresa.objects.filter(pk=empresa_id).first()
+
+    # Por defecto, misma lógica que VentasListView (fecha de hoy si no se especifica)
+    hoy = timezone.localdate().isoformat()
+    desde = (request.GET.get('desde') or hoy).strip()
+    hasta = (request.GET.get('hasta') or hoy).strip()
+
+    cliente_id = (request.GET.get('cliente') or '').strip()
+    sucursal_id = (request.GET.get('sucursal') or '').strip()
+    vendedor_id = (request.GET.get('vendedor') or '').strip()
+    tipo_id = (request.GET.get('tipo') or '').strip()
+    condic = (request.GET.get('condic') or '').strip()
+    venta_id_q = (request.GET.get('venta_id') or '').strip()
+
+    ventas = (Venta.objects.filter(empresa_id=empresa_id)
+              .select_related('tipo', 'cliente', 'sucursal', 'vendedor', 'usuario', 'cliente__jurisdiccion'))
+
+    if venta_id_q:
+        ventas = ventas.filter(ventas_id=venta_id_q)
+    else:
+        if desde:
+            ventas = ventas.filter(fecha__gte=desde)
+        if hasta:
+            ventas = ventas.filter(fecha__lte=hasta)
+        if cliente_id:
+            ventas = ventas.filter(cliente_id=cliente_id)
+        if sucursal_id:
+            ventas = ventas.filter(sucursal_id=sucursal_id)
+        if vendedor_id:
+            ventas = ventas.filter(vendedor_id=vendedor_id)
+        if tipo_id:
+            ventas = ventas.filter(tipo_id=tipo_id)
+        if condic in ('1', '2'):
+            ventas = ventas.filter(condic=condic)
+
+    ventas = ventas.order_by('-fecha', '-ventas_id')
+
+    # Nombres descriptivos para los filtros en el encabezado del Excel
+    sucursal_nombre = "Todas"
+    if sucursal_id:
+        suc_obj = Sucursal.objects.filter(pk=sucursal_id).only('nombre').first()
+        if suc_obj:
+            sucursal_nombre = suc_obj.nombre
+
+    cliente_nombre = "Todos"
+    if cliente_id:
+        cli_obj = ClienteProveedor.objects.filter(pk=cliente_id, empresa_id=empresa_id).only('razon_social').first()
+        if cli_obj:
+            cliente_nombre = cli_obj.razon_social
+
+    vendedor_nombre = "Todos"
+    if vendedor_id:
+        vend_obj = User.objects.filter(pk=vendedor_id).first()
+        if vend_obj:
+            vendedor_nombre = vend_obj.get_full_name() or vend_obj.username
+
+    tipo_nombre = "Todos"
+    if tipo_id:
+        from facturacion.models import TipoComprobante
+        tipo_obj = TipoComprobante.objects.filter(pk=tipo_id).first()
+        if tipo_obj:
+            tipo_nombre = f"{tipo_obj.codigo} - {tipo_obj.detalle}"
+
+    condic_nombre = "Todas"
+    if condic == '1':
+        condic_nombre = "Real"
+    elif condic == '2':
+        condic_nombre = "Proyectado"
+
+    filtros = {
+        'desde': desde,
+        'hasta': hasta,
+        'sucursal_nombre': sucursal_nombre,
+        'cliente_nombre': cliente_nombre,
+        'vendedor_nombre': vendedor_nombre,
+        'tipo_nombre': tipo_nombre,
+        'condic_nombre': condic_nombre,
+        'venta_id_q': venta_id_q,
+    }
+
+    return exportar_ventas_listado_excel_service(ventas, empresa, filtros)
+
 
