@@ -4,7 +4,7 @@ Todos reciben `empresa_id` como primer argumento para acotar los combos a la emp
 sesión: regla inflexible de multi-tenant del proyecto.
 
 IMPORTES Y COEFICIENTES: siempre `DecimalARField` + `.fInputAR`. Nunca un `NumberInput` suelto
-ni parseo propio — el formato es-AR está centralizado en `static/js/formato_ar.js` y
+ni parseo propio — el formato es-AR está centralizado en `core/static/js/formato_ar.js` y
 `core.forms.DecimalARField`, y duplicarlo es lo que hace que dos pantallas discrepen.
 """
 from django import forms

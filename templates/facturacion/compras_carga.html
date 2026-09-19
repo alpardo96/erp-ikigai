@@ -883,22 +883,8 @@
         }
     }
 
-    // Inicialización y formateo de .fInputAR centralizados en static/js/formato_ar.js (global, uniforme).
-
-
-    // Función para convertir el string formateado (12.000) a número puro (12000)
-    function parseAR(val) {
-        if (!val) return 0;
-        return parseFloat(val.toString().replace(/\./g, '').replace(',', '.'));
-    }
-
-    // Función para mostrar en el resumen azul con formato AR completo
-    function fMiles(n) {
-        return parseFloat(n).toLocaleString('es-AR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    }
+    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/parseAR, formatearAR/fMiles)
+    // centralizados en core/static/js/formato_ar.js (única fuente de verdad).
 
     function recalculateFinal() {
         const c = ['neto', 'iva', 'no_gravado', 'exento', 'p_iibb', 'p_iva', 'otros'];

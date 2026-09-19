@@ -271,19 +271,8 @@
     // PRECIO UNITARIO SUGERIDO (Memoria para cálculo en vivo)
     let unidadPrecioSugerido = 0;
 
-    // Inicialización y formateo de .fInputAR centralizados en static/js/formato_ar.js (global, uniforme).
-
-    function parseAR(val) {
-        if (!val) return 0;
-        return parseFloat(val.toString().replace(/\./g, '').replace(',', '.'));
-    }
-
-    function fMiles(n) {
-        return parseFloat(n).toLocaleString('es-AR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    }
+    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/parseAR, formatearAR/fMiles)
+    // centralizados en core/static/js/formato_ar.js (única fuente de verdad).
 
     function recalculateFinal() {
         const c = ['neto', 'iva', 'otros'];

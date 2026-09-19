@@ -1,6 +1,6 @@
 """Campos de formulario compartidos por todo el ERP.
 
-Contrapartida en el backend de `static/js/formato_ar.js`: los inputs con la clase
+Contrapartida en el backend de `core/static/js/formato_ar.js`: los inputs con la clase
 `.fInputAR` llegan al servidor como texto en formato es-AR (`1.234,56`), que Django
 rechazaría antes de ejecutar `clean_<campo>`. La conversión tiene que ocurrir en
 `to_python`.

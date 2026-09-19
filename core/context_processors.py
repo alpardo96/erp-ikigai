@@ -8,7 +8,7 @@ def _css_version():
     Es el mayor mtime entre output.css y formato_ar.js, así cambia al recompilar Tailwind
     O al editar el JS global. Si no hay archivos, '' (no rompe)."""
     mtimes = []
-    for rel in (('static', 'css', 'output.css'), ('static', 'js', 'formato_ar.js')):
+    for rel in (('static', 'css', 'output.css'), ('core', 'static', 'js', 'formato_ar.js'), ('static', 'js', 'formato_ar.js')):
         try:
             mtimes.append(os.path.getmtime(os.path.join(settings.BASE_DIR, *rel)))
         except OSError:

@@ -506,7 +506,7 @@ document.addEventListener('alpine:init', () => {
             cp_cuenta_bancaria_id: '', cp_importe: '', cp_nro: '', cp_vto: ''
         },
 
-        // Formato es-AR centralizado: `formatearAR` vive en static/js/formato_ar.js, que es la
+        // Formato es-AR centralizado: `formatearAR` vive en core/static/js/formato_ar.js, que es la
         // única fuente de verdad del formato de importes del sistema.
         formatCurrency(val) {
             return '$' + formatearAR(val);

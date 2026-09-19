@@ -5315,3 +5315,24 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - Se ejecutó script de verificación sobre templates reales renderizando importes superiores a $ 80M y comprobando la presencia exacta de puntos de miles y comas decimales ($ 84.981.702,00, $ 1.234.567,89, etc.).
 
 **Estado y Siguientes Pasos:** Completado y verificado.
+
+## [Cristian - PC CASA] 19/Sep/2026 - Consolidación de formato_ar.js en core/static/js/ (Versionado en Git)
+**Objetivo:** Reubicar y consolidar el script JavaScript de formateo numérico en core/static/js/formato_ar.js para que quede integrado en el módulo core y versionado en Git (la carpeta raíz static/ está excluida en .gitignore), eliminando funciones locales redundantes.
+
+**Archivos modificados/creados:**
+- core/static/js/formato_ar.js [NEW]: Implementación definitiva centralizada con soporte de eventos HTMX, MutationObserver, captura de teclado punto a coma, formateo en vivo y funciones globales (desformatearAR, formatearAR, formatoMonedaAR, inicializarFormatoAR, parseAR, fMiles).
+- core/context_processors.py [MODIFY]: Actualizada la búsqueda de mtime apuntando a core/static/js/formato_ar.js para cache-busting.
+- core/forms.py [MODIFY]: Actualizada la documentación de referencia a core/static/js/formato_ar.js.
+- templates/facturacion/ventas_carga.html [MODIFY]: Eliminadas funciones locales redundantes parseAR y fMiles.
+- templates/facturacion/ventas_trazabilidad_carga.html [MODIFY]: Eliminadas funciones locales redundantes parseAR y fMiles.
+- templates/facturacion/compras_carga.html [MODIFY]: Eliminadas funciones locales redundantes parseAR y fMiles.
+- templates/facturacion/preventa_carga.html [MODIFY]: Eliminadas funciones locales redundantes parseAR y fMiles.
+- verticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html [MODIFY]: Eliminadas funciones locales redundantes.
+- verticalidades/agricola/tabaco/forms.py [MODIFY]: Actualizada referencia documental a core/static/js/formato_ar.js.
+- .cursorrules y CLAUDE.md [MODIFY]: Ratificada la regla general obligatoria de formato es-AR con core/static/js/formato_ar.js como única fuente de verdad en JavaScript.
+- static/js/formato_ar.js [DELETE]: Removido archivo huérfano de la carpeta excluida de git.
+
+**Resultado de las pruebas:**
+- Script test_static_resolution.py verificó que Django StaticFiles resuelve el archivo directamente desde core/static/js/formato_ar.js con su hash/versión correspondiente.
+
+**Estado y Siguientes Pasos:** Completado y verificado.
