@@ -334,7 +334,7 @@
 <script>
     let unidadPrecioSugerido = 0;
 
-    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/parseAR, formatearAR/fMiles)
+    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/desformatearAR, formatearAR/formatearAR)
     // centralizados en core/static/js/formato_ar.js (única fuente de verdad).
 
     // EVENTO CLIENTE SELECCIONADO (Desde el modal o typeahead)
@@ -395,7 +395,7 @@
 
         document.getElementById('quick_producto_id').value = data.id;
         document.getElementById('quick_producto_detalle').innerText = data.detalle;
-        document.getElementById('quick_precio').value = fMiles(unidadPrecioSugerido);
+        document.getElementById('quick_precio').value = formatearAR(unidadPrecioSugerido);
         document.getElementById('quick_descuento').value = "0";
 
         const badgeDoble = document.getElementById('alerta_precio_doble_badge');
@@ -423,7 +423,7 @@
         if (modo !== 'PRECIO') return;
 
         const inputPrecio = document.getElementById('quick_precio');
-        const precioIngresado = (typeof window.desformatearAR === 'function') ? window.desformatearAR(inputPrecio) : parseAR(inputPrecio.value);
+        const precioIngresado = (typeof window.desformatearAR === 'function') ? window.desformatearAR(inputPrecio) : desformatearAR(inputPrecio.value);
         const precioBase = parseFloat(unidadPrecioSugerido) || 0;
 
         const badgeDoble = document.getElementById('alerta_precio_doble_badge');
@@ -463,7 +463,7 @@
     document.body.addEventListener('actualizarTotalesPreventa', (e) => {
         const total = e.detail.total;
         const requiere_aut = e.detail.requiere_autorizacion;
-        document.getElementById('display_total').innerText = fMiles(total);
+        document.getElementById('display_total').innerText = formatearAR(total);
         document.getElementById('id_total').value = total;
 
         const warning = document.getElementById('warning_autorizacion');

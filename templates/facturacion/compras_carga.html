@@ -677,7 +677,7 @@
             abrir(tipo) {
                 this.tipo = tipo;
                 const fieldId = tipo === 'iibb' ? 'id_p_iibb' : 'id_otros';
-                this.objetivo = parseAR(document.getElementById(fieldId).value);
+                this.objetivo = desformatearAR(document.getElementById(fieldId).value);
                 if (this.objetivo <= 0) {  // limpiaron el campo → limpiar el detalle
                     if (tipo === 'iibb') this.iibbRows = []; else this.otrosRows = [];
                     return;
@@ -699,22 +699,22 @@
             },
             agregar() { this.rows.push({ key: '', importeStr: '' }); },
             quitar(i) { this.rows.splice(i, 1); },
-            suma() { return this.rows.reduce((s, r) => s + parseAR(r.importeStr), 0); },
+            suma() { return this.rows.reduce((s, r) => s + desformatearAR(r.importeStr), 0); },
             cuadra() { return Math.abs(this.suma() - this.objetivo) < 0.005 && this.rows.length > 0 && this.rows.every(r => r.key); },
             fmt(n) { return Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
             cerrar() { 
                 this.open = false;
                 if (this.tipo === 'iibb') {
-                    document.getElementById('id_p_iibb').value = this.fmt(this.iibbRows.reduce((s, r) => s + (parseAR(r.importe) || 0), 0));
+                    document.getElementById('id_p_iibb').value = this.fmt(this.iibbRows.reduce((s, r) => s + (desformatearAR(r.importe) || 0), 0));
                 } else {
-                    document.getElementById('id_otros').value = this.fmt(this.otrosRows.reduce((s, r) => s + (parseAR(r.importe) || 0), 0));
+                    document.getElementById('id_otros').value = this.fmt(this.otrosRows.reduce((s, r) => s + (desformatearAR(r.importe) || 0), 0));
                 }
                 if (typeof recalculateFinal === 'function') recalculateFinal();
             },
             confirmar() {
                 if (!this.cuadra()) return;
-                const committed = this.rows.filter(r => r.key && parseAR(r.importeStr) !== 0)
-                    .map(r => ({ key: r.key, importe: parseAR(r.importeStr) }));
+                const committed = this.rows.filter(r => r.key && desformatearAR(r.importeStr) !== 0)
+                    .map(r => ({ key: r.key, importe: desformatearAR(r.importeStr) }));
                 if (this.tipo === 'iibb') {
                     this.iibbRows = committed.map(r => ({ juris: r.key, importe: r.importe }));
                     document.getElementById('id_p_iibb').value = this.fmt(this.suma());
@@ -753,13 +753,13 @@
             },
             onNeto(idx) { this.recalcIva(idx); this.syncTotales(); },
             recalcIva(idx) {
-                const neto = parseAR(this.rows[idx].netoStr);
+                const neto = desformatearAR(this.rows[idx].netoStr);
                 const porc = parseFloat(this.rows[idx].porc) || 0;
                 const iva = Math.round(neto * porc) / 100;  // neto × % con 2 decimales
                 this.rows[idx].ivaStr = iva ? this.fmt(iva) : '';
             },
-            totalNeto() { return this.rows.reduce((s, r) => s + parseAR(r.netoStr), 0); },
-            totalIva() { return this.rows.reduce((s, r) => s + parseAR(r.ivaStr), 0); },
+            totalNeto() { return this.rows.reduce((s, r) => s + desformatearAR(r.netoStr), 0); },
+            totalIva() { return this.rows.reduce((s, r) => s + desformatearAR(r.ivaStr), 0); },
             fmt(n) { return Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
             fmtPorc(p) { return (parseFloat(p) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' %'; },
             syncTotales() {
@@ -769,7 +769,7 @@
                 if (ivaEl) ivaEl.value = this.fmt(this.totalIva());
                 let ivasPorAlicuota = {};
                 this.rows.forEach(r => {
-                    const iVal = parseAR(r.ivaStr || 0);
+                    const iVal = desformatearAR(r.ivaStr || 0);
                     if (r.porc > 0 && iVal > 0) {
                         let key = parseFloat(r.porc).toFixed(1).replace('.0', '') + '%';
                         if (!ivasPorAlicuota[key]) ivasPorAlicuota[key] = 0;
@@ -883,7 +883,7 @@
         }
     }
 
-    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/parseAR, formatearAR/fMiles)
+    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/desformatearAR, formatearAR/formatearAR)
     // centralizados en core/static/js/formato_ar.js (única fuente de verdad).
 
     function recalculateFinal() {
@@ -891,7 +891,7 @@
         let t = 0;
         c.forEach(f => {
             const el = document.getElementById('id_' + f);
-            const val = parseAR(el?.value || 0);
+            const val = desformatearAR(el?.value || 0);
             t += val;
             if (el) {
                 if (val === 0) el.classList.add('valor-cero');
@@ -899,8 +899,8 @@
             }
         });
 
-        document.getElementById('display_total').innerText = '$ ' + fMiles(t);
-        document.getElementById('id_total').value = fMiles(t);
+        document.getElementById('display_total').innerText = '$ ' + formatearAR(t);
+        document.getElementById('id_total').value = formatearAR(t);
     }
 
     function actualizarInsigniasIva(ivasPorAlicuota) {
@@ -928,8 +928,8 @@
     function recalcSubtotalDesc() {
         // En modo Gasto el Neto lo gobierna la grilla de alícuotas: no lo pisamos con Subtotal−Descuento.
         if (getModo() === 'gasto') { recalculateFinal(); return; }
-        const sub = parseAR(document.getElementById('id_subtotal')?.value || 0);
-        const desc = parseAR(document.getElementById('id_descuento')?.value || 0);
+        const sub = desformatearAR(document.getElementById('id_subtotal')?.value || 0);
+        const desc = desformatearAR(document.getElementById('id_descuento')?.value || 0);
         const netoEl = document.getElementById('id_neto');
         const ivaEl = document.getElementById('id_iva');
         
@@ -940,7 +940,7 @@
             
             // Recorrer los items para calcular el IVA prorrateado
             document.querySelectorAll('input[name="total_linea"]').forEach(input => {
-                const totalLinea = parseAR(input.value);
+                const totalLinea = desformatearAR(input.value);
                 const tr = input.closest('tr');
                 const ivaAlic = parseFloat(tr ? tr.getAttribute('data-iva') : 0) || 0;
                 
@@ -960,7 +960,7 @@
                  document.querySelectorAll('#items-tabla-container table tbody tr.item-row').forEach(row => {
                      const totalText = row.querySelector('td:nth-last-child(2)')?.innerText.replace('$', '').trim();
                      if (totalText) {
-                         const totalLinea = parseAR(totalText);
+                         const totalLinea = desformatearAR(totalText);
                          const ivaAlic = parseFloat(row.getAttribute('data-iva')) || 0;
                          const ivaLinea = (totalLinea * factor) * (ivaAlic / 100);
                          ivaFacturado += ivaLinea;
@@ -1246,14 +1246,14 @@
         let netoDeGrilla = 0;
         // Sumamos los totales de la grilla (inputs)
         document.querySelectorAll('input[name="total_linea"]').forEach(input => {
-            netoDeGrilla += parseAR(input.value);
+            netoDeGrilla += desformatearAR(input.value);
         });
 
         // Si no hay inputs (porque la tabla es estática), sumamos los textos
         if (netoDeGrilla === 0) {
             document.querySelectorAll('#items-tabla-container table tbody tr').forEach(row => {
                 const totalText = row.querySelector('td:nth-last-child(2)')?.innerText.replace('$', '').trim();
-                if (totalText) netoDeGrilla += parseAR(totalText);
+                if (totalText) netoDeGrilla += desformatearAR(totalText);
             });
         }
 

@@ -51,12 +51,6 @@
     const displayInput = document.getElementById('saldo_inicial_display');
     const rawInput = document.getElementById('saldo_inicial');
     
-    function fMiles(n) {
-        return parseFloat(n || 0).toLocaleString('es-AR', {
-            minimumFractionDigits: 2, maximumFractionDigits: 2
-        });
-    }
-
     displayInput.addEventListener('blur', function() {
         // Al perder el foco, limpiamos lo que tipeó el usuario
         let valorTipeado = this.value.replace(/\./g, '').replace(/,/g, '.');
@@ -64,7 +58,7 @@
         if(isNaN(floatValue)) floatValue = 0;
         
         rawInput.value = floatValue;
-        this.value = fMiles(floatValue);
+        this.value = formatearAR(floatValue);
     });
 </script>
 {% endblock %}

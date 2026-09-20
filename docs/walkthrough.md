@@ -5336,3 +5336,17 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - Script test_static_resolution.py verificÃ³ que Django StaticFiles resuelve el archivo directamente desde core/static/js/formato_ar.js con su hash/versiÃ³n correspondiente.
 
 **Estado y Siguientes Pasos:** Completado y verificado.
+
+### Cristian - PC CASA
+**Fecha:** 20 de Septiembre de 2026
+**Objetivo:** Corrección de referencias Javascript faltantes (fMiles / parseAR) por la centralización de formato_ar.
+**Archivos modificados:**
+- erticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html`n- 	emplates/facturacion/ventas_trazabilidad_carga.html`n- 	emplates/facturacion/ventas_carga.html`n- 	emplates/facturacion/preventa_carga.html`n- 	emplates/facturacion/compras_carga.html`n- 	emplates/tesoreria/caja_mostrador_abrir.html`n**Detalle Técnico:** Se reemplazaron todas las llamadas a las funciones viejas Miles y parseAR que quedaron huérfanas en los event listeners tras el último commit. Ahora todas llaman a las nuevas funciones centralizadas ormatearAR y desformatearAR exportadas globalmente desde core/static/js/formato_ar.js.
+**Pruebas:** Archivos actualizados exitosamente.
+
+### Cristian - PC CASA
+**Fecha:** 20 de Septiembre de 2026
+**Objetivo:** Hacer que los botones de eliminar del carrito sean siempre visibles.
+**Archivos modificados:**
+- 	emplates/facturacion/partials/preventa_items_tabla.html`n- 	emplates/facturacion/partials/venta_items_tabla.html`n- 	emplates/facturacion/partials/venta_trazabilidad_items_tabla.html`n- erticalidades/armeria/templates/armeria/partials/venta_trazabilidad_items_tabla.html`n**Detalle Técnico:** Se eliminaron las clases de Tailwind CSS opacity-0 y group-hover:opacity-100 en los íconos de basura de los carritos de venta y preventa, para que se muestren permanentemente de color rojo sin necesidad de hacer hover con el mouse, igualando el comportamiento de Carga de Compras.
+**Pruebas:** Archivos actualizados exitosamente.

@@ -271,7 +271,7 @@
     // PRECIO UNITARIO SUGERIDO (Memoria para cálculo en vivo)
     let unidadPrecioSugerido = 0;
 
-    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/parseAR, formatearAR/fMiles)
+    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/desformatearAR, formatearAR/formatearAR)
     // centralizados en core/static/js/formato_ar.js (única fuente de verdad).
 
     function recalculateFinal() {
@@ -279,7 +279,7 @@
         let t = 0;
         c.forEach(f => {
             const el = document.getElementById('id_' + f);
-            const val = parseAR(el?.value || 0);
+            const val = desformatearAR(el?.value || 0);
             t += val;
             if (el) {
                 if (val === 0) el.classList.add('valor-cero');
@@ -287,8 +287,8 @@
             }
         });
 
-        document.getElementById('display_total').innerText = fMiles(t);
-        document.getElementById('id_total').value = fMiles(t);
+        document.getElementById('display_total').innerText = formatearAR(t);
+        document.getElementById('id_total').value = formatearAR(t);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -343,8 +343,8 @@
         document.getElementById('quick_producto_detalle').innerText = data.detalle;
         
         // Calculamos total inicial (Sugerido * Cantidad actual)
-        const cantActual = parseAR(document.getElementById('quick_cantidad').value) || 1;
-        document.getElementById('quick_precio').value = fMiles(unidadPrecioSugerido * cantActual);
+        const cantActual = desformatearAR(document.getElementById('quick_cantidad').value) || 1;
+        document.getElementById('quick_precio').value = formatearAR(unidadPrecioSugerido * cantActual);
 
         const divCred = document.getElementById('div_credencial');
         const inputCred = document.getElementById('quick_credencial');
@@ -431,13 +431,13 @@
     function actualizarResumenVisual() {
         let netoDeGrilla = 0;
         document.querySelectorAll('input[name="total_linea"]').forEach(input => {
-            netoDeGrilla += parseAR(input.value);
+            netoDeGrilla += desformatearAR(input.value);
         });
 
         if (netoDeGrilla === 0) {
             document.querySelectorAll('#items-tabla-container table tbody tr').forEach(row => {
                 const totalText = row.querySelector('td:nth-last-child(2)')?.innerText.replace('$', '').trim();
-                if (totalText) netoDeGrilla += parseAR(totalText);
+                if (totalText) netoDeGrilla += desformatearAR(totalText);
             });
         }
 
@@ -474,9 +474,9 @@
     // Escuchador para actualizar precio final en vivo cuando cambia la cantidad
     document.getElementById('quick_cantidad')?.addEventListener('input', function() {
         if (typeof unidadPrecioSugerido !== 'undefined' && unidadPrecioSugerido > 0) {
-            const cant = parseAR(this.value) || 0;
+            const cant = desformatearAR(this.value) || 0;
             const nuevoTotal = unidadPrecioSugerido * cant;
-            document.getElementById('quick_precio').value = fMiles(nuevoTotal);
+            document.getElementById('quick_precio').value = formatearAR(nuevoTotal);
         }
     });
 

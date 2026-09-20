@@ -344,7 +344,7 @@
     // PRECIO UNITARIO SUGERIDO (Memoria para cálculo en vivo)
     let unidadPrecioSugerido = 0;
 
-    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/parseAR, formatearAR/fMiles)
+    // Inicialización, formateo y desformateo (.fInputAR, desformatearAR/desformatearAR, formatearAR/formatearAR)
     // centralizados en core/static/js/formato_ar.js (única fuente de verdad).
 
     function recalculateFinal() {
@@ -352,7 +352,7 @@
         let t = 0;
         c.forEach(f => {
             const el = document.getElementById('id_' + f);
-            const val = parseAR(el?.value || 0);
+            const val = desformatearAR(el?.value || 0);
             t += val;
             if (el) {
                 if (val === 0) el.classList.add('valor-cero');
@@ -360,8 +360,8 @@
             }
         });
 
-        document.getElementById('display_total').innerText = fMiles(t);
-        document.getElementById('id_total').value = fMiles(t);
+        document.getElementById('display_total').innerText = formatearAR(t);
+        document.getElementById('id_total').value = formatearAR(t);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -413,7 +413,7 @@
 
         const data = e.detail;
         // Parsear el string de precio sugerido que viene formateado con comas
-        unidadPrecioSugerido = parseAR(data.precio_sugerido); 
+        unidadPrecioSugerido = desformatearAR(data.precio_sugerido); 
         
         const hiddenId = document.getElementById('selected_producto_id');
         if (hiddenId) hiddenId.value = data.id;
@@ -421,7 +421,7 @@
         document.getElementById('quick_producto_detalle').innerText = data.detalle;
         
         // Seteamos el precio de lista unitario sugerido
-        document.getElementById('quick_precio').value = fMiles(unidadPrecioSugerido);
+        document.getElementById('quick_precio').value = formatearAR(unidadPrecioSugerido);
         document.getElementById('quick_descuento').value = "0";
 
         const badgeDoble = document.getElementById('alerta_precio_doble_badge_venta');
@@ -542,7 +542,7 @@
         let ivaDeGrilla = 0;
         
         document.querySelectorAll('input[name="total_linea"]').forEach(input => {
-            let totalLinea = parseAR(input.value);
+            let totalLinea = desformatearAR(input.value);
             let alicIva = parseFloat(input.dataset.iva || 21.0);
             let netoLinea = totalLinea / (1 + alicIva / 100);
             let ivaLinea = totalLinea - netoLinea;
@@ -555,7 +555,7 @@
                 const totalText = row.querySelector('td:nth-last-child(2)')?.innerText.replace('$', '').trim();
                 // To do this perfectly we'd need IVA per row, but if it's reading static text, it's just a fallback
                 if (totalText) {
-                    let totalLinea = parseAR(totalText);
+                    let totalLinea = desformatearAR(totalText);
                     let alicIva = 21.0; // fallback default
                     let netoLinea = totalLinea / (1 + alicIva / 100);
                     netoDeGrilla += netoLinea;
@@ -574,9 +574,9 @@
     }
 
     function recalculateFinal() {
-        const neto = parseAR(document.getElementById('id_neto')?.value || '0');
-        const iva = parseAR(document.getElementById('id_iva')?.value || '0');
-        const otros = parseAR(document.getElementById('id_otros')?.value || '0');
+        const neto = desformatearAR(document.getElementById('id_neto')?.value || '0');
+        const iva = desformatearAR(document.getElementById('id_iva')?.value || '0');
+        const otros = desformatearAR(document.getElementById('id_otros')?.value || '0');
         
         const total = neto + iva + otros;
         
