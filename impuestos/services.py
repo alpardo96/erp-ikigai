@@ -1,15 +1,16 @@
 import csv
 import io
 import re
+import zipfile
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
 from .models import PeriodoIva, ArcaMisComprobantes
-from contable.models import LibroIvaCompras, LibroIvaVentas
+from contable.models import LibroIvaCompras, LibroIvaVentas, LibroIvaAlic, RetPercSufrida
 from facturacion.models import Compra, Venta
 
 
@@ -387,3 +388,396 @@ def obtener_reporte_conciliacion_arca(empresa_id: int, origen: str, periodo_yyyy
         'cant_solo_libro': len(solo_libro_iva),
         'cant_solo_arca': len(solo_arca),
     }
+
+
+# =========================================================================
+# EXPORTACIÓN LIBRO IVA DIGITAL ARCA / AFIP (RG 4597 / RG 5616)
+# =========================================================================
+
+def _formatear_importe_arca(importe: Any, longitud: int = 15) -> str:
+    """
+    Convierte un importe decimal a formato de longitud fija numérico sin separadores:
+    13 enteros + 2 decimales (total 15 caracteres rellenados con ceros a la izquierda).
+    En el Libro IVA Digital de ARCA los importes de Notas de Crédito se declaran en positivo,
+    ya que el tipo de comprobante determina el signo fiscal de la operación.
+    """
+    if importe is None:
+        return '0' * longitud
+    try:
+        val = abs(Decimal(str(importe)))
+        centavos = int(round(val * 100))
+        return str(centavos).zfill(longitud)
+    except Exception:
+        return '0' * longitud
+
+
+def _mapear_codigo_alicuota_arca(alicuota: Any) -> str:
+    """
+    Mapea el porcentaje de alícuota al código oficial de 4 caracteres de ARCA/AFIP:
+    - 0003: 0.00% (Exento / No Gravado)
+    - 0004: 10.50%
+    - 0005: 21.00%
+    - 0006: 27.00%
+    - 0008: 5.00%
+    - 0009: 2.50%
+    """
+    if not alicuota:
+        return '0003'
+    str_val = str(alicuota).strip()
+    if len(str_val) == 4 and str_val.isdigit():
+        return str_val
+
+    try:
+        dec = Decimal(str_val)
+        if dec == Decimal('0'):
+            return '0003'
+        elif dec == Decimal('10.5') or dec == Decimal('10.50'):
+            return '0004'
+        elif dec == Decimal('21') or dec == Decimal('21.00'):
+            return '0005'
+        elif dec == Decimal('27') or dec == Decimal('27.00'):
+            return '0006'
+        elif dec == Decimal('5') or dec == Decimal('5.00'):
+            return '0008'
+        elif dec == Decimal('2.5') or dec == Decimal('2.50'):
+            return '0009'
+    except Exception:
+        pass
+
+    return '0005'
+
+
+def _limpiar_texto_fiscal(texto: Any, longitud: int) -> str:
+    """
+    Normaliza el texto para compatibilidad con el aplicativo ARCA/AFIP:
+    reemplaza caracteres no ASCII (ñ/tildes) y ajusta al ancho fijo con espacios a la derecha.
+    """
+    if not texto:
+        return ' ' * longitud
+    s = str(texto).replace('ñ', 'N').replace('Ñ', 'N').replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+    s = s.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+    s = s.encode('ascii', 'replace').decode('ascii').replace('?', ' ')
+    return s[:longitud].ljust(longitud)
+
+
+def _obtener_tipo_y_numero_doc(clienteproveedor, cuit_fallback: str = '') -> Tuple[str, str]:
+    """
+    Deriva el tipo de documento ARCA (2 dígitos) y número de documento (20 dígitos).
+    Códigos ARCA: 80=CUIT, 86=CUIL, 96=DNI, 99=Sin Identificar / Consumidor Final.
+    """
+    doc_tipo = '80'
+    doc_nro = ''
+
+    if clienteproveedor:
+        doc_tipo = getattr(clienteproveedor, 'tipo_documento', '80') or '80'
+        raw_doc = getattr(clienteproveedor, 'cuit', '') or ''
+        doc_nro = ''.join(filter(str.isdigit, raw_doc))
+
+    if not doc_nro and cuit_fallback:
+        doc_nro = ''.join(filter(str.isdigit, cuit_fallback))
+
+    if not doc_nro:
+        doc_tipo = '99'
+        doc_nro = '0'
+    elif len(doc_nro) == 11 and doc_tipo not in ('80', '86'):
+        doc_tipo = '80'
+    elif len(doc_nro) <= 8 and doc_tipo == '80':
+        doc_tipo = '96'
+
+    # Tipo doc en 2 caracteres y número alineado a la derecha con ceros hasta 20 caracteres
+    return str(doc_tipo).zfill(2)[:2], str(doc_nro).rjust(20, '0')[:20]
+
+
+def generar_txt_libro_iva_ventas(empresa_id: int, anio: int, mes: int) -> Tuple[str, str]:
+    """
+    Genera el par de contenidos de texto (CBTE y ALICUOTAS) para el Libro IVA Digital Ventas
+    según las especificaciones técnicas de la RG 4597 / RG 5616 de ARCA/AFIP.
+    """
+    periodo_yyyymm = f"{anio}{mes:02d}"
+
+    # Recuperar comprobantes de venta del período
+    comprobantes = LibroIvaVentas.objects.filter(
+        empresa_id=empresa_id,
+        periodo=periodo_yyyymm
+    ).select_related('clienteproveedor').order_by('fecha', 'punto', 'numero')
+
+    # Fallback por fecha si el campo periodo aún no estuviese poblado
+    if not comprobantes.exists():
+        comprobantes = LibroIvaVentas.objects.filter(
+            empresa_id=empresa_id,
+            fecha__year=anio,
+            fecha__month=mes
+        ).select_related('clienteproveedor').order_by('fecha', 'punto', 'numero')
+
+    lineas_cbte: List[str] = []
+    lineas_alic: List[str] = []
+
+    for c in comprobantes:
+        # Recuperar alícuotas vinculadas por asiento_id
+        alicuotas = list(LibroIvaAlic.objects.filter(asiento_id=c.asiento_id, c_v='V'))
+        cant_alicuotas = len(alicuotas)
+
+        # Si no hay registros satélite en LibroIvaAlic pero tiene IVA o Neto, creamos alícuota sintética
+        if cant_alicuotas == 0 and (c.neto_gravado or c.iva_total):
+            alic_cod = _mapear_codigo_alicuota_arca(21.00)
+            linea_al = (
+                str(c.codiva).zfill(3)[:3] +
+                str(c.punto).zfill(5)[:5] +
+                str(c.numero).zfill(20)[:20] +
+                _formatear_importe_arca(c.neto_gravado) +
+                alic_cod +
+                _formatear_importe_arca(c.iva_total)
+            )
+            lineas_alic.append(linea_al)
+            cant_alicuotas = 1
+        else:
+            for al in alicuotas:
+                alic_cod = _mapear_codigo_alicuota_arca(al.alicuota)
+                linea_al = (
+                    str(c.codiva).zfill(3)[:3] +
+                    str(c.punto).zfill(5)[:5] +
+                    str(c.numero).zfill(20)[:20] +
+                    _formatear_importe_arca(al.neto) +
+                    alic_cod +
+                    _formatear_importe_arca(al.iva)
+                )
+                lineas_alic.append(linea_al)
+
+        # Formateo de datos del comprobante de venta (Longitud exacta 266 caracteres)
+        fecha_str = c.fecha.strftime('%Y%m%d') if c.fecha else '00000000'
+        tipo_cbte = str(c.codiva).zfill(3)[:3]
+        pto_vta = str(c.punto).zfill(5)[:5]
+        nro_cbte = str(c.numero).zfill(20)[:20]
+        nro_hasta = nro_cbte
+        doc_tipo, doc_nro = _obtener_tipo_y_numero_doc(c.clienteproveedor, c.cuit)
+        razon_social = _limpiar_texto_fiscal(
+            c.clienteproveedor.razon_social if c.clienteproveedor else 'CONSUMIDOR FINAL', 30
+        )
+
+        imp_total = _formatear_importe_arca(c.total)
+        imp_no_grav = _formatear_importe_arca(c.no_gravado)
+        imp_perc_no_cat = _formatear_importe_arca(Decimal('0.00'))
+        imp_exento = _formatear_importe_arca(c.exento)
+        imp_perc_nac = _formatear_importe_arca(Decimal('0.00'))
+        imp_perc_iibb = _formatear_importe_arca(Decimal('0.00'))
+        imp_perc_mun = _formatear_importe_arca(Decimal('0.00'))
+        imp_internos = _formatear_importe_arca(Decimal('0.00'))
+        moneda = 'PES'
+        tipo_cambio = '0001000000'
+        cant_alic_str = str(min(cant_alicuotas, 9))
+        
+        # Código de operación: 0 si gravado, E si exento, N si no gravado
+        if c.neto_gravado and c.neto_gravado > 0:
+            cod_operacion = '0'
+        elif c.exento and c.exento > 0:
+            cod_operacion = 'E'
+        elif c.no_gravado and c.no_gravado > 0:
+            cod_operacion = 'N'
+        else:
+            cod_operacion = '0'
+
+        otros_trib = _formatear_importe_arca(c.otros)
+        fecha_vto = c.vto_cae.strftime('%Y%m%d') if getattr(c, 'vto_cae', None) else fecha_str
+
+        linea_cbte = (
+            fecha_str +
+            tipo_cbte +
+            pto_vta +
+            nro_cbte +
+            nro_hasta +
+            doc_tipo +
+            doc_nro +
+            razon_social +
+            imp_total +
+            imp_no_grav +
+            imp_perc_no_cat +
+            imp_exento +
+            imp_perc_nac +
+            imp_perc_iibb +
+            imp_perc_mun +
+            imp_internos +
+            moneda +
+            tipo_cambio +
+            cant_alic_str +
+            cod_operacion +
+            otros_trib +
+            fecha_vto
+        )
+        lineas_cbte.append(linea_cbte)
+
+    txt_cbte_content = '\r\n'.join(lineas_cbte) + ('\r\n' if lineas_cbte else '')
+    txt_alic_content = '\r\n'.join(lineas_alic) + ('\r\n' if lineas_alic else '')
+
+    return txt_cbte_content, txt_alic_content
+
+
+def generar_txt_libro_iva_compras(empresa_id: int, anio: int, mes: int) -> Tuple[str, str]:
+    """
+    Genera el par de contenidos de texto (CBTE y ALICUOTAS) para el Libro IVA Digital Compras
+    según las especificaciones técnicas de la RG 4597 / RG 5616 de ARCA/AFIP.
+    """
+    periodo_yyyymm = f"{anio}{mes:02d}"
+
+    # Recuperar comprobantes de compras del período
+    comprobantes = LibroIvaCompras.objects.filter(
+        empresa_id=empresa_id,
+        periodo=periodo_yyyymm
+    ).select_related('clienteproveedor').order_by('fecha', 'punto', 'numero')
+
+    # Fallback por fecha si el campo periodo aún no estuviese poblado
+    if not comprobantes.exists():
+        comprobantes = LibroIvaCompras.objects.filter(
+            empresa_id=empresa_id,
+            fecha__year=anio,
+            fecha__month=mes
+        ).select_related('clienteproveedor').order_by('fecha', 'punto', 'numero')
+
+    lineas_cbte: List[str] = []
+    lineas_alic: List[str] = []
+
+    for c in comprobantes:
+        doc_tipo, doc_nro = _obtener_tipo_y_numero_doc(c.clienteproveedor, c.cuit)
+        tipo_cbte = str(c.codiva).zfill(3)[:3]
+        pto_vta = str(c.punto).zfill(5)[:5]
+        nro_cbte = str(c.numero).zfill(20)[:20]
+
+        # Alícuotas vinculadas por asiento_id
+        alicuotas = list(LibroIvaAlic.objects.filter(asiento_id=c.asiento_id, c_v='C'))
+        cant_alicuotas = len(alicuotas)
+
+        if cant_alicuotas == 0 and (c.neto_gravado or c.iva_total):
+            alic_cod = _mapear_codigo_alicuota_arca(21.00)
+            linea_al = (
+                tipo_cbte +
+                pto_vta +
+                nro_cbte +
+                doc_tipo +
+                doc_nro +
+                _formatear_importe_arca(c.neto_gravado) +
+                alic_cod +
+                _formatear_importe_arca(c.iva_total)
+            )
+            lineas_alic.append(linea_al)
+            cant_alicuotas = 1
+        else:
+            for al in alicuotas:
+                alic_cod = _mapear_codigo_alicuota_arca(al.alicuota)
+                linea_al = (
+                    tipo_cbte +
+                    pto_vta +
+                    nro_cbte +
+                    doc_tipo +
+                    doc_nro +
+                    _formatear_importe_arca(al.neto) +
+                    alic_cod +
+                    _formatear_importe_arca(al.iva)
+                )
+                lineas_alic.append(linea_al)
+
+        # Desglose de retenciones y percepciones sufridas
+        ret_perc_qs = RetPercSufrida.objects.filter(asiento_id=c.asiento_id)
+        perc_iva = Decimal('0.00')
+        perc_nac = Decimal('0.00')
+        perc_iibb = Decimal('0.00')
+        perc_mun = Decimal('0.00')
+        perc_internos = Decimal('0.00')
+
+        for rp in ret_perc_qs:
+            imp_name = (rp.impuesto or '').upper()
+            if imp_name == 'IVA':
+                perc_iva += rp.importe
+            elif imp_name in ('GANANCIAS', 'SUSS'):
+                perc_nac += rp.importe
+            elif imp_name == 'IIBB':
+                perc_iibb += rp.importe
+            elif imp_name == 'MUNICIPAL':
+                perc_mun += rp.importe
+            elif imp_name == 'INTERNOS':
+                perc_internos += rp.importe
+
+        # Si no hay registros específicos de RetPercSufrida pero el comprobante tiene el campo "otros",
+        # lo asignamos a percepciones de IIBB para mantener consistencia de totales
+        if not ret_perc_qs.exists() and c.otros and c.otros > 0:
+            perc_iibb = c.otros
+
+        fecha_str = c.fecha.strftime('%Y%m%d') if c.fecha else '00000000'
+        despacho_importacion = ' ' * 16
+        razon_social = _limpiar_texto_fiscal(
+            c.clienteproveedor.razon_social if c.clienteproveedor else 'PROVEEDOR', 30
+        )
+
+        imp_total = _formatear_importe_arca(c.total)
+        imp_no_grav = _formatear_importe_arca(c.no_gravado)
+        imp_exento = _formatear_importe_arca(c.exento)
+        imp_perc_iva = _formatear_importe_arca(perc_iva)
+        imp_perc_nac = _formatear_importe_arca(perc_nac)
+        imp_perc_iibb = _formatear_importe_arca(perc_iibb)
+        imp_perc_mun = _formatear_importe_arca(perc_mun)
+        imp_internos = _formatear_importe_arca(perc_internos)
+        moneda = 'PES'
+        tipo_cambio = '0001000000'
+        cant_alic_str = str(min(cant_alicuotas, 9))
+        cod_operacion = '0'
+        cred_fiscal_computable = _formatear_importe_arca(c.iva_total)
+        otros_trib = _formatear_importe_arca(Decimal('0.00'))
+        cuit_emisor_corredor = '0' * 11
+        denominacion_corredor = ' ' * 30
+        iva_comision = _formatear_importe_arca(Decimal('0.00'))
+
+        linea_cbte = (
+            fecha_str +
+            tipo_cbte +
+            pto_vta +
+            nro_cbte +
+            despacho_importacion +
+            doc_tipo +
+            doc_nro +
+            razon_social +
+            imp_total +
+            imp_no_grav +
+            imp_exento +
+            imp_perc_iva +
+            imp_perc_nac +
+            imp_perc_iibb +
+            imp_perc_mun +
+            imp_internos +
+            moneda +
+            tipo_cambio +
+            cant_alic_str +
+            cod_operacion +
+            cred_fiscal_computable +
+            otros_trib +
+            cuit_emisor_corredor +
+            denominacion_corredor +
+            iva_comision
+        )
+        lineas_cbte.append(linea_cbte)
+
+    txt_cbte_content = '\r\n'.join(lineas_cbte) + ('\r\n' if lineas_cbte else '')
+    txt_alic_content = '\r\n'.join(lineas_alic) + ('\r\n' if lineas_alic else '')
+
+    return txt_cbte_content, txt_alic_content
+
+
+def generar_zip_libro_iva(tipo: str, empresa_id: int, anio: int, mes: int) -> bytes:
+    """
+    Empaqueta en memoria y retorna los bytes de un archivo ZIP conteniendo los TXT
+    oficiales requeridos por el servicio web de Libro IVA Digital de ARCA/AFIP:
+    - VENTAS: LIBRO_IVA_DIGITAL_VENTAS_CBTE.txt y LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS.txt
+    - COMPRAS: LIBRO_IVA_DIGITAL_COMPRAS_CBTE.txt y LIBRO_IVA_DIGITAL_COMPRAS_ALICUOTAS.txt
+    """
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        if tipo.upper() == 'VENTAS':
+            txt_cbte, txt_alic = generar_txt_libro_iva_ventas(empresa_id, anio, mes)
+            zf.writestr('LIBRO_IVA_DIGITAL_VENTAS_CBTE.txt', txt_cbte.encode('latin-1', 'replace'))
+            zf.writestr('LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS.txt', txt_alic.encode('latin-1', 'replace'))
+        else:
+            txt_cbte, txt_alic = generar_txt_libro_iva_compras(empresa_id, anio, mes)
+            zf.writestr('LIBRO_IVA_DIGITAL_COMPRAS_CBTE.txt', txt_cbte.encode('latin-1', 'replace'))
+            zf.writestr('LIBRO_IVA_DIGITAL_COMPRAS_ALICUOTAS.txt', txt_alic.encode('latin-1', 'replace'))
+
+    zip_buffer.seek(0)
+    return zip_buffer.getvalue()
+

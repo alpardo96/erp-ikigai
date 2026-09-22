@@ -1,5 +1,6 @@
 from datetime import datetime
 from django.shortcuts import render, redirect
+from django.http import HttpResponse
 from django.views import View
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -7,6 +8,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
 
+from empresas.models import Empresa
 from contable.models import LibroIvaCompras, LibroIvaVentas
 from .services import (
     calcular_liquidacion_iva,
@@ -16,6 +18,11 @@ from .services import (
     importar_archivo_mis_comprobantes_arca,
     conciliar_mis_comprobantes_arca,
     obtener_reporte_conciliacion_arca,
+    generar_zip_libro_iva,
+)
+from .services_export import (
+    exportar_libro_iva_excel,
+    exportar_libro_iva_pdf,
 )
 
 # =========================================================================
@@ -303,3 +310,193 @@ class SicoreGananciasView(LoginRequiredMixin, TemplateView):
     Vista para la exportación de retenciones practicadas SICORE (Impuesto a las Ganancias RG 830).
     """
     template_name = 'impuestos/sicore_ganancias.html'
+
+
+class ExportarLibroIvaVentasTxtView(LoginRequiredMixin, View):
+    """
+    Descarga los archivos TXT de Libro IVA Digital Ventas de ARCA/AFIP (RG 4597 / RG 5616)
+    empaquetados en un archivo comprimido .ZIP.
+    """
+    def get(self, request):
+        empresa_id = request.session.get('empresa_id')
+        if not empresa_id:
+            messages.warning(request, "Por favor, seleccione una empresa primero.")
+            return redirect('seleccion_empresa')
+
+        now = datetime.now()
+        try:
+            anio = int(request.GET.get('anio', now.year))
+        except (TypeError, ValueError):
+            anio = now.year
+
+        try:
+            mes = int(request.GET.get('mes', now.month))
+        except (TypeError, ValueError):
+            mes = now.month
+
+        periodo_yyyymm = f"{anio}{mes:02d}"
+
+        try:
+            zip_bytes = generar_zip_libro_iva('VENTAS', empresa_id, anio, mes)
+            response = HttpResponse(zip_bytes, content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="LIBRO_IVA_DIGITAL_VENTAS_{periodo_yyyymm}.zip"'
+            return response
+        except Exception as e:
+            messages.error(request, f"Error al generar los archivos de exportación ARCA: {str(e)}")
+            return redirect(f"/impuestos/libro-iva-ventas/?anio={anio}&mes={mes}")
+
+
+class ExportarLibroIvaComprasTxtView(LoginRequiredMixin, View):
+    """
+    Descarga los archivos TXT de Libro IVA Digital Compras de ARCA/AFIP (RG 4597 / RG 5616)
+    empaquetados en un archivo comprimido .ZIP.
+    """
+    def get(self, request):
+        empresa_id = request.session.get('empresa_id')
+        if not empresa_id:
+            messages.warning(request, "Por favor, seleccione una empresa primero.")
+            return redirect('seleccion_empresa')
+
+        now = datetime.now()
+        try:
+            anio = int(request.GET.get('anio', now.year))
+        except (TypeError, ValueError):
+            anio = now.year
+
+        try:
+            mes = int(request.GET.get('mes', now.month))
+        except (TypeError, ValueError):
+            mes = now.month
+
+        periodo_yyyymm = f"{anio}{mes:02d}"
+
+        try:
+            zip_bytes = generar_zip_libro_iva('COMPRAS', empresa_id, anio, mes)
+            response = HttpResponse(zip_bytes, content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="LIBRO_IVA_DIGITAL_COMPRAS_{periodo_yyyymm}.zip"'
+            return response
+        except Exception as e:
+            messages.error(request, f"Error al generar los archivos de exportación ARCA: {str(e)}")
+            return redirect(f"/impuestos/libro-iva-compras/?anio={anio}&mes={mes}")
+
+
+class ExportarLibroIvaVentasExcelView(LoginRequiredMixin, View):
+    """
+    Descarga el reporte en Excel (.xlsx) del Libro IVA Ventas
+    con desglose de alícuotas, asiento_id, CUIT y Razón Social en el membrete.
+    """
+    def get(self, request):
+        empresa_id = request.session.get('empresa_id')
+        if not empresa_id:
+            messages.warning(request, "Por favor, seleccione una empresa primero.")
+            return redirect('seleccion_empresa')
+
+        empresa = Empresa.objects.filter(pk=empresa_id).first()
+        now = datetime.now()
+        try:
+            anio = int(request.GET.get('anio', now.year))
+        except (TypeError, ValueError):
+            anio = now.year
+
+        try:
+            mes = int(request.GET.get('mes', now.month))
+        except (TypeError, ValueError):
+            mes = now.month
+
+        try:
+            return exportar_libro_iva_excel('VENTAS', empresa, anio, mes)
+        except Exception as e:
+            messages.error(request, f"Error al exportar Libro IVA Ventas a Excel: {str(e)}")
+            return redirect(f"/impuestos/libro-iva-ventas/?anio={anio}&mes={mes}")
+
+
+class ExportarLibroIvaVentasPdfView(LoginRequiredMixin, View):
+    """
+    Descarga el reporte en PDF del Libro IVA Ventas
+    en formato A4 apaisado con membrete corporativo, CUIT, totales y paginación.
+    """
+    def get(self, request):
+        empresa_id = request.session.get('empresa_id')
+        if not empresa_id:
+            messages.warning(request, "Por favor, seleccione una empresa primero.")
+            return redirect('seleccion_empresa')
+
+        empresa = Empresa.objects.filter(pk=empresa_id).first()
+        now = datetime.now()
+        try:
+            anio = int(request.GET.get('anio', now.year))
+        except (TypeError, ValueError):
+            anio = now.year
+
+        try:
+            mes = int(request.GET.get('mes', now.month))
+        except (TypeError, ValueError):
+            mes = now.month
+
+        try:
+            return exportar_libro_iva_pdf('VENTAS', empresa, anio, mes)
+        except Exception as e:
+            messages.error(request, f"Error al exportar Libro IVA Ventas a PDF: {str(e)}")
+            return redirect(f"/impuestos/libro-iva-ventas/?anio={anio}&mes={mes}")
+
+
+class ExportarLibroIvaComprasExcelView(LoginRequiredMixin, View):
+    """
+    Descarga el reporte en Excel (.xlsx) del Libro IVA Compras
+    con desglose de alícuotas, asiento_id, CUIT y Razón Social en el membrete.
+    """
+    def get(self, request):
+        empresa_id = request.session.get('empresa_id')
+        if not empresa_id:
+            messages.warning(request, "Por favor, seleccione una empresa primero.")
+            return redirect('seleccion_empresa')
+
+        empresa = Empresa.objects.filter(pk=empresa_id).first()
+        now = datetime.now()
+        try:
+            anio = int(request.GET.get('anio', now.year))
+        except (TypeError, ValueError):
+            anio = now.year
+
+        try:
+            mes = int(request.GET.get('mes', now.month))
+        except (TypeError, ValueError):
+            mes = now.month
+
+        try:
+            return exportar_libro_iva_excel('COMPRAS', empresa, anio, mes)
+        except Exception as e:
+            messages.error(request, f"Error al exportar Libro IVA Compras a Excel: {str(e)}")
+            return redirect(f"/impuestos/libro-iva-compras/?anio={anio}&mes={mes}")
+
+
+class ExportarLibroIvaComprasPdfView(LoginRequiredMixin, View):
+    """
+    Descarga el reporte en PDF del Libro IVA Compras
+    en formato A4 apaisado con membrete corporativo, CUIT, totales y paginación.
+    """
+    def get(self, request):
+        empresa_id = request.session.get('empresa_id')
+        if not empresa_id:
+            messages.warning(request, "Por favor, seleccione una empresa primero.")
+            return redirect('seleccion_empresa')
+
+        empresa = Empresa.objects.filter(pk=empresa_id).first()
+        now = datetime.now()
+        try:
+            anio = int(request.GET.get('anio', now.year))
+        except (TypeError, ValueError):
+            anio = now.year
+
+        try:
+            mes = int(request.GET.get('mes', now.month))
+        except (TypeError, ValueError):
+            mes = now.month
+
+        try:
+            return exportar_libro_iva_pdf('COMPRAS', empresa, anio, mes)
+        except Exception as e:
+            messages.error(request, f"Error al exportar Libro IVA Compras a PDF: {str(e)}")
+            return redirect(f"/impuestos/libro-iva-compras/?anio={anio}&mes={mes}")
+
+

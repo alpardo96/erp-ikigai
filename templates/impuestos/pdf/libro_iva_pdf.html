@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titulo_libro }} - {{ periodo }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 0.5cm;
+                margin-left: 1cm;
+                margin-right: 1cm;
+                height: 0.8cm;
+                text-align: right;
+            }
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 8pt;
+            color: #0f172a;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+        }
+        .empresa-title {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #0f172a;
+            margin: 0;
+        }
+        .empresa-cuit {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #475569;
+            margin-top: 2px;
+        }
+        .report-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #1e40af;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+        .report-meta {
+            font-size: 8pt;
+            color: #64748b;
+            margin-top: 2px;
+            font-style: italic;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+            -fs-table-paginate: paginate;
+        }
+        thead {
+            display: table-header-group;
+        }
+        tfoot {
+            display: table-footer-group;
+        }
+        tr {
+            page-break-inside: avoid;
+        }
+        th {
+            background-color: #1e3a8a;
+            color: #ffffff;
+            font-weight: bold;
+            text-align: left;
+            padding: 5px 4px;
+            font-size: 7.5pt;
+            border: 1px solid #1e3a8a;
+            text-transform: uppercase;
+        }
+        td {
+            padding: 4px;
+            font-size: 7.5pt;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .font-bold { font-weight: bold; }
+        .font-mono { font-family: monospace; }
+        .tfoot-row {
+            background-color: #f1f5f9;
+            font-weight: bold;
+            border-top: 1.5px solid #94a3b8;
+            border-bottom: 2px solid #0f172a;
+        }
+    </style>
+</head>
+<body>
+    <div id="footerContent" style="font-size: 7.5pt; color: #64748b;">
+        {{ empresa.nombre|upper }} &bull; CUIT {{ empresa.cuit }} &bull; Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+
+    <!-- Encabezado del Reporte -->
+    <div class="header">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+            <tr>
+                <td width="65%" align="left" style="border: none; padding: 0;">
+                    <div class="empresa-title">{{ empresa.nombre|upper }}</div>
+                    {% if empresa.cuit %}<div class="empresa-cuit">CUIT: {{ empresa.cuit }}</div>{% endif %}
+                    <div class="report-title">{{ titulo_libro }}</div>
+                </td>
+                <td width="35%" align="right" style="border: none; padding: 0;">
+                    <div class="report-meta" style="font-size: 9pt; font-weight: bold; color: #1e293b;">
+                        Período Fiscal: {{ mes|stringformat:"02d" }}/{{ anio }} ({{ periodo }})
+                    </div>
+                    <div class="report-meta">
+                        Emisión: {{ fecha_emision|date:"d/m/Y H:i" }}
+                    </div>
+                    <div class="report-meta">
+                        Registros: {{ comprobantes|length }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Tabla Principal de Comprobantes -->
+    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        <thead>
+            <tr>
+                <th width="7%" align="center">Fecha</th>
+                <th width="4%" align="center">Cód.</th>
+                <th width="10%" align="center">Comprobante</th>
+                <th width="24%" align="left">{% if es_ventas %}Cliente / Razón Social{% else %}Proveedor / Razón Social{% endif %}</th>
+                <th width="9%" align="center">CUIT</th>
+                <th width="10%" align="right">Neto Grav.</th>
+                <th width="6%" align="right">Exento</th>
+                <th width="6%" align="right">No Grav.</th>
+                <th width="8%" align="right">IVA Total</th>
+                <th width="6%" align="right">Otros</th>
+                <th width="10%" align="right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in comprobantes %}
+            <tr>
+                <td align="center">{{ c.fecha|date:"d/m/Y" }}</td>
+                <td align="center" class="font-bold">{{ c.codiva }}</td>
+                <td align="center" class="font-mono">{{ c.punto|stringformat:"05d" }}-{{ c.numero }}</td>
+                <td align="left">{{ c.clienteproveedor.razon_social|default:"-"|truncatechars:35 }}</td>
+                <td align="center" class="font-mono">{{ c.cuit|default:"-" }}</td>
+                <td align="right" class="font-mono">{{ c.neto_gravado|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ c.exento|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ c.no_gravado|floatformat:2 }}</td>
+                <td align="right" class="font-mono font-bold" style="color: #1e40af;">{{ c.iva_total|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ c.otros|floatformat:2 }}</td>
+                <td align="right" class="font-mono font-bold">{{ c.total|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="11" align="center" style="padding: 20px; color: #94a3b8; font-style: italic;">
+                    No existen comprobantes registrados para el período fiscal {{ periodo }}.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        {% if comprobantes %}
+        <tfoot>
+            <tr class="tfoot-row">
+                <td colspan="5" align="left" style="padding-left: 8px;">TOTALES DEL PERÍODO {{ periodo }}</td>
+                <td align="right" class="font-mono">{{ tot_neto|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ tot_exento|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ tot_no_gravado|floatformat:2 }}</td>
+                <td align="right" class="font-mono" style="color: #1e40af;">{{ tot_iva|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ tot_otros|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ tot_total|floatformat:2 }}</td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</body>
+</html>
