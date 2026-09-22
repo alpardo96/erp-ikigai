@@ -210,13 +210,13 @@
                             Mantenimiento de Productos
                         </a>
                         {% hook_menu 'stock' %}
-                        {% if empresa_actual.usa_orden_compra %}
                         {% if perms.usuarios.menu_stock_recepciones or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'recepcion_listado' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'recepcion_listado' %}text-indigo-500 font-bold{% endif %}">
                             Recepción de Mercadería
                         </a>
                         {% endif %}
+                        {% if empresa_actual.tiene_multiples_sucursales %}
                         {% if perms.usuarios.menu_stock_remitos_internos or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'remito_interno_listado' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'remito_interno_listado' %}text-indigo-500 font-bold{% endif %}">

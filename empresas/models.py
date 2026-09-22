@@ -204,6 +204,14 @@ class Empresa(AuditModel):
                 'mensaje': f'Certificado digital ARCA vigente hasta el {fecha_str} ({dias} días restantes).'
             }
 
+    @property
+    def tiene_multiples_sucursales(self) -> bool:
+        """
+        Indica si la empresa posee 2 o más sucursales registradas (ej: Casa Central y sucursales adicionales).
+        Habilita los circuitos de remitos internos y transferencias entre sucursales.
+        """
+        return self.sucursales.count() > 1
+
     def save(self, *args, **kwargs):
         """
         Sobrescribe save para autodetectar la fecha de vencimiento si se cargó un .crt y vencimiento_crt_afip no fue provisto.
