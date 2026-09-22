@@ -196,7 +196,7 @@
                     </div>
                 </div>
 
-                <!-- Renglón 2: Nro. de Serie / Identificador, Estado (Condicional), CUIM / Patente (Condicional), Botón Añadir -->
+                <!-- Renglón 2: Nro. de Serie / Identificador, Estado (Condicional), CUIM (Condicional), Botón Añadir -->
                 <div class="flex flex-wrap items-end gap-3 pt-2 border-t border-slate-200/50">
                     
                     <!-- Serie / Identificador (Ancho coherente, no estirado excesivamente) -->
@@ -222,13 +222,12 @@
                     </div>
                     {% endif %}
 
-                    <!-- CUIM / Patente / Dominio (Condicional) -->
                     {% if config_trazabilidad.pedir_cuim or empresa.tipo_actividad == 'ARMERIA' or empresa.tipo_actividad == 'Armería' or empresa.tipo_actividad == 'Armeria' %}
                     <div class="w-56">
                         <label class="block text-[10px] font-black text-slate-600 uppercase mb-1 tracking-tighter">
-                            CUIM / Patente *
+                            CUIM *
                         </label>
-                        <input type="text" id="item_traz_cuim" placeholder="EJ: 4492019 / AF123YZ"
+                        <input type="text" id="item_traz_cuim" placeholder="EJ: 123456"
                             class="w-full h-11 px-3 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 outline-none focus:border-amber-500 uppercase shadow-sm">
                     </div>
                     {% endif %}
