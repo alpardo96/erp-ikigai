@@ -2008,13 +2008,15 @@ def typeahead_productos_compra(request):
     solo_trazables = request.GET.get('solo_trazables') == '1'
     empresa_id = request.session.get('empresa_id')
 
-    productos = buscar_productos_inteligente(
+    from productos.services.busqueda_service import construir_filtro_busqueda_producto
+    qs, _ = construir_filtro_busqueda_producto(
         q=q,
         empresa_id=empresa_id,
-        limit=100
     )
     if solo_trazables:
-        productos = productos.filter(subprod=True)
+        qs = qs.filter(subprod=True)
+        
+    productos = qs[:100]
 
     return render(request, 'facturacion/partials/productos_compra_typeahead.html', {
         'productos': productos,

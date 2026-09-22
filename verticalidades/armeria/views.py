@@ -698,7 +698,7 @@ def compras_trazabilidad_item_add(request):
     producto_id = request.POST.get('producto_id')
     serie = (request.POST.get('serie') or '').strip().upper()
     situacion = 'DEPOSITO'
-    estado = (request.POST.get('estado') or 'NUEVO').strip()
+    estado = (request.POST.get('estado') or 'USADO').strip()
     cuim = (request.POST.get('cuim') or '').strip().upper()
 
     if not producto_id:
@@ -1351,6 +1351,7 @@ class StockArmasListView(LoginRequiredMixin, ListView):
         search_cuim = self.request.GET.get('cuim', '').strip()
         search_producto = self.request.GET.get('producto', '').strip()
         search_sucursal = self.request.GET.get('sucursal', '').strip()
+        search_estado = self.request.GET.get('estado', '').strip()
 
         from django.db.models import Subquery, Q
         
@@ -1369,6 +1370,8 @@ class StockArmasListView(LoginRequiredMixin, ListView):
             qs = qs.filter(producto__detalle__icontains=search_producto)
         if search_sucursal:
             qs = qs.filter(sucursal_id=search_sucursal)
+        if search_estado:
+            qs = qs.filter(estado=search_estado)
 
         latest_ids = qs.order_by('serie', '-feccpra', '-subpro').distinct('serie').values('subpro')
         qs = Subproducto.objects.filter(subpro__in=Subquery(latest_ids))
@@ -1378,6 +1381,8 @@ class StockArmasListView(LoginRequiredMixin, ListView):
 
         sort = self.request.GET.get('sort', '-fecha')
         sort_map = {
+            'id': 'producto__id',
+            '-id': '-producto__id',
             'producto': 'producto__detalle',
             '-producto': '-producto__detalle',
             'serie': 'serie',

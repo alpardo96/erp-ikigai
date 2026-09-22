@@ -216,14 +216,14 @@
                         </label>
                         <select id="item_traz_estado"
                             class="w-full h-11 px-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 text-center outline-none focus:border-amber-500 shadow-sm">
-                            <option value="NUEVO" selected>NUEVO</option>
-                            <option value="USADO">USADO</option>
+                            <option value="NUEVO">NUEVO</option>
+                            <option value="USADO" selected>USADO</option>
                         </select>
                     </div>
                     {% endif %}
 
                     <!-- CUIM / Patente / Dominio (Condicional) -->
-                    {% if config_trazabilidad.pedir_cuim %}
+                    {% if config_trazabilidad.pedir_cuim or empresa.tipo_actividad == 'ARMERIA' or empresa.tipo_actividad == 'Armería' or empresa.tipo_actividad == 'Armeria' %}
                     <div class="w-56">
                         <label class="block text-[10px] font-black text-slate-600 uppercase mb-1 tracking-tighter">
                             CUIM / Patente *
@@ -379,7 +379,8 @@
     function agregarItemCompraTrazabilidad() {
         const prodId = document.getElementById('item_traz_producto_id').value;
         const serie = (document.getElementById('item_traz_serie')?.value || '').trim();
-        const estado = document.getElementById('item_traz_estado')?.value || 'NUEVO';
+        // Fuerza a USADO
+        const estado = document.getElementById('item_traz_estado')?.value || 'USADO';
         const cuim = (document.getElementById('item_traz_cuim')?.value || '').trim();
         const precio = (document.getElementById('item_traz_precio')?.value || '0').trim();
 
