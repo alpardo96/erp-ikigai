@@ -5350,3 +5350,47 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 **Archivos modificados:**
 - 	emplates/facturacion/partials/preventa_items_tabla.html`n- 	emplates/facturacion/partials/venta_items_tabla.html`n- 	emplates/facturacion/partials/venta_trazabilidad_items_tabla.html`n- erticalidades/armeria/templates/armeria/partials/venta_trazabilidad_items_tabla.html`n**Detalle Técnico:** Se eliminaron las clases de Tailwind CSS opacity-0 y group-hover:opacity-100 en los íconos de basura de los carritos de venta y preventa, para que se muestren permanentemente de color rojo sin necesidad de hacer hover con el mouse, igualando el comportamiento de Carga de Compras.
 **Pruebas:** Archivos actualizados exitosamente.
+
+### Cristian - PC CASA
+**Fecha:** 22 de Septiembre de 2026
+**Objetivo:** Ajustes en Stock de Armas (Filtros e ID).
+**Archivos modificados:**
+- `verticalidades/armeria/templates/armeria/stock_armas_list.html`
+- `verticalidades/armeria/templates/armeria/partials/stock_armas_grilla.html`
+- `verticalidades/armeria/views.py`
+- `verticalidades/armeria/templates/armeria/partials/stock_armas_detalle_modal.html`
+**Detalle Tcnico:** Se elimin el filtro de CliPro. Se agreg la columna ID a la grilla y el filtro por Condicin (NUEVO/USADO). En el modal de detalle se incluy el ID Producto por encima del Calibre.
+**Pruebas:** Archivos actualizados exitosamente.
+
+### Cristian - PC CASA
+**Fecha:** 22 de Septiembre de 2026
+**Objetivo:** Mostrar campo CUIM en compras por trazabilidad de armera.
+**Archivos modificados:**
+- `verticalidades/armeria/templates/armeria/compras_trazabilidad_carga.html`
+**Detalle Tcnico:** Se ajust la condicional del template para que el input del CUIM se muestre siempre que la empresa sea una Armera, independientemente del config general.
+**Pruebas:** Guardado exitosamente.
+
+### Cristian - PC CASA
+**Fecha:** 22 de Septiembre de 2026
+**Objetivo:** Establecer estado por defecto a USADO en compras de armas.
+**Archivos modificados:**
+- `verticalidades/armeria/templates/armeria/compras_trazabilidad_carga.html`
+- `verticalidades/armeria/views.py`
+**Detalle Tcnico:** Ya que las compras en armera corresponden a la carga de bienes usados para reventa, se cambi la opcin seleccionada por defecto del desplegable de 'Estado' a 'USADO', as como tambin el valor por defecto en la vista del backend.
+**Pruebas:** Guardado exitosamente.
+
+### Cristian - PC CASA
+**Fecha:** 22 de Septiembre de 2026
+**Objetivo:** Correccin de error de Django al buscar productos trazables en compras.
+**Archivos modificados:**
+- `facturacion/views_htmx.py`
+**Detalle Tcnico:** Se solucion un TypeError ('Cannot filter a query once a slice has been taken') en la vista `typeahead_productos_compra`. El problema ocurra porque se estaba intentando aplicar `.filter(subprod=True)` sobre un QuerySet que ya haba sido limitado con slicing (`[:100]`) por la funcin `buscar_productos_inteligente`. Se reemplaz por el uso directo de `construir_filtro_busqueda_producto`, aplicando el filtro antes del slicing final.
+**Pruebas:** Guardado exitosamente.
+
+### Cristian - PC CASA
+**Fecha:** 22 de Septiembre de 2026
+**Objetivo:** Correccin del script JS para el estado por defecto del tem.
+**Archivos modificados:**
+- `verticalidades/armeria/templates/armeria/compras_trazabilidad_carga.html`
+**Detalle Tcnico:** El script Javascript tena 'NUEVO' hardcodeado como fallback en caso de que el select de Estado no se renderizara o no estuviera disponible (debido a configuraciones de trazabilidad). Se cambi este fallback explcitamente a 'USADO' en `agregarItemCompraTrazabilidad()` para que coincida con el backend y las reglas de negocio de armera.
+**Pruebas:** Guardado exitosamente.
