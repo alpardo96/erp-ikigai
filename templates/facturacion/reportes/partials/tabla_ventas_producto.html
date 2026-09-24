@@ -1,3 +1,4 @@
+{% load formato_tags %}
 {% if filtros.ejecutado %}
 <!-- Tarjetas de Resumen KPI -->
 <div class="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gray-50/50">
@@ -23,22 +24,22 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Cantidad Total Vendida</p>
-        <h3 class="text-2xl font-extrabold text-gray-900 mt-2">{{ totales.cantidad|floatformat:2 }}</h3>
+        <h3 class="text-2xl font-extrabold text-gray-900 mt-2">{{ totales.cantidad|formato_ar }}</h3>
         <p class="text-xs text-gray-500 mt-1">{{ items.count }} registro(s) listados</p>
     </div>
     <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Neto</p>
-        <h3 class="text-2xl font-extrabold text-gray-900 mt-2">$ {{ totales.neto|floatformat:2 }}</h3>
+        <h3 class="text-2xl font-extrabold text-gray-900 mt-2">$ {{ totales.neto|formato_ar }}</h3>
         <p class="text-xs text-gray-500 mt-1">Base Imponible Gravada</p>
     </div>
     <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total IVA</p>
-        <h3 class="text-2xl font-extrabold text-indigo-600 mt-2">$ {{ totales.iva|floatformat:2 }}</h3>
+        <h3 class="text-2xl font-extrabold text-indigo-600 mt-2">$ {{ totales.iva|formato_ar }}</h3>
         <p class="text-xs text-gray-500 mt-1">Débito Fiscal Acumulado</p>
     </div>
     <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Facturado</p>
-        <h3 class="text-2xl font-extrabold text-emerald-600 mt-2">$ {{ totales.total|floatformat:2 }}</h3>
+        <h3 class="text-2xl font-extrabold text-emerald-600 mt-2">$ {{ totales.total|formato_ar }}</h3>
         <p class="text-xs text-gray-500 mt-1">Monto Bruto Total</p>
     </div>
 </div>
@@ -109,21 +110,21 @@
                     <td class="col-calibre px-3 py-3 text-gray-700 font-mono text-xs whitespace-nowrap">
                         {{ item.producto.unidad_venta|default:"—" }}
                     </td>
-                    <td class="col-cantidad px-3 py-3 text-right font-semibold text-gray-900">{{ item.cantidad|floatformat:2 }}</td>
+                    <td class="col-cantidad px-3 py-3 text-right font-semibold text-gray-900">{{ item.cantidad|formato_ar }}</td>
                     <td class="col-moneda px-3 py-3 text-center text-gray-600">
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                             {{ item.moneda_origen|default:item.venta.moneda }}
                         </span>
                     </td>
-                    <td class="col-precio px-3 py-3 text-right text-gray-700">$ {{ item.precio_unitario|floatformat:2 }}</td>
+                    <td class="col-precio px-3 py-3 text-right text-gray-700">$ {{ item.precio_unitario|formato_ar }}</td>
                     <td class="col-neto px-3 py-3 text-right font-medium text-gray-800">
-                        $ {% if item.neto_calculado %}{{ item.neto_calculado|floatformat:2 }}{% else %}{{ item.total|floatformat:2 }}{% endif %}
+                        $ {% if item.neto_calculado %}{{ item.neto_calculado|formato_ar }}{% else %}{{ item.total|formato_ar }}{% endif %}
                     </td>
                     <td class="col-iva px-3 py-3 text-right text-indigo-600">
                         <span class="text-xs text-gray-400 mr-1">({{ item.iva_alicuota|floatformat:0 }}%)</span>
-                        $ {{ item.iva_calculado|floatformat:2 }}
+                        $ {{ item.iva_calculado|formato_ar }}
                     </td>
-                    <td class="col-total px-3 py-3 text-right font-bold text-emerald-600">$ {{ item.total|floatformat:2 }}</td>
+                    <td class="col-total px-3 py-3 text-right font-bold text-emerald-600">$ {{ item.total|formato_ar }}</td>
                     <td class="col-rubro px-3 py-3 text-gray-600">{{ item.producto.rubro.detalle|default:"—" }}</td>
                     <td class="col-familia px-3 py-3 text-gray-600">{{ item.producto.familia.detalle|default:"—" }}</td>
                     <td class="col-subfamilia px-3 py-3 text-gray-600">{{ item.producto.subfamilia.detalle|default:"—" }}</td>
@@ -157,12 +158,12 @@
             <tfoot class="bg-gray-100 font-bold text-gray-900 border-t-2 border-gray-300">
                 <tr>
                     <td colspan="10" class="py-4 pl-4 pr-3 text-right uppercase tracking-wider text-xs">Totales Generales</td>
-                    <td class="col-cantidad px-3 py-4 text-right font-extrabold">{{ totales.cantidad|floatformat:2 }}</td>
+                    <td class="col-cantidad px-3 py-4 text-right font-extrabold">{{ totales.cantidad|formato_ar }}</td>
                     <td class="col-moneda px-3 py-4"></td>
                     <td class="col-precio px-3 py-4"></td>
-                    <td class="col-neto px-3 py-4 text-right font-extrabold">$ {{ totales.neto|floatformat:2 }}</td>
-                    <td class="col-iva px-3 py-4 text-right font-extrabold text-indigo-700">$ {{ totales.iva|floatformat:2 }}</td>
-                    <td class="col-total px-3 py-4 text-right font-extrabold text-emerald-700">$ {{ totales.total|floatformat:2 }}</td>
+                    <td class="col-neto px-3 py-4 text-right font-extrabold">$ {{ totales.neto|formato_ar }}</td>
+                    <td class="col-iva px-3 py-4 text-right font-extrabold text-indigo-700">$ {{ totales.iva|formato_ar }}</td>
+                    <td class="col-total px-3 py-4 text-right font-extrabold text-emerald-700">$ {{ totales.total|formato_ar }}</td>
                     <td colspan="7"></td>
                 </tr>
             </tfoot>
