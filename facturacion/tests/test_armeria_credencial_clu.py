@@ -24,7 +24,8 @@ class ArmeriaCredencialCLUTestCase(TestCase):
         )
         self.user = User.objects.create_user(
             username="testuser",
-            password="password123"
+            password="password123",
+            is_superuser=True
         )
         self.rubro = Rubro.objects.create(
             empresa=self.empresa,

@@ -133,7 +133,12 @@ class VentasCargaView(LoginRequiredMixin, View):
             messages.warning(request, "Por favor, seleccione una empresa y sucursal primero.")
             return redirect('seleccion_empresa')
 
-        # Limpiar Ã­items temporales al iniciar carga nueva
+        empresa_activa = Empresa.objects.filter(pk=empresa_id).first()
+        if empresa_activa and empresa_activa.tipo_actividad == 'ARMERIA':
+            messages.warning(request, "La carga directa de ventas no está habilitada para Armería. Utilice Preventa o Venta con Trazabilidad.")
+            return redirect('preventas_carga')
+
+        # Limpiar ítems temporales al iniciar carga nueva
         request.session['venta_items_temp'] = []
 
         initial_data = {
@@ -142,9 +147,8 @@ class VentasCargaView(LoginRequiredMixin, View):
             'fecha': timezone.localdate()
         }
         form = VentaForm(initial=initial_data)
-        from empresas.models import PuntoVenta, Empresa as _Empresa
+        from empresas.models import PuntoVenta
         puntos_venta = PuntoVenta.objects.filter(sucursal_id=sucursal_id, activo=True)
-        empresa_activa = _Empresa.objects.filter(pk=empresa_id).first()
         modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
         return render(request, 'facturacion/ventas_carga.html', {
             'form': form,
@@ -153,6 +157,12 @@ class VentasCargaView(LoginRequiredMixin, View):
         })
 
     def post(self, request):
+        empresa_id = request.session.get('empresa_id')
+        empresa_activa = Empresa.objects.filter(pk=empresa_id).first()
+        if empresa_activa and empresa_activa.tipo_actividad == 'ARMERIA':
+            messages.error(request, "Operación denegada: en Armería solo se factura mediante Preventa o Venta con Trazabilidad.")
+            return redirect('preventas_carga')
+
         data = request.POST.copy()
         # Limpieza de datos (Formato AR -> Float)
         campos_monetarios = ['neto', 'iva', 'p_iibb', 'p_iva', 'otros', 'total', 'cotizacion', 'efectivo', 'tarjeta', 'transferencia', 'valores']
@@ -334,8 +344,47 @@ class PreventaCargaView(LoginRequiredMixin, View):
             messages.warning(request, "Por favor, seleccione una empresa y sucursal primero.")
             return redirect('seleccion_empresa')
 
-        # Limpiar Ã­items temporales al iniciar carga nueva
+        # Limpiar ítems temporales al iniciar carga nueva
         request.session['preventa_items_temp'] = []
+
+        # Precargar arma desde el Stock de Armas (Punto 6.7)
+        subpro_id = request.GET.get('subpro_id')
+        if subpro_id:
+            from productos.models import Subproducto
+            subp = Subproducto.objects.filter(subpro=subpro_id, empresa_id=empresa_id, situacion='DEPOSITO').select_related('producto', 'producto__rubro', 'sucursal').first()
+            if subp:
+                if str(subp.sucursal_id) == str(sucursal_id):
+                    p = subp.producto
+                    precio_pesos = subp.precio_pesos
+                    descuento_max = float(p.rubro.descuento_maximo) if p.rubro else 0.0
+                    request.session['preventa_items_temp'] = [{
+                        'index': 0,
+                        'producto_id': p.id,
+                        'subprod': True,
+                        'subpro_id': subp.subpro,
+                        'serie': subp.serie,
+                        'cuim': subp.cuim or '',
+                        'codigo': p.cod_prov or p.id,
+                        'codigo_erp': p.id,
+                        'codigo_anterior': p.codigo_anterior or '',
+                        'disponible': 1,
+                        'detalle': f"{p.detalle} (SERIE: {subp.serie})",
+                        'cantidad': 1.0,
+                        'precio_unitario': precio_pesos,
+                        'precio_base': precio_pesos,
+                        'descuento': 0.0,
+                        'descuento_maximo': descuento_max,
+                        'total': precio_pesos,
+                        'requiere_autorizacion': False,
+                        'alerta_precio_duplicado': False,
+                        'moneda_origen': 'DOL' if subp.es_moneda_dolar else 'PES',
+                        'cotizacion_aplicada': 1.0,
+                        'precio_origen': precio_pesos,
+                        'credencial': '',
+                        'dmp': ''
+                    }]
+                else:
+                    messages.error(request, f"El artículo pertenece a la sucursal {subp.sucursal.nombre}. Cambie a esa sucursal para poder generar la preventa.")
 
         # Obtener cliente predeterminado (ID 1 / Consumidor Final)
         cliente_default = ClienteProveedor.objects.filter(empresa_id=empresa_id, codigo_id=1).first()
@@ -378,6 +427,11 @@ class PreventaCargaView(LoginRequiredMixin, View):
     def post(self, request):
         empresa_id = request.session.get('empresa_id')
         sucursal_id = request.session.get('sucursal_id')
+        if not sucursal_id and empresa_id:
+            suc = Sucursal.objects.filter(empresa_id=empresa_id).first()
+            if suc:
+                sucursal_id = suc.id
+                request.session['sucursal_id'] = sucursal_id
         
         items_temp = request.session.get('preventa_items_temp', [])
         if not items_temp:
@@ -540,7 +594,7 @@ class PreventaCargaView(LoginRequiredMixin, View):
                     return redirect('preventas_carga')
 
             except Exception as e:
-                messages.error(request, f"Error crÃ­tico al guardar la preventa: {str(e)}")
+                messages.error(request, f"Error crítico al guardar la preventa: {str(e)}")
         else:
             messages.error(request, f"Error en los datos de cabecera: {form.errors.as_text()}")
             
@@ -725,10 +779,29 @@ class ComprasCargaView(LoginRequiredMixin, View):
         cuentas = Cuenta.objects.filter(empresa_id=request.session.get('empresa_id'), imputable=1).order_by('jerarquia')
         alicuotas_iva = AlicuotaIva.objects.filter(activo=True).order_by('orden', 'codigo')
         empresa_ctx = Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
+        
+        # Persistencia de display de proveedor y comprobante (Punto 8.1)
+        proveedor_id = data.get('proveedor')
+        proveedor_display = ''
+        if proveedor_id:
+            prov_obj = ClienteProveedor.objects.filter(pk=proveedor_id, empresa_id=request.session.get('empresa_id')).first()
+            if prov_obj:
+                proveedor_display = prov_obj.razon_social
+
+        tipo_codigo = data.get('tipo')
+        comprobante_display = ''
+        if tipo_codigo:
+            from facturacion.models import TipoComprobante
+            tc_obj = TipoComprobante.objects.filter(codigo=tipo_codigo).first()
+            if tc_obj:
+                comprobante_display = f"{tc_obj.codigo} - {tc_obj.detalle}"
+
         ctx_base = {
             'form': form, 'cuentas': cuentas, 'alicuotas_iva': alicuotas_iva,
             'condicion_iibb': empresa_ctx.condicion_iibb if empresa_ctx else 'LOCAL',
             'jurisdicciones_iibb': empresa_ctx.jurisdicciones_iibb.order_by('codigo') if empresa_ctx else [],
+            'proveedor_display': proveedor_display,
+            'comprobante_display': comprobante_display,
         }
         items_temp = request.session.get('compra_items_temp', [])
         es_gasto = request.POST.get('modo') == 'gasto'
@@ -738,17 +811,22 @@ class ComprasCargaView(LoginRequiredMixin, View):
             return render(request, 'facturacion/compras_carga.html', ctx_base)
 
         if form.is_valid():
-            # ValidaciÃ³n de Duplicados
+            # Validación de Duplicados
             empresa_id = request.session.get('empresa_id')
             proveedor_id = data.get('proveedor')
             punto = data.get('punto', '').strip()
             numero = data.get('numero', '').strip()
             
             if punto and numero and Compra.objects.filter(empresa_id=empresa_id, proveedor_id=proveedor_id, punto=punto, numero=numero).exists():
-                messages.error(request, f"Â¡AtenciÃ³n! La factura {punto}-{numero} de este proveedor ya se encuentra cargada en el sisitema.")
+                messages.error(request, f"¡Atención! La factura {punto}-{numero} de este proveedor ya se encuentra cargada en el sistema.")
                 return render(request, 'facturacion/compras_carga.html', ctx_base)
 
-            # Validación de Series Obligatorias para Subproductos
+            # Validación de Series Obligatorias y Únicas para Subproductos (Puntos 8.2 y 8.3)
+            series_vistas_total = set()
+            cuims_vistos_total = set()
+            import re
+            from productos.models import Subproducto
+
             for item in items_temp:
                 if item.get('subprod'):
                     cant = int(float(item.get('cantidad', 1)))
@@ -757,13 +835,34 @@ class ComprasCargaView(LoginRequiredMixin, View):
                         messages.error(request, f"Debe cargar todas las Series/CUIM para el producto {item.get('detalle')} (Faltan {cant - len(series)}).")
                         return render(request, 'facturacion/compras_carga.html', ctx_base)
                     for s in series:
-                        if not s.get('serie') or not s.get('cuim'):
-                            messages.error(request, f"Debe cargar SERIE y CUIM completos para el producto {item.get('detalle')}.")
+                        serie_val = (s.get('serie') or '').strip().upper()
+                        cuim_val = (s.get('cuim') or '').strip().upper()
+                        
+                        if not serie_val:
+                            messages.error(request, f"Debe ingresar el número de serie para el producto {item.get('detalle')}.")
                             return render(request, 'facturacion/compras_carga.html', ctx_base)
-                        from productos.models import Subproducto
-                        if Subproducto.objects.filter(serie__iexact=s.get('serie').strip(), empresa_id=request.session.get('empresa_id')).exclude(situacion='VENDIDA').exists():
-                            messages.error(request, f"Error: La serie {s.get('serie')} ya se encuentra activa en el inventario.")
+                            
+                        if serie_val in series_vistas_total:
+                            messages.error(request, f"La serie {serie_val} está repetida en esta misma factura de compra.")
                             return render(request, 'facturacion/compras_carga.html', ctx_base)
+                        series_vistas_total.add(serie_val)
+                        
+                        if Subproducto.objects.filter(serie__iexact=serie_val, empresa_id=empresa_id).exclude(situacion='VENDIDA').exists():
+                            messages.error(request, f"Error: La serie {serie_val} ya se encuentra activa en el inventario.")
+                            return render(request, 'facturacion/compras_carga.html', ctx_base)
+
+                        if cuim_val:
+                            if not re.fullmatch(r'^[A-Z0-9]{6}$', cuim_val):
+                                messages.error(request, f"El CUIM '{cuim_val}' es inválido. Debe tener exactamente 6 caracteres alfanuméricos.")
+                                return render(request, 'facturacion/compras_carga.html', ctx_base)
+                            if cuim_val in cuims_vistos_total:
+                                messages.error(request, f"El CUIM {cuim_val} está repetido en esta misma factura de compra.")
+                                return render(request, 'facturacion/compras_carga.html', ctx_base)
+                            cuims_vistos_total.add(cuim_val)
+                            
+                            if Subproducto.objects.filter(cuim__iexact=cuim_val, empresa_id=empresa_id).exclude(situacion='VENDIDA').exists():
+                                messages.error(request, f"Error: El CUIM {cuim_val} ya se encuentra registrado y activo en el inventario.")
+                                return render(request, 'facturacion/compras_carga.html', ctx_base)
 
             try:
                 with transaction.atomic():

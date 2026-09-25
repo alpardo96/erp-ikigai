@@ -108,6 +108,7 @@
                 </div>
 
                 <div id="cliente_detalle_container" class="col-span-12"></div>
+                <div id="reserva_cliente_container" class="col-span-12"></div>
 
                 <!-- Fila 2 -->
                 <div class="col-span-12 flex items-center gap-2 border-t border-slate-100 pt-2">
@@ -461,14 +462,82 @@
                 }
             }
         }
+        actualizarBloqueoEscaner();
     });
+
+    function actualizarBloqueoEscaner() {
+        const inputSerie = document.getElementById('serie_escaneada');
+        if (!inputSerie) return;
+        const filas = document.querySelectorAll('#items-tabla-container table tbody tr:not(.empty-row)');
+        // Filtrar si hay filas reales con celdas no vacías
+        let tieneArma = false;
+        filas.forEach(r => {
+            if (r.querySelector('td.font-bold') || r.innerText.includes('SERIE:')) {
+                tieneArma = true;
+            }
+        });
+
+        if (tieneArma) {
+            inputSerie.disabled = true;
+            inputSerie.classList.add('bg-slate-100', 'cursor-not-allowed', 'opacity-60');
+            inputSerie.placeholder = "Límite alcanzado (máximo 1 arma por comprobante)";
+            document.getElementById('serie-typeahead-results').innerHTML = '';
+        } else {
+            inputSerie.disabled = false;
+            inputSerie.classList.remove('bg-slate-100', 'cursor-not-allowed', 'opacity-60');
+            inputSerie.placeholder = "{% if empresa_actual.tipo_actividad == 'ARMERIA' %}Ingrese serie / CUIM y presione Enter...{% else %}Ingrese serie / Dominio y presione Enter...{% endif %}";
+        }
+    }
 
     // Manejador HTMX para limpiar el input de serie después de agregarlo
     document.body.addEventListener('limpiarInputsTrazabilidad', function(evt) {
         let inputSerie = document.getElementById('serie_escaneada');
         if (inputSerie) {
             inputSerie.value = '';
-            inputSerie.focus();
+            actualizarBloqueoEscaner();
+        }
+    });
+
+    document.body.addEventListener('errorMaximoArmas', function() {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Límite alcanzado',
+                text: 'Solo se permite facturar una sola arma por comprobante de trazabilidad.',
+                confirmButtonColor: '#3085d6'
+            });
+        }
+    });
+
+    // Cerrar lista desplegable al hacer clic afuera (Punto 9.2)
+    document.addEventListener('click', function(e) {
+        const res = document.getElementById('serie-typeahead-results');
+        const inputSerie = document.getElementById('serie_escaneada');
+        if (res && !res.contains(e.target) && e.target !== inputSerie) {
+            res.innerHTML = '';
+        }
+    });
+
+    // Validación antes de grabar venta: Exigir Reserva SIGIMAC pendiente (Punto 9.2)
+    document.getElementById('venta-form')?.addEventListener('submit', function(e) {
+        const submitBtn = document.activeElement;
+        const accionVal = submitBtn ? submitBtn.value : '';
+        if (accionVal === 'grabar') {
+            const reservaChecked = document.querySelector('input[name="reserva_id"]:checked');
+            if (!reservaChecked) {
+                e.preventDefault();
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Reserva SIGIMAC requerida',
+                        text: 'No se puede grabar una venta de trazabilidad sin una Reserva SIGIMAC pendiente seleccionada.',
+                        confirmButtonColor: '#3085d6'
+                    });
+                } else {
+                    alert('No se puede grabar una venta de trazabilidad sin una Reserva SIGIMAC pendiente seleccionada.');
+                }
+                return false;
+            }
         }
     });
 
@@ -483,6 +552,8 @@
 
     let _timerSerie = null;
     function buscarSerieTypeahead(val) {
+        const inputSerie = document.getElementById('serie_escaneada');
+        if (inputSerie && inputSerie.disabled) return;
         clearTimeout(_timerSerie);
         const clienteId = document.getElementById('id_cliente').value;
         if ((!val || val.trim().length < 1) && !clienteId) {
@@ -500,7 +571,7 @@
 
     function seleccionarSerieVenta(idProd, detalle, serie, precio, iva, cuim, situacion) {
         let inputSerie = document.getElementById('serie_escaneada');
-        if (inputSerie) {
+        if (inputSerie && !inputSerie.disabled) {
             inputSerie.value = serie;
             document.getElementById('serie-typeahead-results').innerHTML = '';
             htmx.trigger(inputSerie, 'serie-escaneada');
@@ -516,6 +587,16 @@
                     const cont = document.getElementById('reserva_cliente_container');
                     if (cont) cont.innerHTML = html;
                 });
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        actualizarBloqueoEscaner();
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.detail.target.id === 'items-tabla-container') {
+            actualizarBloqueoEscaner();
         }
     });
 

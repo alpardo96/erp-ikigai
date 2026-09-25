@@ -378,13 +378,14 @@ def editar_item_venta_trazabilidad(request, index):
     moneda = request.session.get('venta_trazabilidad_moneda', 'PES')
     if 0 <= index < len(items):
         try:
-            total_linea = float(request.POST.get('total_linea', 0).replace('.', '').replace(',', '.') or 0)
+            from facturacion.helpers import parsear_decimal_ar
+            total_linea = float(parsear_decimal_ar(request.POST.get('total_linea', 0), default=0.0))
             item = items[index]
             item['total'] = total_linea
             item['precio'] = total_linea
             request.session['venta_trazabilidad_items_temp'] = items
             request.session.modified = True
-        except ValueError:
+        except (ValueError, TypeError):
             pass
     response = render(request, 'facturacion/partials/venta_trazabilidad_items_tabla.html', {
         'items': items,

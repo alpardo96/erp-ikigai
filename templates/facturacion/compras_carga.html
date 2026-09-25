@@ -59,9 +59,10 @@
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1">Proveedor / Razón Social</label>
                         <div class="flex gap-1">
                             <!-- ID real que va al form -->
-                            <input type="hidden" id="id_proveedor" name="proveedor" required>
+                            <input type="hidden" id="id_proveedor" name="proveedor" required value="{{ form.proveedor.value|default:'' }}">
                             <!-- Display NO editable: la selección es solo por la lupa (o el +) -->
                             <input type="text" id="proveedor_nombre_display" readonly
+                                value="{{ proveedor_display|default:form.instance.proveedor.razon_social|default:'' }}"
                                 placeholder="Use la lupa para buscar el proveedor..."
                                 hx-get="{% url 'ventas_cliente_buscar_modal' %}" hx-target="#modal-container" hx-trigger="click"
                                 title="Click para buscar el proveedor"
@@ -129,8 +130,9 @@
                                    class="w-full h-10 pl-3 pr-10 bg-blue-50 border border-blue-200 rounded-lg text-[13px] font-black text-blue-800 outline-none uppercase shadow-inner"
                                    readonly>
                             {% else %}
-                            <input type="hidden" name="tipo" id="id_tipo" value="">
+                            <input type="hidden" name="tipo" id="id_tipo" value="{{ form.tipo.value|default:'' }}">
                             <input type="text" id="quick_comprobante_display" name="q"
+                                value="{{ comprobante_display|default:'' }}"
                                 x-ref="inputComprobante"
                                 hx-get="{% url 'typeahead_comprobantes' %}" 
                                 hx-trigger="keyup changed delay:300ms, search" 
@@ -163,14 +165,14 @@
                         <div class="w-20">
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Pto
                                 Vta</label>
-                            <input type="text" name="punto" placeholder="00000" maxlength="5" inputmode="numeric"
+                            <input type="text" name="punto" value="{{ form.punto.value|default:'' }}" placeholder="00000" maxlength="5" inputmode="numeric"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '');"
                                 onblur="if(this.value) this.value = this.value.padStart(5, '0');"
                                 class="w-full h-10 text-center border border-slate-200 rounded-lg text-[13px] font-black text-slate-900 outline-none bg-slate-50 shadow-inner pb-2">
                         </div>
                         <div class="w-28">
                             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Número</label>
-                            <input type="text" name="numero" placeholder="00000000" maxlength="8" inputmode="numeric"
+                            <input type="text" name="numero" value="{{ form.numero.value|default:'' }}" placeholder="00000000" maxlength="8" inputmode="numeric"
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '');"
                                 onblur="if(this.value) this.value = this.value.padStart(8, '0');"
                                 class="w-full h-10 border border-slate-200 rounded-lg text-[13px] font-black text-slate-900 outline-none bg-slate-50 px-3 shadow-inner pb-2 text-center">
@@ -182,8 +184,8 @@
                             class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Moneda</label>
                         <select name="moneda" id="id_moneda" onchange="toggleMoneda(this.value)"
                             class="w-full h-10 bg-slate-900 text-[12px] font-black text-white rounded-lg outline-none text-center shadow-lg">
-                            <option value="PES">ARS ($)</option>
-                            <option value="DOL">USD (U$S)</option>
+                            <option value="PES" {% if form.moneda.value == 'PES' or not form.moneda.value %}selected{% endif %}>ARS ($)</option>
+                            <option value="DOL" {% if form.moneda.value == 'DOL' %}selected{% endif %}>USD (U$S)</option>
                         </select>
                     </div>
 
@@ -192,7 +194,7 @@
                             onclick="const c=document.getElementById('id_cotizacion'); c.focus(); c.select();"
                             class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center cursor-pointer"
                             title="Click para seleccionar la cotización">Cotización</label>
-                        <input type="text" name="cotizacion" id="id_cotizacion" maxlength="4" inputmode="numeric" value="1" readonly
+                        <input type="text" name="cotizacion" id="id_cotizacion" maxlength="4" inputmode="numeric" value="{{ form.cotizacion.value|default:'1' }}" readonly
                             oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 4);"
                             onfocus="this.select();" onclick="this.select();"
                             class="w-full h-10 border border-slate-200 rounded-lg text-[13px] font-black text-center outline-none bg-slate-100 px-2 focus:bg-white transition-all shadow-inner">
@@ -1283,6 +1285,74 @@
         infoBox.classList.add('hidden');
         document.getElementById('remito_num_search').value = '';
     }
+
+    // Persistencia de cabecera en sessionStorage (Punto 8.1)
+    const CABECERA_STORAGE_KEY = 'erp_compras_cabecera_draft';
+
+    function guardarCabeceraEnStorage() {
+        try {
+            const data = {
+                fecha: document.getElementById('id_fecha')?.value || '',
+                periodo: document.getElementById('id_periodo')?.value || '',
+                proveedor: document.getElementById('id_proveedor')?.value || '',
+                proveedor_nombre: document.getElementById('proveedor_nombre_display')?.value || '',
+                tipo: document.getElementById('id_tipo')?.value || '',
+                tipo_nombre: document.getElementById('quick_comprobante_display')?.value || '',
+                punto: document.querySelector('input[name="punto"]')?.value || '',
+                numero: document.querySelector('input[name="numero"]')?.value || '',
+                moneda: document.getElementById('id_moneda')?.value || 'PES',
+                cotizacion: document.getElementById('id_cotizacion')?.value || '1',
+            };
+            sessionStorage.setItem(CABECERA_STORAGE_KEY, JSON.stringify(data));
+        } catch(e) {}
+    }
+
+    function restaurarCabeceraDeStorage() {
+        const raw = sessionStorage.getItem(CABECERA_STORAGE_KEY);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            const provInput = document.getElementById('id_proveedor');
+            if (provInput && !provInput.value && data.proveedor) {
+                provInput.value = data.proveedor;
+                const provDisp = document.getElementById('proveedor_nombre_display');
+                if (provDisp) provDisp.value = data.proveedor_nombre;
+            }
+            const tipoInput = document.getElementById('id_tipo');
+            if (tipoInput && !tipoInput.value && data.tipo) {
+                tipoInput.value = data.tipo;
+                const tipoDisp = document.getElementById('quick_comprobante_display');
+                if (tipoDisp) tipoDisp.value = data.tipo_nombre;
+            }
+            const puntoInput = document.querySelector('input[name="punto"]');
+            if (puntoInput && !puntoInput.value && data.punto) puntoInput.value = data.punto;
+            const numInput = document.querySelector('input[name="numero"]');
+            if (numInput && !numInput.value && data.numero) numInput.value = data.numero;
+            const monSelect = document.getElementById('id_moneda');
+            if (monSelect && data.moneda && !monSelect.value) {
+                monSelect.value = data.moneda;
+                toggleMoneda(data.moneda);
+            }
+            const cotInput = document.getElementById('id_cotizacion');
+            if (cotInput && data.cotizacion && cotInput.value === '1') cotInput.value = data.cotizacion;
+        } catch(e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        restaurarCabeceraDeStorage();
+        // Guardar cada vez que cambien los campos principales
+        ['id_fecha', 'id_periodo', 'proveedor_nombre_display', 'quick_comprobante_display', 'id_moneda', 'id_cotizacion'].forEach(id => {
+            document.getElementById(id)?.addEventListener('change', guardarCabeceraEnStorage);
+            document.getElementById(id)?.addEventListener('input', guardarCabeceraEnStorage);
+        });
+        document.querySelector('input[name="punto"]')?.addEventListener('input', guardarCabeceraEnStorage);
+        document.querySelector('input[name="numero"]')?.addEventListener('input', guardarCabeceraEnStorage);
+    });
+
+    document.getElementById('compra-form')?.addEventListener('submit', function() {
+        // Al enviar con exito o limpiar se borra el borrador
+        sessionStorage.removeItem(CABECERA_STORAGE_KEY);
+    });
 
 </script>
 {% endblock %}

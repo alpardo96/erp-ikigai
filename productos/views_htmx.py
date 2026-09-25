@@ -98,8 +98,12 @@ def buscar_productos(request):
     campo = request.GET.get('campo', 'todos').strip()
     page_number = request.GET.get('page', 1)
 
+    # Control de Administrador para filtro de estado activo
+    es_admin = request.user.is_superuser or request.user.is_staff or getattr(getattr(request.user, 'perfil', None), 'es_admin_sistema', False)
+    estado_activo = request.GET.get('estado_activo', 'habilitados').strip().lower() if es_admin else 'habilitados'
+
     # Buscamos sin límite fijo para poder paginar
-    productos_qs = buscar_productos_inteligente(q=q, empresa_id=empresa_id, campo=campo, limit=0)
+    productos_qs = buscar_productos_inteligente(q=q, empresa_id=empresa_id, campo=campo, limit=0, estado_activo=estado_activo)
     
     from django.core.paginator import Paginator
     paginator = Paginator(productos_qs, 50)
@@ -107,15 +111,27 @@ def buscar_productos(request):
 
     return render(request, 'productos/partials/producto_list.html', {
         'productos': page_obj.object_list,
-        'page_obj': page_obj
+        'page_obj': page_obj,
+        'es_admin': es_admin,
     })
 
 def eliminar_producto(request, id):
+    """
+    HABILITAR / DESHABILITAR PRODUCTO
+    - Restringido estrictamente a Administradores (is_superuser, is_staff, es_admin_sistema).
+    - Alterna el campo 'activo' (soft-delete reversible).
+    """
     empresa_id = request.session.get('empresa_id')
-    if request.method == 'DELETE' and empresa_id:
+    if request.method in ('DELETE', 'POST') and empresa_id:
+        perfil = getattr(request.user, 'perfil', None)
+        es_admin = request.user.is_superuser or request.user.is_staff or getattr(perfil, 'es_admin_sistema', False)
+        if not es_admin:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("Acceso denegado: solo un Administrador puede habilitar o deshabilitar productos.")
+
         producto = get_object_or_404(Producto, id=id, empresa_id=empresa_id)
-        producto.activo = False
-        producto.save()
+        producto.activo = not producto.activo
+        producto.save(update_fields=['activo'])
         response = HttpResponse()
         response['HX-Trigger'] = 'productosActualizados'
         return response

@@ -115,8 +115,10 @@ class ProductoForm(forms.ModelForm):
             # Distribución (Plan 074). Sólo se muestran si la empresa es DISTRIBUIDORA;
             # en el resto quedan en su valor por defecto.
             'codigo_anterior', 'unidad_venta', 'peso_unitario_kg', 'unidades_por_bulto',
+            'observaciones',
         ]
         widgets = {
+            'observaciones': forms.Textarea(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2', 'rows': 2, 'placeholder': 'Notas u observaciones del producto...'}),
             'detalle': forms.TextInput(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2'}),
             'cod_prov': forms.TextInput(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2'}),
             'cod_fab': forms.TextInput(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2'}),

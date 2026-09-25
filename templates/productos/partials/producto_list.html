@@ -1,11 +1,18 @@
 {% for producto in productos %}
-<tr class="hover:bg-gray-50 transition-colors group">
+<tr class="hover:bg-gray-50 transition-colors group {% if not producto.activo %}bg-gray-100/70 opacity-60 text-gray-500{% endif %}">
     <td class="col-id py-4 pl-6 pr-3 text-sm font-medium text-gray-900">{{ producto.id }}</td>
     {% if empresa_actual.tipo_actividad != 'ESTUDIO' %}
     <td class="col-codprov px-3 py-4 text-sm text-gray-500">{{ producto.cod_prov|default:"-" }}</td>
     <td class="col-codfab px-3 py-4 text-sm text-gray-500">{{ producto.cod_fab|default:"-" }}</td>
     {% endif %}
-    <td class="col-detalle px-3 py-4 text-sm font-medium text-gray-900">{{ producto.detalle }}</td>
+    <td class="col-detalle px-3 py-4 text-sm font-medium text-gray-900">
+        {{ producto.detalle }}
+        {% if not producto.activo %}
+        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-200 text-gray-600 uppercase tracking-wider">
+            Deshabilitado
+        </span>
+        {% endif %}
+    </td>
     {% if empresa_actual.tipo_actividad == 'ARMERIA' %}
     <td class="col-calibre px-3 py-4 text-sm text-gray-500">{{ producto.unidad_venta|default:"-" }}</td>
     {% elif empresa_actual.tipo_actividad == 'DISTRIBUCION' %}
@@ -55,10 +62,23 @@
                 class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors" title="Editar">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
             </button>
-            <button hx-delete="{% url 'producto_delete' producto.id %}" hx-confirm="¿Está seguro de eliminar este producto?"
-                class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Eliminar">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            </button>
+            {% if user.is_superuser or user.is_staff or user.perfil.es_admin_sistema or es_admin %}
+                {% if producto.activo %}
+                <button hx-post="{% url 'producto_delete' producto.id %}" hx-confirm="¿Está seguro de deshabilitar el producto {{ producto.detalle }}?"
+                    class="text-amber-600 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 p-2 rounded-lg transition-colors" title="Deshabilitar">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                    </svg>
+                </button>
+                {% else %}
+                <button hx-post="{% url 'producto_delete' producto.id %}" hx-confirm="¿Desea habilitar el producto {{ producto.detalle }}?"
+                    class="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 p-2 rounded-lg transition-colors" title="Habilitar">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </button>
+                {% endif %}
+            {% endif %}
         </div>
     </td>
 </tr>

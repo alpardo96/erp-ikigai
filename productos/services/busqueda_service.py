@@ -3,7 +3,7 @@ from django.db.models.functions import Coalesce
 from productos.models import Producto, Subproducto, StockSucursal
 
 
-def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None, campo='todos'):
+def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None, campo='todos', estado_activo='habilitados'):
     """
     Construye la consulta Q y la expresión de ordenamiento por relevancia para productos.
     Soporta búsqueda por campo específico ('detalle', 'rubro', 'calibre', 'cod_prov', 'proveedor', 'id')
@@ -12,7 +12,13 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
     Optimiza la consulta precargando relaciones y calculando el stock global en la misma query.
     Retorna: (queryset_filtrado, tiene_orden_relevancia)
     """
-    empresa_filtros = Q(empresa_id=empresa_id, activo=True)
+    if estado_activo == 'deshabilitados':
+        empresa_filtros = Q(empresa_id=empresa_id, activo=False)
+    elif estado_activo == 'todos':
+        empresa_filtros = Q(empresa_id=empresa_id)
+    else:  # 'habilitados'
+        empresa_filtros = Q(empresa_id=empresa_id, activo=True)
+
     if excluir_subprod:
         empresa_filtros &= Q(subprod=False)
     if proveedor_id:
@@ -106,7 +112,7 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
     return qs, True
 
 
-def buscar_productos_inteligente(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None, campo='todos', limit=100):
+def buscar_productos_inteligente(q, empresa_id, solo_trazabilidad=False, excluir_subprod=False, proveedor_id=None, campo='todos', limit=100, estado_activo='habilitados'):
     """
     Ejecuta la búsqueda inteligente de productos y retorna una lista o queryset acotado al límite solicitado.
     """
@@ -116,7 +122,8 @@ def buscar_productos_inteligente(q, empresa_id, solo_trazabilidad=False, excluir
         solo_trazabilidad=solo_trazabilidad,
         excluir_subprod=excluir_subprod,
         proveedor_id=proveedor_id,
-        campo=campo
+        campo=campo,
+        estado_activo=estado_activo
     )
     if limit:
         return qs[:limit]

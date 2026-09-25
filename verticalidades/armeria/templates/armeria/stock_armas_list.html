@@ -14,21 +14,55 @@
         </div>
     </div>
 
+    <!-- Pestañas Rápidas por Familia / Estado -->
+    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold" id="familia-pills">
+        <button type="button" onclick="setFamilia('TODOS', this)" 
+                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'TODOS' or not selected_familia %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
+            TODOS
+        </button>
+        <button type="button" onclick="setFamilia('PISTOLA', this)" 
+                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'PISTOLA' %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
+            PISTOLA
+        </button>
+        <button type="button" onclick="setFamilia('ESCOPETA', this)" 
+                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'ESCOPETA' %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
+            ESCOPETA
+        </button>
+        <button type="button" onclick="setFamilia('CARABINA', this)" 
+                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'CARABINA' %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
+            CARABINA
+        </button>
+        <button type="button" onclick="setFamilia('FUSIL', this)" 
+                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'FUSIL' %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
+            FUSIL
+        </button>
+        <button type="button" onclick="setFamilia('PISTOLON', this)" 
+                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'PISTOLON' %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
+            PISTOLÓN
+        </button>
+        <button type="button" onclick="setFamilia('USADAS', this)" 
+                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'USADAS' %}bg-amber-600 text-white font-black shadow-amber-200{% else %}bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200{% endif %}">
+            USADAS
+        </button>
+    </div>
+
     <!-- Buscador y Filtros (Fila Única Ultra-Compacta con Flexbox Proporcional) -->
     <form id="form-filtros-stock-armas" 
           hx-get="{% url 'stock_armas_listado' %}" 
           hx-target="#stock-armas-rows" 
           class="bg-white p-2.5 px-3.5 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap lg:flex-nowrap items-end gap-2.5">
         
-        <!-- Producto (Detalle) (Ampliación Proporcional flex-1) -->
-        <div class="relative flex-1 min-w-[180px]" x-data="{ open: false }">
-            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Producto (Detalle)</label>
-            <input type="text" name="producto" id="producto_input" placeholder="Buscar Producto..." autocomplete="off"
-                   hx-get="{% url 'typeahead_productos_venta' %}" hx-trigger="keyup changed delay:300ms, search"
-                   hx-target="#producto_suggestions" hx-vals='js:{q: document.getElementById("producto_input").value, solo_trazabilidad: "1"}'
-                   @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
+        <input type="hidden" name="familia" id="familia_input" value="{{ selected_familia|default:'TODOS' }}">
+
+        <!-- Búsqueda Rápida en Vivo (Ampliación Proporcional flex-1) -->
+        <div class="relative flex-1 min-w-[200px]">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Búsqueda Rápida (Producto / Marca / Calibre)</label>
+            <input type="text" name="producto" id="producto_input" placeholder="Ej: BERSA C.380..." autocomplete="off"
+                   hx-get="{% url 'stock_armas_listado' %}" 
+                   hx-trigger="keyup changed delay:300ms, search"
+                   hx-target="#stock-armas-rows" 
+                   hx-include="#form-filtros-stock-armas"
                    class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs focus:ring-indigo-500 focus:border-indigo-500">
-            <div x-show="open" id="producto_suggestions" class="absolute z-50 right-0 top-full mt-1 w-full md:w-[350px] bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto" style="display: none;"></div>
         </div>
 
         <!-- Nro. Serie / Identificador (Ancho Compacto Reducido w-32) -->
@@ -56,7 +90,7 @@
         <!-- Condición (Ancho Compacto Reducido w-36) -->
         <div class="relative w-36 flex-shrink-0">
             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Condición</label>
-            <select name="estado" 
+            <select name="estado" id="estado_input"
                     hx-get="{% url 'stock_armas_listado' %}" 
                     hx-target="#stock-armas-rows" 
                     hx-include="#form-filtros-stock-armas"
@@ -70,7 +104,7 @@
         <!-- Sucursal (Ancho Compacto Reducido w-36) -->
         <div class="relative w-36 flex-shrink-0">
             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Sucursal</label>
-            <select name="sucursal" 
+            <select name="sucursal" id="sucursal_input"
                     hx-get="{% url 'stock_armas_listado' %}" 
                     hx-target="#stock-armas-rows" 
                     hx-include="#form-filtros-stock-armas"
@@ -86,7 +120,7 @@
         <div class="relative w-20 flex-shrink-0 flex items-end">
             <input type="hidden" name="sort" id="sort_input" value="-fecha">
             <button type="button" 
-                    onclick="document.getElementById('form-filtros-stock-armas').reset(); htmx.trigger('#form-filtros-stock-armas', 'submit');" 
+                    onclick="resetFiltrosStock()" 
                     title="Restablecer Filtros"
                     class="w-full h-8 px-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors border border-gray-300 text-xs flex items-center justify-center">
                 <svg class="h-3.5 w-3.5 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,16 +132,29 @@
     </form>
 
     <script>
-        window.addEventListener('productoVentaEncontrado', (e) => {
-            document.getElementById('producto_input').value = e.detail.detalle;
-            document.getElementById('producto_input').dispatchEvent(new Event('click'));
+        function setFamilia(familia, btn) {
+            document.getElementById('familia_input').value = familia;
+            document.querySelectorAll('.pill-familia').forEach(el => {
+                el.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200";
+            });
+            if (familia === 'USADAS') {
+                btn.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-amber-600 text-white font-black shadow-amber-200";
+            } else {
+                btn.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-indigo-600 text-white font-black shadow-indigo-200";
+            }
             htmx.trigger('#form-filtros-stock-armas', 'submit');
-        });
+        }
 
-        function seleccionarSerieVenta(id, detalle, serie, pr_vta1, iva, cuim, situacion) {
-            document.getElementById('serie_input').value = serie;
-            if (cuim) document.getElementById('cuim_input').value = cuim;
-            document.getElementById('producto_input').value = detalle;
+        function resetFiltrosStock() {
+            document.getElementById('form-filtros-stock-armas').reset();
+            document.getElementById('familia_input').value = 'TODOS';
+            document.querySelectorAll('.pill-familia').forEach((el, idx) => {
+                if (idx === 0) {
+                    el.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-indigo-600 text-white font-black shadow-indigo-200";
+                } else {
+                    el.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200";
+                }
+            });
             htmx.trigger('#form-filtros-stock-armas', 'submit');
         }
 
@@ -120,7 +167,6 @@
             }
             htmx.trigger('#form-filtros-stock-armas', 'submit');
         }
-
     </script>
 
     <!-- Tabla de Trazabilidad (Contenedor de Máxima Altura) -->
@@ -133,15 +179,16 @@
                         <th onclick="toggleSort('producto')" class="cursor-pointer py-2.5 pl-4 pr-2 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Producto">Producto</th>
                         <th onclick="toggleSort('serie')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Serie">Serie</th>
                         <th onclick="toggleSort('cuim')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por CUIM">CUIM</th>
-                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Marca</th>
-                        <th class="px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Calibre</th>
+                        <th onclick="toggleSort('marca')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Marca">Marca</th>
+                        <th onclick="toggleSort('calibre')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Calibre">Calibre</th>
+                        <th onclick="toggleSort('precio')" class="cursor-pointer px-2 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Precio">Precio ($)</th>
                         <th class="px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Condición</th>
                         <th onclick="toggleSort('sucursal')" class="cursor-pointer px-2 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider hover:bg-gray-200 transition-colors" title="Ordenar por Sucursal">Sucursal</th>
                         <th class="px-2 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Estado Sigimac</th>
                     </tr>
                 </thead>
                 <tbody id="stock-armas-rows" class="bg-white divide-y divide-gray-100" hx-trigger="load" hx-get="{% url 'stock_armas_listado' %}">
-                    <tr><td colspan="9" class="text-center p-6 text-gray-500 text-sm">Cargando subproductos...</td></tr>
+                    <tr><td colspan="10" class="text-center p-6 text-gray-500 text-sm">Cargando subproductos...</td></tr>
                 </tbody>
             </table>
         </div>

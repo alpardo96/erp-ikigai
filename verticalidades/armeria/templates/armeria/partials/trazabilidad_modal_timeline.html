@@ -90,13 +90,13 @@
                                         <span class="text-sm text-gray-500 font-medium group-hover:hidden">{{ mov.fecvta|date:"d M Y" }}</span>
                                     </div>
                                     <p class="text-gray-800 font-medium text-lg">
-                                        Cliente: {{ mov.venta.cliente.razon_social|default:"N/A" }}
+                                        Cliente: {{ mov.venta.cliente.razon_social|default:mov.venta.cliente_razon_social|default:"N/A" }}
                                     </p>
                                     <p class="text-sm text-gray-600 mt-1 font-mono">
                                         Comprobante: {{ mov.venta.tipo.codigo }}-{{ mov.venta.punto|stringformat:"04d" }}-{{ mov.venta.numero|stringformat:"08d" }}
                                     </p>
                                     <p class="text-xs text-gray-500 mt-2">
-                                        Precio Venta Total: <span class="font-bold text-green-700">${{ mov.precio_total|floatformat:2 }}</span>
+                                        {% if mov.precio_neto > 0 %}Precio Neto: <span class="font-bold text-gray-800">${{ mov.precio_neto|floatformat:2 }}</span> | {% endif %}Precio Total: <span class="font-bold text-green-700">${{ mov.precio_total|floatformat:2 }}</span>
                                     </p>
                                 </div>
                             </div>

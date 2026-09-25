@@ -99,6 +99,8 @@ class ClienteProveedor(AuditModel):
         db_index=True
     )
     
+    activo = models.BooleanField(default=True, db_index=True, verbose_name="Activo")
+    
     class Meta:
         verbose_name = "Cliente/Proveedor"
         verbose_name_plural = "Clientes y Proveedores"

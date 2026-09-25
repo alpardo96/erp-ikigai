@@ -102,6 +102,8 @@
                             <span class="font-semibold text-gray-900">
                                 {% if venta and venta.cliente %}
                                     {{ venta.cliente.razon_social }}
+                                {% elif venta and venta.cliente_razon_social %}
+                                    {{ venta.cliente_razon_social }}
                                 {% else %}
                                     Sin Cliente Asociado
                                 {% endif %}
@@ -109,18 +111,29 @@
                         </div>
                         <div>
                             <span class="block text-xs font-medium text-gray-500 uppercase">Comprobante de Venta</span>
-                            <span class="font-semibold text-gray-900 font-mono">
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-gray-900 font-mono">
+                                    {% if venta and venta.tipo %}
+                                        {{ venta.tipo.codigo }}-{{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}
+                                    {% elif venta %}
+                                        {{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </span>
                                 {% if venta %}
-                                    {{ venta.tipo.codigo }}-{{ venta.punto|stringformat:"04d" }}-{{ venta.numero|stringformat:"08d" }}
-                                {% else %}
-                                    N/A
+                                <a href="{% url 'imprimir_factura' venta.ventas_id %}" target="_blank"
+                                   class="px-2 py-0.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded font-black text-[10px] uppercase transition-colors inline-flex items-center gap-1 border border-slate-200" title="Imprimir Comprobante PDF">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                    PDF
+                                </a>
                                 {% endif %}
-                            </span>
+                            </div>
                         </div>
                         <div>
                             <span class="block text-xs font-medium text-gray-500 uppercase">Precio Neto</span>
                             <span class="font-bold text-gray-900">
-                                ${{ subproducto.precio_neto|floatformat:2 }}
+                                ${{ precio_neto|default:subproducto.precio_neto|floatformat:2 }}
                             </span>
                         </div>
                         <div>

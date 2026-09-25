@@ -63,11 +63,12 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
     def post(self, request):
         data = request.POST.copy()
         campos_monetarios = ['neto', 'iva', 'p_iibb', 'p_iva', 'otros', 'total', 'cotizacion', 'efectivo', 'tarjeta', 'transferencia', 'valores']
+        from facturacion.helpers import parsear_decimal_ar
         
         for campo in campos_monetarios:
             val = data.get(campo, '').strip()
             if val:
-                data[campo] = val.replace('.', '').replace(',', '.')
+                data[campo] = str(parsear_decimal_ar(val, default=0.0))
             else:
                 data[campo] = '0'
 
@@ -92,8 +93,9 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
         if form.is_valid():
             cliente = form.cleaned_data['cliente']
             empresa_id = request.session.get('empresa_id')
+            sucursal_id = request.session.get('sucursal_id')
             
-            # Validacion CLU para Armeria
+            # Validación CLU para Armeria
             from facturacion.helpers import validar_clu_cliente_armeria
             es_valido, msj_err = validar_clu_cliente_armeria(cliente, empresa_id)
             if not es_valido:
@@ -105,21 +107,41 @@ class VentasTrazabilidadCargaView(LoginRequiredMixin, View):
                         form.fields['tipo'].queryset = form.fields['tipo'].queryset.exclude(codigo__startswith='PRE')
                 except Empresa.DoesNotExist:
                     pass
-                puntos_venta = PuntoVenta.objects.filter(sucursal_id=request.session.get('sucursal_id'), activo=True)
+                puntos_venta = PuntoVenta.objects.filter(sucursal_id=sucursal_id, activo=True)
                 return render(request, 'armeria/ventas_trazabilidad_carga.html', {'form': form, 'puntos_venta': puntos_venta})
 
+            # Validación de Sucursal del arma (Punto 6.7 y 9.2)
+            from productos.models import Subproducto
+            for it in items_temp:
+                subp_id = it.get('subpro_id')
+                serie_it = it.get('serie')
+                subp_obj = None
+                if subp_id:
+                    subp_obj = Subproducto.objects.filter(subpro=subp_id, empresa_id=empresa_id).first()
+                elif serie_it:
+                    subp_obj = Subproducto.objects.filter(serie=serie_it, empresa_id=empresa_id).exclude(situacion='VENDIDA').first()
+
+                if subp_obj and str(subp_obj.sucursal_id) != str(sucursal_id):
+                    messages.error(request, f"El arma {subp_obj.serie} pertenece a la sucursal {subp_obj.sucursal.nombre} y no puede venderse desde la sucursal actual.")
+                    puntos_venta = PuntoVenta.objects.filter(sucursal_id=sucursal_id, activo=True)
+                    return render(request, 'armeria/ventas_trazabilidad_carga.html', {'form': form, 'puntos_venta': puntos_venta})
 
             try:
                 empresa_id = request.session.get('empresa_id')
                 
-                # Validación anticipada de Reserva SIGIMAC para evitar doble facturación concurrente
+                # Validación anticipada de Reserva SIGIMAC (Obligatoria y en estado PENDIENTE) (Punto 9.2)
                 reserva_id = request.POST.get('reserva_id')
-                if reserva_id:
-                    from verticalidades.armeria.models import ReservaArma
-                    reserva_valida = ReservaArma.objects.filter(id=reserva_id, empresa_id=empresa_id, estado='PENDIENTE').exists()
-                    if not reserva_valida:
-                        messages.error(request, "Atención: La reserva que intenta facturar ya fue aplicada por otro usuario o no se encuentra PENDIENTE. Venta cancelada para evitar duplicidad.")
-                        return redirect('ventas_trazabilidad_carga')
+                if not reserva_id:
+                    messages.error(request, "Atención: Para emitir una venta de trazabilidad de armas es obligatorio asociar una Reserva SIGIMAC pendiente previamente generada.")
+                    from empresas.models import PuntoVenta
+                    puntos_venta = PuntoVenta.objects.filter(sucursal_id=request.session.get('sucursal_id'), activo=True)
+                    return render(request, 'armeria/ventas_trazabilidad_carga.html', {'form': form, 'puntos_venta': puntos_venta})
+
+                from verticalidades.armeria.models import ReservaArma
+                reserva_valida = ReservaArma.objects.filter(id=reserva_id, empresa_id=empresa_id, estado='PENDIENTE').exists()
+                if not reserva_valida:
+                    messages.error(request, "Atención: La reserva que intenta facturar ya fue aplicada por otro usuario o no se encuentra PENDIENTE. Venta cancelada para evitar duplicidad.")
+                    return redirect('ventas_trazabilidad_carga')
                 
                 empresa_obj = Empresa.objects.get(pk=empresa_id)
                 venta_temp = form.save(commit=False)
@@ -370,6 +392,19 @@ def agregar_item_venta_trazabilidad(request):
         items = []
         request.session['venta_trazabilidad_items_temp'] = items
 
+    # Limitar a máximo 1 arma por comprobante de trazabilidad (Punto 9.2)
+    if len(items) >= 1:
+        response = render(request, 'armeria/partials/venta_trazabilidad_items_tabla.html', {
+            'items': items,
+            'moneda': moneda,
+            'modo_edicion': modo_edicion
+        })
+        response['HX-Trigger'] = json.dumps({
+            'limpiarInputsTrazabilidad': True,
+            'errorMaximoArmas': True
+        })
+        return response
+
     # Evitar duplicados en grilla
     if any(item['serie'] == serie for item in items):
         return HttpResponse('<div class="p-4 bg-red-100 text-red-700 font-bold">Esta serie ya está en la lista de ventas.</div>', status=200)
@@ -396,6 +431,7 @@ def agregar_item_venta_trazabilidad(request):
     items.append({
         'index': len(items),
         'producto_id': producto.id,
+        'subpro_id': subproducto.subpro,
         'codigo': producto.cod_prov or producto.id,
         'detalle': producto.detalle,
         'serie': serie,
@@ -442,9 +478,10 @@ def editar_item_venta_trazabilidad(request, index):
             precio_base = float(item.get('precio_base', item.get('precio', 0)) or 0)
             descuento_maximo = float(item.get('descuento_maximo', 0))
 
+            from facturacion.helpers import parsear_decimal_ar
             if modo_edicion == 'PRECIO':
-                raw_precio = str(request.POST.get('precio', request.POST.get('total_linea', '0'))).replace('.', '').replace(',', '.')
-                precio_ingresado = float(raw_precio or 0)
+                raw_precio = request.POST.get('precio', request.POST.get('total_linea', '0'))
+                precio_ingresado = float(parsear_decimal_ar(raw_precio, default=0.0))
                 item['precio'] = precio_ingresado
                 item['total'] = precio_ingresado
                 if precio_ingresado < precio_base and precio_base > 0:
@@ -453,8 +490,8 @@ def editar_item_venta_trazabilidad(request, index):
                     item['descuento'] = 0.0
                 item['alerta_precio_duplicado'] = precio_ingresado > (precio_base * 2) if precio_base > 0 else False
             else:
-                raw_descuento = str(request.POST.get('descuento', '0')).replace('.', '').replace(',', '.')
-                descuento = float(raw_descuento or 0)
+                raw_descuento = request.POST.get('descuento', '0')
+                descuento = float(parsear_decimal_ar(raw_descuento, default=0.0))
                 item['descuento'] = descuento
                 item['total'] = round(precio_base * (1 - (descuento / 100.0)), 2)
 
@@ -1016,13 +1053,29 @@ def subproducto_detalle_modal(request, subpro_id):
         return render(request, 'core/partials/mensaje_error.html', {'mensaje': "Empresa no seleccionada"})
 
     subproducto = get_object_or_404(
-        Subproducto.objects.select_related('producto', 'sucursal'),
+        Subproducto.objects.select_related(
+            'producto', 'sucursal',
+            'compra', 'compra__proveedor', 'compra__tipo',
+            'venta', 'venta__cliente', 'venta__tipo'
+        ),
         subpro=subpro_id,
         empresa_id=empresa_id
     )
 
+    precio_neto = subproducto.precio_neto
+    if (not precio_neto or precio_neto == 0) and subproducto.venta:
+        from facturacion.models import VentaItem
+        item_vta = VentaItem.objects.filter(venta=subproducto.venta, producto=subproducto.producto).first()
+        if item_vta and item_vta.precio_unitario:
+            precio_neto = item_vta.precio_unitario
+        elif subproducto.precio_total:
+            precio_neto = subproducto.precio_total
+
     return render(request, 'armeria/partials/subproducto_detalle_modal.html', {
         'subproducto': subproducto,
+        'compra': subproducto.compra,
+        'venta': subproducto.venta,
+        'precio_neto': precio_neto,
     })
 
 
@@ -1352,26 +1405,34 @@ class StockArmasListView(LoginRequiredMixin, ListView):
         search_producto = self.request.GET.get('producto', '').strip()
         search_sucursal = self.request.GET.get('sucursal', '').strip()
         search_estado = self.request.GET.get('estado', '').strip()
+        search_familia = self.request.GET.get('familia', '').strip().upper()
 
         from django.db.models import Subquery, Q
         
         qs = Subproducto.objects.filter(empresa_id=empresa_id)
-        
-        # Ya no forzamos la sucursal de la sesión, dejamos que el filtro search_sucursal haga el trabajo
-        # sucursal_id = self.request.session.get('sucursal_id')
-        # if sucursal_id:
-        #     qs = qs.filter(sucursal_id=sucursal_id)
 
         if search_serie and len(search_serie) >= 3:
             qs = qs.filter(serie__icontains=search_serie)
         if search_cuim and len(search_cuim) >= 3:
             qs = qs.filter(cuim__icontains=search_cuim)
         if search_producto:
-            qs = qs.filter(producto__detalle__icontains=search_producto)
+            tokens = search_producto.split()
+            for tok in tokens:
+                qs = qs.filter(
+                    Q(producto__detalle__icontains=tok) |
+                    Q(producto__marca__detalle__icontains=tok) |
+                    Q(producto__unidad_venta__icontains=tok) |
+                    Q(producto__cod_prov__icontains=tok)
+                )
         if search_sucursal:
             qs = qs.filter(sucursal_id=search_sucursal)
         if search_estado:
             qs = qs.filter(estado=search_estado)
+        if search_familia and search_familia != 'TODOS':
+            if search_familia == 'USADAS':
+                qs = qs.filter(estado='USADO')
+            else:
+                qs = qs.filter(producto__familia__detalle__icontains=search_familia)
 
         latest_ids = qs.order_by('serie', '-feccpra', '-subpro').distinct('serie').values('subpro')
         qs = Subproducto.objects.filter(subpro__in=Subquery(latest_ids))
@@ -1389,6 +1450,12 @@ class StockArmasListView(LoginRequiredMixin, ListView):
             '-serie': '-serie',
             'cuim': 'cuim',
             '-cuim': '-cuim',
+            'marca': 'producto__marca__detalle',
+            '-marca': '-producto__marca__detalle',
+            'calibre': 'producto__unidad_venta',
+            '-calibre': '-producto__unidad_venta',
+            'precio': 'producto__precio_neto',
+            '-precio': '-producto__precio_neto',
             'sucursal': 'sucursal__nombre',
             '-sucursal': '-sucursal__nombre',
             'situacion': 'situacion',
@@ -1397,7 +1464,7 @@ class StockArmasListView(LoginRequiredMixin, ListView):
             '-fecha': '-feccpra',
         }
         
-        qs = qs.select_related('producto', 'compra', 'compra__proveedor', 'venta', 'venta__cliente')
+        qs = qs.select_related('producto', 'producto__marca', 'producto__familia', 'compra', 'compra__proveedor', 'venta', 'venta__cliente')
         qs = qs.order_by(sort_map.get(sort, '-feccpra'))
         return qs
 
@@ -1411,20 +1478,24 @@ class StockArmasListView(LoginRequiredMixin, ListView):
         empresa_id = self.request.session.get('empresa_id')
         if empresa_id:
             context['sucursales'] = Sucursal.objects.filter(empresa_id=empresa_id).order_by('nombre')
+            from empresas.models import CotizacionMoneda
+            cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
+            context['dolar_cobranza'] = float(cotiz.dolar_cobranza) if cotiz and cotiz.dolar_cobranza else 1.0
+        context['selected_familia'] = self.request.GET.get('familia', 'TODOS').upper()
         return context
 
 @login_required
 def stock_armas_detalle_modal(request, subpro_id):
     empresa_id = request.session.get('empresa_id')
     subproducto = get_object_or_404(
-        Subproducto.objects.select_related('producto', 'compra', 'compra__proveedor'), 
+        Subproducto.objects.select_related('producto', 'producto__marca', 'producto__familia', 'compra', 'compra__proveedor'), 
         subpro=subpro_id, empresa_id=empresa_id
     )
     
-    # Obtener cotizacion dolar
+    # Obtener cotizacion dolar cobranza
     from empresas.models import CotizacionMoneda
     cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
-    cotizacion_dolar = float(cotiz.dolar_venta) if cotiz else 1.0
+    dolar_cobranza = float(cotiz.dolar_cobranza) if cotiz and cotiz.dolar_cobranza else 1.0
 
     # Obtener Medios de Pago
     from tesoreria.models import MedioPago
@@ -1445,18 +1516,32 @@ def stock_armas_detalle_modal(request, subpro_id):
     if subproducto.producto.precio_neto:
         precio_lista = float(subproducto.producto.precio_neto)
             
-    # Si el producto se cobra en dolares y tenemos cotizacion
-    if subproducto.producto.moneda == 'DOL' and cotizacion_dolar > 0:
-        precio_lista = precio_lista * cotizacion_dolar
+    es_dolar = (subproducto.moneda == 'DOL' or subproducto.cotizadq > 1 or 
+                subproducto.producto.moneda == 'DOL' or subproducto.producto.cotiz_cpra > 1)
+    
+    precio_usd = precio_lista if es_dolar else (round(precio_lista / dolar_cobranza, 2) if dolar_cobranza > 0 else 0.0)
+    precio_pesos = round(precio_usd * dolar_cobranza, 2) if es_dolar else precio_lista
 
     # Desglose de precios
     desglose = []
     for mp in medios_pago:
-        if mp.ajuste != 0:
-            precio_final = precio_lista * (1 + (mp.ajuste / 1000.0))
+        nombre_lower = mp.nombre.lower()
+        es_mp_dolar = 'dolar' in nombre_lower or 'dólar' in nombre_lower
+        
+        if es_mp_dolar:
+            p_base = precio_usd
+            if mp.ajuste != 0:
+                p_fin = p_base * (1 + (mp.ajuste / 1000.0))
+            else:
+                p_fin = p_base
+            desglose.append({'medio': mp, 'precio_final': p_fin, 'es_dolar': True})
         else:
-            precio_final = precio_lista
-        desglose.append({'medio': mp, 'precio_final': precio_final})
+            p_base = precio_pesos
+            if mp.ajuste != 0:
+                p_fin = p_base * (1 + (mp.ajuste / 1000.0))
+            else:
+                p_fin = p_base
+            desglose.append({'medio': mp, 'precio_final': p_fin, 'es_dolar': False})
 
     # Otros subproductos del mismo producto
     otros_subproductos = Subproducto.objects.filter(
@@ -1465,10 +1550,25 @@ def stock_armas_detalle_modal(request, subpro_id):
         situacion__in=['DEPOSITO', 'CONSIGNACION']
     ).exclude(subpro=subpro_id).select_related('sucursal')
 
+    # Validación de Sucursal para botón Preventa (Punto 6.7):
+    # Solamente sale cuando la sucursal disponible esté seleccionada en la vista global
+    sucursal_filtro = request.GET.get('sucursal', '').strip()
+    sucursal_sesion = str(request.session.get('sucursal_id', ''))
+    
+    puede_vender = False
+    if sucursal_filtro and sucursal_filtro == str(subproducto.sucursal_id):
+        puede_vender = True
+    elif not sucursal_filtro and sucursal_sesion == str(subproducto.sucursal_id):
+        puede_vender = True
+
     return render(request, 'armeria/partials/stock_armas_detalle_modal.html', {
         'subproducto': subproducto,
         'desglose': desglose,
-        'cotizacion_dolar': cotizacion_dolar,
-        'precio_lista': precio_lista,
-        'otros_subproductos': otros_subproductos
+        'dolar_cobranza': dolar_cobranza,
+        'es_dolar': es_dolar,
+        'precio_usd': precio_usd,
+        'precio_pesos': precio_pesos,
+        'precio_lista': precio_pesos,
+        'otros_subproductos': otros_subproductos,
+        'puede_vender': puede_vender,
     })

@@ -22,12 +22,21 @@
                     {{ item.detalle }}
                     {% if item.subprod %}
                         <div class="mt-1">
+                            {% if item.series|length < item.cantidad %}
                             <button hx-get="{% url 'compras_item_series_modal' item.index %}"
                                     hx-target="#modal-container"
-                                    class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold hover:bg-blue-200"
-                                    type="button">
-                                Series ({{ item.series|length }}/{{ item.cantidad|floatformat:0 }})
+                                    class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded font-black hover:bg-amber-200 shadow-sm transition-all animate-pulse inline-flex items-center gap-1"
+                                    type="button" title="Debe registrar Nro. Serie y CUIM para este artículo trazable">
+                                <span>⚠️ Cargar Series/CUIM ({{ item.series|length }}/{{ item.cantidad|floatformat:0 }})</span>
                             </button>
+                            {% else %}
+                            <button hx-get="{% url 'compras_item_series_modal' item.index %}"
+                                    hx-target="#modal-container"
+                                    class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded font-bold hover:bg-emerald-200 shadow-sm transition-all inline-flex items-center gap-1"
+                                    type="button" title="Series y CUIM completos">
+                                <span>✓ Series/CUIM ({{ item.series|length }}/{{ item.cantidad|floatformat:0 }})</span>
+                            </button>
+                            {% endif %}
                         </div>
                     {% endif %}
                 </td>

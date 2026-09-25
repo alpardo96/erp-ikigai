@@ -21,10 +21,12 @@
                 </svg>
                 Exportar Excel
             </a>
+            {% if empresa_actual.tipo_actividad != 'ARMERIA' %}
             <a href="{% url 'ventas_carga' %}" class="h-8 px-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-lg text-[10px] uppercase tracking-widest shadow flex items-center gap-1.5 transition-all">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
                 Nueva Venta
             </a>
+            {% endif %}
         </div>
     </div>
 

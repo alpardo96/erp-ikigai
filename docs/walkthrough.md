@@ -5394,3 +5394,106 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - `verticalidades/armeria/templates/armeria/compras_trazabilidad_carga.html`
 **Detalle Tcnico:** El script Javascript tena 'NUEVO' hardcodeado como fallback en caso de que el select de Estado no se renderizara o no estuviera disponible (debido a configuraciones de trazabilidad). Se cambi este fallback explcitamente a 'USADO' en `agregarItemCompraTrazabilidad()` para que coincida con el backend y las reglas de negocio de armera.
 **Pruebas:** Guardado exitosamente.
+
+### Cristian - PC CASA
+**Fecha:** 24 de Septiembre de 2026
+**Objetivo:** Implementación integral de optimizaciones y correcciones del módulo de Armería y Facturación (Puntos 5.6, 6.2, 6.3, 6.5, 6.6, 6.7, 6.8, 8.1, 8.2, 8.3, 9.2 y 9.3 de docs/ObservacionesArmeria.md).
+**Archivos creados o modificados:**
+- productos/models.py: Incorporación del campo observaciones en Producto, propiedades es_moneda_dolar, precio_pesos, precio_usd_referencia y método calcular_precio_pesos() en Subproducto. Flexibilización de CUIM en clean().
+- productos/forms.py: Campo observaciones agregado a ProductoForm.
+- 	emplates/productos/modals/producto_modal.html: Renderizado del textarea de observaciones en pestañas de producto.
+- productos/migrations/0007_producto_observaciones.py: Migración de base de datos para Producto.observaciones.
+- erticalidades/armeria/views.py: Soporte de Cliente, Comprobante y precios en ficha de historial; parseo con parsear_decimal_ar en edición de precios de venta trazabilidad; bloqueo de más de 1 arma en carro; validación de Reserva SIGIMAC pendiente y sucursal activa al facturar.
+- erticalidades/armeria/templates/armeria/stock_armas_list.html: Barra interactiva de selector de Familias (pills HTMX: TODOS, PISTOLA, ESCOPETA, CARABINA, FUSIL, PISTOLON, USADAS); búsqueda rápida en vivo con debounce directo sobre la grilla sin dropdown flotante; ordenamiento interactivo por cabeceras (Marca, Calibre, Precio, etc.).
+- erticalidades/armeria/templates/armeria/partials/stock_armas_grilla.html: Incorporación de columna ordenable Precio ($) pesificado por Dólar Cobranza con referencia USD.
+- erticalidades/armeria/templates/armeria/partials/stock_armas_detalle_modal.html: Visualización de notas/observaciones del producto, desglose de cotización Dólar Cobranza y botón verde 'Generar Preventa' condicionado a sucursal activa.
+- erticalidades/armeria/templates/armeria/ventas_trazabilidad_carga.html: Contenedor para reservas SIGIMAC del cliente, deshabilitación de input de serie al haber 1 arma, cierre de dropdown de serie al clickear afuera y validación de reserva antes de emitir venta.
+- erticalidades/armeria/templates/armeria/partials/subproducto_detalle_modal.html: Inclusión de datos del cliente, comprobante y valores en ficha de trazabilidad.
+- erticalidades/armeria/templates/armeria/partials/trazabilidad_modal_timeline.html: Enlace directo a visor de comprobantes/facturas y detalle de precios en la línea de tiempo.
+- 	emplates/facturacion/compras_carga.html: Persistencia de valores de cabecera (proveedor, comprobante, cotización, etc.) y guardado/restauración automática mediante sessionStorage.
+- 	emplates/facturacion/partials/compra_items_tabla.html: Botón de carga de series y CUIM destacado con alerta animada ⚠️ Cargar Series/CUIM (0/1) hasta completarse.
+- acturacion/views_htmx.py: Validación de unicidad de Series y CUIM en compras (intra-ítem, inter-ítem y contra subproductos activos en DB); formato estricto de CUIM de 6 alfanuméricos; modal de series con reporte de error inline.
+- 	emplates/facturacion/modals/compras_series_modal.html: Contenedor de alerta de error en validación de series/CUIM sin cierre de modal.
+- acturacion/views.py: Soporte de precarga de arma seleccionada por GET (subpro_id) en PreventaCargaView.get; fallback seguro de sucursal_id en post; persistencia de cabecera y validación estricta de unicidad y formato en ComprasCargaView.post.
+- acturacion/views_trazabilidad.py: Parseo seguro con parsear_decimal_ar para eliminar duplicación de ceros al editar importes.
+- 	emplates/facturacion/partials/preventa_items_tabla.html: Etiqueta corregida a 'Precio Unitario ($)'.
+- 	emplates/facturacion/partials/venta_trazabilidad_items_tabla.html y erticalidades/armeria/templates/armeria/partials/venta_trazabilidad_items_tabla.html: Etiqueta corregida a 'Precio Unitario ($)'.
+- docs/ObservacionesArmeria.md: Actualización de estado de los ítems 5.6, 6.2, 6.3, 6.5, 6.6, 6.7, 6.8, 8.1, 8.2, 8.3, 9.2 y 9.3.
+- docs/planes/093_optimizaciones_observaciones_armeria.md: Plan maestro de ejecución de optimizaciones de armería.
+**Detalle Técnico:**
+- Se resolvió la discrepancia de precios en dólares de productos de armería normalizando a moneda 'DOL' (2,523 productos y 834 subproductos actualizados) y aplicando la cotización global de dolar_cobranza de la empresa para calcular el importe en pesos argentinos.
+- En la interfaz de Stock de Armas, se transformó el buscador para que filtre de forma inmediata la tabla con HTMX preservando los filtros de familia, marca y calibre, y se agregó ordenamiento interactivo en todas las cabeceras clave.
+- Se implementó el circuito de precarga de armas hacia Preventa desde el modal de detalle, blindando la regla operativa de que el usuario debe estar en la misma sucursal donde radica el arma física.
+- En Compras, se blindó la unicidad de Serie y CUIM y se implementó persistencia en sessionStorage para evitar pérdida de cabecera por recarga accidental o errores de validación.
+- En Venta Trazabilidad, se forzó la selección de Reserva SIGIMAC pendiente para poder grabar la venta, se restringió a un máximo de 1 arma en carro y se corrigió el formateo numérico con parsear_decimal_ar.
+**Resultado de las pruebas:**
+- python manage.py test verticalidades.armeria: 9 tests ejecutados con éxito (OK).
+- python manage.py test facturacion.tests.test_armeria_credencial_clu: 9 tests ejecutados con éxito (OK).
+- Total: 18/18 pruebas unitarias superadas satisfactoriamente.
+**Estado actual y siguientes pasos sugeridos:**
+- Todos los puntos planificados (5.6, 6.2, 6.3, 6.5, 6.6, 6.7, 6.8, 8.1, 8.2, 8.3, 9.2, 9.3) se encuentran finalizados y verificados.
+- Siguiente paso sugerido: Coordinar con el usuario la revisión de los puntos pendientes de logística/recepción con Esteban (7.1, 8.4) o el flujo de caja mostrador/reservas (10.4).
+
+### Cristian - PC CASA
+**Fecha:** 24 de Septiembre de 2026
+**Objetivo:** Ocultamiento y restricción de la lógica de Carga de Ventas común para la verticalidad ARMERIA (Punto 9.1 de docs/ObservacionesArmeria.md).
+**Archivos creados o modificados:**
+- 	emplates/base.html: Se añadió la condición {% if empresa_actual.tipo_actividad != 'ARMERIA' %} en el submenú de Ventas para no mostrar el acceso 'Carga de Ventas'.
+- 	emplates/facturacion/ventas_index.html: Se ocultó la tarjeta principal de 'Carga de Ventas' para empresas con 	ipo_actividad == 'ARMERIA'.
+- 	emplates/facturacion/ventas_listado.html: Se ocultó el botón de acceso rápido 'Nueva Venta' cuando la empresa activa es de Armería.
+- acturacion/views.py: Se incorporó validación tanto en get como en post de VentasCargaView para redirigir con mensaje de aviso a preventas_carga si un usuario de Armería intenta acceder de forma directa por URL.
+**Detalle Técnico:** En la verticalidad de Armería, la facturación directa sin trazabilidad ni reserva previa debe quedar deshabilitada tanto a nivel visual (sidebar, cards y botones) como a nivel backend (protección de la vista), canalizando todo el flujo operativo a través de Preventas (reserva y señas) y Ventas con Trazabilidad (facturación final del arma vinculada a la reserva SIGIMAC).
+**Resultado de las pruebas:**
+- python manage.py test verticalidades.armeria facturacion.tests.test_armeria_credencial_clu: 18 tests ejecutados con éxito (OK).
+**Estado actual y siguientes pasos sugeridos:**
+- Punto 9.1 completado y verificado. Quedan disponibles para el usuario los siguientes puntos de la lista de observaciones según su prioridad.
+
+
+### Cristian - PC CASA
+**Fecha:** 24 de Septiembre de 2026
+**Objetivo:** Remoción del botón de eliminar/símbolo de basurero e implementación de lógica Deshabilitar/Habilitar restringida exclusivamente a Administradores con filtro de estados (Puntos 3.2 y 4.2 de docs/ObservacionesArmeria.md).
+**Archivos creados o modificados:**
+- facturacion/models.py: Incorporación del campo `activo = models.BooleanField(default=True, db_index=True, verbose_name="Activo")` en `ClienteProveedor`.
+- facturacion/migrations/0005_clienteproveedor_activo.py: Nueva migración aplicada para soporte de soft-delete en clientes y proveedores.
+- facturacion/views_htmx.py:
+  - En `buscar_clientes`: Detección de Administrador (`is_superuser`, `is_staff` o `perfil.es_admin_sistema`). Si es Administrador, lee el parámetro `estado_activo` (`habilitados`, `deshabilitados`, `todos`); si es un rol común, fuerza estrictamente `estado_activo='habilitados'` (`activo=True`). Pasa `es_admin` al contexto.
+  - En `eliminar_cliente`: Convierte la acción en toggle reversible de `cliente.activo`. Retorna `HTTP 403 Forbidden` si un usuario no administrador intenta ejecutarla. Sincroniza con `ExtensionArmeria.activo` si corresponde.
+  - En `lista_clientes_venta_resultados`: Filtrado forzado con `activo=True` para impedir facturar a entidades inactivas.
+- productos/services/busqueda_service.py:
+  - En `construir_filtro_busqueda_producto` y `buscar_productos_inteligente`: Soporte del parámetro `estado_activo` (`habilitados`, `deshabilitados`, `todos`).
+- productos/views_htmx.py:
+  - En `buscar_productos`: Evaluación de Administrador. Si no es admin, se fuerza `estado_activo='habilitados'`. Pasa `es_admin` al contexto.
+  - En `eliminar_producto`: Toggle reversible de `producto.activo` protegido contra usuarios no administradores (retorna `HTTP 403 Forbidden`).
+- templates/facturacion/clientes_index.html: Selector dropdown de filtro de estado (`Habilitados`, `Deshabilitados`, `Todos`) visible únicamente si `es_admin=True`. Integrado al trigger HTMX de `q` y `tipo`.
+- templates/facturacion/partials/cliente_table_rows.html: Removido el botón de eliminar y el ícono de basurero. Para usuarios estándar solo queda disponible el botón de Editar. Para Administradores, se incorporaron botones contextuales: botón de Deshabilitar (ícono de bloqueo/suspensión) si está activo, y botón de Habilitar (ícono de check) si está inactivo. Badge visual `DESHABILITADO` y atenuación para registros inactivos.
+- templates/productos/stock_index.html: Selector dropdown de filtro de estado (`Habilitados`, `Deshabilitados`, `Todos`) visible únicamente si `es_admin=True`. Integrado al trigger HTMX del buscador `q` y selector de campo.
+- templates/productos/partials/producto_list.html: Removido el botón de eliminar y el ícono de basurero. Para usuarios comunes solo quedan Editar y Duplicar. Para Administradores, botones contextuales de Deshabilitar o Habilitar según el estado del producto, con badge `DESHABILITADO` y opacidad en registros inactivos.
+- docs/planes/094_deshabilitar_clipro_productos_admin.md: Diseño de arquitectura y plan técnico del módulo.
+- docs/ObservacionesArmeria.md: Actualizados los ítems 3.2 y 4.2 reflejando la solución implementada.
+- facturacion/tests/test_toggle_activo_admin.py: 6 pruebas unitarias cubriendo protección de 403 en no-admin, toggle reversible por admin y filtrado diferencial entre perfiles.
+**Detalle Técnico:**
+- Se eliminó cualquier rastro de eliminación física y representaciones de basurero en la interfaz de Clientes y Productos.
+- Se implementó un modelo de soft-delete granular con seguridad a doble nivel:
+  1. Frontend: ocultamiento condicional de controles y selectores para usuarios sin perfil administrativo.
+  2. Backend: verificación estricta en las vistas HTMX y servicios de búsqueda que deniega vía HTTP 403 peticiones no autorizadas y fuerza la condición `activo=True` a nivel de QuerySet para evitar cualquier intento de elusión por parámetros GET/POST.
+**Resultado de las pruebas:**
+- python manage.py test facturacion.tests.test_toggle_activo_admin: 6 tests ejecutados con éxito (OK).
+- python manage.py test verticalidades.armeria: 9 tests ejecutados con éxito (OK).
+- python manage.py test facturacion.tests.test_armeria_credencial_clu: 9 tests ejecutados con éxito (OK).
+- Total: 24/24 pruebas unitarias aprobadas satisfactoriamente.
+**Estado actual y siguientes pasos sugeridos:**
+- Funcionalidad de Deshabilitar/Habilitar blindada al 100% para Administradores y libre de íconos de basurero para roles operativos.
+- Siguiente paso sugerido: Continuar con los siguientes puntos de docs/ObservacionesArmeria.md seleccionados por el usuario.
+
+
+### Cristian - PC CASA
+**Fecha:** 24 de Septiembre de 2026
+**Objetivo:** Ajuste de diseño y tamaño compacto del selector de estado de clientes y productos ajustado al length de sus opciones.
+**Archivos creados o modificados:**
+- templates/facturacion/clientes_index.html: Se eliminó la clase `block` que provocaba que los selects heredaran `width: 100%` y se apilaran verticalmente con un ancho sobredimensionado. Se añadieron las clases `!w-auto shrink-0` y estilo `width: auto !important; max-width: fit-content;` en los selectores de `tipo` y `estado_activo`, y se configuró el contenedor con `flex-nowrap items-center` para que convivan en una sola fila compacta y armónica.
+- templates/productos/stock_index.html: Se aplicó el mismo ajuste en los selectores de `campo` y `estado_activo`, eliminando el comportamiento de bloque expandido y ajustando su ancho estrictamente al contenido de sus opciones.
+**Detalle Técnico:** Debido a las directivas de estilo base del proyecto donde `select { width: 100%; display: block; }`, los selectores dentro de contenedores flexibles sin dimensión explícita se expandían ocupando todo el ancho horizontal disponible. Con la combinación de `!w-auto`, `shrink-0` y `fit-content`, los selectores pasan a ocupar únicamente el espacio horizontal necesario para sus textos y flecha, alineándose en una sola línea junto al botón de columnas.
+**Resultado de las pruebas:**
+- python manage.py test facturacion.tests.test_toggle_activo_admin: 6 tests ejecutados con éxito (OK).
+**Estado actual y siguientes pasos sugeridos:**
+- Interfaz compacta y equilibrada visualmente en Clientes y Productos.

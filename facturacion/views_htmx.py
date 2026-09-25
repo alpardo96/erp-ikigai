@@ -120,6 +120,8 @@ def buscar_clientes(request):
     """
     BUSCADOR DE CLIENTES Y PROVEEDORES
     - Filtra por Razón Social o CUIT.
+    - Soporta filtro de activación (Habilitados / Deshabilitados / Todos) exclusivo para Administrador.
+    - Para usuarios no administradores, siempre restringe a activo=True.
     - Si no hay término de búsqueda 'q', ordena por -codigo_id para mostrar las entidades creadas recientemente arriba.
     """
     q = request.GET.get('q', '').strip()
@@ -127,10 +129,16 @@ def buscar_clientes(request):
     empresa_id = _obtener_empresa_id(request)
     clientes = ClienteProveedor.objects.filter(empresa_id=empresa_id)
     
-    from empresas.models import Empresa
-    empresa = Empresa.objects.filter(id=empresa_id).first()
-    if empresa and empresa.tipo_actividad == 'ARMERIA':
-        clientes = clientes.exclude(armeria__activo=False)
+    # Control de Administrador para filtro de estado activo
+    es_admin = request.user.is_superuser or request.user.is_staff or getattr(getattr(request.user, 'perfil', None), 'es_admin_sistema', False)
+    estado_activo = request.GET.get('estado_activo', 'habilitados').strip().lower() if es_admin else 'habilitados'
+
+    if estado_activo == 'deshabilitados':
+        clientes = clientes.filter(activo=False)
+    elif estado_activo == 'todos':
+        pass  # Mostrar activos e inactivos
+    else:  # 'habilitados' por defecto
+        clientes = clientes.filter(activo=True)
     
     if q:
         clientes = clientes.filter(Q(razon_social__icontains=q) | Q(cuit__icontains=q)).order_by('razon_social')
@@ -141,7 +149,10 @@ def buscar_clientes(request):
     
     clientes = clientes.select_related('jurisdiccion', 'armeria')
     
-    return render(request, 'facturacion/partials/cliente_table_rows.html', {'clientes': clientes[:100]})
+    return render(request, 'facturacion/partials/cliente_table_rows.html', {
+        'clientes': clientes[:100],
+        'es_admin': es_admin
+    })
 
 from django.http import JsonResponse
 
@@ -412,21 +423,33 @@ def buscar_cuentas_facturacion(request):
 @login_required
 def eliminar_cliente(request, id):
     """
-    ELIMINAR CLIENTE/PROVEEDOR
+    HABILITAR / DESHABILITAR CLIENTE O PROVEEDOR
+    - Restringido estrictamente a Administradores (is_superuser, is_staff, es_admin_sistema).
+    - Alterna el campo 'activo' (soft-delete reversible).
     """
     if request.method == 'POST':
+        perfil = getattr(request.user, 'perfil', None)
+        es_admin = request.user.is_superuser or request.user.is_staff or getattr(perfil, 'es_admin_sistema', False)
+        if not es_admin:
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("Acceso denegado: solo un Administrador puede habilitar o deshabilitar entidades.")
+
         empresa_id = request.session.get('empresa_id')
         cliente = get_object_or_404(ClienteProveedor, codigo_id=id, empresa_id=empresa_id)
         
+        # Alternar estado activo
+        cliente.activo = not cliente.activo
+        cliente.save(update_fields=['activo'])
+
+        # Sincronización con Armería si aplica
         from empresas.models import Empresa
         empresa = Empresa.objects.filter(id=empresa_id).first()
         if empresa and empresa.tipo_actividad == 'ARMERIA':
             from verticalidades.armeria.models import ExtensionArmeria
             armeria, created = ExtensionArmeria.objects.get_or_create(cliente=cliente)
-            armeria.activo = False
-            armeria.save()
-        else:
-            cliente.delete()
+            armeria.activo = cliente.activo
+            armeria.save(update_fields=['activo'])
+
         response = HttpResponse()
         response['HX-Trigger'] = json.dumps({'reloadClientes': True})
         return response
@@ -796,23 +819,65 @@ def modal_series_item(request, index):
 @login_required
 def guardar_series_item(request, index):
     """
-    Guarda las series ingresadas en la sesión.
+    Guarda las series ingresadas en la sesión con validación de unicidad interna y en base de datos.
     """
     items = request.session.get('compra_items_temp', [])
+    empresa_id = request.session.get('empresa_id')
     if 0 <= index < len(items):
         item = items[index]
         cantidad = int(float(item['cantidad']))
         
+        # Recolectar series y CUIMs de otros ítems de la sesión
+        series_en_sesion = set()
+        cuims_en_sesion = set()
+        for idx_otro, it in enumerate(items):
+            if idx_otro != index:
+                for s in it.get('series', []):
+                    if s.get('serie'):
+                        series_en_sesion.add(s.get('serie').strip().upper())
+                    if s.get('cuim'):
+                        cuims_en_sesion.add(s.get('cuim').strip().upper())
+
+        from productos.models import Subproducto
+        import re
+
         nuevas_series = []
+        series_vistas_item = set()
+        cuims_vistos_item = set()
+
         for i in range(cantidad):
-            serie = request.POST.get(f'serie_{i}', '').strip()
-            cuim = request.POST.get(f'cuim_{i}', '').strip()
-            if serie:
-                from productos.models import Subproducto
-                if Subproducto.objects.filter(serie__iexact=serie, empresa_id=request.session.get('empresa_id')).exclude(situacion='VENDIDA').exists():
-                    return HttpResponse(f'<div class="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50">Error: La serie {serie} ya se encuentra activa en el sistema y no ha sido vendida.</div>', status=400)
-                nuevas_series.append({'serie': serie, 'cuim': cuim})
-                
+            serie = request.POST.get(f'serie_{i}', '').strip().upper()
+            cuim = request.POST.get(f'cuim_{i}', '').strip().upper()
+
+            if not serie:
+                return HttpResponse(f'Error: La serie Nº {i + 1} no puede estar vacía.', status=400)
+
+            # Unicidad interna de serie
+            if serie in series_vistas_item:
+                return HttpResponse(f'Error: La serie "{serie}" está repetida en este mismo producto.', status=400)
+            if serie in series_en_sesion:
+                return HttpResponse(f'Error: La serie "{serie}" ya fue ingresada en otro producto de esta compra.', status=400)
+            series_vistas_item.add(serie)
+
+            # Unicidad en base de datos
+            if Subproducto.objects.filter(serie__iexact=serie, empresa_id=empresa_id).exclude(situacion='VENDIDA').exists():
+                return HttpResponse(f'Error: La serie "{serie}" ya se encuentra activa en el inventario de la empresa y no ha sido vendida.', status=400)
+
+            # Validación de CUIM si fue ingresado
+            if cuim:
+                if not re.fullmatch(r'^[A-Z0-9]{6}$', cuim):
+                    return HttpResponse(f'Error en CUIM "{cuim}": Debe tener exactamente 6 caracteres alfanuméricos (letras o números, sin guiones ni espacios).', status=400)
+                if cuim in cuims_vistos_item:
+                    return HttpResponse(f'Error: El CUIM "{cuim}" está repetido en este mismo producto.', status=400)
+                if cuim in cuims_en_sesion:
+                    return HttpResponse(f'Error: El CUIM "{cuim}" ya fue ingresado en otro producto de esta compra.', status=400)
+                cuims_vistos_item.add(cuim)
+
+                if Subproducto.objects.filter(cuim__iexact=cuim, empresa_id=empresa_id).exclude(situacion='VENDIDA').exists():
+                    return HttpResponse(f'Error: El CUIM "{cuim}" ya se encuentra activo en el inventario de la empresa y no ha sido vendido.', status=400)
+
+            nuevas_series.append({'serie': serie, 'cuim': cuim})
+
         item['series'] = nuevas_series
         request.session['compra_items_temp'] = items
         request.session.modified = True
@@ -1392,7 +1457,7 @@ def lista_clientes_venta_resultados(request):
     q = request.GET.get('q', '').strip()
     empresa_id = request.session.get('empresa_id')
     
-    filtros = Q(empresa_id=empresa_id) 
+    filtros = Q(empresa_id=empresa_id, activo=True) 
     if q:
         filtros &= (Q(razon_social__icontains=q) | Q(cuit__icontains=q))
 

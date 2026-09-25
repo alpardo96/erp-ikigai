@@ -222,6 +222,7 @@ class Producto(AuditModel):
     precio_neto = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     precio_total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     cotiz_cpra = models.DecimalField(max_digits=15, decimal_places=4, default=0)
+    observaciones = models.TextField(null=True, blank=True, verbose_name="Observaciones / Notas")
 
     @property
     def alic_iva_porc(self):
@@ -403,14 +404,41 @@ class Subproducto(AuditModel):
             models.Index(fields=['empresa', 'cuim']),
         ]
 
+    @property
+    def es_moneda_dolar(self):
+        return (self.moneda == 'DOL' or 
+                (self.cotizadq and self.cotizadq > 1) or 
+                (self.producto and (self.producto.moneda == 'DOL' or (self.producto.cotiz_cpra and self.producto.cotiz_cpra > 1))))
+
+    @property
+    def precio_pesos(self):
+        base = float(self.producto.precio_neto or self.producto.pr_vta1 or 0)
+        if self.es_moneda_dolar:
+            cotiz = getattr(self.empresa, 'cotizacion_moneda', None)
+            dc = float(cotiz.dolar_cobranza) if cotiz and cotiz.dolar_cobranza else 1.0
+            return round(base * dc, 2)
+        return round(base, 2)
+
+    def calcular_precio_pesos(self, dolar_cobranza=1.0):
+        base = float(self.producto.precio_neto or self.producto.pr_vta1 or 0)
+        if self.es_moneda_dolar:
+            dc = float(dolar_cobranza) if (dolar_cobranza and float(dolar_cobranza) > 0) else 1.0
+            return round(base * dc, 2)
+        return round(base, 2)
+
+    @property
+    def precio_usd_referencia(self):
+        base = float(self.producto.precio_neto or self.producto.pr_vta1 or 0)
+        return round(base, 2)
+
     def clean(self):
         super().clean()
         if self.cuim:
             self.cuim = str(self.cuim).strip().upper()
             import re
-            if not re.fullmatch(r'^[A-Z0-9]{6}$', self.cuim):
+            if not re.fullmatch(r'^[A-Z0-9_\-]{1,30}$', self.cuim):
                 from django.core.exceptions import ValidationError
-                raise ValidationError({'cuim': 'El CUIM debe tener exactamente 6 caracteres alfanuméricos, sin símbolos.'})
+                raise ValidationError({'cuim': 'El CUIM debe contener solo caracteres alfanuméricos o guiones (máx 30).'})
 
     def save(self, *args, **kwargs):
         self.clean()

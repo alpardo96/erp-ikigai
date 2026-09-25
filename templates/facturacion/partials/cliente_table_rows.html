@@ -1,8 +1,15 @@
 {% load vertical_tags %}
 {% for cliente in clientes %}
-<tr class="hover:bg-gray-50 transition-colors group">
+<tr class="hover:bg-gray-50 transition-colors group {% if not cliente.activo %}bg-gray-100/70 opacity-60 text-gray-500{% endif %}">
     <td class="col-id whitespace-nowrap py-4 pl-6 pr-3 text-sm font-bold text-gray-900">#{{ cliente.codigo_id }}</td>
-    <td class="col-razon whitespace-nowrap px-3 py-4 text-sm text-gray-700 font-medium">{{ cliente.razon_social }}</td>
+    <td class="col-razon whitespace-nowrap px-3 py-4 text-sm text-gray-700 font-medium">
+        {{ cliente.razon_social }}
+        {% if not cliente.activo %}
+        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-gray-200 text-gray-600 uppercase tracking-wider">
+            Deshabilitado
+        </span>
+        {% endif %}
+    </td>
     <td class="col-tipodoc whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ cliente.tipo_documento }}</td>
     <td class="col-cuit whitespace-nowrap px-3 py-4 text-sm text-gray-500 font-mono">{{ cliente.cuit|default:"--" }}
     </td>
@@ -39,22 +46,34 @@
     <td class="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
         <div class="flex items-center justify-end space-x-2">
             <button hx-get="{% url 'cliente_edit' cliente.codigo_id %}" hx-target="#modal-container"
-                class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-xl transition-all shadow-sm">
+                class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-xl transition-all shadow-sm" title="Editar">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
                     </path>
                 </svg>
             </button>
-            <button hx-post="{% url 'cliente_delete' cliente.codigo_id %}"
-                hx-confirm="¿Estás seguro de eliminar a {{ cliente.razon_social }}? Esta acción no se puede deshacer."
-                class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2.5 rounded-xl transition-all shadow-sm">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                    </path>
-                </svg>
-            </button>
+            {% if user.is_superuser or user.is_staff or user.perfil.es_admin_sistema or es_admin %}
+                {% if cliente.activo %}
+                <button hx-post="{% url 'cliente_delete' cliente.codigo_id %}"
+                    hx-confirm="¿Está seguro de deshabilitar a {{ cliente.razon_social }}?"
+                    class="text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 p-2.5 rounded-xl transition-all shadow-sm"
+                    title="Deshabilitar">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                    </svg>
+                </button>
+                {% else %}
+                <button hx-post="{% url 'cliente_delete' cliente.codigo_id %}"
+                    hx-confirm="¿Desea habilitar a {{ cliente.razon_social }}?"
+                    class="text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 p-2.5 rounded-xl transition-all shadow-sm"
+                    title="Habilitar">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </button>
+                {% endif %}
+            {% endif %}
         </div>
     </td>
 </tr>
