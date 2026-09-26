@@ -179,6 +179,7 @@ def _contexto_comprobante_op(pk, empresa_id):
     ).select_related('medio_pago').prefetch_related(
         'transacciones_bancarias__cuenta_bancaria')
 
+    from core.utils.numeros_a_letras import numero_a_letras
     return {
         'op': op,
         'aplicaciones': op.aplicaciones.select_related('compra__tipo').all(),
@@ -189,6 +190,7 @@ def _contexto_comprobante_op(pk, empresa_id):
         ).select_related('cuenta_bancaria'),
         'valores_entregados': ValorTerceros.objects.filter(orden_pago=op).select_related('banco'),
         'retenciones': RetencionPracticada.objects.filter(orden_pago=op),
+        'total_letras': numero_a_letras(op.total),
         'fecha_impresion': timezone.localtime(),
     }
 
@@ -297,6 +299,7 @@ def recibo_pdf(request, pk):
 
 def _contexto_comprobante_recibo(pk, empresa_id):
     from tesoreria.models import MovimientoCajaDetalle, TransaccionBancaria, ValorTerceros
+    from core.utils.numeros_a_letras import numero_a_letras
 
     recibo = get_object_or_404(
         Recibo.objects.select_related('cliente', 'empresa', 'sucursal'),
@@ -311,5 +314,6 @@ def _contexto_comprobante_recibo(pk, empresa_id):
         'transacciones': TransaccionBancaria.objects.filter(
             movimiento_detalle__movimiento_caja__recibo=recibo).select_related('cuenta_bancaria'),
         'valores_recibidos': ValorTerceros.objects.filter(recibo=recibo).select_related('banco'),
+        'total_letras': numero_a_letras(recibo.total),
         'fecha_impresion': timezone.localtime(),
     }

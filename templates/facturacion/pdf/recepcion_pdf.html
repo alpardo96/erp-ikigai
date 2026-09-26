@@ -27,7 +27,7 @@
     <div class="header">
         <h1>{{ rec.empresa.nombre|upper }}</h1>
         <h2>INFORME DE RECEPCIÓN</h2>
-        <span class="doc-num">N° {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</span>
+        <span class="doc-num">Nro. {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</span>
     </div>
 
     <table class="meta">
@@ -35,7 +35,7 @@
             <td><span class="lbl">Fecha</span><br>{{ rec.fecha|date:"d/m/Y" }}</td>
             <td><span class="lbl">Sucursal (destino)</span><br>{{ rec.sucursal.nombre }}</td>
             <td><span class="lbl">Origen</span><br>{{ rec.get_origen_display }}</td>
-            <td><span class="lbl">N° Remito Prov.</span><br>{{ rec.remito_proveedor|default:"—" }}</td>
+            <td><span class="lbl">Nro. Remito Prov.</span><br>{{ rec.remito_proveedor|default:"—" }}</td>
         </tr>
         <tr>
             <td colspan="4"><span class="lbl">Proveedor</span><br><b>{{ rec.proveedor.razon_social|default:"—" }}</b>{% if rec.proveedor %} — CUIT {{ rec.proveedor.cuit }}{% endif %}</td>

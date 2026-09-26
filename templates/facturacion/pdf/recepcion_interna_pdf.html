@@ -33,7 +33,7 @@
                 <div style="font-size: 11pt; color: #059669; font-weight: bold; margin-top: 2px;">INFORME DE RECEPCIÓN INTERNA</div>
             </td>
             <td style="text-align: right; vertical-align: bottom;">
-                <div style="font-size: 12pt; font-weight: bold; color: #0f172a;">N° {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</div>
+                <div style="font-size: 12pt; font-weight: bold; color: #0f172a;">Nro. {{ rec.punto|stringformat:"04d" }}-{{ rec.numero|stringformat:"08d" }}</div>
             </td>
         </tr>
     </table>
@@ -60,7 +60,7 @@
         <tbody>
             {% for ri in remitos %}
             <tr>
-                <td><strong>Remito Interno N° {{ ri.punto|stringformat:"04d" }}-{{ ri.numero|stringformat:"08d" }}</strong></td>
+                <td><strong>Remito Interno Nro. {{ ri.punto|stringformat:"04d" }}-{{ ri.numero|stringformat:"08d" }}</strong></td>
                 <td>{{ ri.fecha|date:"d/m/Y" }}</td>
                 <td>{{ ri.sucursal_origen.nombre }}</td>
                 <td>{{ ri.get_estado_display }}</td>

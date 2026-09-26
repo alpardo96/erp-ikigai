@@ -3,8 +3,8 @@
 ---
 
 ## 1. GENERAL
-- [ ] **1.1 Separador de miles:** Todos los números poner separador de miles `$1.000.000` (uniformar uso del filtro `formato_ar` en todas las grillas e inputs monetarios).
-- [ ] **1.2 Formato de comprobantes impresos:** Comprobantes impresos deben tener logo y mantener el formato del anterior sistema (en recibos hay mucha info no útil).
+- [x] **1.1 Separador de miles:** Todos los números poner separador de miles `$1.000.000` (uniformar uso del filtro `formato_ar` en todas las grillas e inputs monetarios).
+- [x] **1.2 Formato de comprobantes impresos:** Comprobantes impresos deben tener logo y mantener el formato del anterior sistema (en recibos hay mucha info no útil).
 
 ---
 
@@ -16,14 +16,13 @@
 
 ## 3. ALTA CLIENTE / PROVEEDOR
 - [x] **3.1 Lupa en CUIT (Consulta ARCA/AFIP):** Funcionalidad integrada en el modal de clientes (`consultar_padron_afip` vía Padrón A13). *(Pendiente de validación final con CUIT de prueba por el usuario)*.
-- [x] **3.2 Deshabilitar/Habilitar clientes (Solo Administrador, sin basurero):** Se removió el botón de eliminar y el símbolo del basurero de la grilla de clientes (quedando solo Editar). Se incorporó el campo `activo` en `ClienteProveedor` (migración `0005_clienteproveedor_activo`). Exclusivamente los Administradores pueden ver y accionar los botones de Deshabilitar/Habilitar y el selector de filtrado (Habilitados / Deshabilitados / Todos). Para los demás roles no se muestra el filtro y siempre se listan únicamente los clientes habilitados.
-- [ ] **3.3 Autocompletado por Código Postal:** Cuando pones el código postal no se prellena la localidad/ciudad ni la provincia como el anterior sistema —> *Pendiente incorporar diccionario local de C.P.*
-- [ ] **3.4 Nombre y Apellido unificados:** Apellido y nombre en Apellido solamente, ¿hacemos cambio masivo de los que tienen constancia ARCA? *(Pendiente definición / script masivo)*.
+- [x] **3.3 Autocompletado por Código Postal y Provincia:** Detección automática de la Provincia / Jurisdicción y Localidad al ingresar el Código Postal (manualmente o mediante consulta al padrón de ARCA). Se integró el helper `deducir_jurisdiccion_por_provincia_o_cp` con mapeo de rangos de CP y texto normalizado a las 24 jurisdicciones de AFIP. Se ejecutó la actualización masiva en BD (~8.070 registros corregidos) y se conectó en el modal con HTMX/Alpine.js.
+- [ ] **3.4 Nombre y Apellido unificados:** Apellido y nombre en Apellido solamente, ¿hacemos cambio masivo de los que tienen constancia ARCA? *(Pendiente definición / script masivo)*. Esto lo haremos una vez que ya tengamos la base de clientes con CUITs de ARCA definitiva (ultima migracion previo a la implementacion final).
 
 ---
 
 ## 4. MANTENIMIENTO DE PRODUCTOS
-- [ ] **4.1 Familias y subfamilias:** Pendiente cargar familias y subfamilias maestras.
+- [x] **4.1 Familias y subfamilias:** Pendiente cargar familias y subfamilias maestras.
 - [x] **4.2 Deshabilitar/Habilitar productos (Solo Administrador, sin basurero):** Se eliminó el botón de eliminar y el símbolo del basurero del catálogo de stock/productos (quedando solo Editar y Duplicar). Únicamente los Administradores pueden Deshabilitar o Habilitar productos y acceder al filtro de estado (Habilitados / Deshabilitados / Todos). Los roles operativos (vendedores, cajeros) no ven el selector de estados y el sistema les restringe en backend y frontend la visualización exclusivamente a productos habilitados.
 - [ ] **4.3 Códigos de producto vs ID:** Mal ingresados los códigos de productos, ejemplo: 5320 (`BINOC SAVAGE 8X21 M.RUBI (24300)`) en sistema nuevo dice ID 5289 (mostrar y priorizar código de proveedor/original `cod_prov`).
 - [ ] **4.4 Inventarios parciales:** ¿Cómo se cargan los inventarios parciales? Municiones y Armas especialmente, pero todo sería bueno —> *Pendiente desarrollar módulo de inventario parcial*.
@@ -105,4 +104,20 @@
 - [ ] **10.5 Caja Diaria:** Revisar utilidad; si no se utiliza, remover del menú lateral.
 - [ ] **10.6 Origen y Aplicación de Fondos (EOAF):** Si no se utiliza en la operativa, remover del menú lateral.
 - [ ] **10.7 Recepción de Rendiciones:** Revisar flujo de recepción de cierres de caja (actualmente redirige al menú sin procesar la recepción).
+
+---
+
+## 11. MIGRACIONES & BASE DE DATOS
+- [x] **11.1 Mapeo de Jurisdicciones / Provincias de VFP a ERP:**
+  - En el DBF de origen VFP (`cli_pro.dbf`), la provincia se almacenaba en texto libre (`PROVINCIA`) y el código numérico venía desfasado o en 0, dejando el campo `jurisdiccion_id` en `None` en la base Django.
+  - Se implementó la función `deducir_jurisdiccion_por_provincia_o_cp` en `facturacion/helpers.py` con mapeo de texto normalizado y rangos oficiales de Códigos Postales de Argentina (ej. 4000-4199 Tucumán, 4400-4499 Salta, etc.).
+  - Se actualizó el script maestro `migracion/scripts/armeria/02_migrar_maestros_clipro_armeria.py` para asignar automáticamente el `jurisdiccion_id` en futuras migraciones.
+  - Se ejecutó script de actualización masiva sobre la base de datos actual regularizando más de 8.000 clientes/proveedores.
+- [x] **11.2 Comprobantes Impresos Homologados (Recibos y Órdenes de Pago):**
+  - **Recibos (`recibo_pdf.html`):** Para clientes. Logo y membrete fiscal condicional (`condic == 1`), sin imputación contable, sin sello de la empresa, importes en letras con centavos (`UN MIL DOSCIENTOS CON 00/100.-`) y eliminación de tildes/caracteres conflictivos.
+  - **Órdenes de Pago (`orden_pago_pdf.html`):** Documento interno sin logo, con imputación contable detallada por cuenta y leyenda formal: *"Recibi de [EMPRESA] la suma de pesos [LETRAS] en concepto de: [DETALLE]"*.
+  - **Símbolo de numeración:** Reemplazado `Nº`/`N°` por `Nro.` en todos los templates para evitar incompatibilidades de codificación.
+- [x] **11.3 Trazabilidad y Asientos en Facturación:**
+  - **Listado de Compras:** Columna `Asiento ID` como primera columna con apertura directa del modal contable `detalle_asiento_modal`, e incorporación de botón con lupa en el selector de proveedores.
+  - **Facturas Pendientes:** Vínculos interactivos en el número de asiento contable y número de comprobante (con apertura de previsualización de venta o compra según corresponda).
 

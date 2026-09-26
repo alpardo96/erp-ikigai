@@ -1,12 +1,13 @@
 {% load formato_tags %}
-<!-- Reimpresión del Recibo con todo lo vinculado. Espejo de orden_pago_pdf.html. -->
+<!-- Reimpresion del Recibo para cliente (Plan 035 / Plan 077) -->
 <html>
 <head>
+<meta charset="utf-8">
 <style>
     @page { size: A4; margin: 1.5cm; }
     body { font-family: Helvetica, Arial, sans-serif; font-size: 9pt; color: #1e293b; }
-    h1 { font-size: 15pt; margin: 0 0 2px 0; }
-    .cab { width: 100%; border-bottom: 2px solid #1e293b; padding-bottom: 6px; margin-bottom: 10px; }
+    h1 { font-size: 16pt; margin: 0 0 2px 0; font-weight: bold; }
+    .cab { width: 100%; border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; }
     .empresa { font-size: 11pt; font-weight: bold; }
     .chico { font-size: 8pt; color: #64748b; }
     .bloque { margin-bottom: 12px; }
@@ -18,26 +19,43 @@
     table.datos td { padding: 4px; border-bottom: 1px solid #e2e8f0; }
     .der { text-align: right; }
     .cen { text-align: center; }
-    .total { font-weight: bold; font-size: 11pt; }
-    .anulado { color: #dc2626; font-weight: bold; font-size: 13pt; border: 2px solid #dc2626; padding: 4px 8px; }
+    .total { font-weight: bold; font-size: 10pt; }
+    .anulado { color: #dc2626; font-weight: bold; font-size: 13pt; border: 2px solid #dc2626; padding: 4px 8px; margin-top: 4px; display: inline-block; }
 </style>
 </head>
 <body>
 
 <table class="cab">
     <tr>
-        <td>
-            <div class="empresa">{{ recibo.empresa.nombre }}</div>
-            <div class="chico">CUIT {{ recibo.empresa.cuit }}</div>
-            <div class="chico">{{ recibo.sucursal.nombre }}</div>
+        <td style="width: 55%; vertical-align: top;">
+            {% if recibo.condic == 1 %}
+                {% if recibo.empresa.logo %}
+                <div style="margin-bottom: 6px;">
+                    <img src="{{ recibo.empresa.logo.path }}" style="max-height: 55px; max-width: 180px;" />
+                </div>
+                {% endif %}
+                <div class="empresa">{{ recibo.empresa.nombre|upper }}</div>
+                <div class="chico">{{ recibo.sucursal.direccion|default:recibo.empresa.direccion|default:""|upper }}</div>
+                {% if recibo.empresa.telefono or recibo.sucursal.telefono %}
+                <div class="chico">Tel: {{ recibo.sucursal.telefono|default:recibo.empresa.telefono }}</div>
+                {% endif %}
+                {% if recibo.empresa.correo %}
+                <div class="chico">Email: {{ recibo.empresa.correo }}</div>
+                {% endif %}
+                <div class="chico"><b>IVA:</b> {{ recibo.empresa.condicion_iva|default:"RESPONSABLE INSCRIPTO"|upper }}</div>
+            {% else %}
+                <!-- Recibo No Fiscal: encabezado emisor vacio -->
+                <div>&nbsp;</div>
+            {% endif %}
         </td>
-        <td class="der">
+        <td class="der" style="width: 45%; vertical-align: top;">
             <h1>RECIBO</h1>
-            <div><b>N° {{ recibo.punto|stringformat:"05d" }}-{{ recibo.numero|stringformat:"08d" }}</b></div>
-            <div class="chico">Fecha: {{ recibo.fecha|date:"d/m/Y" }}</div>
-            <div class="chico">
-                {% if recibo.condic == 1 %}Real (Fiscal){% else %}Presupuestado (No Fiscal){% endif %}
-            </div>
+            <div><b>Nro. {{ recibo.punto|stringformat:"05d" }}-{{ recibo.numero|stringformat:"08d" }}</b></div>
+            <div class="chico" style="margin-top: 2px;">Fecha: {{ recibo.fecha|date:"d/m/Y" }}</div>
+            {% if recibo.condic == 1 %}
+            <div class="chico">CUIT: {{ recibo.empresa.cuit }}</div>
+            <div class="chico">Ingresos Brutos: {{ recibo.empresa.cuit }}</div>
+            {% endif %}
             {% if recibo.anulado %}<div class="anulado">ANULADO</div>{% endif %}
         </td>
     </tr>
@@ -51,7 +69,9 @@
             <td>CUIT: {{ recibo.cliente.cuit|default:"—" }}</td>
         </tr>
         <tr>
-            <td colspan="2" class="total">La suma de $ {{ recibo.total|formato_ar }}</td>
+            <td colspan="2" class="total" style="padding-top: 6px; padding-bottom: 6px;">
+                La suma de $ {{ recibo.total|formato_ar }} ({{ total_letras }})
+            </td>
         </tr>
         {% if recibo.observaciones %}
         <tr><td colspan="2" class="chico">Observaciones: {{ recibo.observaciones }}</td></tr>
@@ -81,24 +101,6 @@
 </div>
 {% endif %}
 
-{% if imputaciones %}
-<div class="bloque">
-    <div class="titulo">Imputación contable</div>
-    <table class="datos">
-        <thead><tr><th>Cuenta</th><th>Leyenda</th><th class="der">Importe</th></tr></thead>
-        <tbody>
-            {% for imp in imputaciones %}
-            <tr>
-                <td>{{ imp.cuenta_contable.jerarquia }} - {{ imp.cuenta_contable.cuenta }}</td>
-                <td>{{ imp.leyenda|default:"" }}</td>
-                <td class="der">$ {{ imp.importe|formato_ar }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
-
 <div class="bloque">
     <div class="titulo">Medios de cobro recibidos</div>
     <table class="datos">
@@ -117,7 +119,7 @@
             {% endfor %}
             <tr>
                 <td colspan="2" class="der total">TOTAL</td>
-                <td class="der total">$ {{ recibo.total|formato_ar }}</td>
+                <td class="der total" style="font-size: 12pt;">$ {{ recibo.total|formato_ar }}</td>
             </tr>
         </tbody>
     </table>
@@ -127,7 +129,7 @@
 <div class="bloque">
     <div class="titulo">Cheques recibidos</div>
     <table class="datos">
-        <thead><tr><th>Banco</th><th>Número</th><th>Vencimiento</th><th>Firmante</th><th class="der">Importe</th></tr></thead>
+        <thead><tr><th>Banco</th><th>Numero</th><th>Vencimiento</th><th>Firmante</th><th class="der">Importe</th></tr></thead>
         <tbody>
             {% for v in valores_recibidos %}
             <tr>
@@ -147,7 +149,7 @@
 <div class="bloque">
     <div class="titulo">Acreditaciones bancarias</div>
     <table class="datos">
-        <thead><tr><th>Tipo</th><th>Cuenta bancaria</th><th>Número</th><th class="der">Importe</th></tr></thead>
+        <thead><tr><th>Tipo</th><th>Cuenta bancaria</th><th>Numero</th><th class="der">Importe</th></tr></thead>
         <tbody>
             {% for t in transacciones %}
             <tr>
@@ -162,16 +164,16 @@
 </div>
 {% endif %}
 
-<table style="width:100%; margin-top:30px">
+<table style="width:100%; margin-top:40px">
     <tr>
-        <td class="cen chico" style="width:45%; border-top:1px solid #94a3b8; padding-top:4px">Firma y aclaración</td>
-        <td style="width:10%"></td>
-        <td class="cen chico" style="width:45%; border-top:1px solid #94a3b8; padding-top:4px">Sello de la empresa</td>
+        <td style="width:25%"></td>
+        <td class="cen chico" style="width:50%; border-top:1px solid #94a3b8; padding-top:4px">Firma y aclaracion</td>
+        <td style="width:25%"></td>
     </tr>
 </table>
 
-<div class="chico" style="margin-top:12px">
-    Asiento contable N° {{ recibo.asiento_id|default:"—" }} · Impreso el {{ fecha_impresion|date:"d/m/Y H:i" }}
+<div class="chico" style="margin-top:15px">
+    Impreso el {{ fecha_impresion|date:"d/m/Y H:i" }}
 </div>
 
 </body>

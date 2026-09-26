@@ -32,3 +32,14 @@ def formato_ar(value, decimales=2):
 
     return resultado
 
+
+@register.filter(name='numero_a_letras')
+def numero_a_letras_filter(value):
+    """
+    Convierte un valor numérico a su representación en letras al estilo argentino.
+    Uso: {{ valor|numero_a_letras }}
+    """
+    from core.utils.numeros_a_letras import numero_a_letras
+    return numero_a_letras(value)
+
+

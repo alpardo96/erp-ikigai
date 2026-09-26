@@ -2104,3 +2104,46 @@ def typeahead_comprobantes(request):
     return render(request, 'facturacion/partials/comprobantes_typeahead.html', {
         'comprobantes': comprobantes,
     })
+
+
+@login_required
+def buscar_jurisdiccion_por_cp(request):
+    """
+    Busca la provincia (jurisdicción) y localidad asociada a un código postal.
+    Retorna JSON: {'encontrado': bool, 'jurisdiccion_id': int, 'jurisdiccion_nombre': str, 'localidad': str}
+    """
+    from django.http import JsonResponse
+    from facturacion.helpers import deducir_jurisdiccion_por_provincia_o_cp
+    from facturacion.models import ClienteProveedor
+
+    cp = request.GET.get('cp', '').strip()
+    if not cp:
+        return JsonResponse({'encontrado': False})
+
+    # 1. Buscar coincidencia previa en ClienteProveedor
+    previo = (ClienteProveedor.objects
+              .filter(codigo_postal__iexact=cp, jurisdiccion__isnull=False)
+              .select_related('jurisdiccion')
+              .order_by('-modificado')
+              .first())
+
+    if previo and previo.jurisdiccion:
+        return JsonResponse({
+            'encontrado': True,
+            'jurisdiccion_id': previo.jurisdiccion.id,
+            'jurisdiccion_nombre': previo.jurisdiccion.nombre,
+            'localidad': previo.localidad or ''
+        })
+
+    # 2. Búsqueda por rango oficial de CP
+    jur_obj = deducir_jurisdiccion_por_provincia_o_cp(codigo_postal=cp)
+    if jur_obj:
+        return JsonResponse({
+            'encontrado': True,
+            'jurisdiccion_id': jur_obj.id,
+            'jurisdiccion_nombre': jur_obj.nombre,
+            'localidad': ''
+        })
+
+    return JsonResponse({'encontrado': False})
+

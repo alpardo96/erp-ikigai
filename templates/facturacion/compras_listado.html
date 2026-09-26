@@ -48,6 +48,15 @@
                            autocomplete="off"
                            @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
                            oninput="if(this.value === '') { document.getElementById('id_proveedor').value = ''; }">
+                    <button type="button" hx-get="{% url 'ventas_cliente_buscar_modal' %}"
+                            hx-target="#modal-container"
+                            class="w-9 h-9 shrink-0 flex items-center justify-center bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-all cursor-pointer"
+                            title="Buscar proveedor">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
                 </div>
                 <div x-show="open" id="proveedor_suggestions"
                      class="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-64 overflow-y-auto"
@@ -103,6 +112,7 @@
         <table class="w-full text-left text-[12px]">
             <thead class="bg-slate-900 text-white text-[10px] uppercase tracking-wider">
                 <tr>
+                    <th class="px-4 py-2 text-center">Asiento ID</th>
                     <th class="px-4 py-2">Fecha</th>
                     <th class="px-4 py-2">Comprobante</th>
                     <th class="px-4 py-2">Proveedor</th>
@@ -116,6 +126,29 @@
             <tbody class="divide-y divide-gray-100">
                 {% for c in compras %}
                 <tr class="hover:bg-blue-50 transition-colors">
+                    <td class="px-4 py-2 text-center font-mono whitespace-nowrap">
+                        {% if c.asiento_id %}
+                            {% if c.fecha|date:"Y" >= "2026" %}
+                            <!-- Asiento del ejercicio activo: abre modal interactivo -->
+                            <button type="button"
+                                    hx-get="{% url 'detalle_asiento_modal' c.asiento_id %}"
+                                    hx-target="#modal-container"
+                                    hx-swap="innerHTML"
+                                    class="text-indigo-600 hover:text-indigo-900 hover:underline font-bold transition-colors cursor-pointer"
+                                    title="Ver detalle del asiento contable N° {{ c.asiento_id }}">
+                                {{ c.asiento_id }}
+                            </button>
+                            {% else %}
+                            <!-- Asiento de ejercicio histórico: solo texto informativo -->
+                            <span class="text-slate-400 font-semibold cursor-help"
+                                  title="Asiento histórico N° {{ c.asiento_id }} (Ejercicio anterior no migrado a contabilidad activa)">
+                                {{ c.asiento_id }}
+                            </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-slate-300 font-bold">—</span>
+                        {% endif %}
+                    </td>
                     <td class="px-4 py-2 font-bold text-slate-600">{{ c.fecha|date:"d/m/Y" }}</td>
                     <td class="px-4 py-2 font-bold text-slate-800">{{ c.tipo.codigo }} {{ c.punto|stringformat:"05d" }}-{{ c.numero|stringformat:"08d" }}</td>
                     <td class="px-4 py-2 uppercase text-slate-700">{{ c.proveedor.razon_social }}</td>
@@ -153,13 +186,13 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay compras para los filtros seleccionados.</td></tr>
+                <tr><td colspan="9" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay compras para los filtros seleccionados.</td></tr>
                 {% endfor %}
             </tbody>
             {% if compras %}
             <tfoot class="bg-slate-50 border-t-2 border-slate-200 font-black">
                 <tr>
-                    <td class="px-4 py-2 text-right uppercase text-[10px] tracking-widest text-slate-500" colspan="3">Totales</td>
+                    <td class="px-4 py-2 text-right uppercase text-[10px] tracking-widest text-slate-500" colspan="4">Totales</td>
                     <td class="px-4 py-2 text-right tabular-nums">$ {{ totales.neto|formato_ar }}</td>
                     <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ totales.iva|formato_ar }}</td>
                     <td class="px-4 py-2 text-right tabular-nums">$ {{ totales.total|formato_ar }}</td>
@@ -170,5 +203,4 @@
         </table>
     </div>
 </div>
-<div id="modal-container"></div>
 {% endblock %}

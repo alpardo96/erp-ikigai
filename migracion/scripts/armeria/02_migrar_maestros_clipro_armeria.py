@@ -169,6 +169,13 @@ def run():
             tipo_entidad = 2 if str(row.get('CLI_PRO', '')).strip() == '2' else 1
             cond_iva = get_condicion_iva(row.get('INSC_IVA', 4))
             
+            # Deducción robusta de jurisdicción/provincia (Plan 056 / Fix Jurisdicciones)
+            from facturacion.helpers import deducir_jurisdiccion_por_provincia_o_cp
+            pcia_txt = str(row.get('PROVINCIA', '')).strip()
+            cp_txt = str(row.get('CPOSTAL', '')).strip()
+            jur_obj = deducir_jurisdiccion_por_provincia_o_cp(pcia_txt, cp_txt)
+            jur_id = jur_obj.id if jur_obj else (row.get('ID_PCIA') if row.get('ID_PCIA') and row.get('ID_PCIA') > 0 else None)
+
             entidades_to_create.append(ClienteProveedor(
                 codigo_id=codigo,
                 empresa=empresa,
@@ -177,9 +184,9 @@ def run():
                 cuit=cuit_clean,
                 tipo_entidad=tipo_entidad,
                 domicilio=str(row.get('DOMICILIO', '')).strip()[:255],
-                codigo_postal=str(row.get('CPOSTAL', '')).strip()[:20],
+                codigo_postal=cp_txt[:20],
                 localidad=str(row.get('LOCALIDAD', '')).strip()[:100],
-                jurisdiccion_id=row.get('ID_PCIA') if row.get('ID_PCIA') and row.get('ID_PCIA') > 0 else None,
+                jurisdiccion_id=jur_id,
                 contacto=str(row.get('CONTACTO', '')).strip()[:150],
                 telefono=str(row.get('TELEFONO', '')).strip()[:100],
                 correo=str(row.get('CORREO', '')).strip()[:254],

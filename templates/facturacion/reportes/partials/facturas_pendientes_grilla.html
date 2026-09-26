@@ -17,7 +17,21 @@
     <tbody class="divide-y divide-slate-100">
         {% for fila in filas %}
         <tr class="hover:bg-blue-50/40 transition-colors {% if fila.anulada %}opacity-50 line-through{% endif %}">
-            <td class="px-3 py-2 text-center text-slate-400 font-bold">{{ fila.asiento_id|default:"—" }}</td>
+            <td class="px-3 py-2 text-center font-mono whitespace-nowrap">
+                {% if fila.asiento_id %}
+                <!-- Asiento contable: abre modal interactivo -->
+                <button type="button"
+                        hx-get="{% url 'detalle_asiento_modal' fila.asiento_id %}"
+                        hx-target="#modal-container"
+                        hx-swap="innerHTML"
+                        class="text-indigo-600 hover:text-indigo-900 hover:underline font-bold transition-colors cursor-pointer"
+                        title="Ver detalle del asiento contable N° {{ fila.asiento_id }}">
+                    {{ fila.asiento_id }}
+                </button>
+                {% else %}
+                <span class="text-slate-300 font-bold">—</span>
+                {% endif %}
+            </td>
             <td class="px-3 py-2 text-center">
                 <span class="px-2 py-0.5 rounded text-[10px] font-black
                     {% if fila.condic == 1 %}bg-emerald-50 text-emerald-700{% elif fila.condic == 2 %}bg-amber-50 text-amber-700{% elif fila.condic == 3 %}bg-indigo-50 text-indigo-700{% else %}bg-slate-100 text-slate-600{% endif %}">
@@ -26,7 +40,27 @@
             </td>
             <td class="px-3 py-2 text-center whitespace-nowrap font-bold text-slate-700">{{ fila.fecha|date:"d/m/Y" }}</td>
             <td class="px-3 py-2 text-center text-slate-400 font-bold">{{ fila.periodo|default:"—" }}</td>
-            <td class="px-3 py-2 whitespace-nowrap font-black text-slate-900">{{ fila.comprobante }}</td>
+            <td class="px-3 py-2 whitespace-nowrap font-black">
+                {% if fila.operacion == 'V' %}
+                <!-- Comprobante de venta: abre modal con datos fiscales, QR y botón de imprimir PDF -->
+                <button type="button"
+                        hx-get="{% url 'venta_previsualizar_modal' fila.pk %}"
+                        hx-target="#modal-container"
+                        class="text-blue-600 hover:text-blue-900 hover:underline font-black transition-colors cursor-pointer text-left"
+                        title="Ver comprobante de venta {{ fila.comprobante }}">
+                    {{ fila.comprobante }}
+                </button>
+                {% else %}
+                <!-- Comprobante de compra: abre modal con formato estándar de compra -->
+                <button type="button"
+                        hx-get="{% url 'compras_detalle_modal' fila.pk %}"
+                        hx-target="#modal-container"
+                        class="text-blue-600 hover:text-blue-900 hover:underline font-black transition-colors cursor-pointer text-left"
+                        title="Ver comprobante de compra {{ fila.comprobante }}">
+                    {{ fila.comprobante }}
+                </button>
+                {% endif %}
+            </td>
             <td class="px-3 py-2 text-center text-slate-400 font-bold">{{ fila.entidad_id }}</td>
             <td class="px-3 py-2 text-slate-700">{{ fila.entidad_nombre }}</td>
             <td class="px-3 py-2 text-right font-black text-slate-900">$ {{ fila.total|formato_ar }}</td>

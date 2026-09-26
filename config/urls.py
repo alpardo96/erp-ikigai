@@ -41,7 +41,7 @@ from productos.views import StockDashboardView, ProductoListView
 from facturacion.views_htmx import (
     jurisdiccion_modal, buscar_jurisdicciones, eliminar_jurisdiccion,
     cliente_modal, buscar_clientes, eliminar_cliente, buscar_cuentas_facturacion, buscador_cuentas_modal,
-    verificar_documento_existente, consultar_padron_afip,
+    verificar_documento_existente, consultar_padron_afip, buscar_jurisdiccion_por_cp,
     comprobante_modal, buscar_comprobantes, eliminar_comprobante,
     buscador_productos_modal, lista_productos_resultados, buscar_producto_por_codigo, buscar_producto_por_codprov, actualizar_proveedor_habitual, agregar_item_sesion, quitar_item_sesion, editar_item_sesion, modal_series_item, guardar_series_item,
     importar_remito_items, buscador_remitos_modal, compras_revisar_precios,
@@ -259,6 +259,7 @@ urlpatterns = [
     path('clientes/<int:id>/editar/', cliente_modal, name='cliente_edit'),
     path('htmx/verificar-documento/', verificar_documento_existente, name='htmx_verificar_documento'),
     path('htmx/consultar-afip/<str:cuit>/', consultar_padron_afip, name='htmx_consultar_afip'),
+    path('htmx/buscar-cp/', buscar_jurisdiccion_por_cp, name='buscar_jurisdiccion_por_cp'),
     path('clientes/<int:id>/eliminar/', eliminar_cliente, name='cliente_delete'),
 
     # Configuración: Jurisdicciones
