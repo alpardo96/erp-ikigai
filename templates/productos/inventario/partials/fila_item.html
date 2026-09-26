@@ -1,0 +1,81 @@
+{% load formato_tags %}
+<tr id="item-row-{{ item.id }}"
+    data-search="{{ item.producto.id }} {{ item.producto.detalle|lower }} {{ item.producto.cod_prov|default:''|lower }} {{ item.producto.unidad_venta|default:''|lower }} {{ item.producto.marca.detalle|default:''|lower }} {{ item.producto.rubro.detalle|default:''|lower }} {{ item.producto.familia.detalle|default:''|lower }}"
+    class="inventario-item-row hover:bg-gray-50/70 transition-colors {% if item.id == highlight_item_id %}bg-blue-50/50{% endif %}">
+    <td class="px-4 py-3 whitespace-nowrap">
+        <span class="font-mono text-xs font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">#{{ item.producto.id }}</span>
+        {% if item.producto.cod_prov %}
+            <span class="text-[10px] text-gray-400 block font-mono mt-0.5" title="Cód. Proveedor">Prov: {{ item.producto.cod_prov }}</span>
+        {% endif %}
+    </td>
+    <td class="px-4 py-3 text-gray-900 font-medium">
+        {{ item.producto.detalle }}
+        {% if item.producto.unidad_venta and item.producto.unidad_venta != 'UNIDAD' %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300 ml-1 shadow-sm" title="Calibre">
+                Cal: {{ item.producto.unidad_venta }}
+            </span>
+        {% endif %}
+        {% if item.producto.marca %}
+            <span class="text-xs text-gray-400 font-normal ml-1">({{ item.producto.marca.detalle }})</span>
+        {% endif %}
+        {% if item.modificado_por_autorizador %}
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 ml-1" title="Corregido por autorizador (Original: {{ item.cantidad_original_operador }})">
+                Modificado en Revisión
+            </span>
+        {% endif %}
+    </td>
+    <td class="px-4 py-3 text-xs text-gray-500">
+        {{ item.producto.rubro.detalle|default:"-" }} / {{ item.producto.familia.detalle|default:"-" }}
+    </td>
+    <td class="px-4 py-3 text-center font-bold text-gray-700 whitespace-nowrap">
+        {{ item.stock_teorico|formato_ar:2 }}
+    </td>
+    <td class="px-4 py-3 text-center whitespace-nowrap">
+        {% if inventario.estado == 'BORRADOR' or es_autorizador and inventario.estado == 'PENDIENTE' %}
+            <form hx-post="{% url 'inventario_item_actualizar' item.id %}"
+                  hx-target="#item-row-{{ item.id }}"
+                  hx-swap="outerHTML"
+                  hx-trigger="change delay:200ms"
+                  class="inline-block m-0">
+                {% csrf_token %}
+                <input type="text"
+                       name="cantidad_contada"
+                       value="{{ item.cantidad_contada|formato_ar:2 }}"
+                       class="fInputAR w-24 text-center font-bold text-gray-900 bg-white border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm shadow-sm">
+            </form>
+        {% else %}
+            <span class="font-bold text-gray-900 text-sm">
+                {{ item.cantidad_contada|formato_ar:2 }}
+            </span>
+        {% endif %}
+    </td>
+    <td class="px-4 py-3 text-center font-extrabold whitespace-nowrap">
+        {% if item.diferencia > 0 %}
+            <span class="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-xs">
+                +{{ item.diferencia|formato_ar:2 }} (Sobrante)
+            </span>
+        {% elif item.diferencia < 0 %}
+            <span class="text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200 text-xs">
+                {{ item.diferencia|formato_ar:2 }} (Faltante)
+            </span>
+        {% else %}
+            <span class="text-gray-400 font-normal text-xs">
+                0,00 (Exacto)
+            </span>
+        {% endif %}
+    </td>
+    <td class="px-4 py-3 text-right whitespace-nowrap">
+        {% if inventario.estado == 'BORRADOR' %}
+            <button hx-post="{% url 'inventario_item_eliminar' item.id %}"
+                    hx-target="#grilla-inventario-container"
+                    hx-swap="innerHTML"
+                    hx-confirm="¿Está seguro de quitar este producto del inventario?"
+                    class="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
+                    title="Quitar ítem">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </button>
+        {% endif %}
+    </td>
+</tr>

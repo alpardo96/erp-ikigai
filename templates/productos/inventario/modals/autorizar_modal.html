@@ -1,0 +1,162 @@
+{% load formato_tags %}
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in"
+     x-data="{ tab: 'resumen' }">
+    <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+        
+        <!-- Header -->
+        <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600/30 rounded-xl text-blue-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold">Autorización de Inventario #{{ inventario.numero|stringformat:"04d" }}</h3>
+                    <p class="text-xs text-slate-400">{{ inventario.sucursal.nombre }} | {{ inventario.fecha_toma|date:"d/m/Y H:i" }} | {{ inventario.get_tipo_alcance_display }}</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('modal-container').innerHTML=''" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Métricas Rápidas -->
+        <div class="p-6 bg-slate-50 border-b border-gray-200 grid grid-cols-4 gap-4 text-center">
+            <div class="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
+                <span class="text-xs text-gray-500 font-medium block">Total Ítems</span>
+                <span class="text-xl font-bold text-gray-900">{{ total_items }}</span>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-emerald-200 shadow-sm">
+                <span class="text-xs text-emerald-600 font-medium block">Sobrantes (+)</span>
+                <span class="text-xl font-bold text-emerald-600">{{ sobrantes }}</span>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-red-200 shadow-sm">
+                <span class="text-xs text-red-600 font-medium block">Faltantes (-)</span>
+                <span class="text-xl font-bold text-red-600">{{ faltantes }}</span>
+            </div>
+            <div class="bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
+                <span class="text-xs text-gray-500 font-medium block">Sin Diferencias</span>
+                <span class="text-xl font-bold text-gray-700">{{ sin_dif }}</span>
+            </div>
+        </div>
+
+        <!-- Tabs de Selección -->
+        <div class="flex border-b border-gray-200 bg-gray-50 px-6">
+            <button @click="tab = 'resumen'"
+                    :class="tab === 'resumen' ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    class="py-3 px-4 text-sm border-b-2 transition-all">
+                Diferencias a Ajustar ({{ sobrantes|add:faltantes }})
+            </button>
+            <button @click="tab = 'devolver'"
+                    :class="tab === 'devolver' ? 'border-red-600 text-red-600 font-bold' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    class="py-3 px-4 text-sm border-b-2 transition-all">
+                Devolver para Reconteo / Rechazar
+            </button>
+        </div>
+
+        <!-- Contenido -->
+        <div class="p-6 overflow-y-auto flex-1">
+            
+            <!-- Vista 1: Grilla de Diferencias con Edición Directa (Opción A) -->
+            <div x-show="tab === 'resumen'" class="space-y-4">
+                <div class="text-xs text-slate-600 bg-blue-50 border border-blue-200 p-3 rounded-xl flex items-center justify-between">
+                    <span><strong>Nota de Control:</strong> Como autorizador, puede ajustar las cantidades contadas directamente en las casillas si detecta errores antes de aprobar.</span>
+                </div>
+
+                <table class="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead class="bg-gray-100 font-semibold text-gray-600 uppercase">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Producto</th>
+                            <th class="px-3 py-2 text-center">Teórico</th>
+                            <th class="px-3 py-2 text-center">Contado</th>
+                            <th class="px-3 py-2 text-center">Diferencia</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for item in items %}
+                            {% if item.diferencia != 0 %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-3 py-2 font-medium text-gray-900">
+                                    {{ item.producto.detalle }}
+                                    {% if item.producto.unidad_venta and item.producto.unidad_venta != 'UNIDAD' %}
+                                        <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 ml-1">Cal: {{ item.producto.unidad_venta }}</span>
+                                    {% endif %}
+                                    {% if item.modificado_por_autorizador %}
+                                        <span class="text-[10px] text-amber-600 block">(Modificado en revisión - Orig: {{ item.cantidad_original_operador }})</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-3 py-2 text-center text-gray-600">{{ item.stock_teorico|formato_ar:2 }}</td>
+                                <td class="px-3 py-2 text-center">
+                                    <form hx-post="{% url 'inventario_item_actualizar' item.id %}"
+                                          hx-swap="none"
+                                          hx-trigger="change delay:200ms"
+                                          class="inline-block m-0">
+                                        {% csrf_token %}
+                                        <input type="text" name="cantidad_contada" value="{{ item.cantidad_contada|formato_ar:2 }}"
+                                               class="fInputAR w-20 text-center font-bold text-gray-900 border border-gray-300 rounded p-1 text-xs">
+                                    </form>
+                                </td>
+                                <td class="px-3 py-2 text-center font-bold">
+                                    {% if item.diferencia > 0 %}
+                                        <span class="text-emerald-600">+{{ item.diferencia|formato_ar:2 }}</span>
+                                    {% else %}
+                                        <span class="text-red-600">{{ item.diferencia|formato_ar:2 }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="px-3 py-6 text-center text-gray-400 italic">No hay diferencias registradas (conteo exacto).</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Vista 2: Formulario de Rechazo / Devolución -->
+            <div x-show="tab === 'devolver'" class="space-y-4">
+                <form hx-post="{% url 'inventario_rechazar_procesar' inventario.pk %}" class="space-y-4">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Motivo de Rechazo o Devolución</label>
+                        {{ form_rechazo.motivo_rechazo }}
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <button type="submit" name="accion" value="DEVOLVER" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm">
+                            Devolver a Conteo (Reabrir Borrador)
+                        </button>
+                        <button type="submit" name="accion" value="RECHAZAR" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm">
+                            Rechazar y Cerrar Definitivamente
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+            <button onclick="document.getElementById('modal-container').innerHTML=''" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium">
+                Cerrar
+            </button>
+            <div class="flex items-center gap-2" x-show="tab === 'resumen'">
+                <form hx-post="{% url 'inventario_autorizar_procesar' inventario.pk %}"
+                      hx-confirm="¿Confirma la APROBACIÓN de este inventario físico? Las diferencias impactarán en el stock disponible inmediatamente.">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-200 transition-all">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Aprobar y Aplicar al Stock
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>

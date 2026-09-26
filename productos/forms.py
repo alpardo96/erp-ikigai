@@ -203,3 +203,121 @@ class ProductoForm(forms.ModelForm):
             if self.instance and self.instance.proveedor_id:
                 qs_proveedor = qs_proveedor | ClienteProveedor.objects.filter(pk=self.instance.proveedor_id)
             self.fields['proveedor'].queryset = qs_proveedor.distinct().order_by('razon_social')
+
+
+class TomaInventarioFiltroForm(forms.Form):
+    """
+    Formulario de configuración y filtros para iniciar un inventario general o parcial (Plan 095).
+    """
+    ALCANCE_CHOICES = [
+        ('PARCIAL', 'Inventario Parcial (Según filtros)'),
+        ('GENERAL', 'Inventario General (Todos los productos)'),
+    ]
+
+    tipo_alcance = forms.ChoiceField(
+        choices=ALCANCE_CHOICES,
+        initial='PARCIAL',
+        label="Tipo de Inventario",
+        widget=forms.Select(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500'})
+    )
+    rubro = forms.ModelChoiceField(
+        queryset=Rubro.objects.none(),
+        required=False,
+        empty_label="-- Todos los Rubros --",
+        widget=forms.Select(attrs={
+            'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500',
+            'hx-get': '/productos/filtrar-familias/',
+            'hx-target': '#id_familia',
+            'hx-trigger': 'change'
+        })
+    )
+    familia = forms.ModelChoiceField(
+        queryset=Familia.objects.none(),
+        required=False,
+        empty_label="-- Todas las Familias --",
+        widget=forms.Select(attrs={
+            'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500',
+            'hx-get': '/productos/filtrar-subfamilias/',
+            'hx-target': '#id_subfamilia',
+            'hx-trigger': 'change'
+        })
+    )
+    subfamilia = forms.ModelChoiceField(
+        queryset=Subfamilia.objects.none(),
+        required=False,
+        empty_label="-- Todas las Subfamilias --",
+        widget=forms.Select(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500'})
+    )
+    marca = forms.ModelChoiceField(
+        queryset=Marca.objects.none(),
+        required=False,
+        empty_label="-- Todas las Marcas --",
+        widget=forms.Select(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500'})
+    )
+    proveedor = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        empty_label="-- Todos los Proveedores --",
+        widget=forms.Select(attrs={'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500'})
+    )
+    buscar_texto = forms.CharField(
+        required=False,
+        label="Buscar por Código o Detalle",
+        widget=forms.TextInput(attrs={
+            'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'Ej. PISTOLA, 5320, BERSA...'
+        })
+    )
+    observaciones = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500',
+            'rows': 2,
+            'placeholder': 'Observaciones o motivo de la toma de inventario...'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
+        super().__init__(*args, **kwargs)
+        if empresa:
+            self.fields['rubro'].queryset = Rubro.objects.filter(empresa=empresa).order_by('detalle')
+            self.fields['familia'].queryset = Familia.objects.filter(empresa=empresa).order_by('detalle')
+            self.fields['subfamilia'].queryset = Subfamilia.objects.filter(familia__rubro__empresa=empresa).order_by('detalle')
+            self.fields['marca'].queryset = Marca.objects.filter(empresa=empresa).order_by('detalle')
+            from facturacion.models import ClienteProveedor
+            from django.db.models import Q
+            self.fields['proveedor'].queryset = ClienteProveedor.objects.filter(
+                Q(empresa=empresa) | Q(empresa__isnull=True),
+                tipo_entidad=2
+            ).distinct().order_by('razon_social')
+
+
+class TomaInventarioItemEditForm(forms.Form):
+    """Edición ágil de cantidad contada de un ítem en la grilla."""
+    cantidad_contada = DecimalARField(
+        max_digits=15, decimal_places=2, required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'fInputAR w-28 text-center font-bold text-gray-900 border border-gray-300 rounded p-1 focus:ring-2 focus:ring-blue-500'
+        })
+    )
+    observaciones = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full text-xs text-gray-900 border border-gray-300 rounded p-1 focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'Nota...'
+        })
+    )
+
+
+class TomaInventarioRechazoForm(forms.Form):
+    """Formulario para rechazar / devolver a conteo un inventario pendiente."""
+    motivo_rechazo = forms.CharField(
+        required=True,
+        widget=forms.Textarea(attrs={
+            'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-500',
+            'rows': 3,
+            'placeholder': 'Indique el motivo por el cual se devuelve el inventario para reconteo...'
+        })
+    )
+

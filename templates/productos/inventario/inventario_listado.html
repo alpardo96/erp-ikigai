@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load static formato_tags %}
+
+{% block title %}Toma de Inventarios | ERP Ikigai{% endblock %}
+
+{% block content %}
+<div class="flex flex-col pt-6 gap-6 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Toma de Inventarios</h1>
+            <p class="mt-1 text-sm text-gray-500">
+                Recuentos físicos, inventarios generales y parciales, planilla de conteo y ajustes de stock.
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'inventario_nuevo' %}"
+                class="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-sm shadow-sm shadow-blue-200">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Nueva Toma de Inventario
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros y Estado -->
+    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Sucursal Activa:</span>
+            <span class="inline-flex items-center px-3 py-1 bg-slate-100 text-slate-800 rounded-lg text-sm font-semibold border border-slate-200">
+                <svg class="w-4 h-4 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                {{ sucursal_actual.nombre|default:"Central" }}
+            </span>
+        </div>
+
+        <!-- Filtro por Estado -->
+        <div class="flex items-center gap-2">
+            <a href="?estado=" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all {% if not estado_filtro %}bg-gray-900 text-white shadow-sm{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+                Todos
+            </a>
+            <a href="?estado=BORRADOR" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all {% if estado_filtro == 'BORRADOR' %}bg-amber-600 text-white shadow-sm{% else %}bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200{% endif %}">
+                Borrador
+            </a>
+            <a href="?estado=PENDIENTE" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all {% if estado_filtro == 'PENDIENTE' %}bg-blue-600 text-white shadow-sm{% else %}bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200{% endif %}">
+                Pendiente Autorización
+            </a>
+            <a href="?estado=APLICADO" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all {% if estado_filtro == 'APLICADO' %}bg-emerald-600 text-white shadow-sm{% else %}bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200{% endif %}">
+                Aplicados
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabla de Tomas de Inventario -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50 text-gray-500 uppercase font-semibold text-xs tracking-wider">
+                    <tr>
+                        <th class="px-5 py-3.5 text-left">N° Inventario</th>
+                        <th class="px-5 py-3.5 text-left">Fecha y Hora</th>
+                        <th class="px-5 py-3.5 text-left">Alcance / Filtros</th>
+                        <th class="px-5 py-3.5 text-center">Ítems Contados</th>
+                        <th class="px-5 py-3.5 text-center">Estado</th>
+                        <th class="px-5 py-3.5 text-left">Auditoría / Autorizó</th>
+                        <th class="px-5 py-3.5 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-gray-700">
+                    {% for inv in inventarios %}
+                    <tr class="hover:bg-gray-50/80 transition-colors">
+                        <td class="px-5 py-4 font-bold text-gray-900 whitespace-nowrap">
+                            <span class="text-blue-600">#{{ inv.numero|stringformat:"04d" }}</span>
+                        </td>
+                        <td class="px-5 py-4 whitespace-nowrap text-gray-600">
+                            {{ inv.fecha_toma|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center gap-1.5">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold {% if inv.tipo_alcance == 'GENERAL' %}bg-purple-100 text-purple-800 border border-purple-200{% else %}bg-indigo-50 text-indigo-700 border border-indigo-200{% endif %}">
+                                    {{ inv.get_tipo_alcance_display }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1 max-w-xs truncate" title="{{ inv.filtros_aplicados }}">
+                                {{ inv.filtros_aplicados|default:"Sin filtros específicos" }}
+                            </p>
+                        </td>
+                        <td class="px-5 py-4 text-center font-semibold text-gray-800">
+                            {{ inv.items.count }}
+                        </td>
+                        <td class="px-5 py-4 text-center whitespace-nowrap">
+                            {% if inv.estado == 'BORRADOR' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                    <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                    Borrador
+                                </span>
+                            {% elif inv.estado == 'PENDIENTE' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                    <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                                    Pendiente Autorización
+                                </span>
+                            {% elif inv.estado == 'APLICADO' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    ✓ Aplicado al Stock
+                                </span>
+                            {% elif inv.estado == 'RECHAZADO' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                                    Rechazado
+                                </span>
+                            {% elif inv.estado == 'ANULADO' %}
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 border border-gray-200">
+                                    Anulado
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-xs text-gray-500">
+                            {% if inv.usuario_autorizo %}
+                                <div><strong class="text-gray-700">Autorizó:</strong> {{ inv.usuario_autorizo.username }}</div>
+                                <div>{{ inv.fecha_autorizo|date:"d/m/Y H:i" }}</div>
+                            {% else %}
+                                <div><strong class="text-gray-700">Iniciado por:</strong> {{ inv.usuario_creacion.username|default:"Operador" }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-5 py-4 text-right whitespace-nowrap">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <!-- Imprimir Planilla PDF -->
+                                <a href="{% url 'inventario_imprimir_planilla' inv.pk %}" target="_blank"
+                                    class="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Imprimir Planilla de Conteo Físico">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                    </svg>
+                                </a>
+
+                                {% if inv.estado == 'BORRADOR' %}
+                                    <!-- Editar / Continuar Conteo -->
+                                    <a href="{% url 'inventario_editar' inv.pk %}"
+                                        class="inline-flex items-center px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold transition-all">
+                                        Continuar Conteo
+                                    </a>
+                                {% elif inv.estado == 'PENDIENTE' %}
+                                    <!-- Botón Autorizar Modal -->
+                                    <button hx-get="{% url 'inventario_autorizar_modal' inv.pk %}" hx-target="#modal-container"
+                                        class="inline-flex items-center px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all">
+                                        Revisar / Autorizar
+                                    </button>
+                                {% else %}
+                                    <!-- Ver Detalle -->
+                                    <a href="{% url 'inventario_editar' inv.pk %}"
+                                        class="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" title="Ver Detalle">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-5 py-12 text-center text-gray-400">
+                            <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                            </svg>
+                            <p class="font-medium text-gray-600">No hay tomas de inventario registradas en esta sucursal.</p>
+                            <p class="text-xs text-gray-400 mt-1">Crea una nueva toma de inventario general o parcial para comenzar el recuento físico.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div id="modal-container"></div>
+{% endblock %}

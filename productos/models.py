@@ -466,19 +466,31 @@ class TomaInventario(AuditModel):
     Módulo general aplicable a todas las empresas del ERP (Armería, Distribución, etc.).
     """
     ESTADOS = [
-        ('BORRADOR', 'Borrador / En Proceso'),
-        ('CONFIRMADO', 'Confirmado'),
+        ('BORRADOR', 'Borrador / En Conteo'),
+        ('PENDIENTE', 'Pendiente de Autorización'),
         ('APLICADO', 'Aplicado al Stock'),
+        ('RECHAZADO', 'Rechazado'),
         ('ANULADO', 'Anulado')
+    ]
+    ALCANCES = [
+        ('GENERAL', 'Inventario General'),
+        ('PARCIAL', 'Inventario Parcial'),
     ]
     
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, verbose_name="Empresa")
     sucursal = models.ForeignKey(Sucursal, on_delete=models.CASCADE, related_name="inventarios", verbose_name="Sucursal")
     numero = models.IntegerField(default=1, verbose_name="N° de Inventario")
     fecha_toma = models.DateTimeField(verbose_name="Fecha y Hora de la Toma")
+    tipo_alcance = models.CharField(max_length=15, choices=ALCANCES, default='PARCIAL', verbose_name="Alcance")
+    filtros_aplicados = models.TextField(null=True, blank=True, verbose_name="Filtros aplicados")
     observaciones = models.TextField(null=True, blank=True, verbose_name="Observaciones")
     estado = models.CharField(max_length=15, choices=ESTADOS, default='BORRADOR', db_index=True, verbose_name="Estado")
     terminal = models.CharField(max_length=50, null=True, blank=True, verbose_name="Terminal / Estación")
+    
+    # Auditoría de autorización
+    usuario_autorizo = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="inventarios_autorizados", verbose_name="Usuario que autorizó")
+    fecha_autorizo = models.DateTimeField(null=True, blank=True, verbose_name="Fecha/Hora de Autorización")
+    motivo_rechazo = models.TextField(null=True, blank=True, verbose_name="Motivo de Rechazo / Devolución")
     
     class Meta:
         verbose_name = "Toma de Inventario"
@@ -498,9 +510,14 @@ class TomaInventarioItem(models.Model):
     """
     inventario = models.ForeignKey(TomaInventario, on_delete=models.CASCADE, related_name="items", verbose_name="Toma de Inventario")
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name="conteos_inventario", verbose_name="Producto")
-    cantidad_contada = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Cantidad Contada (Física)")
     stock_teorico = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Stock Teórico al momento")
+    cantidad_contada = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Cantidad Contada (Física)")
     diferencia = models.DecimalField(max_digits=15, decimal_places=2, default=0, verbose_name="Diferencia (Contada - Teórico)")
+    
+    # Auditoría y modificaciones
+    modificado_por_autorizador = models.BooleanField(default=False, verbose_name="Modificado por Autorizador")
+    cantidad_original_operador = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name="Cantidad Original Operador")
+    observaciones = models.CharField(max_length=255, null=True, blank=True, verbose_name="Observaciones")
     
     # Metadatos del conteo
     usuario_conteo = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Usuario que contó")
@@ -515,6 +532,12 @@ class TomaInventarioItem(models.Model):
             models.Index(fields=['inventario', 'producto']),
         ]
 
+    def save(self, *args, **kwargs):
+        # Calcular diferencia automáticamente
+        self.diferencia = (self.cantidad_contada or 0) - (self.stock_teorico or 0)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.producto.detalle} - Contado: {self.cantidad_contada}"
+
 

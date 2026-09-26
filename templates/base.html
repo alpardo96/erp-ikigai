@@ -209,6 +209,10 @@
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'producto_listado' %}text-indigo-500 font-bold{% endif %}">
                             Mantenimiento de Productos
                         </a>
+                        <a href="{% url 'inventario_listado' %}"
+                            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'inventario_listado' or request.resolver_match.url_name == 'inventario_nuevo' or request.resolver_match.url_name == 'inventario_editar' %}text-indigo-500 font-bold{% endif %}">
+                            Toma de Inventarios
+                        </a>
                         {% hook_menu 'stock' %}
                         {% if perms.usuarios.menu_stock_recepciones or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'recepcion_listado' %}"

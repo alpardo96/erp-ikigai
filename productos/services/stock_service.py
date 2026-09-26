@@ -107,6 +107,7 @@ def registrar_termino_stock(termino):
 def _terminos():
     """Se arma adentro de la función para no importar `facturacion` al cargar el módulo."""
     from facturacion.models import CompraItem, RecepcionItem, RemitoInternoItem, VentaItem
+    from productos.models import TomaInventarioItem
 
     base = [
         {
@@ -150,6 +151,17 @@ def _terminos():
             'sucursal': 'remito__sucursal_origen_id',
             'signo_cbte': None,
             'excluir': Q(remito__estado=3),             # 3 = Anulado
+        },
+        {
+            'nombre': 'ajustes_inventario',
+            'modelo': TomaInventarioItem,
+            'signo': 1,
+            'cantidad': 'diferencia',
+            'producto': 'producto_id',
+            'sucursal': 'inventario__sucursal_id',
+            'signo_cbte': None,
+            # Solo impacta si el inventario fue autorizado y aplicado al stock
+            'excluir': ~Q(inventario__estado='APLICADO'),
         },
     ]
 
@@ -389,3 +401,31 @@ def aplicar_movimiento_remito_interno(remito_item, es_borrado=False):
 
     if not es_borrado:
         remito_item._original_cantidad = cantidad
+
+
+@transaction.atomic
+def aplicar_inventario_al_stock(inventario, usuario_autorizo=None):
+    """
+    Aplica una Toma de Inventario autorizada al stock físico (Plan 095).
+    Cambia el estado a 'APLICADO', registra los movimientos de auditoría y recalcula
+    el stock disponible de todos los productos involucrados.
+    """
+    from django.utils import timezone
+    from decimal import Decimal
+
+    inventario.estado = 'APLICADO'
+    if usuario_autorizo:
+        inventario.usuario_autorizo = usuario_autorizo
+    inventario.fecha_autorizo = timezone.now()
+    inventario.save(update_fields=['estado', 'usuario_autorizo', 'fecha_autorizo'])
+
+    for item in inventario.items.select_related('producto').all():
+        dif = Decimal(str(item.diferencia or 0))
+        if dif != Decimal('0.00'):
+            tipo = 'ENTRADA' if dif > 0 else 'SALIDA'
+            detalle = f"Ajuste Inventario Nro: {inventario.numero:04d} ({inventario.get_tipo_alcance_display()}) - Contado: {item.cantidad_contada} / Teórico: {item.stock_teorico}"
+            _auditar(item.producto_id, inventario.sucursal_id, tipo, abs(dif), detalle)
+        
+        # Recalcular stock del producto en la sucursal del inventario
+        recalcular_stock(item.producto_id, inventario.sucursal_id)
+

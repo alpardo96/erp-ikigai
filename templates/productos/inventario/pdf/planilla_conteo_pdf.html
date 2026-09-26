@@ -1,0 +1,300 @@
+{% load formato_tags %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>
+        {% if inventario.estado == 'APLICADO' or inventario.estado == 'CONFIRMADO' %}
+            Informe de Ajustes de Inventario Nro. {{ inventario.numero|stringformat:"04d" }}
+        {% else %}
+            Planilla de Conteo Físico Nro. {{ inventario.numero|stringformat:"04d" }}
+        {% endif %}
+    </title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 0.8cm;
+            @frame footer {
+                -pdf-frame-content: footerContent;
+                bottom: 0.4cm;
+                margin-left: 0.8cm;
+                margin-right: 0.8cm;
+                height: 0.5cm;
+                text-align: right;
+            }
+        }
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 7pt;
+            color: #111827;
+            margin: 0;
+            padding: 0;
+            line-height: 1.1;
+        }
+        .header {
+            border-bottom: 1.5px solid {% if inventario.estado == 'APLICADO' or inventario.estado == 'CONFIRMADO' %}#059669{% else %}#2563eb{% endif %};
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 11pt;
+            color: #111827;
+            font-weight: bold;
+        }
+        .header h2 {
+            margin: 1px 0 0 0;
+            font-size: 9pt;
+            color: {% if inventario.estado == 'APLICADO' or inventario.estado == 'CONFIRMADO' %}#059669{% else %}#2563eb{% endif %};
+            font-weight: bold;
+        }
+        .doc-num {
+            font-size: 9.5pt;
+            font-weight: bold;
+            color: #111827;
+        }
+        .meta {
+            width: 100%;
+            margin-bottom: 6px;
+            border-collapse: collapse;
+        }
+        .meta td {
+            padding: 1px 2px;
+            font-size: 6.5pt;
+        }
+        .meta .lbl {
+            color: #6b7280;
+            font-size: 5.5pt;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        table.items-duplex {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.items-duplex th {
+            background-color: #1e293b;
+            color: white;
+            padding: 2.5px 3px;
+            font-size: 6.5pt;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        table.items-duplex td {
+            padding: 1.5px 3px;
+            border-bottom: 0.5px solid #e2e8f0;
+            font-size: 6.5pt;
+            vertical-align: middle;
+        }
+        .col-sep {
+            border-right: 1.5px solid #cbd5e1;
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .box-conteo {
+            border: 1px solid #0f172a;
+            background-color: #f8fafc;
+            width: 32px;
+            height: 11px;
+            margin: 0 auto;
+        }
+        .badge-cal {
+            font-weight: bold;
+            color: #b45309;
+            font-size: 6pt;
+        }
+        .badge-sobrante {
+            color: #059669;
+            font-weight: bold;
+        }
+        .badge-faltante {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        .badge-exacto {
+            color: #6b7280;
+        }
+        .signatures {
+            margin-top: 15px;
+            width: 100%;
+        }
+        .signature-box {
+            width: 45%;
+            text-align: center;
+            border-top: 0.8px solid #94a3b8;
+            padding-top: 2px;
+            font-size: 6.5pt;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div id="footerContent" style="font-size: 6pt; color: #64748b;">
+        {{ inventario.sucursal.nombre }} | Impreso el {{ fecha_impresion|date:"d/m/Y H:i" }} | Página <pdf:pagenumber> de <pdf:pagecount>
+    </div>
+
+    <!-- Cabecera Compacta -->
+    <div class="header">
+        <table style="width: 100%;">
+            <tr>
+                <td style="width: 65%;">
+                    <h1>{{ empresa.nombre|upper }}</h1>
+                    <h2>
+                        {% if inventario.estado == 'APLICADO' or inventario.estado == 'CONFIRMADO' %}
+                            INFORME DE RESULTADOS Y AJUSTES DE INVENTARIO FÍSICO
+                        {% else %}
+                            PLANILLA DE CONTEO FÍSICO DE INVENTARIO (BICOLUMNA)
+                        {% endif %}
+                    </h2>
+                </td>
+                <td style="width: 35%; text-align: right;">
+                    <span class="doc-num">Inventario #{{ inventario.numero|stringformat:"04d" }}</span><br>
+                    <span style="font-size: 6.5pt; color: #475569;">
+                        {{ inventario.get_tipo_alcance_display }} — <b>{{ inventario.get_estado_display }}</b> ({{ items.count }} ítems)
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Metadatos de la Toma -->
+    <table class="meta">
+        <tr>
+            <td style="width: 25%;"><span class="lbl">Sucursal:</span><br><b>{{ inventario.sucursal.nombre }}</b></td>
+            <td style="width: 25%;"><span class="lbl">Fecha de Apertura:</span><br>{{ inventario.fecha_toma|date:"d/m/Y H:i" }}</td>
+            <td style="width: 50%;"><span class="lbl">Filtros:</span><br>{{ inventario.filtros_aplicados|default:"Todos los productos" }}</td>
+        </tr>
+        {% if inventario.usuario_autorizo %}
+        <tr>
+            <td colspan="2"><span class="lbl">Autorizado por:</span><br><b>{{ inventario.usuario_autorizo.username }}</b> ({{ inventario.fecha_autorizo|date:"d/m/Y H:i" }})</td>
+            <td></td>
+        </tr>
+        {% endif %}
+    </table>
+
+    {% if inventario.estado != 'APLICADO' and inventario.estado != 'CONFIRMADO' %}
+        <!-- PLANILLA DE CONTEO FÍSICO (FORMATO BICOLUMNA ULTRA COMPACTO) -->
+        <table class="items-duplex">
+            <thead>
+                <tr>
+                    <!-- Columna 1 (Izquierda) -->
+                    <th style="width: 5%;">ID</th>
+                    <th style="width: 37%;">Descripción del Producto</th>
+                    <th style="width: 8%;" class="text-center col-sep">Conteo</th>
+                    
+                    <!-- Columna 2 (Derecha) -->
+                    <th style="width: 5%;">ID</th>
+                    <th style="width: 37%;">Descripción del Producto</th>
+                    <th style="width: 8%;" class="text-center">Conteo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for izq, der in items_pares %}
+                <tr>
+                    <!-- Ítem Izquierdo -->
+                    <td style="font-family: monospace; font-weight: bold;">#{{ izq.producto.id }}</td>
+                    <td>
+                        <b>{{ izq.producto.detalle }}</b>
+                        {% if izq.producto.unidad_venta and izq.producto.unidad_venta != 'UNIDAD' %}
+                            <span class="badge-cal">[Cal: {{ izq.producto.unidad_venta }}]</span>
+                        {% endif %}
+                        {% if izq.producto.marca %}
+                            <span style="color: #64748b; font-size: 6pt;">({{ izq.producto.marca.detalle }})</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center col-sep">
+                        <div class="box-conteo"></div>
+                    </td>
+
+                    <!-- Ítem Derecho -->
+                    {% if der %}
+                        <td style="font-family: monospace; font-weight: bold;">#{{ der.producto.id }}</td>
+                        <td>
+                            <b>{{ der.producto.detalle }}</b>
+                            {% if der.producto.unidad_venta and der.producto.unidad_venta != 'UNIDAD' %}
+                                <span class="badge-cal">[Cal: {{ der.producto.unidad_venta }}]</span>
+                            {% endif %}
+                            {% if der.producto.marca %}
+                                <span style="color: #64748b; font-size: 6pt;">({{ der.producto.marca.detalle }})</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="box-conteo"></div>
+                        </td>
+                    {% else %}
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center" style="padding: 10px; color: #94a3b8;">No hay ítems para inventariar.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <!-- INFORME DE AJUSTES Y RESULTADOS (CUANDO YA ESTÁ APLICADO) -->
+        <table class="items-duplex">
+            <thead>
+                <tr style="background-color: #064e3b;">
+                    <th style="width: 7%;">ID</th>
+                    <th style="width: 45%;">Descripción del Producto</th>
+                    <th style="width: 16%;">Rubro / Familia</th>
+                    <th style="width: 10%;" class="text-center">Sistema</th>
+                    <th style="width: 10%;" class="text-center">Recuento</th>
+                    <th style="width: 12%;" class="text-center">Ajuste</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for it in items %}
+                <tr>
+                    <td style="font-family: monospace; font-weight: bold;">#{{ it.producto.id }}</td>
+                    <td>
+                        <b>{{ it.producto.detalle }}</b>
+                        {% if it.producto.unidad_venta and it.producto.unidad_venta != 'UNIDAD' %}
+                            <span class="badge-cal">[Cal: {{ it.producto.unidad_venta }}]</span>
+                        {% endif %}
+                        {% if it.producto.marca %}
+                            <span style="color: #64748b; font-size: 6pt;">({{ it.producto.marca.detalle }})</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: #64748b; font-size: 6pt;">{{ it.producto.rubro.detalle|default:"-" }} / {{ it.producto.familia.detalle|default:"-" }}</td>
+                    <td class="text-center">{{ it.stock_teorico|formato_ar:2 }}</td>
+                    <td class="text-center font-bold">{{ it.cantidad_contada|formato_ar:2 }}</td>
+                    <td class="text-center">
+                        {% if it.diferencia > 0 %}
+                            <span class="badge-sobrante">+{{ it.diferencia|formato_ar:2 }}</span>
+                        {% elif it.diferencia < 0 %}
+                            <span class="badge-faltante">{{ it.diferencia|formato_ar:2 }}</span>
+                        {% else %}
+                            <span class="badge-exacto">0,00</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center" style="padding: 10px; color: #94a3b8;">No hay ítems registrados en este inventario.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <!-- Firmas al pie -->
+    <table class="signatures">
+        <tr>
+            <td class="signature-box" style="float: left;">
+                Firma y Aclaración<br>
+                <b>Responsable de Conteo</b>
+            </td>
+            <td style="width: 10%;"></td>
+            <td class="signature-box" style="float: right;">
+                Firma y Aclaración<br>
+                <b>Supervisor / Autorizador</b>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

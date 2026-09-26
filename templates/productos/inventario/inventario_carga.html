@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load static formato_tags %}
+
+{% block title %}
+    {% if inventario %}
+        Inventario #{{ inventario.numero|stringformat:"04d" }} | ERP Ikigai
+    {% else %}
+        Nueva Toma de Inventario | ERP Ikigai
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col pt-6 gap-6 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-12">
+
+    <!-- Header / Breadcrumbs -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                <a href="{% url 'inventario_listado' %}" class="hover:text-blue-600 transition-colors">Tomas de Inventario</a>
+                <span>/</span>
+                <span class="text-blue-600">
+                    {% if inventario %}Inventario N° {{ inventario.numero|stringformat:"04d" }}{% else %}Nueva Toma{% endif %}
+                </span>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 tracking-tight">
+                {% if inventario %}
+                    Inventario #{{ inventario.numero|stringformat:"04d" }}
+                    <span class="text-sm font-semibold ml-2 px-3 py-1 rounded-full align-middle {% if inventario.estado == 'BORRADOR' %}bg-amber-100 text-amber-800 border border-amber-200{% elif inventario.estado == 'PENDIENTE' %}bg-blue-100 text-blue-800 border border-blue-200{% elif inventario.estado == 'APLICADO' %}bg-emerald-100 text-emerald-800 border border-emerald-200{% endif %}">
+                        {{ inventario.get_estado_display }}
+                    </span>
+                {% else %}
+                    Nueva Toma de Inventario
+                {% endif %}
+            </h1>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'inventario_listado' %}"
+                class="inline-flex items-center px-3.5 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium text-sm shadow-sm">
+                ← Volver al Listado
+            </a>
+
+            {% if inventario %}
+                <!-- Imprimir Planilla -->
+                <a href="{% url 'inventario_imprimir_planilla' inventario.pk %}" target="_blank"
+                    class="inline-flex items-center px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-sm">
+                    <svg class="h-4 w-4 mr-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Imprimir Planilla PDF
+                </a>
+
+                {% if inventario.estado == 'BORRADOR' %}
+                    <!-- Cerrar y Enviar a Autorización -->
+                    <a href="{% url 'inventario_enviar_autorizacion' inventario.pk %}"
+                        onclick="return confirm('¿Está seguro de cerrar el conteo y enviar a Autorización? Ya no podrá editar cantidades como operador.')"
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-semibold text-sm shadow-sm shadow-blue-200">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Cerrar y Enviar a Autorización
+                    </a>
+                {% elif inventario.estado == 'PENDIENTE' %}
+                    <!-- Botón Autorizar -->
+                    <button hx-get="{% url 'inventario_autorizar_modal' inventario.pk %}" hx-target="#modal-container"
+                        class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-semibold text-sm shadow-sm shadow-emerald-200">
+                        Revisar y Autorizar
+                    </button>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not inventario %}
+        <!-- Formulario Inicial para Iniciar Inventario (Filtros y Alcance) -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
+            <h2 class="text-lg font-bold text-gray-900 mb-1">Configuración del Inventario Físico</h2>
+            <p class="text-xs text-gray-500 mb-6">Seleccione los criterios para generar la planilla o elija "Inventario Parcial" para filtrar por categorías específicas o hacer un ajuste puntual.</p>
+
+            <form method="POST" action="{% url 'inventario_iniciar' %}" class="space-y-6">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">{{ filtro_form.tipo_alcance.label }}</label>
+                        {{ filtro_form.tipo_alcance }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Rubro</label>
+                        {{ filtro_form.rubro }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Familia</label>
+                        {{ filtro_form.familia }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Subfamilia</label>
+                        {{ filtro_form.subfamilia }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Marca</label>
+                        {{ filtro_form.marca }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Proveedor Habitual</label>
+                        {{ filtro_form.proveedor }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Buscar por Código / Nombre (Opcional)</label>
+                        {{ filtro_form.buscar_texto }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observaciones</label>
+                        {{ filtro_form.observaciones }}
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+                    <a href="{% url 'inventario_listado' %}" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 font-medium">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="inline-flex items-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition-all">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        Generar Planilla e Iniciar Conteo
+                    </button>
+                </div>
+            </form>
+        </div>
+    {% else %}
+        <!-- Resumen de Datos de Cabecera del Inventario Activo -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4 text-xs">
+            <div class="flex items-center gap-6">
+                <div>
+                    <span class="text-gray-400 font-medium block">Fecha y Hora</span>
+                    <span class="font-bold text-gray-800">{{ inventario.fecha_toma|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-400 font-medium block">Sucursal</span>
+                    <span class="font-bold text-gray-800">{{ inventario.sucursal.nombre }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-400 font-medium block">Alcance</span>
+                    <span class="font-bold text-gray-800">{{ inventario.get_tipo_alcance_display }}</span>
+                </div>
+                <div>
+                    <span class="text-gray-400 font-medium block">Filtros aplicados</span>
+                    <span class="text-gray-600 italic">{{ inventario.filtros_aplicados|default:"Ninguno" }}</span>
+                </div>
+            </div>
+
+            {% if inventario.motivo_rechazo %}
+                <div class="w-full p-3 bg-red-50 border border-red-200 rounded-xl text-red-800">
+                    <strong class="font-bold">Observación de Devolución / Rechazo:</strong> {{ inventario.motivo_rechazo }}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Grilla de Ítems del Inventario -->
+        <div id="grilla-inventario-container">
+            {% include 'productos/inventario/partials/grilla_items.html' with items=items inventario=inventario %}
+        </div>
+    {% endif %}
+
+</div>
+<div id="modal-container"></div>
+{% endblock %}

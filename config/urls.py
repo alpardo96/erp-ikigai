@@ -38,6 +38,13 @@ from facturacion.views_remito_interno import (
 )
 
 from productos.views import StockDashboardView, ProductoListView
+from productos.views_inventario import (
+    InventarioListView, InventarioCargaView, inventario_iniciar_o_generar,
+    inventario_item_agregar_rapido, inventario_item_actualizar_cantidad,
+    inventario_item_eliminar, inventario_enviar_autorizacion,
+    inventario_autorizar_modal, inventario_autorizar_procesar,
+    inventario_rechazar_procesar, inventario_anular, inventario_imprimir_planilla
+)
 from facturacion.views_htmx import (
     jurisdiccion_modal, buscar_jurisdicciones, eliminar_jurisdiccion,
     cliente_modal, buscar_clientes, eliminar_cliente, buscar_cuentas_facturacion, buscador_cuentas_modal,
@@ -133,8 +140,21 @@ urlpatterns = [
     path('clientes/', ClientesProveedoresIndexView.as_view(), name='clientes_index'),
     path('stock/', StockDashboardView.as_view(), name='stock_index'),
     path('stock/productos/', ProductoListView.as_view(), name='producto_listado'),
-    path('stock/', StockDashboardView.as_view(), name='stock_index'),
-    path('stock/productos/', ProductoListView.as_view(), name='producto_listado'),
+
+    # ── TOMA DE INVENTARIOS DE MERCADERÍAS (Plan 095) ─────────────
+    path('stock/inventarios/', InventarioListView.as_view(), name='inventario_listado'),
+    path('stock/inventarios/nuevo/', InventarioCargaView.as_view(), name='inventario_nuevo'),
+    path('stock/inventarios/<int:pk>/editar/', InventarioCargaView.as_view(), name='inventario_editar'),
+    path('stock/inventarios/iniciar/', inventario_iniciar_o_generar, name='inventario_iniciar'),
+    path('stock/inventarios/<int:pk>/agregar-item/', inventario_item_agregar_rapido, name='inventario_item_agregar'),
+    path('stock/inventarios/item/<int:item_id>/actualizar/', inventario_item_actualizar_cantidad, name='inventario_item_actualizar'),
+    path('stock/inventarios/item/<int:item_id>/eliminar/', inventario_item_eliminar, name='inventario_item_eliminar'),
+    path('stock/inventarios/<int:pk>/enviar-autorizacion/', inventario_enviar_autorizacion, name='inventario_enviar_autorizacion'),
+    path('stock/inventarios/<int:pk>/autorizar/modal/', inventario_autorizar_modal, name='inventario_autorizar_modal'),
+    path('stock/inventarios/<int:pk>/autorizar/procesar/', inventario_autorizar_procesar, name='inventario_autorizar_procesar'),
+    path('stock/inventarios/<int:pk>/rechazar/procesar/', inventario_rechazar_procesar, name='inventario_rechazar_procesar'),
+    path('stock/inventarios/<int:pk>/anular/', inventario_anular, name='inventario_anular'),
+    path('stock/inventarios/<int:pk>/imprimir/', inventario_imprimir_planilla, name='inventario_imprimir_planilla'),
 
 
     # ── COMPRAS ──────────────────────────────────────────────────

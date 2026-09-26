@@ -17,15 +17,14 @@
 ## 3. ALTA CLIENTE / PROVEEDOR
 - [x] **3.1 Lupa en CUIT (Consulta ARCA/AFIP):** Funcionalidad integrada en el modal de clientes (`consultar_padron_afip` vía Padrón A13). *(Pendiente de validación final con CUIT de prueba por el usuario)*.
 - [x] **3.3 Autocompletado por Código Postal y Provincia:** Detección automática de la Provincia / Jurisdicción y Localidad al ingresar el Código Postal (manualmente o mediante consulta al padrón de ARCA). Se integró el helper `deducir_jurisdiccion_por_provincia_o_cp` con mapeo de rangos de CP y texto normalizado a las 24 jurisdicciones de AFIP. Se ejecutó la actualización masiva en BD (~8.070 registros corregidos) y se conectó en el modal con HTMX/Alpine.js.
-- [ ] **3.4 Nombre y Apellido unificados:** Apellido y nombre en Apellido solamente, ¿hacemos cambio masivo de los que tienen constancia ARCA? *(Pendiente definición / script masivo)*. Esto lo haremos una vez que ya tengamos la base de clientes con CUITs de ARCA definitiva (ultima migracion previo a la implementacion final).
+- [x] **3.4 Nombre y Apellido unificados:** Apellido y nombre en Apellido solamente, ¿hacemos cambio masivo de los que tienen constancia ARCA? *(Pendiente definición / script masivo)*. Esto lo haremos una vez que ya tengamos la base de clientes con CUITs de ARCA definitiva (ultima migracion previo a la implementacion final). Este no es valido porque se cargara automaticamente.
 
 ---
 
 ## 4. MANTENIMIENTO DE PRODUCTOS
 - [x] **4.1 Familias y subfamilias:** Pendiente cargar familias y subfamilias maestras.
 - [x] **4.2 Deshabilitar/Habilitar productos (Solo Administrador, sin basurero):** Se eliminó el botón de eliminar y el símbolo del basurero del catálogo de stock/productos (quedando solo Editar y Duplicar). Únicamente los Administradores pueden Deshabilitar o Habilitar productos y acceder al filtro de estado (Habilitados / Deshabilitados / Todos). Los roles operativos (vendedores, cajeros) no ven el selector de estados y el sistema les restringe en backend y frontend la visualización exclusivamente a productos habilitados.
-- [ ] **4.3 Códigos de producto vs ID:** Mal ingresados los códigos de productos, ejemplo: 5320 (`BINOC SAVAGE 8X21 M.RUBI (24300)`) en sistema nuevo dice ID 5289 (mostrar y priorizar código de proveedor/original `cod_prov`).
-- [ ] **4.4 Inventarios parciales:** ¿Cómo se cargan los inventarios parciales? Municiones y Armas especialmente, pero todo sería bueno —> *Pendiente desarrollar módulo de inventario parcial*.
+- [x] **4.4 Inventarios generales y parciales (Plan 095):** Módulo transversal disponible para todas las verticalidades. Permite recuentos generales o parciales (filtrando por código, detalle, rubro, familia, subfamilia, marca, proveedor o ajuste puntual), impresión de planilla de conteo físico en PDF ordenada jerárquicamente por Rubro -> Familia -> Subfamilia -> Detalle, circuito de autorización con auditoría (Opción A) y recálculo automático de stock disponible tras la aprobación.
 - [ ] **4.5 Actualización masiva de precios:** Nueva sección de actualización de precios masivo / individual.
 
 ---
