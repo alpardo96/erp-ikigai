@@ -13,7 +13,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 
-from core.utils import get_empresa_activa
+from empresas.models import Empresa
 from contable.models import Cuenta, ParametrosContables
 from productos.models import Producto
 from facturacion.models import ClienteProveedor
@@ -29,7 +29,7 @@ def mapeos_config_view(request):
     Vista de configuración y administración de mapeos para la verticalidad Granos.
     Permite parametrizar el nomenclador de cultivos ARCA y los patrones de gastos.
     """
-    empresa = get_empresa_activa(request)
+    empresa = Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
     if not empresa:
         messages.error(request, "No hay una empresa activa seleccionada.")
         return redirect('dashboard')
@@ -169,7 +169,7 @@ def importar_lpg_view(request):
     Vista del importador de Liquidaciones Primarias de Granos (LPG).
     Gestiona el formulario Drag & Drop y endpoints AJAX para previsualización y confirmación.
     """
-    empresa = get_empresa_activa(request)
+    empresa = Empresa.objects.filter(pk=request.session.get('empresa_id')).first()
     if not empresa:
         messages.error(request, "No hay una empresa activa seleccionada.")
         return redirect('dashboard')

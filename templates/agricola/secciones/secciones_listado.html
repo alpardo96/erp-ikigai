@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Secciones y Lotes Productivos | Módulo Agrícola{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full px-4 py-4 space-y-6">
+
+    <!-- Encabezado -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 text-xs font-black bg-indigo-100 text-indigo-800 rounded-lg uppercase tracking-wider">Estructura de Campo</span>
+                <span class="text-xs text-slate-400 font-bold">• Módulo Agrícola</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-1">Secciones y Lotes Productivos</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Subdivisión de fincas en cuadros, superficies cultivables y aptitud de cultivo.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button hx-get="{% url 'agro_seccion_add' %}{% if finca_seleccionada %}?finca={{ finca_seleccionada }}{% endif %}"
+                    hx-target="#modal-container"
+                    class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-2.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                + Nuevo Lote / Sección
+            </button>
+            <a href="{% url 'agro_fincas_listado' %}" class="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-2xl transition-colors" title="Ver Fincas">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtro por Finca y Métricas -->
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+        <!-- Selector de Finca -->
+        <form method="get" class="flex items-center gap-2 w-full sm:w-auto">
+            <label class="text-xs font-black uppercase text-slate-500">Filtrar por Finca:</label>
+            <select name="finca" onchange="this.form.submit()" class="bg-white text-xs font-bold text-slate-800 border-slate-300 rounded-xl px-3 py-1.5 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
+                <option value="">-- Todas las Fincas --</option>
+                {% for f in fincas %}
+                <option value="{{ f.id }}" {% if finca_seleccionada == f.id %}selected{% endif %}>
+                    {{ f.codigo }} - {{ f.nombre }} ({{ f.superficie_total_ha|formato_ar }} Ha)
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <div class="flex items-center gap-6 text-xs font-bold text-slate-700">
+            <div>Total Lotes: <span class="text-indigo-600 font-black text-sm">{{ total_secciones }}</span></div>
+            <div>Superficie Loteada: <span class="text-indigo-600 font-black text-sm">{{ total_ha|formato_ar }} Ha</span></div>
+        </div>
+    </div>
+
+    <!-- Grilla de Lotes -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-700">
+                <thead class="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <tr>
+                        <th class="px-6 py-4">Finca</th>
+                        <th class="px-6 py-4">Código Lote</th>
+                        <th class="px-6 py-4">Identificación / Cuadro</th>
+                        <th class="px-6 py-4">Aptitud / Cultivo</th>
+                        <th class="px-6 py-4 text-right">Superficie (Ha)</th>
+                        <th class="px-6 py-4 text-center">Estado</th>
+                        <th class="px-6 py-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    {% for sec in secciones %}
+                    <tr class="hover:bg-slate-50/80 transition-colors group">
+                        <td class="px-6 py-4 font-bold text-slate-900">
+                            <span class="text-xs text-slate-500 font-mono">{{ sec.finca.codigo }}</span>
+                            <span class="ml-1">{{ sec.finca.nombre }}</span>
+                        </td>
+                        <td class="px-6 py-4 font-black text-indigo-700 font-mono text-xs">
+                            {{ sec.codigo }}
+                        </td>
+                        <td class="px-6 py-4 font-bold text-slate-900">
+                            {{ sec.nombre }}
+                            {% if sec.observaciones %}
+                            <p class="text-xs text-slate-400 font-normal truncate max-w-xs">{{ sec.observaciones }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold
+                                {% if sec.aptitud_principal == 'TABACO' %}bg-lime-50 text-lime-700 border border-lime-200
+                                {% elif sec.aptitud_principal == 'SOJA' or sec.aptitud_principal == 'MAIZ' or sec.aptitud_principal == 'TRIGO' %}bg-amber-50 text-amber-700 border border-amber-200
+                                {% elif sec.aptitud_principal == 'CANA' %}bg-emerald-50 text-emerald-700 border border-emerald-200
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ sec.get_aptitud_principal_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right font-black text-slate-900">
+                            {{ sec.superficie_ha|formato_ar }} <span class="text-xs text-slate-400 font-normal">Ha</span>
+                            {% if sec.metros_lineales_surco > 0 %}
+                            <p class="text-[11px] font-semibold text-emerald-700 font-mono mt-0.5">{{ sec.metros_lineales_surco|formato_ar }} m surco</p>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4 text-center">
+                            {% if sec.activa %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-100 text-green-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Activo
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Inactivo
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button hx-get="{% url 'agro_seccion_edit' sec.id %}"
+                                    hx-target="#modal-container"
+                                    class="inline-flex items-center px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                                    title="Editar Sección">
+                                ✏️ Editar
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-400 italic">
+                            No hay lotes o secciones registradas. Haz clic en <strong>+ Nuevo Lote / Sección</strong> para agregar uno.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

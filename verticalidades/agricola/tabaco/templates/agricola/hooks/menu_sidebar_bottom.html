@@ -1,20 +1,16 @@
 {% comment %}
-Entrada de menú del Acopio de Tabaco (Plan 082).
-
-Se inyecta por el hook `sidebar_bottom` de `base.html` en lugar de escribir el enlace ahí: el
-templatetag `hook_menu` sólo renderiza este archivo si la carpeta de la verticalidad existe, así
-que al desenchufarla el menú se acomoda solo y `base.html` nunca ve un `{% url 'agro_...' %}`
-que no resuelve.
+Menú Principal de la Verticalidad Agrícola.
+Inyectado dinámicamente mediante {% hook_menu 'sidebar_bottom' %} en base.html.
 {% endcomment %}
-{% if empresa_actual.agricola_vertical.hace_tabaco %}
-<div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/agro/') || ['agro_config','agro_variedades','agro_clases','agro_listas_precio','agro_retenciones','agro_procesos'].some(t => window.location.search.includes(t)) }">
+{% if empresa_actual.tipo_actividad == 'AGRICOLA' or empresa_actual.agricola_vertical %}
+<div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/agro/') || window.location.pathname.startsWith('/granos/') || ['agro_config','agro_variedades','agro_clases','agro_listas_precio','agro_retenciones','agro_procesos'].some(t => window.location.search.includes(t)) }">
     <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
-        <a href="{% url 'agro_index' %}" class="flex items-center flex-1 {% if request.resolver_match.url_name == 'agro_index' %}text-lime-400 font-bold{% endif %}">
-            <svg class="w-5 h-5 mr-3 {% if request.resolver_match.url_name == 'agro_index' %}text-lime-400{% else %}text-gray-400{% endif %} group-hover:text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <a href="{% url 'agro_index' %}" class="flex items-center flex-1 {% if request.resolver_match.url_name == 'agro_index' %}text-emerald-400 font-bold{% endif %}">
+            <svg class="w-5 h-5 mr-3 {% if request.resolver_match.url_name == 'agro_index' %}text-emerald-400{% else %}text-emerald-500{% endif %} group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M12 3v18m0 0c-4 0-7-3-7-7 0-2 1-4 3-5m4 12c4 0 7-3 7-7 0-2-1-4-3-5"></path>
             </svg>
-            Acopio de Tabaco
+            Módulo Agrícola
         </a>
         <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
             <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -24,87 +20,60 @@ que no resuelve.
     </div>
 
     <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
-        <p class="py-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Recepción</p>
+        <!-- Panel General -->
+        <a href="{% url 'agro_index' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_index' %}text-emerald-400 font-bold{% endif %}">
+            📊 Panel Central
+        </a>
+
+        <!-- Estructura de Campo -->
+        <p class="pt-2 pb-1 text-[10px] uppercase tracking-widest text-gray-500 font-black">Estructura de Campo</p>
+        <a href="{% url 'agro_fincas_listado' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_fincas_listado' %}text-emerald-400 font-bold{% endif %}">
+            🚜 Fincas y Campos
+        </a>
+        <a href="{% url 'agro_secciones_listado' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_secciones_listado' %}text-emerald-400 font-bold{% endif %}">
+            📍 Secciones y Lotes
+        </a>
+
+        <!-- Tabaco -->
+        {% if empresa_actual.agricola_vertical.hace_tabaco %}
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-lime-500/80 font-black">Acopio de Tabaco</p>
         <a href="{% url 'agro_romaneo_listado' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_listado' or request.resolver_match.url_name == 'agro_romaneo_detalle' or request.resolver_match.url_name == 'agro_romaneo_carga' %}text-lime-400 font-bold{% endif %}">
             Romaneos
         </a>
-        <a href="{% url 'agro_romaneo_nuevo' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_romaneo_nuevo' %}text-lime-400 font-bold{% endif %}">
-            Nuevo Romaneo
-        </a>
-
-        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Liquidación y Pago</p>
         <a href="{% url 'agro_liquidacion_listado' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_liquidacion_listado' or request.resolver_match.url_name == 'agro_liquidacion_detalle' %}text-lime-400 font-bold{% endif %}">
             Liquidaciones
-        </a>
-        <a href="{% url 'agro_liquidacion_nueva' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_liquidacion_nueva' %}text-lime-400 font-bold{% endif %}">
-            Nueva Liquidación
         </a>
         <a href="{% url 'agro_pago_listado' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_pago_listado' or request.resolver_match.url_name == 'agro_pago_detalle' %}text-lime-400 font-bold{% endif %}">
             Pagos a Productores
         </a>
-        <a href="{% url 'agro_pago_nuevo' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_pago_nuevo' %}text-lime-400 font-bold{% endif %}">
-            Nuevo Pago
-        </a>
-
-        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Lotes y Margen</p>
         <a href="{% url 'agro_lote_listado' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_lote_listado' or request.resolver_match.url_name == 'agro_lote_detalle' %}text-lime-400 font-bold{% endif %}">
             Lotes de Acopio
         </a>
-        <a href="{% url 'agro_lote_nuevo' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_lote_nuevo' %}text-lime-400 font-bold{% endif %}">
-            Nuevo Lote
-        </a>
-        <a href="{% url 'agro_margen' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_margen' or request.resolver_match.url_name == 'agro_margen_lote' %}text-lime-400 font-bold{% endif %}">
-            Margen del Acopio
-        </a>
-
-        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Reportes y Auditoría</p>
         <a href="{% url 'agro_reportes' %}"
            class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_reportes' or 'agro_reporte_' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
-            Reportes Oficiales
+            Reportes FET / Oficiales
         </a>
-        <a href="{% url 'agro_stock_conciliacion' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_stock_conciliacion' %}text-lime-400 font-bold{% endif %}">
-            Conciliación de Stock
-        </a>
-    </div>
-</div>
-{% endif %}
+        {% endif %}
 
-{% if empresa_actual.agricola_vertical.hace_granos %}
-<div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/granos/') }">
-    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
-        <a href="{% url 'agricola_granos_importar_lpg' %}" class="flex items-center flex-1 {% if request.resolver_match.url_name == 'agricola_granos_importar_lpg' %}text-emerald-400 font-bold{% endif %}">
-            <svg class="w-5 h-5 mr-3 {% if request.resolver_match.url_name == 'agricola_granos_importar_lpg' %}text-emerald-400{% else %}text-gray-400{% endif %} group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            Granos (LPG)
-        </a>
-        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
-            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-        </button>
-    </div>
-
-    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
-        <p class="py-1 text-[10px] uppercase tracking-widest text-gray-600 font-bold">Liquidaciones</p>
+        <!-- Granos -->
+        {% if empresa_actual.agricola_vertical.hace_granos %}
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-amber-500/80 font-black">Granos y Cereales</p>
         <a href="{% url 'agricola_granos_importar_lpg' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agricola_granos_importar_lpg' %}text-emerald-400 font-bold{% endif %}">
-            Importar Liquidaciones PDF
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agricola_granos_importar_lpg' %}text-amber-400 font-bold{% endif %}">
+            Importador LPG (PDF)
         </a>
         <a href="{% url 'agricola_granos_mapeos' %}"
-           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agricola_granos_mapeos' %}text-emerald-400 font-bold{% endif %}">
-            Configuración de Mapeos
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agricola_granos_mapeos' %}text-amber-400 font-bold{% endif %}">
+            Mapeos Cultivos / Gastos
         </a>
+        {% endif %}
     </div>
 </div>
 {% endif %}

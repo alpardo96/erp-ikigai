@@ -1,0 +1,87 @@
+<div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <!-- Fondo oscuro translúcido -->
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm transition-opacity" onclick="cerrarModalResultadoCuentas()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
+            <!-- Encabezado del Modal -->
+            <div class="bg-gradient-to-r from-emerald-900 via-slate-900 to-indigo-950 px-6 py-5 flex items-center justify-between text-white">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-emerald-500/20 rounded-2xl border border-emerald-400/30">
+                        <svg class="w-6 h-6 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Resultado de la Captura</h3>
+                        <p class="text-xs text-emerald-200">Plan de Cuentas procesado con éxito</p>
+                    </div>
+                </div>
+                <button type="button" onclick="cerrarModalResultadoCuentas()" class="text-gray-400 hover:text-white transition-colors p-1 rounded-xl hover:bg-white/10">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Cuerpo del Resultado -->
+            <div class="p-6 space-y-4">
+                
+                <!-- Indicadores de Éxito -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center">
+                        <div class="text-3xl font-black text-indigo-700">{{ resultado.actualizados|default:0 }}</div>
+                        <div class="text-xs font-bold text-indigo-950 mt-1">Cuentas Actualizadas</div>
+                        <div class="text-[10px] text-indigo-600">por ID preexistente</div>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
+                        <div class="text-3xl font-black text-emerald-700">{{ resultado.creados|default:0 }}</div>
+                        <div class="text-xs font-bold text-emerald-950 mt-1">Nuevas Cuentas</div>
+                        <div class="text-[10px] text-emerald-600">creadas en el sistema</div>
+                    </div>
+                </div>
+
+                <!-- Errores u Observaciones si las hay -->
+                {% if resultado.errores %}
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Observaciones / Filas Omitidas ({{ resultado.errores|length }})
+                    </h4>
+                    <div class="max-h-36 overflow-y-auto space-y-1">
+                        {% for err in resultado.errores %}
+                        <p class="text-xs text-amber-800 font-mono bg-white/70 p-1.5 rounded-lg border border-amber-100">{{ err }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 text-center flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <p class="text-xs text-emerald-900 font-semibold">¡Todas las cuentas fueron procesadas correctamente sin observaciones!</p>
+                </div>
+                {% endif %}
+
+            </div>
+
+            <!-- Pie del Modal -->
+            <div class="bg-gray-50 px-6 py-4 border-t border-gray-100 flex justify-end">
+                <button type="button" onclick="cerrarModalResultadoCuentas()" class="px-6 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-bold text-sm shadow-md shadow-emerald-200">
+                    Aceptar y Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function cerrarModalResultadoCuentas() {
+        const container = document.getElementById('modal-container');
+        if (container) container.innerHTML = '';
+    }
+</script>

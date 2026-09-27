@@ -1,0 +1,94 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto"
+     x-data="{ esPropia: {% if form.es_propia.value %}true{% else %}false{% endif %} }">
+    <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all my-8"
+         @click.outside="document.getElementById('modal-container').innerHTML = ''">
+
+        <!-- Cabecera -->
+        <div class="px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex justify-between items-center">
+            <div>
+                <span class="text-[10px] font-black uppercase tracking-widest text-emerald-200">Estructura de Campo</span>
+                <h3 class="text-lg font-black tracking-tight">
+                    {% if finca %}Editar Finca: {{ finca.codigo }}{% else %}Nueva Finca / Establecimiento{% endif %}
+                </h3>
+            </div>
+            <button type="button" onclick="document.getElementById('modal-container').innerHTML = ''" class="text-white/70 hover:text-white transition-colors p-1 rounded-full">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Formulario -->
+        <form hx-post="{% if finca %}{% url 'agro_finca_edit' finca.id %}{% else %}{% url 'agro_finca_add' %}{% endif %}"
+              hx-target="#modal-container"
+              class="p-6 space-y-4">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-bold">
+                Por favor revise los errores señalados en el formulario.
+            </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Código *</label>
+                    {{ form.codigo }}
+                    {% if form.codigo.errors %}<p class="text-red-500 text-[10px] mt-0.5">{{ form.codigo.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nombre / Identificación *</label>
+                    {{ form.nombre }}
+                    {% if form.nombre.errors %}<p class="text-red-500 text-[10px] mt-0.5">{{ form.nombre.errors.0 }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Localidad</label>
+                    {{ form.localidad }}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Provincia</label>
+                    {{ form.provincia }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Superficie Total (Ha)</label>
+                    {{ form.superficie_total_ha }}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">Régimen de Tenencia</label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer mt-1">
+                        <input type="checkbox" name="es_propia" id="id_es_propia" x-model="esPropia" class="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded">
+                        <span class="text-xs font-bold text-slate-800" x-text="esPropia ? 'Campo Propio' : 'Campo Arrendado'"></span>
+                    </label>
+                </div>
+                <div class="sm:col-span-2" x-show="!esPropia" x-cloak>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Titular / Arrendador</label>
+                    {{ form.arrendatario_titular }}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Observaciones</label>
+                {{ form.observaciones }}
+            </div>
+
+            <div class="flex items-center gap-2">
+                {{ form.activa }}
+                <label for="id_activa" class="text-xs font-bold text-slate-800 cursor-pointer">Finca Activa y Operativa</label>
+            </div>
+
+            <!-- Botones -->
+            <div class="pt-4 border-t border-slate-100 flex justify-end items-center gap-3">
+                <button type="button" onclick="document.getElementById('modal-container').innerHTML = ''" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/20 transition-all">
+                    Guardar Finca
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

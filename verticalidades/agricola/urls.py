@@ -16,7 +16,7 @@ from django.urls import include, path
 
 urlpatterns = []
 
-for _subapp in ('tabaco', 'granos'):
+for _subapp in ('core_agricola', 'tabaco', 'granos'):
     try:
         urlpatterns.append(path('', include(f'verticalidades.agricola.{_subapp}.urls')))
     except ModuleNotFoundError:

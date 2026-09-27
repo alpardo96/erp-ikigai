@@ -1043,7 +1043,8 @@ def capturar_cuentas_excel(request):
 
     resultado = procesar_captura_excel_cuentas(empresa, request.user, archivo)
 
-    response = render(request, 'contable/modals/capturar_excel_modal.html', {
+    # Renderiza el modal de resultados con el resumen de cuentas procesadas
+    response = render(request, 'contable/modals/capturar_resultado_modal.html', {
         'resultado': resultado
     })
     

@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Cultivos y Variedades | Módulo Agrícola{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full px-4 py-4 space-y-6">
+
+    <!-- Encabezado -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 text-xs font-black bg-emerald-100 text-emerald-800 rounded-lg uppercase tracking-wider">Parámetros Agrícolas</span>
+                <span class="text-xs text-slate-400 font-bold">• Módulo Agrícola</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-1">Cultivos y Variedades</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Catálogo de especies, ciclos productivos y vinculación con productos comerciales de stock.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button hx-get="{% url 'agro_cultivo_add' %}"
+                    hx-target="#modal-container"
+                    class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-5 py-2.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/20 transition-all transform hover:-translate-y-0.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                + Nuevo Cultivo
+            </button>
+            <a href="{% url 'agro_index' %}" class="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-2xl transition-colors" title="Volver al Panel Agrícola">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Métricas -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v18m0 0c-4 0-7-3-7-7 0-2 1-4 3-5m4 12c4 0 7-3 7-7 0-2-1-4-3-5"></path></svg>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Cultivos Registrados</p>
+                <p class="text-2xl font-black text-slate-800">{{ total_cultivos }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="p-3.5 bg-blue-50 text-blue-600 rounded-2xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Vinculados a Stock</p>
+                <p class="text-2xl font-black text-slate-800">{{ cultivos|length }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="p-3.5 bg-purple-50 text-purple-600 rounded-2xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Tipos de Producción</p>
+                <p class="text-2xl font-black text-slate-800">Granos, Tabaco, Caña</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Cultivos -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600">
+                <thead class="bg-slate-50 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                    <tr>
+                        <th class="px-6 py-4">Color / Código</th>
+                        <th class="px-6 py-4">Nombre del Cultivo</th>
+                        <th class="px-6 py-4">Tipo / Categoría</th>
+                        <th class="px-6 py-4">Ciclo Estimado</th>
+                        <th class="px-6 py-4">Producto en Stock (Venta/Cosecha)</th>
+                        <th class="px-6 py-4 text-center">Estado</th>
+                        <th class="px-6 py-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    {% for c in cultivos %}
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="px-6 py-4 font-black text-slate-900">
+                            <div class="flex items-center gap-3">
+                                <span class="w-3.5 h-3.5 rounded-full shadow-sm flex-shrink-0" style="background-color: {{ c.color_identificador|default:'#10b981' }};"></span>
+                                <span class="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-xs">{{ c.codigo }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <p class="font-bold text-slate-800">{{ c.nombre }}</p>
+                            {% if c.observaciones %}
+                            <p class="text-xs text-slate-400">{{ c.observaciones|truncatechars:50 }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold
+                                {% if c.tipo == 'GRANO' %}bg-amber-100 text-amber-800
+                                {% elif c.tipo == 'TABACO' %}bg-lime-100 text-lime-800
+                                {% elif c.tipo == 'CANA' %}bg-emerald-100 text-emerald-800
+                                {% elif c.tipo == 'LEGUMBRE' %}bg-orange-100 text-orange-800
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ c.get_tipo_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="font-bold text-slate-700">{{ c.ciclo_estimado_dias }}</span> <span class="text-xs text-slate-400">días</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if c.producto_cosecha %}
+                            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                                📦 {{ c.producto_cosecha.detalle }}
+                            </span>
+                            {% else %}
+                            <span class="text-xs text-slate-400 italic">No asignado</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if c.activo %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">Activo</span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <button hx-get="{% url 'agro_cultivo_edit' c.id %}"
+                                        hx-target="#modal-container"
+                                        class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                                        title="Editar Cultivo">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <form method="post" action="{% url 'agro_cultivo_del' c.id %}" onsubmit="return confirm('¿Seguro que deseas eliminar este cultivo?');" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Eliminar Cultivo">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-400">
+                            <svg class="w-12 h-12 mx-auto text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3v18m0 0c-4 0-7-3-7-7 0-2 1-4 3-5m4 12c4 0 7-3 7-7 0-2-1-4-3-5"></path></svg>
+                            <p class="text-sm font-bold text-slate-600">No hay cultivos registrados todavía</p>
+                            <p class="text-xs text-slate-400 mt-1">Presioná "+ Nuevo Cultivo" para agregar especies (Soja, Maíz, Tabaco, Caña, etc.).</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Container para HTMX -->
+<div id="modal-container"></div>
+{% endblock %}

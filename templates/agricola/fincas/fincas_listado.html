@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load formato_tags %}
+
+{% block title %}Fincas y Establecimientos | Módulo Agrícola{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto w-full px-4 py-4 space-y-6">
+
+    <!-- Encabezado -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 text-xs font-black bg-emerald-100 text-emerald-800 rounded-lg uppercase tracking-wider">Estructura de Campo</span>
+                <span class="text-xs text-slate-400 font-bold">• Módulo Agrícola</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-1">Fincas y Establecimientos</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Administración de campos propios y arrendados, superficies y asignación de lotes.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button hx-get="{% url 'agro_finca_add' %}"
+                    hx-target="#modal-container"
+                    class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-5 py-2.5 rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/20 transition-all transform hover:-translate-y-0.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                + Nueva Finca
+            </button>
+            <a href="{% url 'agro_index' %}" class="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-2xl transition-colors" title="Volver al Panel Agrícola">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Métricas -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Fincas</p>
+                <p class="text-2xl font-black text-slate-800">{{ total_fincas }}</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="p-3.5 bg-blue-50 text-blue-600 rounded-2xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Superficie Total</p>
+                <p class="text-2xl font-black text-slate-800">{{ total_ha|formato_ar }} <span class="text-xs font-bold text-slate-400">Ha</span></p>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="p-3.5 bg-amber-50 text-amber-600 rounded-2xl">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            </div>
+            <div>
+                <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">En Producción (Lotes)</p>
+                <p class="text-2xl font-black text-slate-800">{{ total_ha_cultivables|formato_ar }} <span class="text-xs font-bold text-slate-400">Ha</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Listado / Grilla -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-700">
+                <thead class="bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    <tr>
+                        <th class="px-6 py-4">Código</th>
+                        <th class="px-6 py-4">Nombre / Establecimiento</th>
+                        <th class="px-6 py-4">Ubicación</th>
+                        <th class="px-6 py-4">Condición</th>
+                        <th class="px-6 py-4 text-right">Sup. Total (Ha)</th>
+                        <th class="px-6 py-4 text-right">Lotes Activos</th>
+                        <th class="px-6 py-4 text-center">Estado</th>
+                        <th class="px-6 py-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    {% for finca in fincas %}
+                    <tr class="hover:bg-slate-50/80 transition-colors group">
+                        <td class="px-6 py-4 font-black text-slate-900">
+                            <span class="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-lg text-xs font-mono">{{ finca.codigo }}</span>
+                        </td>
+                        <td class="px-6 py-4 font-bold text-slate-900">
+                            {{ finca.nombre }}
+                            {% if finca.observaciones %}
+                            <p class="text-xs text-slate-400 font-normal truncate max-w-xs">{{ finca.observaciones }}</p>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-xs text-slate-600">
+                            {% if finca.localidad or finca.provincia %}
+                                {{ finca.localidad }}{% if finca.localidad and finca.provincia %}, {% endif %}{{ finca.provincia }}
+                            {% else %}
+                                <span class="text-slate-300 italic">No especificada</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if finca.es_propia %}
+                                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Propia</span>
+                            {% else %}
+                                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200" title="Titular: {{ finca.arrendatario_titular|default:'Sin especificar' }}">Arrendada</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right font-black text-slate-900">
+                            {{ finca.superficie_total_ha|formato_ar }}
+                        </td>
+                        <td class="px-6 py-4 text-right font-bold text-indigo-600">
+                            <a href="{% url 'agro_secciones_listado' %}?finca={{ finca.id }}" class="hover:underline" title="Ver lotes de esta finca">
+                                {{ finca.secciones.count }} lotes ({{ finca.superficie_cultivable_ha|formato_ar }} Ha)
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if finca.activa %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-100 text-green-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Activa
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-800">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Inactiva
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right space-x-2">
+                            <a href="{% url 'agro_secciones_listado' %}?finca={{ finca.id }}"
+                               class="inline-flex items-center px-2.5 py-1 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors"
+                               title="Gestionar Lotes de la Finca">
+                                🌾 Lotes
+                            </a>
+                            <button hx-get="{% url 'agro_finca_edit' finca.id %}"
+                                    hx-target="#modal-container"
+                                    class="inline-flex items-center px-2.5 py-1 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                                    title="Editar Finca">
+                                ✏️ Editar
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-12 text-center text-slate-400 italic">
+                            No hay fincas o establecimientos registrados aún. Haz clic en <strong>+ Nueva Finca</strong> para crear la primera.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

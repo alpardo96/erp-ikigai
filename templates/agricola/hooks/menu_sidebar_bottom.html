@@ -1,0 +1,113 @@
+{% comment %}
+Menú Principal de la Verticalidad Agrícola.
+Inyectado dinámicamente mediante {% hook_menu 'sidebar_bottom' %} en base.html.
+Condicionado estrictamente por las subactividades activas de la Empresa.
+{% endcomment %}
+{% if empresa_actual.tipo_actividad == 'AGRICOLA' or empresa_actual.agricola_vertical %}
+<div class="space-y-1" x-data="{ open: window.location.pathname.startsWith('/agro/') || window.location.pathname.startsWith('/granos/') || ['agro_config','agro_variedades','agro_clases','agro_listas_precio','agro_retenciones','agro_procesos'].some(t => window.location.search.includes(t)) }">
+    <div class="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-800 hover:text-white transition-all group">
+        <a href="{% url 'agro_index' %}" class="flex items-center flex-1 {% if request.resolver_match.url_name == 'agro_index' %}text-emerald-400 font-bold{% endif %}">
+            <svg class="w-5 h-5 mr-3 {% if request.resolver_match.url_name == 'agro_index' %}text-emerald-400{% else %}text-emerald-500{% endif %} group-hover:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 3v18m0 0c-4 0-7-3-7-7 0-2 1-4 3-5m4 12c4 0 7-3 7-7 0-2-1-4-3-5"></path>
+            </svg>
+            Módulo Agrícola
+        </a>
+        <button @click="open = !open" class="p-1 hover:bg-gray-700 rounded-md transition-colors">
+            <svg class="w-4 h-4 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+        </button>
+    </div>
+
+    <div x-show="open" style="padding-left: 3.25rem;" class="space-y-0.5 pb-2" x-cloak>
+        <!-- Panel General -->
+        <a href="{% url 'agro_index' %}"
+           class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_index' %}text-emerald-400 font-bold{% endif %}">
+            📊 Panel Central
+        </a>
+
+        <!-- 1. Estructura de Campo y Parámetros (Para Productores: Granos, Tabaco o Caña) -->
+        {% if empresa_actual.agricola_vertical.hace_granos or empresa_actual.agricola_vertical.hace_tabaco or empresa_actual.agricola_vertical.hace_cana %}
+        <p class="pt-2.5 pb-1 text-[10px] uppercase tracking-widest text-slate-400 font-black">⚙️ Parámetros y Campo</p>
+        <a href="{% url 'agro_fincas_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_fincas_listado' %}text-emerald-400 font-bold{% endif %}">
+            🚜 Fincas y Campos
+        </a>
+        <a href="{% url 'agro_secciones_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_secciones_listado' %}text-emerald-400 font-bold{% endif %}">
+            📍 Secciones y Lotes
+        </a>
+        <a href="{% url 'agro_cultivos_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_cultivos_listado' %}text-emerald-400 font-bold{% endif %}">
+            🌱 Cultivos y Variedades
+        </a>
+        <a href="{% url 'producto_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors">
+            📦 Insumos y Stock
+        </a>
+
+        <!-- 2. Labores y Tareas Culturales en Finca -->
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-emerald-400/90 font-black">🌾 Labores en Finca</p>
+        <a href="{% url 'agro_labores_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_labores_listado' %}text-emerald-400 font-bold{% endif %}">
+            📋 Partes y Labores de Campo
+        </a>
+        {% endif %}
+
+        <!-- 3. Granos y Cereales (Liquidaciones LPG) -->
+        {% if empresa_actual.agricola_vertical.hace_granos %}
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-amber-400/90 font-black">🌽 Granos y Cereales</p>
+        <a href="{% url 'agricola_granos_importar_lpg' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agricola_granos_importar_lpg' %}text-amber-400 font-bold{% endif %}">
+            📑 Liquidaciones LPG (PDF)
+        </a>
+        <a href="{% url 'agricola_granos_mapeos' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agricola_granos_mapeos' %}text-amber-400 font-bold{% endif %}">
+            ⚙️ Mapeos ARCA Granos
+        </a>
+        {% endif %}
+
+        <!-- 4. Caña de Azúcar -->
+        {% if empresa_actual.agricola_vertical.hace_cana %}
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-emerald-400/90 font-black">🎋 Caña de Azúcar</p>
+        <a href="#" class="block py-1 text-xs text-gray-400 hover:text-white transition-colors">
+            ⚖️ Entregas e Ingenio
+        </a>
+        <a href="#" class="block py-1 text-xs text-gray-400 hover:text-white transition-colors">
+            📑 Liquidaciones de Maquila
+        </a>
+        {% endif %}
+
+        <!-- 5. Acopio de Tabaco (Comercial / Acopiadora) -->
+        {% if empresa_actual.agricola_vertical.hace_acopio_tabaco %}
+        <p class="pt-3 pb-1 text-[10px] uppercase tracking-widest text-lime-400/90 font-black">🏭 Acopio de Tabaco</p>
+        <a href="{% url 'agro_romaneo_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if 'romaneo' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
+            ⚖️ Romaneos
+        </a>
+        <a href="{% url 'agro_liquidacion_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if 'liquidacion' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
+            📝 Liquidaciones
+        </a>
+        <a href="{% url 'agro_pago_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if 'pago' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
+            💳 Pagos a Productores
+        </a>
+        <a href="{% url 'agro_lote_listado' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if 'lote' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
+            📦 Lotes de Acopio
+        </a>
+        <a href="{% url 'agro_reportes' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if 'reporte' in request.resolver_match.url_name %}text-lime-400 font-bold{% endif %}">
+            📊 Reportes FET / Oficiales
+        </a>
+        <a href="{% url 'agro_acopio_parametros' %}"
+           class="block py-1 text-xs text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'agro_acopio_parametros' %}text-lime-400 font-bold{% endif %}">
+            ⚙️ Parámetros y Precios
+        </a>
+        {% endif %}
+
+    </div>
+</div>
+{% endif %}

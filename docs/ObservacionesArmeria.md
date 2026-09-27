@@ -119,4 +119,3 @@
 - [x] **11.3 Trazabilidad y Asientos en Facturación:**
   - **Listado de Compras:** Columna `Asiento ID` como primera columna con apertura directa del modal contable `detalle_asiento_modal`, e incorporación de botón con lupa en el selector de proveedores.
   - **Facturas Pendientes:** Vínculos interactivos en el número de asiento contable y número de comprobante (con apertura de previsualización de venta o compra según corresponda).
-

@@ -93,13 +93,46 @@
 
                 {% if agricola_form %}
                 <div class="col-span-1 md:col-span-2 p-5 bg-emerald-50 rounded-[1.5rem] border border-emerald-200 transition-all duration-300" id="agricola_subactividades" style="display: none;">
-                    <h4 class="text-sm font-bold text-emerald-800 mb-3">Subactividades Agrícolas Habilitadas</h4>
-                    <div class="flex flex-wrap gap-6">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            {{ agricola_form.hace_tabaco }} <span class="text-sm text-emerald-900 font-semibold">Tabaco</span>
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-bold text-emerald-900">Subactividades y Módulos Agrícolas Habilitados</h4>
+                        <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">Vertical Agrícola</span>
+                    </div>
+
+                    <!-- Producción Primaria (En Finca) -->
+                    <p class="text-[10px] font-black uppercase tracking-wider text-emerald-800/70 mb-2">🌾 Producción Primaria en Campo (Labores, Insumos y Liquidaciones de Venta):</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                        <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-emerald-100 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors">
+                            {{ agricola_form.hace_granos }}
+                            <div>
+                                <span class="block text-xs text-emerald-950 font-bold">Granos y Cereales</span>
+                                <span class="text-[10px] text-slate-500">Soja, Maíz, Poroto + LPG</span>
+                            </div>
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            {{ agricola_form.hace_granos }} <span class="text-sm text-emerald-900 font-semibold">Granos (Soja, Maíz, Poroto, etc.)</span>
+                        <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-emerald-100 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors">
+                            {{ agricola_form.hace_tabaco }}
+                            <div>
+                                <span class="block text-xs text-emerald-950 font-bold">Cultivo de Tabaco</span>
+                                <span class="text-[10px] text-slate-500">Almácigos, campo y entregas</span>
+                            </div>
+                        </label>
+                        <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-emerald-100 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors">
+                            {{ agricola_form.hace_cana }}
+                            <div>
+                                <span class="block text-xs text-emerald-950 font-bold">Caña de Azúcar</span>
+                                <span class="text-[10px] text-slate-500">Métricas por surco/ha + Maquila</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Comercialización y Acopio Industrial -->
+                    <p class="text-[10px] font-black uppercase tracking-wider text-emerald-800/70 mb-2">🏭 Comercialización y Acopio de Terceros:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="flex items-start gap-2.5 p-2.5 bg-white rounded-xl border border-emerald-100 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors">
+                            {{ agricola_form.hace_acopio_tabaco }}
+                            <div>
+                                <span class="block text-xs text-emerald-950 font-bold">Acopio de Tabaco</span>
+                                <span class="text-[10px] text-slate-500">Romaneos, liquidaciones ARCA a productores, pagos, lotes y FET</span>
+                            </div>
                         </label>
                     </div>
                 </div>

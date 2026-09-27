@@ -6,7 +6,11 @@
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         <div class="inline-block align-bottom bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-100">
-            <form hx-post="{% url 'config_cuentacontable_capturar_excel' %}" hx-target="#modal-container" enctype="multipart/form-data">
+            <form hx-post="{% url 'config_cuentacontable_capturar_excel' %}" 
+                  hx-target="#modal-container" 
+                  hx-encoding="multipart/form-data"
+                  enctype="multipart/form-data"
+                  onsubmit="mostrarCargandoCapturaCta(this)">
                 {% csrf_token %}
 
                 <!-- Encabezado del Modal -->
@@ -31,34 +35,17 @@
 
                 <div class="p-6 space-y-5">
 
-                    <!-- RESUMEN DE RESULTADOS DE CAPTURA (Si ya se procesó) -->
-                    {% if resultado %}
-                    <div class="p-4 rounded-2xl border shadow-sm {% if resultado.errores %}bg-rose-50 border-rose-200{% else %}bg-emerald-50 border-emerald-200{% endif %}">
-                        <div class="flex items-center justify-between mb-2">
-                            <h4 class="text-sm font-bold {% if resultado.errores %}text-rose-900{% else %}text-emerald-900{% endif %}">
-                                {% if resultado.errores %}Proceso completado con observaciones{% else %}¡Captura procesada con éxito!{% endif %}
-                            </h4>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3 mb-3 text-xs">
-                            <div class="bg-white/80 p-2.5 rounded-xl border border-gray-200">
-                                <span class="text-gray-500 block">Actualizados:</span>
-                                <span class="text-base font-bold text-indigo-600">{{ resultado.actualizados }}</span>
-                            </div>
-                            <div class="bg-white/80 p-2.5 rounded-xl border border-gray-200">
-                                <span class="text-gray-500 block">Nuevos creados:</span>
-                                <span class="text-base font-bold text-emerald-600">{{ resultado.creados }}</span>
-                            </div>
-                        </div>
-                        {% if resultado.errores %}
+                    <!-- RESUMEN DE RESULTADOS DE CAPTURA (Si se devuelven errores) -->
+                    {% if resultado and resultado.errores %}
+                    <div class="p-4 rounded-2xl border shadow-sm bg-rose-50 border-rose-200">
+                        <h4 class="text-sm font-bold text-rose-900 mb-2">Observaciones durante la carga</h4>
                         <div class="text-xs text-rose-700 bg-white/90 p-3 rounded-xl border border-rose-200 max-h-36 overflow-y-auto space-y-1">
-                            <p class="font-bold">Observaciones / Errores:</p>
                             <ul class="list-disc pl-4 space-y-0.5">
                                 {% for err in resultado.errores %}
                                 <li>{{ err }}</li>
                                 {% endfor %}
                             </ul>
                         </div>
-                        {% endif %}
                     </div>
                     {% endif %}
 
@@ -83,7 +70,7 @@
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Seleccione el archivo Excel (.xlsx)</label>
                         <div class="relative border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-2xl p-6 text-center bg-gray-50/50 hover:bg-emerald-50/30 transition-all cursor-pointer group" onclick="document.getElementById('input-excel-file-cta').click()">
-                            <input type="file" id="input-excel-file-cta" name="archivo_excel" accept=".xlsx, .xls" class="hidden" onchange="mostrarNombreArchivoCta(this)">
+                            <input type="file" id="input-excel-file-cta" name="archivo_excel" accept=".xlsx, .xls" class="hidden" onchange="mostrarNombreArchivoCta(this)" required>
                             
                             <div class="flex flex-col items-center justify-center space-y-2">
                                 <div class="p-3 bg-white rounded-2xl shadow-sm border border-gray-200 group-hover:scale-110 transition-transform">
@@ -114,11 +101,20 @@
                         <button type="button" onclick="cerrarModalCapturarCuentas()" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-all font-medium text-sm">
                             Cerrar
                         </button>
-                        <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-medium text-sm shadow-md shadow-emerald-200">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                            </svg>
-                            Capturar Excel
+                        <button type="submit" id="btn-submit-captura-cta" class="inline-flex items-center justify-center px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-bold text-sm shadow-md shadow-emerald-200">
+                            <span id="btn-submit-captura-cta-text" class="inline-flex items-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Capturar Excel
+                            </span>
+                            <span id="btn-submit-captura-cta-loading" class="hidden items-center">
+                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                Procesando importación...
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -137,6 +133,19 @@
         const texto = document.getElementById('texto-nombre-archivo-cta');
         if (input.files && input.files[0]) {
             texto.innerHTML = `<span class="text-emerald-700 font-bold">Archivo seleccionado:</span> ${input.files[0].name}`;
+        }
+    }
+
+    function mostrarCargandoCapturaCta(form) {
+        const btn = document.getElementById('btn-submit-captura-cta');
+        const textSpan = document.getElementById('btn-submit-captura-cta-text');
+        const loadingSpan = document.getElementById('btn-submit-captura-cta-loading');
+        if (btn && textSpan && loadingSpan) {
+            textSpan.classList.add('hidden');
+            loadingSpan.classList.remove('hidden');
+            loadingSpan.classList.add('inline-flex');
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
         }
     }
 </script>

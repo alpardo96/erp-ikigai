@@ -17,6 +17,8 @@ from . import views_romaneo as rom
 urlpatterns = [
     # Hub Principal
     path('agro/', views.agro_index, name='agro_index'),
+    path('agro/acopio/parametros/', views.acopio_parametros_view, name='agro_acopio_parametros'),
+
 
     # Campañas
     path('agro/campanias/nueva/', htmx.campania_modal, name='agro_campania_add'),

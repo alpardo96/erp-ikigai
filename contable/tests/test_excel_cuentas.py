@@ -128,3 +128,32 @@ class ExcelCuentasTestCase(TestCase):
         response_modal = self.client.get(reverse('config_cuentacontable_modal_capturar_excel'))
         self.assertEqual(response_modal.status_code, 200)
         self.assertContains(response_modal, "Recapturar / Importar Plan de Cuentas")
+
+    def test_view_capturar_cuentas_excel_post(self):
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session.save()
+
+        self.client.force_login(self.user)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.append(["ID", "Sumariza ID", "Jerarquía", "Nombre Cuenta", "Imputable (1=Sí, 0=No)", "Tipo (A/P/N/R)"])
+        ws.append(["", self.cta_caja.id, "1.1.05", "VALORES A DEPOSITAR", 1, "A"])
+
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        buffer.name = "cuentas_test.xlsx"
+
+        response = self.client.post(
+            reverse('config_cuentacontable_capturar_excel'),
+            {'archivo_excel': buffer},
+            format='multipart'
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Resultado de la Captura")
+        self.assertContains(response, "Nuevas Cuentas")
+        self.assertTrue(Cuenta.objects.filter(empresa=self.empresa, jerarquia="1.1.05").exists())
+

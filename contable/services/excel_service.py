@@ -1,8 +1,5 @@
-"""
-Servicio de Exportación e Importación/Captura Masiva en Excel para el Plan de Cuentas.
-ERP Ikigai 2.
-"""
-
+import re
+import unicodedata
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -25,6 +22,80 @@ COLUMNAS_CUENTA_MAP = {
     'id_ec': 'ID EC',
     'id_fc': 'ID FC',
 }
+
+
+def _normalizar_texto(texto):
+    """
+    Elimina acentos, caracteres especiales y convierte a minúsculas para comparaciones robustas.
+    Ejemplo: 'Jerarquía' -> 'jerarquia', 'Código (Legacy)' -> 'codigolegacy'
+    """
+    if not texto:
+        return ""
+    s = unicodedata.normalize('NFKD', str(texto)).encode('ascii', 'ignore').decode('utf-8')
+    return re.sub(r'[^a-zA-Z0-9_]', '', s).lower()
+
+
+def _mapear_encabezado_columna(header_str):
+    """
+    Mapea de forma segura el texto de un encabezado de columna al nombre de campo correspondiente,
+    evitando colisiones como la subcadena 'id' en 'disponibilidad'.
+    """
+    norm = _normalizar_texto(header_str)
+    if not norm:
+        return None
+
+    # 1. Coincidencia exacta con campos conocidos
+    for k, v in COLUMNAS_CUENTA_MAP.items():
+        if norm == _normalizar_texto(k) or norm == _normalizar_texto(v):
+            return k
+
+    # 2. Coincidencia exclusiva para ID de base de datos
+    if norm in ['id', 'idcuenta', 'cuentaid', 'idcta', 'identificador', 'pk']:
+        return 'id'
+
+    # 3. Sumariza / Cuenta Padre
+    if 'sumariza' in norm or 'padre' in norm or 'ctapadre' in norm:
+        return 'sumariza_id'
+
+    # 4. Jerarquía
+    if 'jerarq' in norm or 'codigojer' in norm or 'estructura' in norm or 'arbol' in norm:
+        return 'jerarquia'
+
+    # 5. Nombre / Descripción de la cuenta
+    if 'nombre' in norm or 'cuenta' in norm or 'descripcion' in norm or 'denominacion' in norm or 'detalle' in norm:
+        return 'cuenta'
+
+    # 6. Imputable
+    if 'imput' in norm or 'asienta' in norm or 'movimiento' in norm:
+        return 'imputable'
+
+    # 7. Tipo Disponibilidad (Tesorería / Caja Diaria)
+    if 'disponib' in norm or 'tesoreria' in norm or 'cajabanco' in norm:
+        return 'tipo_disponibilidad'
+
+    # 8. Mapeos de Balances y Estados Financieros
+    if 'pre' in norm:
+        return 'id_pre'
+    if 'bce' in norm:
+        return 'id_bce'
+    if 'ec' in norm:
+        return 'id_ec'
+    if 'fc' in norm:
+        return 'id_fc'
+
+    # 9. RG 830 Retenciones Ganancias
+    if 'rg' in norm or '830' in norm or 'ganancia' in norm:
+        return 'rg_830'
+
+    # 10. Código Legacy / Anterior
+    if 'legacy' in norm or 'codigo' in norm or 'cod' in norm:
+        return 'codigo'
+
+    # 11. Tipo Contable (Activo / Pasivo / PN / Resultado)
+    if 'tipo' in norm or 'clase' in norm or 'rubro' in norm:
+        return 'tipo'
+
+    return None
 
 
 def generar_excel_cuentas(queryset):
@@ -95,12 +166,13 @@ def procesar_captura_excel_cuentas(empresa, usuario, archivo_excel):
     """
     Procesa la captura e importación masiva de cuentas contables desde un archivo Excel.
 
-    Reglas de negocio:
-    1. Convierte a MAYÚSCULAS el nombre de la cuenta (campo `cuenta`).
-    2. Si 'ID' viene y EXISTE en la empresa activa -> Actualiza todos los campos excepto el ID.
+    Reglas de negocio y robustez:
+    1. Convierte a MAYÚSCULAS el nombre de la cuenta (campo `cuenta`) y trunca al límite VARCHAR(50).
+    2. Si 'ID' viene y EXISTE en la empresa activa -> Actualiza los campos excepto el ID.
     3. Si 'ID' no se encuentra en la empresa activa (o está vacío/inválido) -> Trata la fila como una
-       cuenta NUEVA y deja que la base de datos (PostgreSQL/Django) asigne automáticamente el ID.
-    4. Resuelve dinámicamente el vínculo `sumariza` buscando por `sumariza_id` o la jerarquía padre correspondiente en la empresa.
+       cuenta NUEVA y deja que la base de datos asigne automáticamente el ID.
+    4. Resuelve dinámicamente el vínculo `sumariza` tanto por `sumariza_id` como por jerarquía padre (ej. 1.1 padre de 1.1.01).
+    5. Deduce de forma inteligente el tipo contable (A/P/N/R) en caso de venir con descripciones en texto o vacío.
     """
     resultado = {
         'actualizados': 0,
@@ -121,91 +193,96 @@ def procesar_captura_excel_cuentas(empresa, usuario, archivo_excel):
         val = str(cell.value or '').strip()
         headers.append(val)
 
-    if not headers:
-        resultado['errores'].append("El archivo Excel está vacío o no contiene encabezados.")
+    if not headers or not any(headers):
+        resultado['errores'].append("El archivo Excel está vacío o no contiene encabezados válidos.")
         return resultado
 
-    # Mapeo inverso de encabezados a nombres de campo
+    # Mapeo de columnas del archivo
     normalized_headers = {}
     for idx, h in enumerate(headers):
-        h_lower = h.lower()
-        found_key = None
-        for k, v in COLUMNAS_CUENTA_MAP.items():
-            if k.lower() == h_lower or v.lower() == h_lower:
-                found_key = k
-                break
-        if found_key:
-            normalized_headers[idx] = found_key
-        else:
-            # Coincidencias flexibles por nombres parciales
-            if 'id' in h_lower and 'sumariza' not in h_lower and 'pre' not in h_lower and 'bce' not in h_lower and 'ec' not in h_lower and 'fc' not in h_lower:
-                normalized_headers[idx] = 'id'
-            elif 'sumariza' in h_lower:
-                normalized_headers[idx] = 'sumariza_id'
-            elif 'jerarq' in h_lower or 'codigo jer' in h_lower:
-                normalized_headers[idx] = 'jerarquia'
-            elif 'nombre' in h_lower or 'cuenta' in h_lower or 'descripcion' in h_lower:
-                normalized_headers[idx] = 'cuenta'
-            elif 'imput' in h_lower:
-                normalized_headers[idx] = 'imputable'
-            elif 'tipo' in h_lower and 'disponib' not in h_lower:
-                normalized_headers[idx] = 'tipo'
-            elif 'legacy' in h_lower or 'cod' in h_lower:
-                normalized_headers[idx] = 'codigo'
-            elif 'rg' in h_lower or '830' in h_lower:
-                normalized_headers[idx] = 'rg_830'
-            elif 'disponib' in h_lower:
-                normalized_headers[idx] = 'tipo_disponibilidad'
-            elif 'id_pre' in h_lower or 'pre' in h_lower:
-                normalized_headers[idx] = 'id_pre'
-            elif 'id_bce' in h_lower or 'bce' in h_lower:
-                normalized_headers[idx] = 'id_bce'
-            elif 'id_ec' in h_lower or 'ec' in h_lower:
-                normalized_headers[idx] = 'id_ec'
-            elif 'id_fc' in h_lower or 'fc' in h_lower:
-                normalized_headers[idx] = 'id_fc'
+        campo = _mapear_encabezado_columna(h)
+        if campo:
+            normalized_headers[idx] = campo
+
+    if 'jerarquia' not in normalized_headers.values() or 'cuenta' not in normalized_headers.values():
+        resultado['errores'].append(
+            "No se encontraron las columnas obligatorias 'Jerarquía' y 'Nombre Cuenta' en el encabezado del archivo."
+        )
+        return resultado
 
     # Cache preexistente de cuentas de la empresa por ID y por Jerarquía
     cuentas_por_id = {c.id: c for c in Cuenta.objects.filter(empresa=empresa)}
     cuentas_por_jerarquia = {c.jerarquia: c for c in Cuenta.objects.filter(empresa=empresa)}
 
+    # Cuentas a las que se les verificará o completará el vínculo de sumariza en segundo paso
+    cuentas_procesadas = []
+
     with transaction.atomic():
         row_idx = 1
         for row in ws.iter_rows(min_row=2, values_only=True):
             row_idx += 1
-            if not any(row):
-                continue  # Fila totalmente vacía
+
+            # Filtrar filas completamente vacías o compuestas solo por espacios en blanco
+            valores_fila = [str(c).strip() for c in row if c is not None and str(c).strip() != '']
+            if not valores_fila:
+                continue
 
             row_dict = {}
             for col_idx, val in enumerate(row):
                 if col_idx in normalized_headers:
                     row_dict[normalized_headers[col_idx]] = val
 
-            jerarquia_val = str(row_dict.get('jerarquia') or '').strip()
-            cuenta_val = str(row_dict.get('cuenta') or '').strip().upper()
+            # Helper para limpiar texto
+            def _clean_str(val):
+                if val is None:
+                    return ''
+                if isinstance(val, float) and val.is_integer():
+                    return str(int(val)).strip()
+                return str(val).strip()
+
+            jerarquia_val = _clean_str(row_dict.get('jerarquia'))[:20]
+            cuenta_val = _clean_str(row_dict.get('cuenta')).upper()[:50]
 
             if not jerarquia_val or not cuenta_val:
-                resultado['errores'].append(f"Fila {row_idx}: Omitida por no contar con 'Jerarquía' o 'Nombre Cuenta' válido.")
+                resultado['errores'].append(
+                    f"Fila {row_idx}: Omitida por no contar con 'Jerarquía' o 'Nombre Cuenta' válido."
+                )
                 continue
 
             # Parsear Imputable (1 o 0)
             raw_imp = row_dict.get('imputable')
-            if str(raw_imp).strip().upper() in ['1', 'SI', 'SÍ', 'TRUE', 'S']:
+            norm_imp = _normalizar_texto(raw_imp)
+            if norm_imp in ['1', 'si', 'true', 's', 'imputable', 'asienta']:
                 imputable_val = 1
             else:
                 try:
-                    imputable_val = int(float(str(raw_imp)))
+                    imputable_val = int(float(str(raw_imp).strip()))
                     imputable_val = 1 if imputable_val != 0 else 0
                 except (ValueError, TypeError):
                     imputable_val = 0
 
-            # Parsear Tipo (A, P, N, R)
-            tipo_raw = str(row_dict.get('tipo') or '').strip().upper()
-            if tipo_raw.startswith('A'): tipo_val = 'A'
-            elif tipo_raw.startswith('P'): tipo_val = 'P'
-            elif tipo_raw.startswith('N'): tipo_val = 'N'
-            elif tipo_raw.startswith('R'): tipo_val = 'R'
-            else: tipo_val = 'A'  # Valor por defecto seguro
+            # Parsear Tipo (A, P, N, R) con deducción inteligente
+            tipo_raw = _clean_str(row_dict.get('tipo')).upper()
+            norm_tipo = _normalizar_texto(tipo_raw)
+
+            if norm_tipo.startswith('act') or norm_tipo == 'a':
+                tipo_val = 'A'
+            elif norm_tipo.startswith('pas') or norm_tipo == 'p':
+                tipo_val = 'P'
+            elif 'patrimonio' in norm_tipo or 'neto' in norm_tipo or norm_tipo in ['n', 'pn']:
+                tipo_val = 'N'
+            elif any(r in norm_tipo for r in ['resultado', 'perdida', 'ganancia', 'gasto', 'ingreso', 'costo', 'egreso']) or norm_tipo in ['r', 'rp', 'rn']:
+                tipo_val = 'R'
+            elif jerarquia_val:
+                # Deducir según el primer dígito jerárquico estándar (1=Activo, 2=Pasivo, 3=Patrimonio Neto, 4/5=Resultados)
+                primer_digito = jerarquia_val[0]
+                if primer_digito == '1': tipo_val = 'A'
+                elif primer_digito == '2': tipo_val = 'P'
+                elif primer_digito == '3': tipo_val = 'N'
+                elif primer_digito in ['4', '5', '6', '7', '8', '9']: tipo_val = 'R'
+                else: tipo_val = 'A'
+            else:
+                tipo_val = 'A'
 
             # Helper para enteros opcionales
             def _clean_int(v):
@@ -225,9 +302,9 @@ def procesar_captura_excel_cuentas(empresa, usuario, archivo_excel):
             id_fc_val = _clean_int(row_dict.get('id_fc'))
 
             # Parsear tipo_disponibilidad
-            disp_raw = str(row_dict.get('tipo_disponibilidad') or '').strip().upper()
+            disp_raw = _clean_str(row_dict.get('tipo_disponibilidad')).upper()
             valid_disps = ['EFE', 'DOL', 'VAL', 'BCO', 'TAR', 'OTR']
-            tipo_disp_val = disp_raw if disp_raw in valid_disps else ''
+            tipo_disp_val = disp_raw[:3] if disp_raw in valid_disps else ''
 
             # Buscar ID si viene especificado
             raw_id = row_dict.get('id')
@@ -260,17 +337,17 @@ def procesar_captura_excel_cuentas(empresa, usuario, archivo_excel):
                 cuenta_obj.id_bce = id_bce_val
                 cuenta_obj.id_ec = id_ec_val
                 cuenta_obj.id_fc = id_fc_val
-                cuenta_obj.sumariza = sumariza_obj
+                if sumariza_obj:
+                    cuenta_obj.sumariza = sumariza_obj
                 if usuario:
                     cuenta_obj.modificado_por = usuario
                 cuenta_obj.save()
 
                 resultado['actualizados'] += 1
                 cuentas_por_jerarquia[jerarquia_val] = cuenta_obj
+                cuentas_procesadas.append(cuenta_obj)
             else:
                 # --- CREACIÓN DE NUEVA CUENTA ---
-                # Si el usuario puso un ID que no existía en la empresa activa, NO se fuerza ese ID,
-                # sino que PostgreSQL le asignará el ID correspondiente de forma automática.
                 nueva_cta = Cuenta.objects.create(
                     empresa=empresa,
                     jerarquia=jerarquia_val,
@@ -291,5 +368,16 @@ def procesar_captura_excel_cuentas(empresa, usuario, archivo_excel):
                 resultado['creados'] += 1
                 cuentas_por_id[nueva_cta.id] = nueva_cta
                 cuentas_por_jerarquia[jerarquia_val] = nueva_cta
+                cuentas_procesadas.append(nueva_cta)
+
+        # Segundo paso: Asegurar la resolución del vínculo jerárquico padre ('sumariza')
+        # para cuentas cuyos padres hayan sido creados en filas posteriores del archivo
+        for cta in cuentas_procesadas:
+            if cta.sumariza is None and '.' in cta.jerarquia:
+                padre_jerarquia = cta.jerarquia.rsplit('.', 1)[0]
+                if padre_jerarquia in cuentas_por_jerarquia:
+                    cta.sumariza = cuentas_por_jerarquia[padre_jerarquia]
+                    cta.save(update_fields=['sumariza'])
 
     return resultado
+
