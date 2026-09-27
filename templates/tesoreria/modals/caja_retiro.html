@@ -1,98 +1,149 @@
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" id="retiroModal">
-    <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div class="px-6 py-4 border-b border-gray-700 flex justify-between items-center bg-gray-900 rounded-t-lg">
-            <h3 class="text-xl font-bold text-white">Retiro Parcial de Caja</h3>
-            <button onclick="document.getElementById('retiroModal').remove()" class="text-gray-400 hover:text-white">
+{% load formato_tags %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-6" id="retiroModal">
+    <div class="bg-gray-900 border border-gray-700/80 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden text-slate-100">
+        
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-gradient-to-r from-gray-900 to-gray-800">
+            <div>
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Retiro de Fondos de Caja Mostrador
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Retiro físico de Efectivo (Pesos / Dólares) y Cheques en Cartera hacia Tesorería.</p>
+            </div>
+            <button type="button" onclick="document.getElementById('retiroModal').remove()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-gray-800 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        <div class="p-6">
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto space-y-5 flex-1">
             <form id="formRetiro" onsubmit="procesarRetiro(event)">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                
+                <!-- Efectivo y Observaciones -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Efectivo -->
-                    <div class="bg-gray-700 p-4 rounded-lg">
-                        <h4 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Efectivo a Retirar</h4>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300">Pesos ($)</label>
-                                <input type="number" step="0.01" id="retiroEfectivoPesos" class="mt-1 block w-full rounded-md bg-gray-600 border-gray-500 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-right font-mono" value="0.00">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300">Dólares (US$)</label>
-                                <input type="number" step="0.01" id="retiroEfectivoDolares" class="mt-1 block w-full rounded-md bg-gray-600 border-gray-500 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 text-right font-mono" value="0.00">
-                            </div>
+                    <div class="bg-gray-800/80 border border-gray-700/60 p-4 rounded-xl space-y-3">
+                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-700 pb-2">
+                            <span>💵</span> Efectivo a Retirar
+                        </h4>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Efectivo en Pesos ($)</label>
+                            <input type="number" step="0.01" min="0" id="retiroEfectivoPesos" 
+                                   oninput="calcularTotalesRetiro()"
+                                   class="block w-full rounded-lg bg-gray-900 border-gray-700 text-emerald-400 text-lg font-bold shadow-inner focus:border-emerald-500 focus:ring-emerald-500 text-right font-mono" 
+                                   value="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Efectivo en Dólares (US$)</label>
+                            <input type="number" step="0.01" min="0" id="retiroEfectivoDolares" 
+                                   oninput="calcularTotalesRetiro()"
+                                   class="block w-full rounded-lg bg-gray-900 border-gray-700 text-blue-400 text-lg font-bold shadow-inner focus:border-blue-500 focus:ring-blue-500 text-right font-mono" 
+                                   value="0.00">
                         </div>
                     </div>
                     
                     <!-- Observaciones -->
-                    <div class="bg-gray-700 p-4 rounded-lg">
-                        <h4 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Observaciones</h4>
-                        <textarea id="retiroObservaciones" rows="4" class="block w-full rounded-md bg-gray-600 border-gray-500 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Motivo del retiro o notas adicionales..."></textarea>
+                    <div class="bg-gray-800/80 border border-gray-700/60 p-4 rounded-xl flex flex-col">
+                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-700 pb-2 mb-3">
+                            <span>📝</span> Motivo u Observaciones
+                        </h4>
+                        <textarea id="retiroObservaciones" rows="4" 
+                                  class="w-full flex-1 rounded-lg bg-gray-900 border-gray-700 text-slate-200 text-xs shadow-inner focus:border-indigo-500 focus:ring-indigo-500 placeholder-slate-500" 
+                                  placeholder="Motivo del retiro parcial, aclaraciones o referencias para Tesorería..."></textarea>
                     </div>
                 </div>
 
-                <!-- Valores y Tarjetas -->
-                <div class="bg-gray-700 p-4 rounded-lg mb-6">
-                    <h4 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Valores y Cupones Disponibles</h4>
-                    <p class="text-sm text-gray-400 mb-4">Seleccione los valores que desea incluir en este retiro hacia la tesorería.</p>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-600">
-                            <thead>
+                <!-- Cheques / Valores Físicos en Cartera -->
+                <div class="bg-gray-800/80 border border-gray-700/60 p-4 rounded-xl mt-4">
+                    <div class="flex items-center justify-between border-b border-gray-700 pb-2 mb-3">
+                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>📑</span> Cheques / Valores en Cartera
+                        </h4>
+                        <span class="text-xs text-slate-400" id="contadorCheques">
+                            {{ valores|length }} cheque{% if valores|length != 1 %}s{% endif %} disponible{% if valores|length != 1 %}s{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-lg border border-gray-700/80 max-h-48 overflow-y-auto">
+                        <table class="min-w-full divide-y divide-gray-700 text-xs">
+                            <thead class="bg-gray-900/80 sticky top-0 z-10">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                                        <input type="checkbox" id="selectAllValores" onclick="toggleAllValores(this)" class="rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
+                                    <th class="px-3 py-2 text-left w-10">
+                                        <input type="checkbox" id="selectAllValores" onclick="toggleAllValores(this)" 
+                                               class="rounded bg-gray-800 border-gray-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-gray-900">
                                     </th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Detalle</th>
-                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Importe</th>
+                                    <th class="px-3 py-2 text-left text-slate-400 font-semibold uppercase">Banco / N° Cheque</th>
+                                    <th class="px-3 py-2 text-left text-slate-400 font-semibold uppercase">Firmante</th>
+                                    <th class="px-3 py-2 text-center text-slate-400 font-semibold uppercase">Vto / Cobro</th>
+                                    <th class="px-3 py-2 text-right text-slate-400 font-semibold uppercase">Importe</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-600">
+                            <tbody class="divide-y divide-gray-700/60 bg-gray-800/40">
                                 {% for valor in valores %}
-                                <tr>
-                                    <td class="px-4 py-3">
-                                        <input type="checkbox" name="valor_id" value="{{ valor.id }}" class="chk-valor rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
+                                <tr class="hover:bg-gray-700/50 transition-colors">
+                                    <td class="px-3 py-2">
+                                        <input type="checkbox" name="valor_id" value="{{ valor.id }}" 
+                                               data-importe="{{ valor.importe }}"
+                                               onchange="calcularTotalesRetiro()"
+                                               class="chk-valor rounded bg-gray-800 border-gray-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-gray-900">
                                     </td>
-                                    {% if valor.cuenta_bancaria_id %}
-                                    <td class="px-4 py-3 text-sm text-white">Transferencia</td>
-                                    <td class="px-4 py-3 text-sm text-gray-300">CUIT: {{ valor.cuit_emisor|default:"S/D" }} - Titular: {{ valor.titular_emisor|default:"S/D" }}</td>
-                                    {% else %}
-                                    <td class="px-4 py-3 text-sm text-white">Cheque/Valor</td>
-                                    <td class="px-4 py-3 text-sm text-gray-300">{{ valor.banco_entidad.nombre|default:valor.banco }} - Nro: {{ valor.numero_comprobante }}</td>
-                                    {% endif %}
-                                    <td class="px-4 py-3 text-sm text-white text-right font-mono">${{ valor.importe }}</td>
+                                    <td class="px-3 py-2 text-slate-200">
+                                        <div class="font-semibold">{{ valor.banco.nombre|default:"Cheque" }}</div>
+                                        <div class="text-[10px] text-slate-400 font-mono">N° {{ valor.numero_cheque }}</div>
+                                    </td>
+                                    <td class="px-3 py-2 text-slate-300">
+                                        <div>{{ valor.nombre_firmante|default:"—" }}</div>
+                                        {% if valor.cuit_firmante %}<div class="text-[10px] text-slate-400">CUIT: {{ valor.cuit_firmante }}</div>{% endif %}
+                                    </td>
+                                    <td class="px-3 py-2 text-center text-slate-300 font-mono">
+                                        {{ valor.fecha_vencimiento|date:"d/m/Y" }}
+                                    </td>
+                                    <td class="px-3 py-2 text-right text-emerald-400 font-mono font-bold">
+                                        $ {{ valor.importe|formato_ar }}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="px-4 py-6 text-center text-slate-500 italic">
+                                        No hay cheques pendientes de retiro en la cartera de esta sucursal.
+                                    </td>
                                 </tr>
                                 {% endfor %}
-                                {% for cupon in cupones %}
-                                <tr>
-                                    <td class="px-4 py-3">
-                                        <input type="checkbox" name="cupon_id" value="{{ cupon.id }}" class="chk-cupon rounded bg-gray-600 border-gray-500 text-blue-500 focus:ring-blue-500">
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-white">Cupón Tarjeta</td>
-                                    <td class="px-4 py-3 text-sm text-gray-300">{{ cupon.tarjeta_entidad.nombre|default:cupon.tarjeta }} - Lote: {{ cupon.lote }} - Cupón: {{ cupon.cupon }}</td>
-                                    <td class="px-4 py-3 text-sm text-white text-right font-mono">${{ cupon.importe }}</td>
-                                </tr>
-                                {% endfor %}
-                                {% if not valores and not cupones %}
-                                <tr>
-                                    <td colspan="4" class="px-4 py-8 text-center text-gray-400 text-sm italic">
-                                        No hay valores ni cupones pendientes de retiro en esta sucursal.
-                                    </td>
-                                </tr>
-                                {% endif %}
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div class="flex justify-end space-x-3 mt-6 border-t border-gray-700 pt-4">
-                    <button type="button" onclick="document.getElementById('retiroModal').remove()" class="px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
-                        Cancelar
-                    </button>
-                    <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Confirmar Retiro
-                    </button>
+                <!-- Resumen de Totales -->
+                <div class="bg-gray-950 border border-gray-800 p-4 rounded-xl mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="text-xs text-slate-400 space-y-1">
+                        <div>💵 Pesos: <span class="text-slate-200 font-mono font-bold" id="lblPesos">$ 0,00</span> | Dólares: <span class="text-slate-200 font-mono font-bold" id="lblDolares">US$ 0,00</span></div>
+                        <div>📑 Cheques seleccionados: <span class="text-slate-200 font-mono font-bold" id="lblCantCheques">0</span> (<span class="text-emerald-400 font-mono font-bold" id="lblTotalCheques">$ 0,00</span>)</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Total General Retirado</span>
+                        <span class="text-2xl font-black text-emerald-400 font-mono" id="lblTotalGeneral">$ 0,00</span>
+                    </div>
+                </div>
+
+                <!-- Footer Acciones -->
+                <div class="flex items-center justify-between mt-6 border-t border-gray-800 pt-4">
+                    <span class="text-[11px] text-slate-400 flex items-center gap-1">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        Generará e imprimirá comprobante por duplicado (Original y Duplicado).
+                    </span>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="document.getElementById('retiroModal').remove()" 
+                                class="px-4 py-2 border border-gray-700 rounded-xl text-xs font-semibold text-slate-300 hover:bg-gray-800 transition-colors">
+                            Cancelar
+                        </button>
+                        <button type="submit" id="btnConfirmarRetiro"
+                                class="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/30 transition-transform active:scale-95 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            Confirmar e Imprimir Retiro
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -101,10 +152,33 @@
 
 <script>
     function toggleAllValores(source) {
-        let checkboxes = document.querySelectorAll('.chk-valor, .chk-cupon');
-        for(let i=0, n=checkboxes.length;i<n;i++) {
+        let checkboxes = document.querySelectorAll('.chk-valor');
+        for(let i=0, n=checkboxes.length; i<n; i++) {
             checkboxes[i].checked = source.checked;
         }
+        calcularTotalesRetiro();
+    }
+
+    function calcularTotalesRetiro() {
+        let efePesos = desformatearAR(document.getElementById('retiroEfectivoPesos')?.value || 0);
+        let efeDolares = desformatearAR(document.getElementById('retiroEfectivoDolares')?.value || 0);
+        
+        let checks = document.querySelectorAll('.chk-valor:checked');
+        let cantCheques = checks.length;
+        let totalCheques = 0;
+        
+        checks.forEach(chk => {
+            let imp = desformatearAR(chk.getAttribute('data-importe') || 0);
+            totalCheques += imp;
+        });
+
+        let totalGeneral = efePesos + totalCheques;
+
+        document.getElementById('lblPesos').innerText = formatoMonedaAR(efePesos);
+        document.getElementById('lblDolares').innerText = 'US$ ' + formatearAR(efeDolares);
+        document.getElementById('lblCantCheques').innerText = cantCheques;
+        document.getElementById('lblTotalCheques').innerText = formatoMonedaAR(totalCheques);
+        document.getElementById('lblTotalGeneral').innerText = formatoMonedaAR(totalGeneral);
     }
 
     function procesarRetiro(event) {
@@ -115,19 +189,21 @@
         let observaciones = document.getElementById('retiroObservaciones').value;
         
         let valoresIds = Array.from(document.querySelectorAll('.chk-valor:checked')).map(cb => cb.value);
-        let cuponesIds = Array.from(document.querySelectorAll('.chk-cupon:checked')).map(cb => cb.value);
         
-        if (efectivoPesos <= 0 && efectivoDolares <= 0 && valoresIds.length === 0 && cuponesIds.length === 0) {
-            alert('Debe ingresar un monto o seleccionar al menos un valor para retirar.');
+        if (efectivoPesos <= 0 && efectivoDolares <= 0 && valoresIds.length === 0) {
+            alert('Debe ingresar un monto en efectivo o seleccionar al menos un cheque para retirar.');
             return;
         }
+
+        const btn = document.getElementById('btnConfirmarRetiro');
+        btn.disabled = true;
+        btn.innerHTML = 'Procesando...';
         
         const payload = {
             efectivo_pesos: efectivoPesos,
             efectivo_dolares: efectivoDolares,
             observaciones: observaciones,
-            valores_ids: valoresIds,
-            cupones_ids: cuponesIds
+            valores_ids: valoresIds
         };
         
         fetch("{% url 'caja_retiro_procesar' %}", {
@@ -141,16 +217,26 @@
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                alert('Retiro procesado correctamente.');
+                // Abrir el comprobante PDF en una pestaña nueva para imprimir
+                if (data.pdf_url) {
+                    window.open(data.pdf_url, '_blank');
+                }
                 document.getElementById('retiroModal').remove();
                 window.location.reload();
             } else {
-                alert('Error al procesar retiro: ' + data.message);
+                alert('Error al procesar retiro: ' + (data.message || 'Error desconocido'));
+                btn.disabled = false;
+                btn.innerHTML = 'Confirmar e Imprimir Retiro';
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error de red al procesar el retiro.');
+            alert('Error de comunicación al procesar el retiro.');
+            btn.disabled = false;
+            btn.innerHTML = 'Confirmar e Imprimir Retiro';
         });
     }
+
+    // Inicializar totales
+    calcularTotalesRetiro();
 </script>

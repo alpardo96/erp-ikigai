@@ -48,8 +48,15 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Cotización (Dólar Cobranza)</label>
-                    <input type="number" step="0.0001" x-model="data.cotizacion" readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-100 font-bold text-indigo-700">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-sm font-medium text-gray-700">Cotización (Dólar Cobranza)</label>
+                        {% if dolar_cobranza_editable %}
+                            <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Editable</span>
+                        {% else %}
+                            <span class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Fija</span>
+                        {% endif %}
+                    </div>
+                    <input type="number" step="0.0001" x-model.number="data.cotizacion" {% if not dolar_cobranza_editable %}readonly class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-100 font-bold text-indigo-700"{% else %}class="mt-1 block w-full rounded-md border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white font-bold text-indigo-700"{% endif %}>
                 </div>
             </div>
 
@@ -138,7 +145,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Dólares (USD)</label>
                                 <div class="flex gap-2">
                                     <input type="text" inputmode="decimal" x-model="pagos.dolares" class="fInputAR w-1/2 text-right text-lg font-black text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 p-2" placeholder="U$D Importe">
-                                    <input type="text" readonly :value="formatCurrency(desformatearAR(pagos.dolares || 0) * data.cotizacion)" class="w-1/2 text-right text-lg font-black text-slate-800 bg-slate-100 border border-slate-200 rounded-lg p-2 outline-none" title="Pesificados">
+                                    <input type="text" readonly :value="formatCurrency(desformatearAR(pagos.dolares || 0) * (parseFloat(data.cotizacion) || 0))" class="w-1/2 text-right text-lg font-black text-slate-800 bg-slate-100 border border-slate-200 rounded-lg p-2 outline-none" title="Pesificados">
                                 </div>
                             </div>
                         </div>

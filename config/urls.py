@@ -75,7 +75,8 @@ from productos.views_htmx import (
 )
 from tesoreria.views_htmx import (
     buscar_mediospago, mediopago_modal, eliminar_mediopago,
-    buscar_cuentas_bancarias, cuenta_bancaria_modal, eliminar_cuenta_bancaria
+    buscar_cuentas_bancarias, cuenta_bancaria_modal, eliminar_cuenta_bancaria,
+    buscar_tarjetas, tarjeta_modal, eliminar_tarjeta
 )
 from contable.views_htmx import (
     cuenta_modal, buscar_cuentas, eliminar_cuenta, parametros_contables_modal,
@@ -304,6 +305,11 @@ urlpatterns = [
     path('configuracion/cuentasbancarias/crear/', cuenta_bancaria_modal, name='config_cuentabancaria_add'),
     path('configuracion/cuentasbancarias/<int:id>/editar/', cuenta_bancaria_modal, name='config_cuentabancaria_edit'),
     path('configuracion/cuentasbancarias/<int:id>/eliminar/', eliminar_cuenta_bancaria, name='config_cuentabancaria_delete'),
+    # Configuración: Tarjetas / Emisores (Tesorería)
+    path('configuracion/tarjetas/buscar/', buscar_tarjetas, name='config_tarjeta_search'),
+    path('configuracion/tarjetas/crear/', tarjeta_modal, name='config_tarjeta_add'),
+    path('configuracion/tarjetas/<int:id>/editar/', tarjeta_modal, name='config_tarjeta_edit'),
+    path('configuracion/tarjetas/<int:id>/eliminar/', eliminar_tarjeta, name='config_tarjeta_delete'),
 
     # Configuración: Cuentas Contables (Contabilidad)
     path('configuracion/cuentascontables/buscar/', buscar_cuentas, name='config_cuentacontable_search'),

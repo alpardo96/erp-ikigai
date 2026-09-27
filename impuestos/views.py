@@ -10,6 +10,7 @@ from django.db.models import Sum
 
 from empresas.models import Empresa
 from contable.models import LibroIvaCompras, LibroIvaVentas
+from .models import PeriodoIva
 from .services import (
     calcular_liquidacion_iva,
     cerrar_periodo_iva,
@@ -102,22 +103,24 @@ class PeriodosCerradosModalView(LoginRequiredMixin, View):
 class ReabrirPeriodoIvaView(LoginRequiredMixin, View):
     """
     Acción POST para reabrir un período IVA previamente cerrado.
+    Permite volver a la pantalla de origen (Libro IVA Compras o Cierre de Período).
     """
     def post(self, request):
         empresa_id = request.session.get('empresa_id')
         periodo_yyyymm = request.POST.get('periodo', '').strip()
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/impuestos/cierre-periodo-iva/'
 
         if not empresa_id or not periodo_yyyymm:
             messages.error(request, "Parámetros insuficientes para reabrir el período.")
-            return redirect('impuestos:cierre_periodo_iva')
+            return redirect(next_url)
 
         try:
             reabrir_periodo_iva(empresa_id, periodo_yyyymm, request.user)
-            messages.success(request, f"El período IVA {periodo_yyyymm} ha sido reabierto exitosamente.")
+            messages.success(request, f"El período IVA {periodo_yyyymm} ha sido reabierto exitosamente. Ahora puede incorporar nuevos comprobantes.")
         except Exception as e:
             messages.error(request, f"Error al reabrir el período IVA: {str(e)}")
 
-        return redirect('impuestos:cierre_periodo_iva')
+        return redirect(next_url)
 
 
 class LibroIvaVentasView(LoginRequiredMixin, View):
@@ -225,12 +228,21 @@ class LibroIvaComprasView(LoginRequiredMixin, View):
             tot_total=Sum('total')
         )
 
+        # Estado del Período Fiscal (Cerrado / Abierto)
+        periodo_iva = PeriodoIva.objects.filter(
+            empresa_id=empresa_id,
+            periodo=periodo_yyyymm
+        ).select_related('usuario_cierre').first()
+        esta_cerrado = periodo_iva is not None and periodo_iva.estado == 'CERRADO'
+
         return render(request, self.template_name, {
             'anio': anio,
             'mes': mes,
             'periodo': periodo_yyyymm,
             'comprobantes': comprobantes,
             'totales': totales,
+            'periodo_iva': periodo_iva,
+            'esta_cerrado': esta_cerrado,
         })
 
 
@@ -350,6 +362,7 @@ class ExportarLibroIvaComprasTxtView(LoginRequiredMixin, View):
     """
     Descarga los archivos TXT de Libro IVA Digital Compras de ARCA/AFIP (RG 4597 / RG 5616)
     empaquetados en un archivo comprimido .ZIP.
+    Soporta el parámetro optativo 'cerrar=1' para ejecutar el cierre fiscal simultáneo.
     """
     def get(self, request):
         empresa_id = request.session.get('empresa_id')
@@ -369,6 +382,14 @@ class ExportarLibroIvaComprasTxtView(LoginRequiredMixin, View):
             mes = now.month
 
         periodo_yyyymm = f"{anio}{mes:02d}"
+
+        # Cierre optativo solicitado por el usuario al descargar TXT definitivo
+        cerrar_param = request.GET.get('cerrar', '').strip().lower()
+        if cerrar_param in ('1', 'true', 'si', 's'):
+            try:
+                cerrar_periodo_iva(empresa_id, anio, mes, request.user)
+            except Exception as err:
+                pass  # Si ya estuviese cerrado o alguna excepción menor, no interrumpe la descarga
 
         try:
             zip_bytes = generar_zip_libro_iva('COMPRAS', empresa_id, anio, mes)

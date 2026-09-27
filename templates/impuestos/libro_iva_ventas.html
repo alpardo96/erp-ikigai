@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load formato_tags %}
 
 {% block title %}Libro IVA Ventas - Portal IVA | Impuestos{% endblock %}
 
@@ -103,24 +104,24 @@
                         <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"05d" }}-{{ c.numero }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">{{ c.clienteproveedor.razon_social }}</td>
                         <td class="px-4 py-3 font-mono text-slate-600">{{ c.cuit|default:"-" }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.neto_gravado|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.exento|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.no_gravado|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-bold text-blue-800">$ {{ c.iva_total|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.otros|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">$ {{ c.total|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.neto_gravado|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.exento|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.no_gravado|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-blue-800">{{ c.iva_total|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.otros|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">{{ c.total|formato_ar }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot class="bg-slate-100 font-bold border-t-2 border-slate-300">
                     <tr>
                         <td colspan="5" class="px-4 py-3 uppercase text-slate-800">Totales del Período {{ periodo }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_neto|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_exento|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_no_gravado|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-blue-900">$ {{ totales.tot_iva|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_otros|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_total|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_neto|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_exento|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_no_gravado|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-blue-900">{{ totales.tot_iva|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_otros|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_total|default:0|formato_ar }}</td>
                     </tr>
                 </tfoot>
             </table>

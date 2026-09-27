@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Dict, Any, List, Tuple
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Sum
 from django.core.exceptions import ValidationError
 
 from .models import PeriodoIva, ArcaMisComprobantes
@@ -69,28 +70,40 @@ def obtener_primer_periodo_vigente_compra(empresa_id: int, fecha_comprobante: da
 
 def calcular_liquidacion_iva(empresa_id: int, anio: int, mes: int) -> Dict[str, Any]:
     """
-    Calcula la liquidación de IVA para la empresa en el período anio/mes.
-    Débito Fiscal = Suma IVA de Ventas (condic 1 ó 3) en el período.
-    Crédito Fiscal = Suma IVA de Compras (condic 1 ó 3) en el período.
+    Calcula la liquidación oficial de IVA para la empresa en el período anio/mes.
+    Débito Fiscal = Suma IVA de Ventas (cble_libro_iva_ventas) en el período.
+    Crédito Fiscal = Suma IVA de Compras (cble_libro_iva_compras) en el período.
+    El período se compara contra el campo 'periodo' (migrado desde lib_iva.mesano en VFP).
     """
     periodo_yyyymm = f"{anio}{mes:02d}"
 
-    # Ventas del período (Débito Fiscal)
-    ventas_periodo = Venta.objects.filter(
+    # Ventas del período (Débito Fiscal - cble_libro_iva_ventas)
+    ventas_qs = LibroIvaVentas.objects.filter(
         empresa_id=empresa_id,
-        periodo=periodo_yyyymm,
-        estado=0,  # Activa
-        condic__in=[1, 3]  # Fiscales
+        periodo=periodo_yyyymm
     )
-    debito_fiscal = sum((v.iva for v in ventas_periodo), Decimal('0.00'))
+    if not ventas_qs.exists():
+        ventas_qs = LibroIvaVentas.objects.filter(
+            empresa_id=empresa_id,
+            fecha__year=anio,
+            fecha__month=mes
+        )
+    agg_ventas = ventas_qs.aggregate(tot_iva=Sum('iva_total'))
+    debito_fiscal = agg_ventas['tot_iva'] or Decimal('0.00')
 
-    # Compras del período (Crédito Fiscal)
-    compras_periodo = Compra.objects.filter(
+    # Compras del período (Crédito Fiscal - cble_libro_iva_compras)
+    compras_qs = LibroIvaCompras.objects.filter(
         empresa_id=empresa_id,
-        periodo=periodo_yyyymm,
-        condic__in=[1, 3]  # Fiscales
+        periodo=periodo_yyyymm
     )
-    credito_fiscal = sum((c.iva for c in compras_periodo), Decimal('0.00'))
+    if not compras_qs.exists():
+        compras_qs = LibroIvaCompras.objects.filter(
+            empresa_id=empresa_id,
+            fecha__year=anio,
+            fecha__month=mes
+        )
+    agg_compras = compras_qs.aggregate(tot_iva=Sum('iva_total'))
+    credito_fiscal = agg_compras['tot_iva'] or Decimal('0.00')
 
     saldo_resultante = debito_fiscal - credito_fiscal
     periodo_obj = PeriodoIva.objects.filter(empresa_id=empresa_id, periodo=periodo_yyyymm).first()
@@ -105,8 +118,8 @@ def calcular_liquidacion_iva(empresa_id: int, anio: int, mes: int) -> Dict[str, 
         'saldo_resultante': saldo_resultante,
         'esta_cerrado': esta_cerrado,
         'periodo_obj': periodo_obj,
-        'total_ventas_cant': ventas_periodo.count(),
-        'total_compras_cant': compras_periodo.count(),
+        'total_ventas_cant': ventas_qs.count(),
+        'total_compras_cant': compras_qs.count(),
     }
 
 

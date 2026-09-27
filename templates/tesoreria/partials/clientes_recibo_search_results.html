@@ -1,3 +1,4 @@
+{% load formato_tags %}
 <div class="divide-y divide-slate-100 bg-white">
     {% for c in clientes %}
     <button type="button"
@@ -10,7 +11,7 @@
         </span>
         <span class="shrink-0 text-right">
             <span class="block text-[10px] font-black text-slate-400">#{{ c.pk }}</span>
-            <span class="block text-[10px] font-bold text-indigo-600">$ {{ c.saldo_pendiente|default:c.saldo|floatformat:2 }}</span>
+            <span class="block text-[10px] font-bold text-indigo-600">$ {{ c.saldo_pendiente|default:c.saldo|formato_ar }}</span>
         </span>
     </button>
     {% empty %}

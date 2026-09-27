@@ -42,14 +42,27 @@
 
                 <!-- Cobranza -->
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Dólar Cobranza</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Dólar Cobranza (Sugerido)</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <span class="text-gray-500 font-bold">$</span>
                         </div>
                         {{ form.dolar_cobranza }}
                     </div>
-                    <p class="mt-1 text-xs text-gray-500">Se usará en la recepción de pagos en tesorería.</p>
+                    <p class="mt-1 text-xs text-gray-500">Cotización sugerida por defecto al recibir pagos en moneda extranjera.</p>
+                </div>
+
+                <!-- Dólar Cobranza Editable por el Cajero -->
+                <div class="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <div class="pt-0.5">
+                            {{ form.dolar_cobranza_editable }}
+                        </div>
+                        <div>
+                            <span class="block text-sm font-bold text-gray-800">Permitir al Cajero/Operador editar la cotización</span>
+                            <span class="block text-xs text-gray-600 mt-0.5">Si está marcado, el cajero puede ajustar la cotización del dólar en el momento de cobrar en Caja Mostrador o emitir un Recibo. Si se desmarca, el valor será fijo.</span>
+                        </div>
+                    </label>
                 </div>
             </div>
 

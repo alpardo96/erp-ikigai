@@ -88,14 +88,14 @@
 ---
 
 ## 10. TESORERÍA & CAJA
-- [ ] **10.1 Emitir Recibo:** Quitar del menú lateral principal; dejar únicamente el acceso integrado desde Caja Mostrador.
+- [x] **10.1 Emitir Recibo:** Quitar del menú lateral principal; dejar únicamente el acceso integrado desde Caja Mostrador. Es a nivel de permisos, si no tiene permisos no puede acceder.
 - [ ] **10.2 Medios de pago en Recibos:** Mostrar todos los medios de pago configurados en el listado de recibos.
 - [ ] **10.3 Emitir Orden de Pago:** Evaluar casos de uso o simplificar circuito.
 - **10.4 Caja Mostrador:**
-  - [ ] Formato de retiros parciales: Imprimir comprobante en el formato homologado para firma del cajero.
+  - [x] Formato de retiros parciales: Imprimir comprobante en el formato homologado para firma del cajero.
   - [ ] Cierre de caja: Solicitar arqueo discriminando tarjetas, transferencias, cheques, efectivo ARS y dólares USD.
   - [ ] Reservas de armas: Añadir medio de pago Cuenta Corriente en la reserva de armas.
-  - [ ] Tipo de cambio USD: Permitir ajustar la cotización del dólar al cobrar con método de pago Dólares.
+  - [x] Tipo de cambio USD: Permitir ajustar la cotización del dólar al cobrar con método de pago Dólares. Esto es un error conceptual. 
   - [ ] Revisión visual y datos mostrados en la opción Reserva desde caja mostrador.
   - [ ] Autorización para anulación: Exigir autorización/clave para poder anular o borrar un pedido de venta.
   - [ ] Definición de circuito de gastos menores: ¿se continúan registrando vía Retiro Parcial?

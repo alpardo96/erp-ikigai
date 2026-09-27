@@ -1,5 +1,5 @@
 from django import forms
-from .models import MedioPago, CuentaBancaria
+from .models import MedioPago, CuentaBancaria, Tarjeta
 from contable.models import Cuenta
 
 class MedioPagoForm(forms.ModelForm):
@@ -101,3 +101,25 @@ class CuentaBancariaForm(forms.ModelForm):
         for field_name, field in self.fields.items():
             clase_actual = field.widget.attrs.get('class', '')
             field.widget.attrs['class'] = f"{clase_actual} w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all".strip()
+
+
+class TarjetaForm(forms.ModelForm):
+    """
+    Formulario para la gestión de marcas/emisores de tarjetas (Crédito / Débito)
+    en el panel de Configuración -> Tesorería -> Tarjetas.
+    """
+    class Meta:
+        model = Tarjeta
+        fields = ['codigo', 'nombre', 'tipo']
+        widgets = {
+            'codigo': forms.TextInput(attrs={'placeholder': 'Ej: 1, VISA, etc.'}),
+            'nombre': forms.TextInput(attrs={'placeholder': 'Ej: VISA, MASTERCARD, NARANJA...'}),
+            'tipo': forms.Select(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            clase_actual = field.widget.attrs.get('class', '')
+            field.widget.attrs['class'] = f"{clase_actual} w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all".strip()
+

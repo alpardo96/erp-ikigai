@@ -1,0 +1,323 @@
+{% load formato_tags %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    @page {
+        size: A4 portrait;
+        margin: 0.7cm 0.9cm 0.7cm 0.9cm;
+    }
+    body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 8pt;
+        color: #1e293b;
+        line-height: 1.2;
+    }
+    .talon-container {
+        width: 100%;
+        height: 12.8cm;
+        max-height: 13cm;
+        overflow: hidden;
+    }
+    .cab {
+        width: 100%;
+        border-bottom: 1.5px solid #0f172a;
+        padding-bottom: 4px;
+        margin-bottom: 6px;
+    }
+    .empresa-nombre {
+        font-size: 10pt;
+        font-weight: bold;
+        color: #0f172a;
+    }
+    .chico {
+        font-size: 7pt;
+        color: #475569;
+    }
+    .titulo-doc {
+        font-size: 11pt;
+        font-weight: bold;
+        color: #0f172a;
+        text-align: right;
+    }
+    .badge-talon {
+        display: inline-block;
+        background-color: #0f172a;
+        color: #ffffff;
+        font-size: 7pt;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-top: 2px;
+    }
+    .info-caja {
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 4px 6px;
+        margin-bottom: 6px;
+    }
+    .info-caja td {
+        font-size: 7.5pt;
+    }
+    table.tabla-datos {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 5px;
+    }
+    table.tabla-datos th {
+        background-color: #f1f5f9;
+        font-size: 7pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        color: #334155;
+        padding: 3px 4px;
+        border: 1px solid #cbd5e1;
+        text-align: left;
+    }
+    table.tabla-datos td {
+        padding: 3px 4px;
+        border: 1px solid #e2e8f0;
+        font-size: 7.5pt;
+    }
+    .der { text-align: right; }
+    .cen { text-align: center; }
+    .total-box {
+        background-color: #f1f5f9;
+        border: 1.5px solid #0f172a;
+        padding: 5px 8px;
+        margin-top: 4px;
+        margin-bottom: 6px;
+    }
+    .total-monto {
+        font-size: 10pt;
+        font-weight: bold;
+        color: #0f172a;
+    }
+    .firmas-table {
+        width: 100%;
+        margin-top: 8px;
+    }
+    .firma-box {
+        width: 47%;
+        border-top: 1px solid #334155;
+        padding-top: 3px;
+        text-align: center;
+        font-size: 7pt;
+        color: #334155;
+    }
+    .separador-corte {
+        width: 100%;
+        border-top: 1px dashed #64748b;
+        margin: 10px 0 10px 0;
+        text-align: center;
+    }
+    .texto-corte {
+        font-size: 6.5pt;
+        color: #64748b;
+        background-color: #ffffff;
+        padding: 0 8px;
+    }
+</style>
+</head>
+<body>
+
+{# ==================== TALÓN SUPERIOR: ORIGINAL ==================== #}
+<div class="talon-container">
+    <table class="cab">
+        <tr>
+            <td style="width: 55%; vertical-align: top;">
+                <div class="empresa-nombre">{{ empresa.nombre|upper }}</div>
+                <div class="chico">CUIT: {{ empresa.cuit }} | {{ empresa.condicion_iva|default:"Resp. Inscripto"|upper }}</div>
+                <div class="chico">Sucursal: {{ retiro.sucursal_origen.nombre|upper }} - {{ retiro.sucursal_origen.direccion|default:empresa.direccion|default:"" }}</div>
+            </td>
+            <td style="width: 45%; vertical-align: top; text-align: right;">
+                <div class="titulo-doc">COMPROBANTE DE RETIRO DE CAJA</div>
+                <div style="font-size: 8.5pt; font-weight: bold; color: #0f172a;">RETIRO N° #{{ retiro.id|stringformat:"06d" }}</div>
+                <div class="chico">Fecha/Hora: {{ retiro.fecha|date:"d/m/Y H:i" }} hs.</div>
+                <div><span class="badge-talon">ORIGINAL - TESORERÍA</span></div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="info-caja" style="width: 100%;">
+        <tr>
+            <td style="width: 35%;"><b>Caja Mostrador:</b> {{ retiro.sesion.caja.nombre }}</td>
+            <td style="width: 35%;"><b>Cajero (Entrega):</b> {{ retiro.usuario.get_full_name|default:retiro.usuario.username }}</td>
+            <td style="width: 30%;"><b>Destino:</b> {{ retiro.sucursal_destino.nombre }}</td>
+        </tr>
+    </table>
+
+    <!-- Detalle de Medios Retirados -->
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th style="width: 65%;">Concepto / Detalle de Medio Físico</th>
+                <th style="width: 35%;" class="der">Importe ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><b>Efectivo en Pesos</b></td>
+                <td class="der font-mono">$ {{ retiro.efectivo_pesos|formato_ar }}</td>
+            </tr>
+            {% if retiro.efectivo_dolares > 0 %}
+            <tr>
+                <td><b>Efectivo en Dólares:</b> US$ {{ retiro.efectivo_dolares|formato_ar }} (Cotiz: ${{ retiro.cotizacion_dolar|formato_ar }})</td>
+                <td class="der font-mono">$ {{ total_dolares_pesos|formato_ar }}</td>
+            </tr>
+            {% endif %}
+            {% if valores %}
+            <tr>
+                <td colspan="2" style="background-color: #f8fafc; font-weight: bold; font-size: 7pt; color: #334155; padding-top: 4px;">
+                    CHEQUES / VALORES DE TERCEROS EN CARTERA ({{ valores|length }} VALOR{% if valores|length > 1 %}ES{% endif %}):
+                </td>
+            </tr>
+            {% for v in valores %}
+            <tr>
+                <td style="padding-left: 10px; font-size: 7pt;">
+                    • {{ v.banco.nombre|default:"Cheque" }} N° {{ v.numero_cheque }} | Vto: {{ v.fecha_vencimiento|date:"d/m/Y" }}{% if v.nombre_firmante %} | {{ v.nombre_firmante }}{% endif %}
+                </td>
+                <td class="der font-mono" style="font-size: 7pt;">$ {{ v.importe|formato_ar }}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="total-box">
+        <table style="width: 100%;">
+            <tr>
+                <td style="width: 65%; font-size: 7pt; color: #334155;">
+                    <b>SON:</b> {{ total_letras|upper }}
+                    {% if retiro.observaciones %}<br><b>Obs:</b> {{ retiro.observaciones }}{% endif %}
+                </td>
+                <td style="width: 35%; text-align: right;">
+                    <span style="font-size: 8pt; font-weight: bold; color: #334155;">TOTAL RETIRADO:</span><br>
+                    <span class="total-monto">$ {{ total_general|formato_ar }}</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Firmas -->
+    <table class="firmas-table">
+        <tr>
+            <td class="firma-box">
+                <b>ENTREGÓ (Cajero)</b><br>
+                Firma: ________________________<br>
+                Aclaración / DNI: _________________
+            </td>
+            <td style="width: 6%;">&nbsp;</td>
+            <td class="firma-box">
+                <b>RECIBIÓ CONFORME (Tesorero / Receptor)</b><br>
+                Firma: ________________________<br>
+                Aclaración / DNI: _________________
+            </td>
+        </tr>
+    </table>
+</div>
+
+{# ==================== LÍNEA DE CORTE ==================== #}
+<div class="separador-corte">
+    <span class="texto-corte">-- -- -- -- -- -- -- -- -- -- CORTE AQUÍ (ORIGINAL ARRIBA / DUPLICADO ABAJO) -- -- -- -- -- -- -- -- -- --</span>
+</div>
+
+{# ==================== TALÓN INFERIOR: DUPLICADO ==================== #}
+<div class="talon-container">
+    <table class="cab">
+        <tr>
+            <td style="width: 55%; vertical-align: top;">
+                <div class="empresa-nombre">{{ empresa.nombre|upper }}</div>
+                <div class="chico">CUIT: {{ empresa.cuit }} | {{ empresa.condicion_iva|default:"Resp. Inscripto"|upper }}</div>
+                <div class="chico">Sucursal: {{ retiro.sucursal_origen.nombre|upper }} - {{ retiro.sucursal_origen.direccion|default:empresa.direccion|default:"" }}</div>
+            </td>
+            <td style="width: 45%; vertical-align: top; text-align: right;">
+                <div class="titulo-doc">COMPROBANTE DE RETIRO DE CAJA</div>
+                <div style="font-size: 8.5pt; font-weight: bold; color: #0f172a;">RETIRO N° #{{ retiro.id|stringformat:"06d" }}</div>
+                <div class="chico">Fecha/Hora: {{ retiro.fecha|date:"d/m/Y H:i" }} hs.</div>
+                <div><span class="badge-talon" style="background-color: #334155;">DUPLICADO - CAJERO</span></div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="info-caja" style="width: 100%;">
+        <tr>
+            <td style="width: 35%;"><b>Caja Mostrador:</b> {{ retiro.sesion.caja.nombre }}</td>
+            <td style="width: 35%;"><b>Cajero (Entrega):</b> {{ retiro.usuario.get_full_name|default:retiro.usuario.username }}</td>
+            <td style="width: 30%;"><b>Destino:</b> {{ retiro.sucursal_destino.nombre }}</td>
+        </tr>
+    </table>
+
+    <!-- Detalle de Medios Retirados -->
+    <table class="tabla-datos">
+        <thead>
+            <tr>
+                <th style="width: 65%;">Concepto / Detalle de Medio Físico</th>
+                <th style="width: 35%;" class="der">Importe ($)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><b>Efectivo en Pesos</b></td>
+                <td class="der font-mono">$ {{ retiro.efectivo_pesos|formato_ar }}</td>
+            </tr>
+            {% if retiro.efectivo_dolares > 0 %}
+            <tr>
+                <td><b>Efectivo en Dólares:</b> US$ {{ retiro.efectivo_dolares|formato_ar }} (Cotiz: ${{ retiro.cotizacion_dolar|formato_ar }})</td>
+                <td class="der font-mono">$ {{ total_dolares_pesos|formato_ar }}</td>
+            </tr>
+            {% endif %}
+            {% if valores %}
+            <tr>
+                <td colspan="2" style="background-color: #f8fafc; font-weight: bold; font-size: 7pt; color: #334155; padding-top: 4px;">
+                    CHEQUES / VALORES DE TERCEROS EN CARTERA ({{ valores|length }} VALOR{% if valores|length > 1 %}ES{% endif %}):
+                </td>
+            </tr>
+            {% for v in valores %}
+            <tr>
+                <td style="padding-left: 10px; font-size: 7pt;">
+                    • {{ v.banco.nombre|default:"Cheque" }} N° {{ v.numero_cheque }} | Vto: {{ v.fecha_vencimiento|date:"d/m/Y" }}{% if v.nombre_firmante %} | {{ v.nombre_firmante }}{% endif %}
+                </td>
+                <td class="der font-mono" style="font-size: 7pt;">$ {{ v.importe|formato_ar }}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="total-box">
+        <table style="width: 100%;">
+            <tr>
+                <td style="width: 65%; font-size: 7pt; color: #334155;">
+                    <b>SON:</b> {{ total_letras|upper }}
+                    {% if retiro.observaciones %}<br><b>Obs:</b> {{ retiro.observaciones }}{% endif %}
+                </td>
+                <td style="width: 35%; text-align: right;">
+                    <span style="font-size: 8pt; font-weight: bold; color: #334155;">TOTAL RETIRADO:</span><br>
+                    <span class="total-monto">$ {{ total_general|formato_ar }}</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Firmas -->
+    <table class="firmas-table">
+        <tr>
+            <td class="firma-box">
+                <b>ENTREGÓ (Cajero)</b><br>
+                Firma: ________________________<br>
+                Aclaración / DNI: _________________
+            </td>
+            <td style="width: 6%;">&nbsp;</td>
+            <td class="firma-box">
+                <b>RECIBIÓ CONFORME (Tesorero / Receptor)</b><br>
+                Firma: ________________________<br>
+                Aclaración / DNI: _________________
+            </td>
+        </tr>
+    </table>
+</div>
+
+</body>
+</html>

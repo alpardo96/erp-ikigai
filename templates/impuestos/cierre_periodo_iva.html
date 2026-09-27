@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load formato_tags %}
 
 {% block title %}Cierre Periodo IVA | Impuestos{% endblock %}
 
@@ -104,19 +105,19 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-2">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Débito Fiscal (Ventas)</p>
-            <p class="text-3xl font-bold text-slate-900 font-mono">$ {{ liq.debito_fiscal|floatformat:2 }}</p>
+            <p class="text-3xl font-bold text-slate-900 font-mono">{{ liq.debito_fiscal|formato_ar }}</p>
             <p class="text-xs text-slate-500">{{ liq.total_ventas_cant }} comprobantes de venta computados</p>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 p-6 space-y-2">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Crédito Fiscal (Compras)</p>
-            <p class="text-3xl font-bold text-slate-900 font-mono">$ {{ liq.credito_fiscal|floatformat:2 }}</p>
+            <p class="text-3xl font-bold text-slate-900 font-mono">{{ liq.credito_fiscal|formato_ar }}</p>
             <p class="text-xs text-slate-500">{{ liq.total_compras_cant }} comprobantes de compra computados</p>
         </div>
 
         <div class="bg-white rounded-2xl border border-purple-200 bg-purple-50/60 p-6 space-y-2">
             <p class="text-xs font-bold text-purple-700 uppercase tracking-wider">Saldo Resultante</p>
-            <p class="text-3xl font-bold text-purple-900 font-mono">$ {{ liq.saldo_resultante|floatformat:2 }}</p>
+            <p class="text-3xl font-bold text-purple-900 font-mono">{{ liq.saldo_resultante|formato_ar }}</p>
             <p class="text-xs text-purple-600">
                 {% if liq.saldo_resultante > 0 %}
                 Saldo a Pagar de IVA a favor de la Administración Fiscal

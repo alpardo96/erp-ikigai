@@ -99,10 +99,14 @@ class EjercicioForm(forms.ModelForm):
 class CotizacionMonedaForm(forms.ModelForm):
     dolar_venta = forms.CharField(widget=forms.TextInput(attrs={'class': 'fInputCotiz text-right', 'placeholder': 'Ej: 1400.50'}))
     dolar_cobranza = forms.CharField(widget=forms.TextInput(attrs={'class': 'fInputCotiz text-right', 'placeholder': 'Ej: 1400.50'}))
+    dolar_cobranza_editable = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500'})
+    )
 
     class Meta:
         model = CotizacionMoneda
-        fields = ['dolar_venta', 'dolar_cobranza']
+        fields = ['dolar_venta', 'dolar_cobranza', 'dolar_cobranza_editable']
 
     def clean_dolar_venta(self):
         val = self.cleaned_data.get('dolar_venta')

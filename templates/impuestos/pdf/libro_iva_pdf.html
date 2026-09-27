@@ -1,3 +1,4 @@
+{% load formato_tags %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -149,12 +150,12 @@
                 <td align="center" class="font-mono">{{ c.punto|stringformat:"05d" }}-{{ c.numero }}</td>
                 <td align="left">{{ c.clienteproveedor.razon_social|default:"-"|truncatechars:35 }}</td>
                 <td align="center" class="font-mono">{{ c.cuit|default:"-" }}</td>
-                <td align="right" class="font-mono">{{ c.neto_gravado|floatformat:2 }}</td>
-                <td align="right" class="font-mono">{{ c.exento|floatformat:2 }}</td>
-                <td align="right" class="font-mono">{{ c.no_gravado|floatformat:2 }}</td>
-                <td align="right" class="font-mono font-bold" style="color: #1e40af;">{{ c.iva_total|floatformat:2 }}</td>
-                <td align="right" class="font-mono">{{ c.otros|floatformat:2 }}</td>
-                <td align="right" class="font-mono font-bold">{{ c.total|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ c.neto_gravado|formato_ar }}</td>
+                <td align="right" class="font-mono">{{ c.exento|formato_ar }}</td>
+                <td align="right" class="font-mono">{{ c.no_gravado|formato_ar }}</td>
+                <td align="right" class="font-mono font-bold" style="color: #1e40af;">{{ c.iva_total|formato_ar }}</td>
+                <td align="right" class="font-mono">{{ c.otros|formato_ar }}</td>
+                <td align="right" class="font-mono font-bold">{{ c.total|formato_ar }}</td>
             </tr>
             {% empty %}
             <tr>
@@ -168,12 +169,12 @@
         <tfoot>
             <tr class="tfoot-row">
                 <td colspan="5" align="left" style="padding-left: 8px;">TOTALES DEL PERÍODO {{ periodo }}</td>
-                <td align="right" class="font-mono">{{ tot_neto|floatformat:2 }}</td>
-                <td align="right" class="font-mono">{{ tot_exento|floatformat:2 }}</td>
-                <td align="right" class="font-mono">{{ tot_no_gravado|floatformat:2 }}</td>
-                <td align="right" class="font-mono" style="color: #1e40af;">{{ tot_iva|floatformat:2 }}</td>
-                <td align="right" class="font-mono">{{ tot_otros|floatformat:2 }}</td>
-                <td align="right" class="font-mono">{{ tot_total|floatformat:2 }}</td>
+                <td align="right" class="font-mono">{{ tot_neto|formato_ar }}</td>
+                <td align="right" class="font-mono">{{ tot_exento|formato_ar }}</td>
+                <td align="right" class="font-mono">{{ tot_no_gravado|formato_ar }}</td>
+                <td align="right" class="font-mono" style="color: #1e40af;">{{ tot_iva|formato_ar }}</td>
+                <td align="right" class="font-mono">{{ tot_otros|formato_ar }}</td>
+                <td align="right" class="font-mono">{{ tot_total|formato_ar }}</td>
             </tr>
         </tfoot>
         {% endif %}

@@ -2,9 +2,9 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 import json
-from .models import MedioPago, CuentaBancaria, Recibo, ReciboAplicacion, ValorTerceros, MovimientoCajaDetalle, TransaccionBancaria, OrdenPago, OrdenPagoAplicacion
+from .models import MedioPago, CuentaBancaria, Tarjeta, Recibo, ReciboAplicacion, ValorTerceros, MovimientoCajaDetalle, TransaccionBancaria, OrdenPago, OrdenPagoAplicacion
 from .models import CajaSesion, Caja, CobroTarjeta, MovimientoCaja
-from .forms import MedioPagoForm, CuentaBancariaForm
+from .forms import MedioPagoForm, CuentaBancariaForm, TarjetaForm
 from facturacion.models import ClienteProveedor, Venta, Compra
 from django.db import transaction
 from django.db.models import Q, Sum
@@ -171,6 +171,52 @@ def eliminar_cuenta_bancaria(request, id):
         response['HX-Trigger'] = json.dumps({'reloadCuentasBancarias': True})
         return response
     return HttpResponse(status=400)
+
+@login_required
+def buscar_tarjetas(request):
+    """
+    Búsqueda y filtrado en tiempo real de marcas de tarjetas (Crédito/Débito)
+    para la tabla de Configuración -> Tesorería -> Tarjetas.
+    """
+    q = request.GET.get('q', '').strip()
+    tarjetas = Tarjeta.objects.all().order_by('nombre')
+    if q:
+        tarjetas = tarjetas.filter(Q(nombre__icontains=q) | Q(codigo__icontains=q))
+    return render(request, 'configuracion/partials/tarjeta_table_rows.html', {'tarjetas': tarjetas})
+
+@login_required
+def tarjeta_modal(request, id=None):
+    """
+    Modal de creación y edición para marcas de tarjetas maestras.
+    """
+    tarjeta = get_object_or_404(Tarjeta, id=id) if id else None
+
+    if request.method == 'POST':
+        form = TarjetaForm(request.POST, instance=tarjeta)
+        if form.is_valid():
+            form.save()
+            response = HttpResponse()
+            response['HX-Trigger'] = json.dumps({'reloadTarjetas': True, 'cerrarModal': True})
+            response['HX-Reswap'] = 'none'
+            return response
+    else:
+        form = TarjetaForm(instance=tarjeta)
+
+    return render(request, 'configuracion/modals/tarjeta_form.html', {'form': form, 'tarjeta': tarjeta})
+
+@login_required
+def eliminar_tarjeta(request, id):
+    """
+    Eliminación de una tarjeta de crédito/débito con refresh reactivo vía HTMX.
+    """
+    if request.method == 'POST':
+        tarjeta = get_object_or_404(Tarjeta, id=id)
+        tarjeta.delete()
+        response = HttpResponse()
+        response['HX-Trigger'] = json.dumps({'reloadTarjetas': True})
+        return response
+    return HttpResponse(status=400)
+
 
 @login_required
 def buscar_cliente_proveedor(request, tipo):
@@ -873,6 +919,7 @@ def caja_mostrador_cobrar_modal(request, preventa_id):
     from tesoreria.models import Banco, Tarjeta
     cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
     dolar_cobranza = cotiz.dolar_cobranza if cotiz else 1.0
+    dolar_cobranza_editable = cotiz.dolar_cobranza_editable if cotiz else True
     
     cuentas_bancarias = CuentaBancaria.objects.filter(empresa_id=empresa_id)
     bancos = Banco.objects.all()
@@ -886,6 +933,7 @@ def caja_mostrador_cobrar_modal(request, preventa_id):
         'es_reserva': es_reserva,
         'producto_reservado': producto_reservado,
         'dolar_cobranza': dolar_cobranza,
+        'dolar_cobranza_editable': dolar_cobranza_editable,
         'cuentas_bancarias': cuentas_bancarias,
         'bancos': bancos,
         'tarjetas': tarjetas,
@@ -899,7 +947,8 @@ def _guardar_cobro_preventa_transaccional(
     efectivo, dolares, ctacte, saldo_a_favor,
     tarjetas, transferencias, valores,
     total_tarjetas, total_transferencias, total_valores, total_ingresado,
-    condic, punto_venta_num, tipo_cbte, res_afip
+    condic, punto_venta_num, tipo_cbte, res_afip,
+    cotizacion_dolar=None, usd_billetes=None
 ):
     preventa = Preventa.objects.select_for_update().get(preventa_id=preventa_id, empresa_id=empresa_id)
     last_venta = Venta.objects.filter(empresa_id=empresa_id, sucursal_id=sucursal_id, punto=punto_venta_num).select_for_update().order_by('-numero').first()
@@ -942,14 +991,16 @@ def _guardar_cobro_preventa_transaccional(
         request, venta, preventa, empresa_id, sucursal_id, sesion_caja,
         efectivo, dolares, ctacte, saldo_a_favor,
         tarjetas, transferencias, valores,
-        total_tarjetas, total_transferencias, total_valores, total_ingresado
+        total_tarjetas, total_transferencias, total_valores, total_ingresado,
+        cotizacion_dolar=cotizacion_dolar, usd_billetes=usd_billetes
     )
     return HttpResponse(json.dumps({'status': 'success'}), content_type="application/json")
 
 @transaction.atomic
 def _guardar_reserva_preventa_transaccional(
     request, preventa, producto_reservado, empresa_id, sucursal_id, sesion_caja,
-    efectivo, dolares, tarjetas, transferencias, valores, total_ingresado
+    efectivo, dolares, tarjetas, transferencias, valores, total_ingresado,
+    cotizacion_dolar=None, usd_billetes=None
 ):
     """
     Registra el cobro de una Reserva de Arma (SIGIMAC).
@@ -1038,18 +1089,19 @@ def _guardar_reserva_preventa_transaccional(
             )
 
     # Efectivo USD
-    if dolares > 0:
+    if dolares > 0 or (usd_billetes and usd_billetes > 0):
         mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
-        from empresas.models import CotizacionMoneda
-        cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
-        dolar_cobranza = cotiz.dolar_cobranza if cotiz else Decimal('1.0')
+        if not cotizacion_dolar:
+            from empresas.models import CotizacionMoneda
+            cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
+            cotizacion_dolar = cotiz.dolar_cobranza if cotiz else Decimal('1.0')
         if mp_efe:
             MovimientoCajaDetalle.objects.create(
                 movimiento_caja=mov_caja,
                 medio_pago=mp_efe,
-                importe=dolares * Decimal(str(dolar_cobranza)),
-                importe_moneda_extranjera=dolares,
-                cotizacion=dolar_cobranza
+                importe=dolares,
+                importe_moneda_extranjera=usd_billetes if usd_billetes else (dolares / cotizacion_dolar if cotizacion_dolar else Decimal('0')),
+                cotizacion=cotizacion_dolar
             )
 
     # Tarjetas
@@ -1190,6 +1242,14 @@ def caja_mostrador_procesar_cobro(request, preventa_id):
             dolares = Decimal(str(data.get('dolares', 0) or 0))
             ctacte = Decimal(str(data.get('ctacte', 0) or 0))
             saldo_a_favor = Decimal(str(data.get('saldo_a_favor_ctacte', 0) or 0))
+
+            from empresas.models import CotizacionMoneda
+            cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
+            cotizacion_sugerida = Decimal(str(cotiz.dolar_cobranza if cotiz else 1.0))
+            cotizacion_dolar = Decimal(str(data.get('cotizacion_dolar') or cotizacion_sugerida))
+            usd_billetes = Decimal(str(data.get('usd_billetes') or 0))
+            if usd_billetes == 0 and dolares > 0 and cotizacion_dolar > 0:
+                usd_billetes = (dolares / cotizacion_dolar).quantize(Decimal('0.01'))
             
             if saldo_a_favor > 0 and preventa.cliente.codigo_id == 1:
                 return HttpResponse(json.dumps({'status': 'error', 'message': 'No se puede dejar saldo a favor a un Consumidor Final.'}), status=400)
@@ -1215,7 +1275,8 @@ def caja_mostrador_procesar_cobro(request, preventa_id):
                 
                 return _guardar_reserva_preventa_transaccional(
                     request, preventa, item_subprod.producto, empresa_id, sucursal_id, sesion_caja,
-                    efectivo, dolares, tarjetas, transferencias, valores, total_ingresado
+                    efectivo, dolares, tarjetas, transferencias, valores, total_ingresado,
+                    cotizacion_dolar=cotizacion_dolar, usd_billetes=usd_billetes
                 )
             
             if total_ingresado < (preventa.total - Decimal("0.05")):
@@ -1333,7 +1394,8 @@ def caja_mostrador_procesar_cobro(request, preventa_id):
                 efectivo, dolares, ctacte, saldo_a_favor,
                 tarjetas, transferencias, valores,
                 total_tarjetas, total_transferencias, total_valores, total_ingresado,
-                condic, punto_venta_num, tipo_cbte, res_afip
+                condic, punto_venta_num, tipo_cbte, res_afip,
+                cotizacion_dolar=cotizacion_dolar, usd_billetes=usd_billetes
             )
         except Exception as e:
             import traceback
@@ -1345,7 +1407,8 @@ def _crear_asientos_y_movimientos_cobro(
     request, venta, preventa, empresa_id, sucursal_id, sesion_caja,
     efectivo, dolares, ctacte, saldo_a_favor,
     tarjetas, transferencias, valores,
-    total_tarjetas, total_transferencias, total_valores, total_ingresado
+    total_tarjetas, total_transferencias, total_valores, total_ingresado,
+    cotizacion_dolar=None, usd_billetes=None
 ):
             from facturacion.models import VentaItem
             ventas_por_rubro = {}
@@ -1376,14 +1439,12 @@ def _crear_asientos_y_movimientos_cobro(
             preventa.save()
             
             # 2. Registros de tesoreria
-            from empresas.models import CotizacionMoneda
-            cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
-            dolar_cobranza = cotiz.dolar_cobranza if cotiz else Decimal('1.0')
+            if not cotizacion_dolar:
+                from empresas.models import CotizacionMoneda
+                cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
+                cotizacion_dolar = cotiz.dolar_cobranza if cotiz else Decimal('1.0')
 
             # Condición del movimiento de fondos según el TIPO DE COMPROBANTE (Plan 049):
-            # PRE (Presupuesto) -> Presupuestado (2); cualquier otro -> Real (1). Antes estaba
-            # fijo en 1, así que una venta presupuestada quedaba registrada como Real y el
-            # filtro Real/Presupuestado de los reportes de fondos la clasificaba mal.
             from tesoreria.services.imputacion import condic_por_comprobante
             condic_mov = condic_por_comprobante(venta.tipo)
 
@@ -1412,15 +1473,15 @@ def _crear_asientos_y_movimientos_cobro(
                     )
             
             # Efectivo USD
-            if dolares > 0:
+            if dolares > 0 or (usd_billetes and usd_billetes > 0):
                 mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
                 if mp_efe:
                     MovimientoCajaDetalle.objects.create(
                         movimiento_caja=mov_caja,
                         medio_pago=mp_efe,
-                        importe=dolares * Decimal(str(dolar_cobranza)),
-                        importe_moneda_extranjera=dolares,
-                        cotizacion=dolar_cobranza
+                        importe=dolares,
+                        importe_moneda_extranjera=usd_billetes if usd_billetes else (dolares / cotizacion_dolar if cotizacion_dolar else Decimal('0')),
+                        cotizacion=cotizacion_dolar
                     )
             
             # Tarjetas
@@ -1658,15 +1719,18 @@ def caja_retiro_modal(request):
     
     if not sesion_caja:
         return HttpResponse("No hay sesión de caja abierta.", status=400)
-    # Obtener valores en cartera de esta sucursal
-    # Nota: Filtramos por la sucursal actual
-    valores = ValorTerceros.objects.filter(sucursal_id=sucursal_id, retirocajavalor__isnull=True)
-    cupones = CobroTarjeta.objects.filter(movimiento_detalle__movimiento_caja__sesion=sesion_caja, sucursal_id=sucursal_id, retirocajatarjeta__isnull=True)
+    
+    # Obtener valores en cartera (cheques físicos de terceros) de esta sucursal
+    valores = ValorTerceros.objects.filter(
+        empresa_id=empresa_id,
+        sucursal_id=sucursal_id,
+        estado='C',
+        retirocajavalor__isnull=True
+    ).select_related('banco').order_by('fecha_vencimiento')
     
     context = {
         'sesion': sesion_caja,
         'valores': valores,
-        'cupones': cupones
     }
     return render(request, 'tesoreria/modals/caja_retiro.html', context)
 
@@ -1689,10 +1753,8 @@ def caja_retiro_procesar(request):
             efectivo_dolares = Decimal(str(data.get('efectivo_dolares', 0) or 0))
             observaciones = data.get('observaciones', '')
             valores_ids = data.get('valores_ids', [])
-            cupones_ids = data.get('cupones_ids', [])
             
             # Sucursal destino (por defecto la central 1)
-            # Podría venir del form, pero el requerimiento dice "default suc 1"
             destino_id = 1 
             from empresas.models import Sucursal
             suc_destino = Sucursal.objects.get(pk=destino_id)
@@ -1705,7 +1767,7 @@ def caja_retiro_procesar(request):
                 sucursal_destino=suc_destino,
                 efectivo_pesos=efectivo_pesos,
                 efectivo_dolares=efectivo_dolares,
-                cotizacion_dolar=Decimal("1.0"), # Opcional: obtener de BD
+                cotizacion_dolar=Decimal("1.0"),
                 observaciones=observaciones,
                 creado_por=request.user
             )
@@ -1716,8 +1778,6 @@ def caja_retiro_procesar(request):
                 mov_retiro = MovimientoCaja.objects.create(
                     sesion=sesion_caja,
                     empresa_id=empresa_id,
-                    # Movimiento interno: se registra en el día, así que la fecha de la
-                    # operación y la de carga coinciden. `cli_pro` queda nulo (no hay entidad).
                     fecha=timezone.localdate(),
                     tipo='R', # Retiro
                     importe=efectivo_pesos + (efectivo_dolares * Decimal("1.0")),
@@ -1745,21 +1805,14 @@ def caja_retiro_procesar(request):
                             cotizacion=1.0
                         )
             
-            # Mover Valores
+            # Mover Valores (Cheques Físicos de Terceros)
             for v_id in valores_ids:
                 valor = ValorTerceros.objects.get(pk=v_id, sucursal_id=sucursal_id)
                 RetiroCajaValor.objects.create(retiro=retiro, valor=valor)
                 valor.sucursal_id = destino_id
                 valor.save(update_fields=['sucursal_id'])
                 
-            # Mover Cupones
-            for c_id in cupones_ids:
-                cupon = CobroTarjeta.objects.get(pk=c_id, sucursal_id=sucursal_id)
-                RetiroCajaTarjeta.objects.create(retiro=retiro, cobro_tarjeta=cupon)
-                cupon.sucursal_id = destino_id
-                cupon.save(update_fields=['sucursal_id'])
-                
-            # Si hay pesos o dólares, hacer asiento(s)
+            # Si hay pesos o dólares, hacer asiento(s) de traslado
             param = ParametrosContables.objects.filter(empresa_id=empresa_id).first()
             if not param:
                 raise Exception("Faltan Parámetros Contables")
@@ -1781,22 +1834,66 @@ def caja_retiro_procesar(request):
             for asid in asientos_ids:
                 RetiroCajaAsiento.objects.create(retiro=retiro, asiento_id=asid)
 
-            # Vínculo contable del movimiento de fondos (Plan 049). Un traslado puede generar
-            # hasta cuatro asientos (pesos/dólares × origen/destino). Se vincula el PRIMERO, que
-            # es el del lado ORIGEN en pesos: el que refleja la salida de esta sesión. La lista
-            # completa queda en `RetiroCajaAsiento`.
             if mov_retiro and asientos_ids:
                 from tesoreria.services.imputacion import estampar_asiento
                 estampar_asiento(mov_retiro, Asiento.objects.filter(pk=asientos_ids[0]).first())
 
-            # La rendición queda 'En Tránsito' (estado='T' por defecto): el ingreso en
-            # Tesorería (fila 2) se genera recién cuando el tesorero la recibe y cuenta.
-            return HttpResponse(json.dumps({'status': 'success'}), content_type="application/json")
+            return HttpResponse(json.dumps({
+                'status': 'success',
+                'retiro_id': retiro.id,
+                'pdf_url': f'/tesoreria/caja-mostrador/retiro/{retiro.id}/pdf/'
+            }), content_type="application/json")
         except Exception as e:
             import traceback
             traceback.print_exc()
             return HttpResponse(json.dumps({'status': 'error', 'message': str(e)}), status=400, content_type="application/json")
     return HttpResponse(status=405)
+
+
+@login_required
+def caja_retiro_pdf(request, pk):
+    """
+    Genera el comprobante de Retiro de Caja Mostrador por duplicado en una sola hoja A4
+    (Talón Original arriba y Talón Duplicado abajo con línea de corte).
+    """
+    from contable.services.reportes_pdf import render_pdf_response
+    from core.utils.numeros_a_letras import numero_a_letras
+
+    empresa_id = request.session.get('empresa_id')
+    retiro = get_object_or_404(
+        RetiroCaja.objects.select_related(
+            'sesion__caja__empresa', 'sesion__caja', 'usuario',
+            'sucursal_origen', 'sucursal_destino'
+        ),
+        pk=pk,
+        sesion__caja__empresa_id=empresa_id
+    )
+
+    valores = ValorTerceros.objects.filter(
+        retirocajavalor__retiro=retiro
+    ).select_related('banco').order_by('fecha_vencimiento')
+
+    total_valores = sum((v.importe for v in valores), Decimal('0.00'))
+    cotizacion = retiro.cotizacion_dolar or Decimal('1.0')
+    total_dolares_pesos = retiro.efectivo_dolares * cotizacion
+    total_general = retiro.efectivo_pesos + total_dolares_pesos + total_valores
+
+    contexto = {
+        'retiro': retiro,
+        'empresa': retiro.sesion.caja.empresa,
+        'valores': valores,
+        'total_valores': total_valores,
+        'total_dolares_pesos': total_dolares_pesos,
+        'total_general': total_general,
+        'total_letras': numero_a_letras(total_general),
+        'fecha_impresion': timezone.localtime(),
+    }
+
+    return render_pdf_response(
+        'tesoreria/pdf/retiro_caja_pdf.html',
+        contexto,
+        f"Retiro_Caja_{retiro.id:06d}.pdf"
+    )
 
 
 @login_required

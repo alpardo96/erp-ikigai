@@ -170,6 +170,11 @@
                 <div class="text-emerald-700 font-semibold text-lg group-hover:text-emerald-800">Cuentas Bancarias</div>
                 <div class="text-sm text-emerald-600/80 mt-1">Gestión de cuentas físicas y CBUs.</div>
             </button>
+            <button hx-push-url="true" hx-get="{% url 'configuracion_index' %}?tab=tarjetas" hx-target="#config-content"
+                class="text-left group bg-emerald-50/50 border border-emerald-100 p-5 rounded-2xl hover:bg-emerald-100 transition-all shadow-sm">
+                <div class="text-emerald-700 font-semibold text-lg group-hover:text-emerald-800">Tarjetas / Emisores</div>
+                <div class="text-sm text-emerald-600/80 mt-1">Gestión de marcas y tipos (Crédito / Débito).</div>
+            </button>
         </div>
     </div>
 

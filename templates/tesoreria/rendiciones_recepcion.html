@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load formato_tags %}
 
 {% block title %}Recepción de Rendiciones | Tesorería{% endblock %}
 
@@ -46,8 +47,8 @@
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-50 text-amber-600">PARCIAL</span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 text-sm text-right font-mono text-slate-700">$ {{ r.efectivo_pesos|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-sm text-right font-mono text-slate-700">US$ {{ r.efectivo_dolares|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-sm text-right font-mono text-slate-700">$ {{ r.efectivo_pesos|formato_ar }}</td>
+                        <td class="px-4 py-3 text-sm text-right font-mono text-slate-700">US$ {{ r.efectivo_dolares|formato_ar }}</td>
                         <td class="px-4 py-3 text-center">
                             <button
                                 hx-get="{% url 'rendicion_recibir_modal' r.id %}"

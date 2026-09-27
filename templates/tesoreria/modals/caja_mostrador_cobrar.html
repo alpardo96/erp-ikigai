@@ -8,6 +8,8 @@
     es_reserva: {% if es_reserva %}true{% else %}false{% endif %},
     total: parseFloat(`{{ preventa.total|stringformat:'f' }}`.replace(',', '.')),
     dolar_cobranza: parseFloat(`{{ dolar_cobranza|stringformat:'f' }}`.replace(',', '.')),
+    dolar_cobranza_sugerido: parseFloat(`{{ dolar_cobranza|stringformat:'f' }}`.replace(',', '.')),
+    dolar_cobranza_editable: {% if dolar_cobranza_editable %}true{% else %}false{% endif %},
     
     pagos: {
         efectivo: '',
@@ -22,8 +24,7 @@
     error: '',
 
     parseImporte(val) {
-        if (!val) return 0;
-        return parseFloat(val.toString().replace(',', '.')) || 0;
+        return desformatearAR(val);
     },
 
     get totalTarjetas() {
@@ -39,8 +40,9 @@
     },
 
     get totalIngresado() {
+        let cotiz = this.parseImporte(this.dolar_cobranza) || 1.0;
         return this.parseImporte(this.pagos.efectivo) + 
-               (this.parseImporte(this.pagos.usd_recibidos) * this.dolar_cobranza) + 
+               (this.parseImporte(this.pagos.usd_recibidos) * cotiz) + 
                this.parseImporte(this.pagos.ctacte) +
                this.totalTarjetas + this.totalTransferencias + this.totalValores;
     },
@@ -50,7 +52,7 @@
     },
 
     formatCurrency(value) {
-        return '$ ' + parseFloat(value || 0).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        return formatoMonedaAR(value);
     },
 
     cerrarModal() {
@@ -97,9 +99,15 @@
                 }
             }
 
+            let cotizUsada = this.parseImporte(this.dolar_cobranza) || 1.0;
+            let usdBilletes = this.parseImporte(this.pagos.usd_recibidos);
+            let totalPesificadoUsd = usdBilletes * cotizUsada;
+
             let payload = {
                 efectivo: this.parseImporte(this.pagos.efectivo),
-                dolares: this.parseImporte(this.pagos.usd_recibidos) * this.dolar_cobranza,
+                dolares: totalPesificadoUsd,
+                usd_billetes: usdBilletes,
+                cotizacion_dolar: cotizUsada,
                 ctacte: this.parseImporte(this.pagos.ctacte),
                 tarjetas: this.pagos.tarjetas.map(t => ({...t, importe: this.parseImporte(t.importe)})).filter(t => t.importe > 0),
                 transferencias: this.pagos.transferencias.map(t => ({...t, importe: this.parseImporte(t.importe)})).filter(t => t.importe > 0),
@@ -299,18 +307,39 @@
                                 <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
                                     <i class="fa-solid fa-dollar-sign"></i>
                                 </div>
-                                Dólares
+                                Dólares (USD)
                             </label>
-                            <span class="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black border border-green-200">Cotización: $ {{ dolar_cobranza }}</span>
+                            {% if dolar_cobranza_editable %}
+                            <span class="text-xs text-slate-500 font-medium">Cotización sugerida: <strong class="text-slate-700">$ {{ dolar_cobranza }}</strong></span>
+                            {% else %}
+                            <span class="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-black border border-green-200">Cotización fija: $ {{ dolar_cobranza }}</span>
+                            {% endif %}
                         </div>
-                        <div class="flex items-end gap-4">
-                            <div class="w-1/2">
-                                <label class="text-xs font-black text-slate-500 uppercase">U$D Recibidos</label>
-                                <input type="text" inputmode="decimal" x-model="pagos.usd_recibidos" class="w-full text-right text-xl font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                            <div>
+                                <label class="block text-xs font-black text-slate-500 uppercase mb-1">
+                                    Cotización USD
+                                    {% if dolar_cobranza_editable %}<span class="text-emerald-600 font-bold text-[10px]">(Editable)</span>{% endif %}
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span class="text-slate-400 font-bold text-sm">$</span>
+                                    </div>
+                                    <input type="text" 
+                                           inputmode="decimal" 
+                                           x-model="dolar_cobranza" 
+                                           {% if not dolar_cobranza_editable %}readonly{% endif %}
+                                           class="w-full text-right text-lg font-bold {% if dolar_cobranza_editable %}text-emerald-700 bg-emerald-50/40 border-emerald-300 focus:ring-2 focus:ring-emerald-500{% else %}text-slate-700 bg-slate-100 border-slate-200{% endif %} border rounded-lg p-2.5 pl-7 focus:outline-none" 
+                                           placeholder="1.00">
+                                </div>
                             </div>
-                            <div class="w-1/2">
-                                <label class="text-xs font-black text-slate-500 uppercase">Total Pesificados</label>
-                                <input type="text" readonly :value="formatCurrency(parseImporte(pagos.usd_recibidos) * dolar_cobranza)" class="w-full text-right text-xl font-black text-slate-800 bg-slate-100 border border-slate-200 rounded-lg p-3 outline-none">
+                            <div>
+                                <label class="block text-xs font-black text-slate-500 uppercase mb-1">U$D Recibidos</label>
+                                <input type="text" inputmode="decimal" x-model="pagos.usd_recibidos" class="w-full text-right text-lg font-bold text-slate-700 bg-white border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500" placeholder="0.00">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-black text-slate-500 uppercase mb-1">Total Pesificados</label>
+                                <input type="text" readonly :value="formatCurrency(parseImporte(pagos.usd_recibidos) * (parseImporte(dolar_cobranza) || 1.0))" class="w-full text-right text-lg font-black text-slate-800 bg-slate-100 border border-slate-200 rounded-lg p-2.5 outline-none">
                             </div>
                         </div>
                     </div>

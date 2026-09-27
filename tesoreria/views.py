@@ -46,6 +46,7 @@ class ReciboCargaView(LoginRequiredMixin, TemplateView):
         from empresas.models import CotizacionMoneda
         cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
         context['dolar_cobranza'] = cotiz.dolar_cobranza if cotiz else 1.0
+        context['dolar_cobranza_editable'] = cotiz.dolar_cobranza_editable if cotiz else True
         
         return context
 

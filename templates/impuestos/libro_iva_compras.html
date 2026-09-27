@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load formato_tags %}
 
 {% block title %}Libro IVA Compras - Portal IVA | Impuestos{% endblock %}
 
@@ -23,6 +24,53 @@
         </div>
     </div>
 
+    <!-- Banner Informativo del Estado del Período Fiscal -->
+    {% if esta_cerrado %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-amber-500 text-white rounded-xl shadow-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-amber-900 text-sm">Período Fiscal {{ periodo }} CERRADO</span>
+                    <span class="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-semibold">Bloqueado</span>
+                </div>
+                <p class="text-xs text-amber-700 mt-0.5">
+                    Cerrado por <strong>{{ periodo_iva.usuario_cierre.username|default:"Sistema" }}</strong> el {{ periodo_iva.fecha_cierre|date:"d/m/Y H:i" }}. Las nuevas compras de este mes se asignarán al siguiente período abierto para resguardar el crédito fiscal.
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+            <form method="POST" action="{% url 'impuestos:reabrir_periodo_iva' %}" onsubmit="return confirm('¿Está seguro de cancelar el cierre y reabrir el Período Fiscal {{ periodo }}? Esto permitirá incorporar nuevos comprobantes de compras en este período.');" class="w-full md:w-auto">
+                {% csrf_token %}
+                <input type="hidden" name="periodo" value="{{ periodo }}">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" style="background-color: #d97706 !important; color: #ffffff !important;" class="w-full md:w-auto px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:opacity-90">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+                    <span>Reabrir Período Fiscal</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-emerald-600 text-white rounded-xl shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div>
+                <span class="font-bold text-emerald-900 text-sm">Período Fiscal {{ periodo }} ABIERTO / VIGENTE</span>
+                <p class="text-xs text-emerald-700 mt-0.5">El período permite incorporar y modificar comprobantes de compras normalmente.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Filtros por Período Fiscal y Botonera de Exportación -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
         <form method="GET" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
@@ -31,6 +79,7 @@
                 <select name="anio" onchange="this.form.submit()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-2.5 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
                     <option value="2026" {% if anio == 2026 %}selected{% endif %}>2026</option>
                     <option value="2025" {% if anio == 2025 %}selected{% endif %}>2025</option>
+                    <option value="2024" {% if anio == 2024 %}selected{% endif %}>2024</option>
                 </select>
             </div>
             <div class="md:col-span-3">
@@ -63,12 +112,69 @@
                     <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                     <span>PDF</span>
                 </a>
+                
+                {% if esta_cerrado %}
+                <!-- Período Cerrado: Descarga directa -->
                 <a href="{% url 'impuestos:exportar_libro_iva_compras_txt' %}?anio={{ anio }}&mes={{ mes }}" style="background-color: #0f172a !important; color: #ffffff !important;" class="flex-1 font-bold py-2.5 px-3 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90" title="Exportar archivos oficiales de Libro IVA Digital para ARCA">
                     <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                     <span>TXT ARCA</span>
                 </a>
+                {% else %}
+                <!-- Período Abierto: Modal de Consulta de Cierre -->
+                <button type="button" onclick="abrirModalTxtArca()" style="background-color: #0f172a !important; color: #ffffff !important;" class="flex-1 font-bold py-2.5 px-3 rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90" title="Exportar archivos oficiales de Libro IVA Digital para ARCA">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <span>TXT ARCA</span>
+                </button>
+                {% endif %}
             </div>
         </form>
+    </div>
+
+    <!-- Modal Interactivo de Cierre de Período al Exportar TXT ARCA -->
+    <div id="modal-cierre-txt" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in duration-200">
+            <div class="bg-slate-900 px-6 py-4 flex justify-between items-center text-white">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-500/20 text-blue-400 rounded-xl">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-white">Exportación TXT ARCA y Cierre</h3>
+                        <p class="text-xs text-slate-400">Período Fiscal {{ periodo }}</p>
+                    </div>
+                </div>
+                <button onclick="cerrarModalTxtArca()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-4 text-slate-700">
+                <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2 text-xs">
+                    <div class="flex items-center gap-2 font-bold text-amber-900 text-sm">
+                        <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <span>¿Desea cerrar el Período Fiscal {{ periodo }}?</span>
+                    </div>
+                    <p class="text-slate-600 leading-relaxed">
+                        • <strong>SÍ, Cerrar y Descargar:</strong> Si es la presentación definitiva en Portal IVA. Al cerrar el período, cualquier compra que se cargue con posterioridad pasará automáticamente al próximo período abierto para no perder el crédito fiscal.
+                    </p>
+                    <p class="text-slate-600 leading-relaxed">
+                        • <strong>NO, Solo Descargar:</strong> Si es una exportación preliminar o de prueba para conciliar con el estudio contable. El período permanecerá abierto permitiendo seguir cargando comprobantes.
+                    </p>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-end gap-2">
+                <button type="button" onclick="cerrarModalTxtArca()" class="w-full sm:w-auto px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer">
+                    Cancelar
+                </button>
+                <button type="button" onclick="descargarTxt(false)" style="background-color: #475569 !important; color: #ffffff !important;" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all hover:opacity-90 cursor-pointer">
+                    NO, Solo Descargar
+                </button>
+                <button type="button" onclick="descargarTxt(true)" style="background-color: #2563eb !important; color: #ffffff !important;" class="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all hover:opacity-90 cursor-pointer">
+                    SÍ, Cerrar y Descargar
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Resultados del Período -->
@@ -103,24 +209,24 @@
                         <td class="px-4 py-3 font-mono font-semibold">{{ c.punto|stringformat:"05d" }}-{{ c.numero }}</td>
                         <td class="px-4 py-3 font-medium text-slate-900">{{ c.clienteproveedor.razon_social }}</td>
                         <td class="px-4 py-3 font-mono text-slate-600">{{ c.cuit|default:"-" }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.neto_gravado|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.exento|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.no_gravado|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-bold text-blue-800">$ {{ c.iva_total|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono">$ {{ c.otros|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">$ {{ c.total|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.neto_gravado|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.exento|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.no_gravado|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-blue-800">{{ c.iva_total|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono">{{ c.otros|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono font-bold text-slate-900">{{ c.total|formato_ar }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
                 <tfoot class="bg-slate-100 font-bold border-t-2 border-slate-300">
                     <tr>
                         <td colspan="5" class="px-4 py-3 uppercase text-slate-800">Totales del Período {{ periodo }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_neto|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_exento|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_no_gravado|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-blue-900">$ {{ totales.tot_iva|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_otros|default:0|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-mono text-slate-900">$ {{ totales.tot_total|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_neto|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_exento|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_no_gravado|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-blue-900">{{ totales.tot_iva|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_otros|default:0|formato_ar }}</td>
+                        <td class="px-4 py-3 text-right font-mono text-slate-900">{{ totales.tot_total|default:0|formato_ar }}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -132,4 +238,37 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+function abrirModalTxtArca() {
+    const modal = document.getElementById('modal-cierre-txt');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function cerrarModalTxtArca() {
+    const modal = document.getElementById('modal-cierre-txt');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function descargarTxt(cerrar) {
+    cerrarModalTxtArca();
+    let url = "{% url 'impuestos:exportar_libro_iva_compras_txt' %}?anio={{ anio }}&mes={{ mes }}";
+    if (cerrar) {
+        url += "&cerrar=1";
+        // Disparar la descarga y luego recargar para reflejar el período cerrado
+        window.location.href = url;
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    } else {
+        window.location.href = url;
+    }
+}
+</script>
 {% endblock %}

@@ -314,6 +314,11 @@ class CotizacionMoneda(AuditModel):
     empresa = models.OneToOneField(Empresa, on_delete=models.CASCADE, related_name="cotizacion_moneda")
     dolar_venta = models.DecimalField(max_digits=15, decimal_places=2, default=1.0, verbose_name="Dólar Venta")
     dolar_cobranza = models.DecimalField(max_digits=15, decimal_places=2, default=1.0, verbose_name="Dólar Cobranza")
+    dolar_cobranza_editable = models.BooleanField(
+        default=True,
+        verbose_name="Permitir modificar Dólar Cobranza en Caja y Recibos",
+        help_text="Si está activo, el cajero u operador puede modificar la cotización puntual de la operación al cobrar; si está inactivo, la cotización es fija y solo lectura."
+    )
 
     class Meta:
         verbose_name = "Cotización Moneda"

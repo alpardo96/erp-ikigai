@@ -77,6 +77,9 @@ class ConfiguracionIndexView(LoginRequiredMixin, UserPassesTestMixin, TemplateVi
         elif tab == 'cuentasbancarias':
             from tesoreria.models import CuentaBancaria
             context['cuentas_bancarias'] = CuentaBancaria.objects.filter(empresa_id=self.request.session.get('empresa_id'))
+        elif tab == 'tarjetas':
+            from tesoreria.models import Tarjeta
+            context['tarjetas'] = Tarjeta.objects.all().order_by('nombre')
         elif tab == 'cuentascontables':
             from contable.models import Cuenta
             context['cuentas'] = Cuenta.objects.filter(empresa_id=self.request.session.get('empresa_id')).order_by('jerarquia')

@@ -71,6 +71,7 @@ urlpatterns = [
     # Retiros y Cierres
     path('htmx/caja-mostrador/retiro-modal/', views_htmx.caja_retiro_modal, name='caja_retiro_modal'),
     path('htmx/caja-mostrador/retiro-procesar/', views_htmx.caja_retiro_procesar, name='caja_retiro_procesar'),
+    path('caja-mostrador/retiro/<int:pk>/pdf/', views_htmx.caja_retiro_pdf, name='caja_retiro_pdf'),
     path('htmx/caja-mostrador/retiro-anular/<int:retiro_id>/', views_htmx.caja_retiro_anular, name='caja_retiro_anular'),
     path('htmx/caja-mostrador/cierre-modal/', views_htmx.caja_cierre_modal, name='caja_cierre_modal'),
     path('htmx/caja-mostrador/cierre-procesar/', views_htmx.caja_cierre_procesar, name='caja_cierre_procesar'),
