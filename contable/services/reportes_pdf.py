@@ -4,10 +4,10 @@ from django.http import HttpResponse
 from django.utils import timezone
 from io import BytesIO
 
-def render_pdf_response(template_name, context, filename):
+def render_pdf_response(template_name, context, filename, as_attachment=False):
     """
     Renderiza un template HTML a PDF usando xhtml2pdf.
-    Retorna un HttpResponse con el PDF adjunto.
+    Retorna un HttpResponse con el PDF (por defecto inline para previsualización directa).
     """
     html_string = render_to_string(template_name, context)
     result = BytesIO()
@@ -15,7 +15,8 @@ def render_pdf_response(template_name, context, filename):
     
     if not pdf.err:
         response = HttpResponse(result.getvalue(), content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        disposition = 'attachment' if as_attachment else 'inline'
+        response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
         return response
     return HttpResponse('Error al generar PDF', status=400)
 

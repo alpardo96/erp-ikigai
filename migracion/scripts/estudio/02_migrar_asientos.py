@@ -23,6 +23,23 @@ def parse_decimal(value):
         return Decimal('0.00')
     return Decimal(str(value))
 
+def safe_int(value, default=0):
+    try:
+        if not value: return default
+        if isinstance(value, str):
+            value = ''.join(c for c in value if c.isdigit())
+        return int(value) if value else default
+    except (ValueError, TypeError):
+        return default
+
+def resolver_usuario_id(id_usu):
+    val = safe_int(id_usu, 1)
+    if val == 2:
+        return 3
+    elif val == 4:
+        return 4
+    return 1
+
 def run():
     print("Iniciando Fase 2: Bloque Contabilidad Core (Estudio)...")
     dir_path = r'D:\OneDrive\Escritorio\Migracion\Estudio\eje_272'
@@ -42,6 +59,17 @@ def run():
             if ej.inicio <= fecha_doc <= ej.cierre:
                 return ej
         return ejercicio_default
+
+    # Pre-mapear ID_ASTO -> CAJA desde caja_diaria.dbf
+    caja_por_asiento = {}
+    caja_dbf = os.path.join(dir_path, 'caja_diaria.dbf')
+    if os.path.exists(caja_dbf):
+        t_caja = DBF(caja_dbf, ignore_missing_memofile=True, encoding='latin1')
+        for r in t_caja:
+            a = r.get('ID_ASTO')
+            c = r.get('CAJA')
+            if a and c:
+                caja_por_asiento[a] = c
 
     # Pre-cargar IDs válidos
     cuentas_validas = set(Cuenta.objects.filter(empresa=empresa).values_list('id', flat=True))
@@ -128,6 +156,9 @@ def run():
             if cli_pro_id not in clipro_validos:
                 cli_pro_id = None
                 
+            caja_id = caja_por_asiento.get(asiento_id)
+            usu_id = resolver_usuario_id(row.get('ID_USU'))
+
             asientos_to_create.append(Asiento(
                 asiento_id=asiento_id,
                 fecha=fecha or ej.inicio,
@@ -136,11 +167,12 @@ def run():
                 monto=parse_decimal(row.get('MONTO')),
                 modulo=int(row.get('MODULO', 1) or 1),
                 cli_pro_id=cli_pro_id,
+                sesion_caja_id=None, # Se vincula en Fase 3 al crearse CajaSesion
                 anulado=False,
                 empresa=empresa,
                 sucursal=sucursal,
                 ejercicio=ej,
-                creado_por=user
+                creado_por_id=usu_id
             ))
             
         Asiento.objects.bulk_create(asientos_to_create, ignore_conflicts=True, batch_size=1000)

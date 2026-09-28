@@ -235,35 +235,10 @@ class ReversionOrdenPagoTestCase(TestCase):
         self.assertIn('10.000,00', contenido)   # total
         self.assertIn('4.000,00', contenido)    # aplicado
         self.assertIn('6.000,00', contenido)    # pendiente de aplicar
+        self.assertNotIn('ordenpago_anular', contenido)
+        self.assertNotIn('Anular', contenido)
 
-    def test_anular_desde_el_listado_revierte_todo(self):
-        op = self._crear_op(
-            aplicaciones=[{'id': self.factura.compras_id, 'importe': 10000}],
-            valores=[{'categoria': 'EFE-ARS', 'importe': 10000}])
-
-        respuesta = self.cliente_http.post(reverse('ordenpago_anular', args=[op.pk]))
-        self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual(respuesta['HX-Trigger'], 'reloadOrdenesPago')
-
-        op.refresh_from_db()
-        self.assertTrue(op.anulado)
-        self.factura.refresh_from_db()
-        self.assertEqual(self.factura.saldo, Decimal("10000.00"))
-
-    def test_anular_bloqueado_devuelve_409_con_el_motivo(self):
-        op = self._crear_op(valores=[
-            {'categoria': 'CP', 'importe': 5000, 'numero_comprobante': 'CH-P-3',
-             'cuenta_bancaria_id': self.cuenta_bancaria.cta_bc_id}])
-        TransaccionBancaria.objects.filter(numero_operacion='CH-P-3').update(estado='D')
-
-        respuesta = self.cliente_http.post(reverse('ordenpago_anular', args=[op.pk]))
-        self.assertEqual(respuesta.status_code, 409)
-        self.assertIn('el banco ya debitó', respuesta.content.decode())
-
-        op.refresh_from_db()
-        self.assertFalse(op.anulado)
-
-    def test_reimpresion_pdf_incluye_todo_lo_vinculado(self):
+    def test_reimpresion_pdf_incluye_todo_lo_vinculado_y_es_inline(self):
         op = self._crear_op(
             aplicaciones=[{'id': self.factura.compras_id, 'importe': 9000}],
             valores=[
@@ -276,6 +251,7 @@ class ReversionOrdenPagoTestCase(TestCase):
         respuesta = self.cliente_http.get(reverse('ordenpago_pdf', args=[op.pk]))
         self.assertEqual(respuesta.status_code, 200)
         self.assertEqual(respuesta['Content-Type'], 'application/pdf')
+        self.assertTrue(respuesta['Content-Disposition'].startswith('inline;'))
         self.assertGreater(len(respuesta.content), 1000)
 
     def test_listado_solo_muestra_ordenes_de_la_empresa_activa(self):
@@ -291,17 +267,4 @@ class ReversionOrdenPagoTestCase(TestCase):
         respuesta = self.cliente_http.get(
             reverse('ordenpago_grilla'), {'desde': '2026-07-01', 'hasta': '2026-07-31'})
         self.assertNotIn('7.777,00', respuesta.content.decode())
-
-    def test_usuario_no_administrador_no_puede_anular(self):
-        op = self._crear_op(valores=[{'categoria': 'EFE-ARS', 'importe': 5000}])
-        operario = User.objects.create_user(username="operario1", password="clave", is_staff=False)
-        cli = Client()
-        cli.force_login(operario)
-        s = cli.session
-        s['empresa_id'] = self.empresa.id
-        s.save()
-
-        respuesta = cli.post(reverse('ordenpago_anular', args=[op.pk]))
-        self.assertEqual(respuesta.status_code, 403)
-        self.assertIn("Solamente los usuarios administradores pueden anular", respuesta.content.decode())
 

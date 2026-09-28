@@ -36,6 +36,14 @@ def safe_int(value, default=0):
     except (ValueError, TypeError):
         return default
 
+def resolver_usuario_id(id_usu):
+    val = safe_int(id_usu, 1)
+    if val == 2:
+        return 3
+    elif val == 4:
+        return 4
+    return 1
+
 def run():
     print("Iniciando Fase 4: Bloque Facturación y Libro IVA (Estudio)...")
     dir_path = r'D:\OneDrive\Escritorio\Migracion\Estudio\eje_272'
@@ -57,6 +65,36 @@ def run():
     # Pre-cargar Tipos de Comprobantes
     tipos_dict = {tc.codigo: tc for tc in TipoComprobante.objects.all()}
     default_tipo = TipoComprobante.objects.first()
+
+    # Pre-mapear ID_ASTO -> ID_USU desde asto_enc y caja_diaria
+    usuario_por_asiento = {}
+    asto_dbf = os.path.join(dir_path, 'asto_enc.dbf')
+    if os.path.exists(asto_dbf):
+        t_asto = DBF(asto_dbf, ignore_missing_memofile=True, encoding='latin1')
+        for r in t_asto:
+            a = r.get('ID_ASTO')
+            u = r.get('ID_USU')
+            if a and u:
+                usuario_por_asiento[abs(a)] = resolver_usuario_id(u)
+
+    caja_dbf = os.path.join(dir_path, 'caja_diaria.dbf')
+    if os.path.exists(caja_dbf):
+        t_caja = DBF(caja_dbf, ignore_missing_memofile=True, encoding='latin1')
+        for r in t_caja:
+            a = r.get('ID_ASTO')
+            u = r.get('ID_USU')
+            if a and u and abs(safe_int(a)) not in usuario_por_asiento:
+                usuario_por_asiento[abs(safe_int(a))] = resolver_usuario_id(u)
+
+    for dbf_name in ['recibos.dbf', 'ord_pago.dbf', 'cheques.dbf']:
+        p = os.path.join(dir_path, dbf_name)
+        if os.path.exists(p):
+            t_aux = DBF(p, ignore_missing_memofile=True, encoding='latin1')
+            for r in t_aux:
+                a = r.get('ID_ASTO')
+                u = r.get('ID_USU')
+                if a and u and abs(safe_int(a)) not in usuario_por_asiento:
+                    usuario_por_asiento[abs(safe_int(a))] = resolver_usuario_id(u)
 
     # Pre-cargar IDs válidos
     asientos_validos = set(Asiento.objects.filter(empresa=empresa).values_list('asiento_id', flat=True))
@@ -88,9 +126,9 @@ def run():
             if not entidad_id or entidad_id not in clientes_validos:
                 entidad_id = None
                 
-            asiento_id = row.get('ID_ASTO')
-            if asiento_id not in asientos_validos:
-                asiento_id = None
+            raw_asto = row.get('ID_ASTO')
+            asiento_id = abs(safe_int(raw_asto)) if raw_asto else None
+            usu_id = usuario_por_asiento.get(asiento_id, 1) if asiento_id else 1
                 
             cod_citi = str(row.get('COD_CITI', '')).strip()
             tipo_str = str(row.get('TIPO', '')).strip().upper()
@@ -140,7 +178,7 @@ def run():
                     cae=str(row.get('CAE', '')).strip() or None,
                     vto_cae=row.get('VTO_CAE'),
                     cod_qr=str(row.get('COD_QR', '')).strip() or None,
-                    usuario=user,
+                    usuario_id=usu_id,
                     sucursal=sucursal,
                     empresa=empresa,
                     ejercicio=ej
@@ -169,7 +207,7 @@ def run():
                     total=parse_decimal(row.get('TOTAL')),
                     saldo=parse_decimal(row.get('SALDO')),
                     pagado=parse_decimal(row.get('PAGADO')),
-                    usuario=user,
+                    usuario_id=usu_id,
                     sucursal=sucursal,
                     empresa=empresa,
                     ejercicio=ej

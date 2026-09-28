@@ -20,7 +20,7 @@ User = get_user_model()
 def init_base():
     print("Iniciando creación de Entorno Base (Fase 0 - Estudio)...")
     
-    # 1. Superusuario
+    # 1. Superusuario y Usuarios de Migración
     try:
         if not User.objects.filter(username='Ikigai').exists():
             User.objects.create_superuser('Ikigai', 'admin@ikigai.com', 'ortiz')
@@ -31,6 +31,20 @@ def init_base():
         print(f"Error creando usuario: {e}")
         
     user = User.objects.get(username='Ikigai')
+
+    # Asegurar Usuario con ID 4 para asignación exacta de id_usu == 4
+    if not User.objects.filter(id=4).exists():
+        User.objects.create(
+            id=4,
+            username='usuario4',
+            first_name='Usuario',
+            last_name='4',
+            is_active=True,
+            is_staff=True
+        )
+        print("OK Usuario con id=4 ('usuario4') creado para migración.")
+    else:
+        print("OK Usuario con id=4 ya existe.")
 
     # 2. Empresa "Lopez Rios y Asoc SA"
     empresa, created = Empresa.objects.get_or_create(
@@ -133,6 +147,31 @@ def init_base():
         print("OK Producto Default 'Honorarios / Servicios Contables' creado (id=1).")
     else:
         print("OK Producto Default 'Honorarios / Servicios Contables' ya existe (id=1).")
+        
+    # 7. Medios de Pago Base
+    from tesoreria.models import MedioPago
+    medios_base = [
+        ('EFE', 'Efectivo', 'EFE'),
+        ('DOL', 'Dólares', 'EFE'),
+        ('CHQ', 'Cheques de Terceros', 'CHQ'),
+        ('TRA', 'Transferencia Bancaria', 'TRA'),
+        ('TAR', 'Tarjeta de Débito / Crédito', 'TAR'),
+        ('RET', 'Retenciones Practicadas', 'RET'),
+        ('OTR', 'Otros Medios', 'OTR'),
+    ]
+    for cod, nom, cat in medios_base:
+        mp, created_mp = MedioPago.objects.get_or_create(
+            empresa=empresa,
+            codigo=cod,
+            defaults={
+                'nombre': nom,
+                'categoria': cat,
+                'activo': True,
+                'creado_por': user,
+            }
+        )
+        if created_mp:
+            print(f"OK Medio de Pago '{nom}' ({cod}) creado.")
         
     print("Fase 0 completada con éxito.")
 

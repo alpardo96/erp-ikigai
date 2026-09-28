@@ -15,7 +15,7 @@ from contable.models import Asiento, AsientoLinea, Cuenta, LibroIvaCompras, Libr
 from facturacion.models import Compra, Venta, ClienteProveedor, VentaItem, CompraItem, VentaAlicuotaIva, CompraAlicuota
 from tesoreria.models import (
     OrdenPago, Recibo, OrdenPagoAplicacion, ReciboAplicacion,
-    CajaSesion, MovimientoCaja, ValorTerceros, TransaccionBancaria
+    CajaSesion, MovimientoCaja, MovimientoCajaDetalle, ValorTerceros, TransaccionBancaria
 )
 
 def run():
@@ -64,6 +64,9 @@ def run():
     print(f"Libro IVA Alícuotas:          {LibroIvaAlic.objects.count()}")
     print(f"Sesiones de Caja:             {CajaSesion.objects.count()}")
     print(f"Movimientos de Caja:          {MovimientoCaja.objects.count()}")
+    print(f"Detalles Movimientos Caja:    {MovimientoCajaDetalle.objects.count()}")
+    print(f"Movs Caja con Asiento ID:     {MovimientoCaja.objects.filter(asiento_id__isnull=False).count()}")
+    print(f"Asientos con Sesión de Caja:  {Asiento.objects.filter(sesion_caja_id__isnull=False).count()}")
     print(f"Valores de Terceros (Cartera):{ValorTerceros.objects.count()}")
     print(f"Transacciones Bancarias:      {TransaccionBancaria.objects.count()}")
     print(f"Órdenes de Pago:              {OrdenPago.objects.count()}")
@@ -71,8 +74,19 @@ def run():
     print(f"Aplicaciones OPs:             {OrdenPagoAplicacion.objects.count()}")
     print(f"Aplicaciones Recibos:         {ReciboAplicacion.objects.count()}")
     
-    # 3. Datos huérfanos de Tesorería o constraints
-    print("\n--- 3. Verificación de Constraints e Integridad Relacional ---")
+    # 3. Auditoría de Distribución por Usuario
+    print("\n--- 3. Distribución por Usuario (Mapeo de Auditoría) ---")
+    from django.db.models import Count
+    print("Asientos por creado_por_id:        ", dict(Asiento.objects.values_list('creado_por_id').annotate(c=Count('asiento_id'))))
+    print("Sesiones Caja por usuario_id:      ", dict(CajaSesion.objects.values_list('usuario_id').annotate(c=Count('id'))))
+    print("Movimientos Caja por creado_por_id:", dict(MovimientoCaja.objects.values_list('creado_por_id').annotate(c=Count('id'))))
+    print("Recibos por creado_por_id:         ", dict(Recibo.objects.values_list('creado_por_id').annotate(c=Count('id'))))
+    print("Órdenes de Pago por creado_por_id: ", dict(OrdenPago.objects.values_list('creado_por_id').annotate(c=Count('id'))))
+    print("Ventas por usuario_id:             ", dict(Venta.objects.values_list('usuario_id').annotate(c=Count('ventas_id'))))
+    print("Compras por usuario_id:            ", dict(Compra.objects.values_list('usuario_id').annotate(c=Count('compras_id'))))
+
+    # 4. Datos huérfanos de Tesorería o constraints
+    print("\n--- 4. Verificación de Constraints e Integridad Relacional ---")
     print("OK: CheckConstraints de Partida Doble en PostgreSQL respetados.")
     print("OK: Foreign Keys de Empresa, Ejercicio, Sucursales, Clipro y Cuentas vinculadas.")
     print("\nVerificación de Integridad finalizada exitosamente.")

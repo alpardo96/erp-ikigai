@@ -17,9 +17,6 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
-from contable.services.reversion import (
-    ReversionBloqueada, revertir_orden_pago, revertir_recibo,
-)
 from facturacion.models import ClienteProveedor
 from tesoreria.models import OrdenPago, Recibo
 
@@ -114,34 +111,6 @@ def ordenes_pago_grilla(request):
         'total_pendiente': sum((f['pendiente'] for f in filas), Decimal('0')),
     })
 
-
-@login_required
-def orden_pago_anular(request, pk):
-    """Anula la OP revirtiendo TODO lo vinculado (Plan 035 §1.7)."""
-    if request.method != 'POST':
-        return HttpResponse(status=405)
-
-    # Restricción de permisos: solo administradores pueden anular
-    es_admin = request.user.is_superuser or request.user.is_staff or (hasattr(request.user, 'perfil') and request.user.perfil.es_admin_sistema)
-    if not es_admin:
-        return HttpResponse(
-            '<div class="p-3 bg-red-50 text-red-700 text-xs font-bold rounded">Solamente los usuarios administradores pueden anular órdenes de pago.</div>',
-            status=403
-        )
-
-    empresa_id = request.session.get('empresa_id')
-    op = get_object_or_404(OrdenPago, pk=pk, empresa_id=empresa_id)
-
-    try:
-        revertir_orden_pago(op, usuario=request.user, forzar=request.POST.get('forzar') == '1')
-    except ReversionBloqueada as e:
-        return HttpResponse(
-            f'<div class="p-3 bg-red-50 text-red-700 text-xs font-bold rounded">{e}</div>',
-            status=409)
-
-    respuesta = HttpResponse()
-    respuesta['HX-Trigger'] = 'reloadOrdenesPago'
-    return respuesta
 
 
 @login_required
@@ -256,33 +225,6 @@ def recibos_grilla(request):
         'total_pendiente': sum((f['pendiente'] for f in filas), Decimal('0')),
     })
 
-
-@login_required
-def recibo_anular(request, pk):
-    if request.method != 'POST':
-        return HttpResponse(status=405)
-
-    # Restricción de permisos: solo administradores pueden anular
-    es_admin = request.user.is_superuser or request.user.is_staff or (hasattr(request.user, 'perfil') and request.user.perfil.es_admin_sistema)
-    if not es_admin:
-        return HttpResponse(
-            '<div class="p-3 bg-red-50 text-red-700 text-xs font-bold rounded">Solamente los usuarios administradores pueden anular recibos.</div>',
-            status=403
-        )
-
-    empresa_id = request.session.get('empresa_id')
-    recibo = get_object_or_404(Recibo, pk=pk, empresa_id=empresa_id)
-
-    try:
-        revertir_recibo(recibo, usuario=request.user, forzar=request.POST.get('forzar') == '1')
-    except ReversionBloqueada as e:
-        return HttpResponse(
-            f'<div class="p-3 bg-red-50 text-red-700 text-xs font-bold rounded">{e}</div>',
-            status=409)
-
-    respuesta = HttpResponse()
-    respuesta['HX-Trigger'] = 'reloadRecibos'
-    return respuesta
 
 
 @login_required

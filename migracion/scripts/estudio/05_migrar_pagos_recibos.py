@@ -33,6 +33,14 @@ def safe_int(value, default=0):
     except (ValueError, TypeError):
         return default
 
+def resolver_usuario_id(id_usu):
+    val = safe_int(id_usu, 1)
+    if val == 2:
+        return 3
+    elif val == 4:
+        return 4
+    return 1
+
 def run():
     print("Iniciando Fase 5: Tesorería - Órdenes de Pago y Recibos (Estudio)...")
     dir_path = r'D:\OneDrive\Escritorio\Migracion\Estudio\eje_272'
@@ -78,9 +86,15 @@ def run():
             fecha = row.get('FECHA') or (ejercicio_default.inicio if ejercicio_default else datetime(2026, 6, 1).date())
             ej = resolver_ejercicio(fecha)
             
-            asiento_id = row.get('ID_ASTO')
-            if asiento_id not in asientos_validos:
-                asiento_id = None
+            raw_asto = row.get('ID_ASTO')
+            asiento_id = abs(safe_int(raw_asto)) if raw_asto else None
+            usu_id = resolver_usuario_id(row.get('ID_USU'))
+
+            raw_num = safe_int(row.get('NUMERO'))
+            numero = raw_num if raw_num and raw_num > 0 else row['ID_OP']
+            punto = safe_int(row.get('PUNTO'), 1)
+            if not punto or punto == 0:
+                punto = 1
                 
             ops_to_create.append(OrdenPago(
                 id=row['ID_OP'],
@@ -91,12 +105,13 @@ def run():
                 tipo='P',
                 proveedor_id=prov_id,
                 fecha=fecha,
-                punto=safe_int(row.get('PUNTO'), 1),
-                numero=safe_int(row.get('NUMERO'), row['ID_OP']),
+                punto=punto,
+                numero=numero,
                 total=parse_decimal(row.get('IMPORTE') or row.get('EFECTIVO')),
                 observaciones=str(row.get('DETALLE', ''))[:200],
                 condic=int(row.get('CONDIC', 1) or 1),
-                asiento_id=asiento_id
+                asiento_id=asiento_id,
+                creado_por_id=usu_id
             ))
             
         OrdenPago.objects.bulk_create(ops_to_create, ignore_conflicts=True, batch_size=1000)
@@ -123,9 +138,15 @@ def run():
             fecha = row.get('FECHA') or (ejercicio_default.inicio if ejercicio_default else datetime(2026, 6, 1).date())
             ej = resolver_ejercicio(fecha)
             
-            asiento_id = row.get('ID_ASTO')
-            if asiento_id not in asientos_validos:
-                asiento_id = None
+            raw_asto = row.get('ID_ASTO')
+            asiento_id = abs(safe_int(raw_asto)) if raw_asto else None
+            usu_id = resolver_usuario_id(row.get('ID_USU'))
+
+            raw_num = safe_int(row.get('NUMERO'))
+            numero = raw_num if raw_num and raw_num > 0 else row['ID_REC']
+            punto = safe_int(row.get('PUNTO'), 1)
+            if not punto or punto == 0:
+                punto = 1
                 
             recs_to_create.append(Recibo(
                 id=row['ID_REC'],
@@ -136,16 +157,38 @@ def run():
                 tipo='C',
                 cliente_id=cli_id,
                 fecha=fecha,
-                punto=safe_int(row.get('PUNTO'), 1),
-                numero=safe_int(row.get('NUMERO'), row['ID_REC']),
+                punto=punto,
+                numero=numero,
                 total=parse_decimal(row.get('IMPORTE') or row.get('EFECTIVO')),
                 observaciones=str(row.get('DETALLE', ''))[:200],
                 condic=int(row.get('CONDIC', 1) or 1),
-                asiento_id=asiento_id
+                asiento_id=asiento_id,
+                creado_por_id=usu_id
             ))
             
         Recibo.objects.bulk_create(recs_to_create, ignore_conflicts=True, batch_size=1000)
         print(f"OK {len(recs_to_create)} Recibos procesados.")
+
+    # 2b. Vincular MovimientoCaja con Recibo y OrdenPago por asiento_id
+    from tesoreria.models import MovimientoCaja
+    recibos_map = {r.asiento_id: r.id for r in Recibo.objects.filter(empresa=empresa, asiento_id__isnull=False)}
+    ops_map = {op.asiento_id: op.id for op in OrdenPago.objects.filter(empresa=empresa, asiento_id__isnull=False)}
+    
+    movs_update = []
+    for m in MovimientoCaja.objects.filter(empresa=empresa):
+        changed = False
+        if m.tipo == 'I' and m.asiento_id in recibos_map and not m.recibo_id:
+            m.recibo_id = recibos_map[m.asiento_id]
+            changed = True
+        elif m.tipo == 'E' and m.asiento_id in ops_map and not m.orden_pago_id:
+            m.orden_pago_id = ops_map[m.asiento_id]
+            changed = True
+        if changed:
+            movs_update.append(m)
+            
+    if movs_update:
+        MovimientoCaja.objects.bulk_update(movs_update, ['recibo_id', 'orden_pago_id'], batch_size=2000)
+        print(f"OK {len(movs_update)} Movimientos de Caja vinculados con Recibos y Órdenes de Pago por asiento_id.")
 
     # 3. Aplicaciones (ord_pago_facturas.dbf)
     op_fact_dbf = os.path.join(dir_path, 'ord_pago_facturas.dbf')
