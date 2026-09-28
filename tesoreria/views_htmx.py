@@ -538,24 +538,36 @@ def procesar_recibo(request):
                 importe_dolares = Decimal('0')
                 cotizacion_val = Decimal('1.0')
                 
-                if cat == 'EFE-ARS':
-                    # Búsqueda precisa por código específico EFE-ARS, con fallback a cualquier caja en efectivo (EFE)
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-ARS').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                if cat in ['EFE-ARS', 'EFE']:
+                    # Búsqueda estricta por código 'EFE' o 'EFE-ARS' (Efectivo Pesos)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['EFE', 'EFE-ARS']).first()
                     medio_pago_id = mp.id if mp else None
-                elif cat == 'EFE-USD':
-                    # Búsqueda precisa por código específico EFE-USD, con fallback a cualquier caja en efectivo (EFE)
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                elif cat in ['EFE-USD', 'DOL', 'USD']:
+                    # Búsqueda estricta por código 'DOL', 'USD' o 'EFE-USD' (Dólares)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['DOL', 'USD', 'EFE-USD']).first()
                     medio_pago_id = mp.id if mp else None
                     importe_dolares = importe_base
                     cotizacion_val = cotizacion_aplicada
                     importe_pesos = importe_base * cotizacion_aplicada
-                elif cat == 'TRA':
-                    # Búsqueda precisa por código TRA-BCO, con fallback a categoría TRA
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TRA-BCO').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
+                elif cat in ['TRA', 'TRA-BCO']:
+                    # Búsqueda estricta por código 'TRA' o 'TRA-BCO' (Transferencia Bancaria)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TRA', 'TRA-BCO']).first()
                     medio_pago_id = mp.id if mp else None
-                elif cat == 'CHQ':
-                    # Búsqueda precisa por código CHQ-TER, con fallback a categoría CHQ
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='CHQ-TER').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
+                elif cat in ['CHQ', 'CHQ-TER', 'CP', 'CHQ-PRO']:
+                    # Búsqueda estricta por código 'CHQ', 'CHQ-TER', etc. (Cheques)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['CHQ', 'CHQ-TER', 'CP', 'CHQ-PRO']).first()
+                    medio_pago_id = mp.id if mp else None
+                elif cat in ['TAR', 'TARJ', 'TAR-DEB', 'TAR-CRE']:
+                    # Búsqueda estricta por código 'TAR' (Tarjetas)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TAR', 'TARJ', 'TAR-DEB', 'TAR-CRE']).first()
+                    medio_pago_id = mp.id if mp else None
+                elif cat == 'RET':
+                    # Búsqueda estricta por código 'RET' (Retenciones)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['RET']).first()
+                    medio_pago_id = mp.id if mp else None
+                elif cat == 'OTR':
+                    # Búsqueda estricta por código 'OTR' (Otros Medios)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['OTR']).first()
                     medio_pago_id = mp.id if mp else None
                 
                 # 1. Crear el Detalle
@@ -774,24 +786,36 @@ def procesar_orden_pago(request):
                 importe_dolares = Decimal('0')
                 cotizacion_val = Decimal('1.0')
                 
-                if cat == 'EFE-ARS':
-                    # Búsqueda precisa por código específico EFE-ARS, con fallback a categoría EFE
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-ARS').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                if cat in ['EFE-ARS', 'EFE']:
+                    # Búsqueda estricta por código 'EFE' o 'EFE-ARS' (Efectivo Pesos)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['EFE', 'EFE-ARS']).first()
                     medio_pago_id = mp.id if mp else None
-                elif cat == 'EFE-USD':
-                    # Búsqueda precisa por código específico EFE-USD, con fallback a categoría EFE
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                elif cat in ['EFE-USD', 'DOL', 'USD']:
+                    # Búsqueda estricta por código 'DOL', 'USD' o 'EFE-USD' (Dólares)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['DOL', 'USD', 'EFE-USD']).first()
                     medio_pago_id = mp.id if mp else None
                     importe_pesos = importe_base * cotizacion_aplicada
                     importe_dolares = importe_base
                     cotizacion_val = cotizacion_aplicada
-                elif cat == 'TRA':
-                    # Búsqueda precisa por código TRA-BCO, con fallback a categoría TRA
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TRA-BCO').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
+                elif cat in ['TRA', 'TRA-BCO']:
+                    # Búsqueda estricta por código 'TRA' o 'TRA-BCO' (Transferencia Bancaria)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TRA', 'TRA-BCO']).first()
                     medio_pago_id = mp.id if mp else None
-                elif cat == 'CP' or cat == 'CHQ-TER':
-                    # Búsqueda precisa por código CHQ-TER, con fallback a categoría CHQ
-                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo='CHQ-TER').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
+                elif cat in ['CP', 'CHQ', 'CHQ-TER', 'CHQ-PRO']:
+                    # Búsqueda estricta por código 'CHQ', 'CHQ-TER', etc. (Cheques Propios o Terceros)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['CHQ', 'CHQ-TER', 'CP', 'CHQ-PRO']).first()
+                    medio_pago_id = mp.id if mp else None
+                elif cat in ['TAR', 'TARJ', 'TAR-DEB', 'TAR-CRE']:
+                    # Búsqueda estricta por código 'TAR' (Tarjetas)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TAR', 'TARJ', 'TAR-DEB', 'TAR-CRE']).first()
+                    medio_pago_id = mp.id if mp else None
+                elif cat == 'RET':
+                    # Búsqueda estricta por código 'RET' (Retenciones)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['RET']).first()
+                    medio_pago_id = mp.id if mp else None
+                elif cat == 'OTR':
+                    # Búsqueda estricta por código 'OTR' (Otros Medios)
+                    mp = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['OTR']).first()
                     medio_pago_id = mp.id if mp else None
                     
                 if not medio_pago_id:
@@ -1081,7 +1105,7 @@ def _guardar_reserva_preventa_transaccional(
 
     # Efectivo ARS
     if efectivo > 0:
-        mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-ARS').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+        mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['EFE', 'EFE-ARS']).first()
         if mp_efe:
             MovimientoCajaDetalle.objects.create(
                 movimiento_caja=mov_caja,
@@ -1093,15 +1117,15 @@ def _guardar_reserva_preventa_transaccional(
 
     # Efectivo USD
     if dolares > 0 or (usd_billetes and usd_billetes > 0):
-        mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+        mp_dol = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['DOL', 'USD', 'EFE-USD']).first()
         if not cotizacion_dolar:
             from empresas.models import CotizacionMoneda
             cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
             cotizacion_dolar = cotiz.dolar_cobranza if cotiz else Decimal('1.0')
-        if mp_efe:
+        if mp_dol:
             MovimientoCajaDetalle.objects.create(
                 movimiento_caja=mov_caja,
-                medio_pago=mp_efe,
+                medio_pago=mp_dol,
                 importe=dolares,
                 importe_moneda_extranjera=usd_billetes if usd_billetes else (dolares / cotizacion_dolar if cotizacion_dolar else Decimal('0')),
                 cotizacion=cotizacion_dolar
@@ -1109,7 +1133,7 @@ def _guardar_reserva_preventa_transaccional(
 
     # Tarjetas
     if tarjetas:
-        mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TAR').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TAR').first()
+        mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TAR', 'TARJ', 'TAR-DEB', 'TAR-CRE']).first()
         for tarj in tarjetas:
             t_imp = Decimal(str(tarj.get('importe', 0) or 0))
             if t_imp > 0 and mp_tarjeta:
@@ -1131,7 +1155,7 @@ def _guardar_reserva_preventa_transaccional(
 
     # Transferencias
     if transferencias:
-        mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TRA-BCO').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
+        mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TRA', 'TRA-BCO']).first()
         for transf in transferencias:
             tr_imp = Decimal(str(transf.get('importe', 0) or 0))
             if tr_imp > 0 and mp_tra:
@@ -1157,7 +1181,7 @@ def _guardar_reserva_preventa_transaccional(
 
     # Valores (Cheques)
     if valores:
-        mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, codigo='CHQ-TER').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
+        mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['CHQ', 'CHQ-TER', 'CP', 'CHQ-PRO']).first()
         for ch in valores:
             ch_imp = Decimal(str(ch.get('importe', 0) or 0))
             if ch_imp > 0 and mp_chq:
@@ -1465,7 +1489,7 @@ def _crear_asientos_y_movimientos_cobro(
 
             # Efectivo ARS
             if efectivo > 0:
-                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-ARS').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['EFE', 'EFE-ARS']).first()
                 if mp_efe:
                     MovimientoCajaDetalle.objects.create(
                         movimiento_caja=mov_caja,
@@ -1477,18 +1501,18 @@ def _crear_asientos_y_movimientos_cobro(
             
             # Efectivo USD
             if dolares > 0 or (usd_billetes and usd_billetes > 0):
-                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo='EFE-USD').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
-                if mp_efe:
+                mp_dol = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['DOL', 'USD', 'EFE-USD']).first()
+                if mp_dol:
                     MovimientoCajaDetalle.objects.create(
                         movimiento_caja=mov_caja,
-                        medio_pago=mp_efe,
+                        medio_pago=mp_dol,
                         importe=dolares,
                         importe_moneda_extranjera=usd_billetes if usd_billetes else (dolares / cotizacion_dolar if cotizacion_dolar else Decimal('0')),
                         cotizacion=cotizacion_dolar
                     )
             
             # Tarjetas
-            mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TAR').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TAR').first()
+            mp_tarjeta = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TAR', 'TARJ', 'TAR-DEB', 'TAR-CRE']).first()
             for t in tarjetas:
                 imp = Decimal(str(t.get('importe', 0) or 0))
                 if imp > 0 and mp_tarjeta:
@@ -1509,7 +1533,7 @@ def _crear_asientos_y_movimientos_cobro(
                     )
             
             # Valores a Terceros (Cheques)
-            mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, codigo='CHQ-TER').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='CHQ').first()
+            mp_chq = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['CHQ', 'CHQ-TER', 'CP', 'CHQ-PRO']).first()
             for v in valores:
                 imp = Decimal(str(v.get('importe', 0) or 0))
                 if imp > 0 and mp_chq:
@@ -1534,7 +1558,7 @@ def _crear_asientos_y_movimientos_cobro(
                     )
                     
             # Transferencias
-            mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, codigo='TRA-BCO').first() or MedioPago.objects.filter(empresa_id=empresa_id, categoria='TRA').first()
+            mp_tra = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['TRA', 'TRA-BCO']).first()
             for t in transferencias:
                 imp = Decimal(str(t.get('importe', 0) or 0))
                 if imp > 0 and mp_tra:
@@ -1788,7 +1812,7 @@ def caja_retiro_procesar(request):
                     condic=1
                 )
                 if efectivo_pesos > 0:
-                    mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
+                    mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['EFE', 'EFE-ARS']).first()
                     if mp_efe:
                         MovimientoCajaDetalle.objects.create(
                             movimiento_caja=mov_retiro,
@@ -1798,11 +1822,11 @@ def caja_retiro_procesar(request):
                             cotizacion=1.0
                         )
                 if efectivo_dolares > 0:
-                    mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
-                    if mp_efe:
+                    mp_dol = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['DOL', 'USD', 'EFE-USD']).first()
+                    if mp_dol:
                         MovimientoCajaDetalle.objects.create(
                             movimiento_caja=mov_retiro,
-                            medio_pago=mp_efe,
+                            medio_pago=mp_dol,
                             importe=efectivo_dolares * Decimal("1.0"),
                             importe_moneda_extranjera=efectivo_dolares,
                             cotizacion=1.0
@@ -1973,14 +1997,15 @@ def caja_cierre_procesar(request):
                     condic=1,
                     creado_por=request.user,
                 )
-                medio_efe = MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
-                if medio_efe and efectivo_pesos > 0:
+                mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['EFE', 'EFE-ARS']).first()
+                mp_dol = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['DOL', 'USD', 'EFE-USD']).first()
+                if mp_efe and efectivo_pesos > 0:
                     MovimientoCajaDetalle.objects.create(
-                        movimiento_caja=mov_cierre, medio_pago=medio_efe,
+                        movimiento_caja=mov_cierre, medio_pago=mp_efe,
                         importe=efectivo_pesos, importe_moneda_extranjera=0, cotizacion=1.0)
-                if medio_efe and efectivo_dolares > 0:
+                if mp_dol and efectivo_dolares > 0:
                     MovimientoCajaDetalle.objects.create(
-                        movimiento_caja=mov_cierre, medio_pago=medio_efe,
+                        movimiento_caja=mov_cierre, medio_pago=mp_dol,
                         importe=efectivo_dolares * Decimal("1.0"), importe_moneda_extranjera=efectivo_dolares, cotizacion=1.0)
 
             # Obtener TODOS los valores de esta sesión que aún están en esta sucursal (no retirados antes)
@@ -2188,14 +2213,15 @@ def rendicion_recibir_procesar(request, retiro_id):
             condic=1,
             creado_por=request.user,
         )
-        medio_efe = MedioPago.objects.filter(empresa_id=empresa_id, categoria='EFE').first()
-        if medio_efe and contado_pesos > 0:
+        mp_efe = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['EFE', 'EFE-ARS']).first()
+        mp_dol = MedioPago.objects.filter(empresa_id=empresa_id, codigo__in=['DOL', 'USD', 'EFE-USD']).first()
+        if mp_efe and contado_pesos > 0:
             MovimientoCajaDetalle.objects.create(
-                movimiento_caja=mov_ing, medio_pago=medio_efe,
+                movimiento_caja=mov_ing, medio_pago=mp_efe,
                 importe=contado_pesos, importe_moneda_extranjera=0, cotizacion=1.0)
-        if medio_efe and contado_dolares > 0:
+        if mp_dol and contado_dolares > 0:
             MovimientoCajaDetalle.objects.create(
-                movimiento_caja=mov_ing, medio_pago=medio_efe,
+                movimiento_caja=mov_ing, medio_pago=mp_dol,
                 importe=contado_dolares * cot, importe_moneda_extranjera=contado_dolares, cotizacion=cot)
 
         # --- Asiento de diferencia (faltante/sobrante) contra cuenta patrimonial transitoria ---

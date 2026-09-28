@@ -31,13 +31,18 @@
 
 <table class="cab">
     <tr>
-        <td style="width: 55%; vertical-align: top;">
+        <td width="55%" style="vertical-align: top;">
+            {% if op.empresa.logo %}
+            <div style="margin-bottom: 6px;">
+                <img src="{{ op.empresa.logo.path }}" height="50" style="max-height: 50px; max-width: 180px;" />
+            </div>
+            {% endif %}
             <div class="empresa">{{ op.empresa.nombre|upper }}</div>
             <div class="chico">CUIT {{ op.empresa.cuit }}</div>
             <div class="chico">{{ op.sucursal.nombre|upper }}</div>
             <div class="chico">{{ op.sucursal.direccion|default:op.empresa.direccion|default:""|upper }}</div>
         </td>
-        <td class="der" style="width: 45%; vertical-align: top;">
+        <td class="der" width="45%" style="vertical-align: top;">
             <h1>ORDEN DE PAGO</h1>
             <div><b>Nro. {{ op.punto|stringformat:"05d" }}-{{ op.numero|stringformat:"08d" }}</b></div>
             <div class="chico">Fecha: {{ op.fecha|date:"d/m/Y" }}</div>
@@ -196,11 +201,11 @@
 </div>
 {% endif %}
 
-<table style="width:100%; margin-top:30px">
+<table style="width:100%; margin-top:65px">
     <tr>
-        <td class="cen chico" style="width:45%; border-top:1px solid #94a3b8; padding-top:4px">Firma y aclaracion - Emisor</td>
-        <td style="width:10%"></td>
-        <td class="cen chico" style="width:45%; border-top:1px solid #94a3b8; padding-top:4px">Recibi conforme - Beneficiario</td>
+        <td class="cen chico" style="width:42%; border-top:1px solid #475569; padding-top:6px">Firma y aclaracion - Emisor</td>
+        <td style="width:16%"></td>
+        <td class="cen chico" style="width:42%; border-top:1px solid #475569; padding-top:6px">Recibi conforme - Beneficiario</td>
     </tr>
 </table>
 

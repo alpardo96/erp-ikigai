@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.urls import reverse
 from django.views.generic import TemplateView, View
 from django.views.decorators.cache import never_cache
 from django.utils.decorators import method_decorator
@@ -47,6 +48,22 @@ class ReciboCargaView(LoginRequiredMixin, TemplateView):
         cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
         context['dolar_cobranza'] = cotiz.dolar_cobranza if cotiz else 1.0
         context['dolar_cobranza_editable'] = cotiz.dolar_cobranza_editable if cotiz else True
+
+        # Destino de retorno inteligente
+        next_url = self.request.GET.get('next') or self.request.GET.get('desde')
+        referer = self.request.META.get('HTTP_REFERER', '')
+        if next_url == 'caja_diaria' or 'caja-diaria' in referer:
+            context['url_volver'] = reverse('caja_diaria_index')
+            context['nombre_volver'] = 'Caja Diaria'
+        elif self.origen == 'MOSTRADOR' or next_url == 'caja_mostrador' or 'caja-mostrador' in referer:
+            context['url_volver'] = reverse('caja_mostrador_index')
+            context['nombre_volver'] = 'Caja Mostrador'
+        elif next_url == 'recibo_listado' or 'recibos' in referer:
+            context['url_volver'] = reverse('recibo_listado')
+            context['nombre_volver'] = 'Listado de Recibos'
+        else:
+            context['url_volver'] = reverse('tesoreria_index')
+            context['nombre_volver'] = 'Tesorería'
         
         return context
 
@@ -73,6 +90,20 @@ class OrdenPagoCargaView(LoginRequiredMixin, TemplateView):
         from empresas.models import CotizacionMoneda
         cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
         context['dolar_venta'] = cotiz.dolar_venta if cotiz else 1.0
+
+        # Destino de retorno inteligente
+        next_url = self.request.GET.get('next') or self.request.GET.get('desde')
+        referer = self.request.META.get('HTTP_REFERER', '')
+        if next_url == 'caja_diaria' or 'caja-diaria' in referer:
+            context['url_volver'] = reverse('caja_diaria_index')
+            context['nombre_volver'] = 'Caja Diaria'
+        elif next_url == 'ordenpago_listado' or 'ordenes-pago' in referer:
+            context['url_volver'] = reverse('ordenpago_listado')
+            context['nombre_volver'] = 'Listado de Órdenes de Pago'
+        else:
+            context['url_volver'] = reverse('tesoreria_index')
+            context['nombre_volver'] = 'Tesorería'
+
         return context
 
 from django.views import View

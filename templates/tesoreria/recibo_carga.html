@@ -2,21 +2,31 @@
 
 {% block content %}
 <div class="p-6 max-w-7xl mx-auto" x-data="reciboForm()">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Emitir Recibo</h1>
-        <div class="flex items-center space-x-2 bg-gray-100 p-2 rounded-lg">
-            <span class="text-sm font-medium" :class="data.tipo === 'C' ? 'text-indigo-600' : 'text-gray-500'">Cobranza a Cliente</span>
-            <button type="button" 
-                    @click="toggleTipo()"
-                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2" 
-                    :class="data.tipo === 'S' ? 'bg-indigo-600' : 'bg-gray-200'"
-                    role="switch" 
-                    aria-checked="false">
-                <span aria-hidden="true" 
-                      class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                      :class="data.tipo === 'S' ? 'translate-x-5' : 'translate-x-0'"></span>
-            </button>
-            <span class="text-sm font-medium" :class="data.tipo === 'S' ? 'text-indigo-600' : 'text-gray-500'">Recibo Simple</span>
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Emitir Recibo</h1>
+            <p class="text-xs text-gray-500 mt-0.5">Gestión de Cobranzas e Ingresos de Fondos</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center space-x-2 bg-gray-100 p-2 rounded-lg">
+                <span class="text-sm font-medium" :class="data.tipo === 'C' ? 'text-indigo-600' : 'text-gray-500'">Cobranza a Cliente</span>
+                <button type="button" 
+                        @click="toggleTipo()"
+                        class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2" 
+                        :class="data.tipo === 'S' ? 'bg-indigo-600' : 'bg-gray-200'"
+                        role="switch" 
+                        aria-checked="false">
+                    <span aria-hidden="true" 
+                          class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                          :class="data.tipo === 'S' ? 'translate-x-5' : 'translate-x-0'"></span>
+                </button>
+                <span class="text-sm font-medium" :class="data.tipo === 'S' ? 'text-indigo-600' : 'text-gray-500'">Recibo Simple</span>
+            </div>
+            <a href="{{ url_volver }}"
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-xl shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                <svg class="h-4 w-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                Volver a {{ nombre_volver }}
+            </a>
         </div>
     </div>
     
@@ -426,19 +436,19 @@
                 </div>
             </div>
 
-            <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+            <div class="px-6 py-4 bg-gray-50 flex flex-wrap justify-end gap-3">
                 <a :href="'{% url 'contable_libro_diario' %}'"
                    class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-100">
                     Ver Libro Diario
                 </a>
-                <button type="button" @click="resultado.visible = false"
-                        class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-100">
-                    Cerrar y Ver
-                </button>
-                <a href="{% url 'recibo_carga' %}"
-                   class="px-4 py-2 rounded-xl bg-indigo-600 text-sm font-bold text-white hover:bg-indigo-700">
-                    Nuevo Recibo
+                <a href="{{ url_volver }}"
+                   class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-100">
+                    Cerrar y Volver a {{ nombre_volver }}
                 </a>
+                <button type="button" @click="reiniciarFormulario()"
+                        class="px-4 py-2 rounded-xl bg-indigo-600 text-sm font-bold text-white hover:bg-indigo-700 shadow-sm">
+                    Nuevo Recibo
+                </button>
             </div>
         </div>
     </div>
@@ -505,6 +515,55 @@ document.addEventListener('alpine:init', () => {
         formatCurrency(val) {
             // Formato es-AR centralizado en core/static/js/formato_ar.js, unica fuente de verdad.
             return '$ ' + formatearAR(val);
+        },
+        reiniciarFormulario() {
+            this.resultado = { visible: false, recibo: '', asiento: null };
+            this.data.cliente_id = '';
+            this.data.observaciones = '';
+            this.data.aplicaciones = [];
+            this.data.imputaciones = [];
+            this.data.valores = [];
+            this.clienteDisplay = '';
+            this.clienteResultsOpen = false;
+            this.ctasCliPro = { pat: '', res: '', patNombre: '', resNombre: '' };
+            this.cuentaDisplay = '';
+            this.cuentaResultsOpen = false;
+            this.bancoResultsOpen = false;
+            this.nuevaImputacion = {
+                cuenta_contable_id: '',
+                leyenda: '',
+                importe: ''
+            };
+            this.pagos = {
+                efectivo: '',
+                dolares: '',
+                transferencias: [],
+                cheques: [],
+                retenciones: []
+            };
+            this.nuevoPago = {
+                retencion_id: '',
+                ret_importe: '',
+                ret_nro: '',
+                ret_fecha: '',
+                ret_cuit: '',
+                cuenta_bancaria_id: '',
+                transf_importe: '',
+                transf_nro: '',
+                transf_cuit: '',
+                transf_titular: '',
+                cheque_banco: '',
+                cheque_importe: '',
+                cheque_nro: '',
+                cheque_vto: '',
+                cheque_cuit: ''
+            };
+            const cont = document.getElementById('comprobantes_container');
+            if (cont) {
+                cont.innerHTML = '<p class="text-sm text-gray-500 italic">Seleccione un cliente para ver sus comprobantes adeudados.</p>';
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            this.triggerCalc++;
         },
         init() {
             this.$watch('data.moneda', (value) => {
