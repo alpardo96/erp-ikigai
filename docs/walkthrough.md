@@ -5497,3 +5497,42 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - python manage.py test facturacion.tests.test_toggle_activo_admin: 6 tests ejecutados con éxito (OK).
 **Estado actual y siguientes pasos sugeridos:**
 - Interfaz compacta y equilibrada visualmente en Clientes y Productos.
+
+
+### Re-Migración Limpia y Consolidada - Vertical Estudio (eje_272)
+**Fecha:** 28 de Septiembre de 2026
+**Objetivo:** Re-migración desde cero y consolidación de la base de datos para la vertical Estudio a partir del lote FoxPro \eje_272\.
+**Archivos creados o modificados:**
+- \docs/planes/096_remigracion_estudio_eje272.md\ [NEW]
+- \migracion/scripts/estudio/00_init_base.py\ [MODIFIED]
+- \migracion/scripts/estudio/01_migrar_maestros.py\ [MODIFIED]
+- \migracion/scripts/estudio/02_migrar_asientos.py\ [MODIFIED]
+- \migracion/scripts/estudio/03_migrar_tesoreria.py\ [MODIFIED]
+- \migracion/scripts/estudio/04_migrar_facturacion.py\ [MODIFIED]
+- \migracion/scripts/estudio/05_migrar_pagos_recibos.py\ [MODIFIED]
+- \migracion/scripts/estudio/06_verificar_integridad.py\ [MODIFIED]
+- \migracion/scripts/estudio/run_migracion_limpia_estudio.py\ [NEW]
+**Detalle Técnico:**
+- Se implementó el orquestador un_migracion_limpia_estudio.py\ que ejecuta un vaciado previo en cascada (\TRUNCATE CASCADE\) de las tablas operativas, contables y de tesorería para evitar registros residuales o claves foráneas huérfanas.
+- Se corrigieron y consolidaron todas las fases de migración:
+  - Fase 0: Inicialización base de Empresa (Lopez Rios y Asoc SA), Sucursal (Casa Central), Ejercicios Contables 2026 y 2027, Caja de Tesorería y Producto default para honorarios.
+  - Fase 1: Cuentas contables jerárquicas, jurisdicciones, alícuotas de IVA, tipos de comprobantes, parámetros contables y clientes/proveedores con discriminación fiel de \	ipo_entidad\ (campo \CLI_PRO\) y condición IVA.
+  - Fase 2: Asiento de apertura y 1.817 asientos contables con sanitización matemática de débitos/créditos negativos y garantía de constraint \debe_xor_haber\.
+  - Fase 3: Bancos, cuentas bancarias, sesiones de caja diaria, 4.293 movimientos de caja con vínculos contables y de entidades, 1.173 valores de terceros en cartera y 428 transacciones bancarias (cheques propios emitidos y transferencias).
+  - Fase 4: 2.442 ventas y 517 compras con resolución de tipos de comprobantes AFIP/CITI, formato de período YYYYMM, generación de ítems de venta/compra y alícuotas desglosadas.
+  - Fase 5: Órdenes de pago, recibos de cobranza y aplicaciones cruzadas a facturas.
+  - Fase 6: Auditoría estricta de partida doble y consistencia volumétrica.
+  - Fase 7: Reseteo de secuencias autoincrementales en PostgreSQL.
+**Resultado de las pruebas:**
+- Auditoría contable: 100% de los Asientos Contables (1.818 asientos) balancean con diferencia .00 (Debe = Haber).
+- Resumen volumétrico: 247 Cuentas, 387 Clipro, 1.818 Asientos (4.658 líneas), 2.442 Ventas con sus items, 517 Compras con sus items, 323 Sesiones de Caja, 4.293 Movimientos de Caja, 1.173 Cheques en Cartera, 428 Transacciones Bancarias, 2.521 OPs, 277 Recibos.
+- Reseteo de secuencias: Exitoso.
+**Estado actual y siguientes pasos sugeridos:**
+- Base de datos \erp-Ikigai-Estudio\ 100% migrada, consistente y lista para producción.
+
+**Actualización (Libro IVA Digital Incorporado):**
+- Se creó el script \migracion/scripts/estudio/07_migrar_lib_iva.py\ replicando la arquitectura de Armería para poblar los modelos fiscales de ARCA:
+  - \LibroIvaCompras\ (517 registros).
+  - \LibroIvaVentas\ (2.417 registros con CAE, Vto. CAE y QR).
+  - \LibroIvaAlic\ (328 alícuotas desglosadas vinculadas por \siento_id\ y discriminadas por \c_v\).
+- Se reejecutó la suite completa con éxito y secuencias reseteadas.

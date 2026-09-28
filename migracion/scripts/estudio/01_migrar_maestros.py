@@ -5,7 +5,8 @@ from decimal import Decimal
 from dbfread import DBF
 
 # Configurar el entorno de Django
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent.parent.parent))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
@@ -17,6 +18,15 @@ def parse_decimal(value):
     if value is None:
         return Decimal('0.00')
     return Decimal(str(value))
+
+def safe_int(value, default=0):
+    try:
+        if not value: return default
+        if isinstance(value, str):
+            value = ''.join(c for c in value if c.isdigit())
+        return int(value) if value else default
+    except (ValueError, TypeError):
+        return default
 
 def get_tipo_cuenta(jerarquia):
     if not jerarquia:
@@ -35,8 +45,8 @@ def get_condicion_iva(insc_iva):
     return mapping.get(insc_iva, 'CONSUMIDOR FINAL')
 
 def run():
-    print("Iniciando Fase 1: Bloque Maestros y Parámetros")
-    dir_path = r'D:\OneDrive\Escritorio\Migracion\eje_272'
+    print("Iniciando Fase 1: Bloque Maestros y Parámetros (Estudio)...")
+    dir_path = r'D:\OneDrive\Escritorio\Migracion\Estudio\eje_272'
     empresa = Empresa.objects.get(id=1)
 
     # 1. Cuentas Contables
@@ -45,7 +55,6 @@ def run():
         table = DBF(cuentas_dbf, ignore_missing_memofile=True, encoding='latin1')
         cuentas_to_create = []
         for row in table:
-            # Reemplazar nulos de cuentas sumariantes o ids
             sumariza_id = row.get('SUMARIZA')
             if sumariza_id == 0:
                 sumariza_id = None
@@ -96,12 +105,20 @@ def run():
         table = DBF(comprobantes_dbf, ignore_missing_memofile=True, encoding='latin1')
         tc_to_create = []
         for row in table:
-            tc_to_create.append(TipoComprobante(
-                codigo=row.get('CODIGO', '')[:2],
-                detalle=row.get('DETALLE', '')[:100],
-                signo=1,
-                estado=True
-            ))
+            cod = str(row.get('CODIGO', '')).strip()
+            cod_citi = str(row.get('COD_CITI', '')).strip()
+            detalle = str(row.get('DETALLE', '')).strip()
+            signo = 1 if row.get('SIGNO') != -1 else -1
+            
+            # Usar código CITI si existe, sino código base
+            codigo_final = cod_citi if cod_citi else cod
+            if codigo_final:
+                tc_to_create.append(TipoComprobante(
+                    codigo=codigo_final[:10],
+                    detalle=detalle[:100] or codigo_final,
+                    signo=signo,
+                    estado=True
+                ))
         TipoComprobante.objects.bulk_create(tc_to_create, ignore_conflicts=True)
         print(f"OK Tipos de Comprobantes procesados.")
 
@@ -111,12 +128,17 @@ def run():
         table = DBF(clipro_dbf, ignore_missing_memofile=True, encoding='latin1')
         cp_to_create = []
         for row in table:
+            # En FoxPro: CLI_PRO 1 = Cliente, 2 = Proveedor
+            tipo_entidad = safe_int(row.get('CLI_PRO'), 1)
+            if tipo_entidad not in [1, 2]:
+                tipo_entidad = 1
+                
             cp_to_create.append(ClienteProveedor(
                 codigo_id=row['CODIGO'],
                 empresa=empresa,
                 razon_social=row.get('DETALLE', '')[:200],
                 cuit=str(row.get('CUIT', '')).strip(),
-                tipo_entidad=1 if str(row.get('TIPO')).strip() not in ('2', 'P', 'PROVEEDOR') else 2,
+                tipo_entidad=tipo_entidad,
                 domicilio=row.get('DOMICILIO', '')[:200],
                 codigo_postal=str(row.get('C_POSTAL', ''))[:20],
                 localidad=row.get('LOCALIDAD', '')[:100],
@@ -136,7 +158,6 @@ def run():
     if os.path.exists(param_dbf):
         table = DBF(param_dbf, ignore_missing_memofile=True, encoding='latin1')
         for row in table:
-            # Función auxiliar para convertir a None si el ID es 0
             def clean_fk(val):
                 return val if val and val > 0 else None
                 
