@@ -32,11 +32,6 @@
 <table class="cab">
     <tr>
         <td width="55%" style="vertical-align: top;">
-            {% if op.empresa.logo %}
-            <div style="margin-bottom: 6px;">
-                <img src="{{ op.empresa.logo.path }}" height="50" style="max-height: 50px; max-width: 180px;" />
-            </div>
-            {% endif %}
             <div class="empresa">{{ op.empresa.nombre|upper }}</div>
             <div class="chico">CUIT {{ op.empresa.cuit }}</div>
             <div class="chico">{{ op.sucursal.nombre|upper }}</div>

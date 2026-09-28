@@ -83,7 +83,7 @@ def run():
         if records:
             ej_apertura = resolver_ejercicio(datetime(2026, 6, 1).date())
             asiento_apertura = Asiento.objects.create(
-                asiento_id=99999999,
+                asiento_id=16044,
                 fecha=ej_apertura.inicio if ej_apertura else datetime(2026, 6, 1).date(),
                 concepto="Asiento de Apertura Migrado",
                 condic=5, # Apertura

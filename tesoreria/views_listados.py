@@ -229,14 +229,16 @@ def recibos_grilla(request):
 
 @login_required
 def recibo_pdf(request, pk):
-    from contable.services.reportes_pdf import render_pdf_response
+    from tesoreria.services.pdf_recibo import generar_pdf_recibo
+    from django.http import HttpResponse
 
     empresa_id = request.session.get('empresa_id')
-    contexto = _contexto_comprobante_recibo(pk, empresa_id)
-    recibo = contexto['recibo']
-    return render_pdf_response(
-        'tesoreria/pdf/recibo_pdf.html', contexto,
-        f"RC_{recibo.punto:04d}-{recibo.numero:08d}.pdf")
+    recibo = get_object_or_404(Recibo, pk=pk, empresa_id=empresa_id)
+    pdf_bytes = generar_pdf_recibo(recibo.pk)
+    
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="RC_{recibo.punto:04d}-{recibo.numero:08d}.pdf"'
+    return response
 
 
 def _contexto_comprobante_recibo(pk, empresa_id):

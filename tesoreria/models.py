@@ -135,7 +135,7 @@ class Recibo(AuditModel):
     class Meta:
         verbose_name = "Recibo"
         verbose_name_plural = "Recibos"
-        unique_together = ('empresa', 'punto', 'numero')
+        unique_together = ('empresa', 'punto', 'condic', 'numero')
         indexes = [
             models.Index(fields=['empresa', 'fecha']),
         ]
@@ -145,7 +145,10 @@ class Recibo(AuditModel):
 
     def save(self, *args, **kwargs):
         if not self.numero:
-            last = Recibo.objects.filter(empresa=self.empresa, punto=self.punto).order_by('-numero').first()
+            # Numeración correlativa independiente por serie de condición (Real vs Presupuestado)
+            last = Recibo.objects.filter(
+                empresa=self.empresa, punto=self.punto, condic=self.condic
+            ).order_by('-numero').first()
             self.numero = (last.numero + 1) if last else 1
         super().save(*args, **kwargs)
 
@@ -220,7 +223,7 @@ class OrdenPago(AuditModel):
     class Meta:
         verbose_name = "Orden de Pago"
         verbose_name_plural = "Órdenes de Pago"
-        unique_together = ('empresa', 'punto', 'numero')
+        unique_together = ('empresa', 'punto', 'condic', 'numero')
         indexes = [
             models.Index(fields=['empresa', 'fecha']),
         ]
@@ -230,7 +233,10 @@ class OrdenPago(AuditModel):
 
     def save(self, *args, **kwargs):
         if not self.numero:
-            last = OrdenPago.objects.filter(empresa=self.empresa, punto=self.punto).order_by('-numero').first()
+            # Numeración correlativa independiente por serie de condición (Real vs Presupuestado)
+            last = OrdenPago.objects.filter(
+                empresa=self.empresa, punto=self.punto, condic=self.condic
+            ).order_by('-numero').first()
             self.numero = (last.numero + 1) if last else 1
         super().save(*args, **kwargs)
 

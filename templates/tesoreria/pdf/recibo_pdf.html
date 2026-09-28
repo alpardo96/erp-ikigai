@@ -31,7 +31,7 @@
             {% if recibo.condic == 1 %}
                 {% if recibo.empresa.logo %}
                 <div style="margin-bottom: 6px;">
-                    <img src="{{ recibo.empresa.logo.path }}" style="max-height: 55px; max-width: 180px;" />
+                    <img src="{{ recibo.empresa.logo.path }}" height="55" />
                 </div>
                 {% endif %}
                 <div class="empresa">{{ recibo.empresa.nombre|upper }}</div>
