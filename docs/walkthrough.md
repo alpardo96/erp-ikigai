@@ -5608,3 +5608,89 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - Reseteo de secuencias PostgreSQL ejecutado con éxito.
 **Estado actual y siguientes pasos sugeridos:**
 - Migración limpia de Estudio completada al 100% con total integridad referencial, padre contable ID_ASTO preservado, Caja Diaria visible y usuarios mapeados.
+
+### Plan 099: Modalidad de Envío de Facturas por Lotes y Multi-contacto para Verticalidad Estudio
+**Fecha:** 28 de Septiembre de 2026
+**Objetivo:** Desarrollar la modalidad completa de facturación y despacho para la verticalidad Estudio: soporte de multi-correo y multi-teléfono en Clipro delimitados por coma, configuración SMTP aislada por empresa persistida en JSON en media, tabla satélite EnvioFacturaEstudio integrada con Facturación por Lotes, servicio SMTP profesional con cadencia anti-spam y streaming en tiempo real, pantalla operativa de Ventas con KPIs y modal bloqueante de envíos masivos.
+**Archivos creados o modificados:**
+- docs/planes/099_envio_facturas_lotes_estudio.md [NEW]
+- verticalidades/estudio/models.py [MODIFIED]
+- verticalidades/estudio/migrations/0002_enviofacturaestudio.py [NEW]
+- verticalidades/estudio/services/config_mail_service.py [NEW]
+- verticalidades/estudio/services/smtp_service.py [NEW]
+- verticalidades/estudio/services/facturacion_lote_estudio.py [MODIFIED]
+- verticalidades/estudio/views.py [MODIFIED]
+- verticalidades/estudio/urls.py [MODIFIED]
+- verticalidades/estudio/templates/estudio/envios_facturas.html [NEW]
+- verticalidades/estudio/templates/estudio/modals/config_mails_modal.html [NEW]
+- verticalidades/estudio/templates/estudio/hooks/ui_ventas_index_cards.html [MODIFIED]
+- verticalidades/estudio/templates/estudio/hooks/menu_ventas.html [MODIFIED]
+- verticalidades/estudio/tests.py [NEW]
+- facturacion/forms.py [MODIFIED]
+- facturacion/views_htmx.py [MODIFIED]
+- templates/facturacion/modals/cliente_modal.html [MODIFIED]
+- templates/configuracion/partials/hub.html [MODIFIED]
+- templates/configuracion/partials/empresa_table_rows.html [MODIFIED]
+- docs/walkthrough.md [MODIFIED]
+**Detalle Técnico e Implicaciones de Base de Datos:**
+- En PostgreSQL, los campos varchar(254) de correo y varchar(100) de teléfono existentes en facturacion_clienteproveedor almacenan de forma nativa strings concatenados con comas ("a@b.com, c@d.com") sin requerir ninguna modificación del esquema en la app facturación ni migraciones destructivas.
+- En facturacion/forms.py (ClienteProveedorForm): se detecta si la empresa activa es de verticalidad ESTUDIO; si lo es, se reemplazan los widgets por TextInput monospace, se implementa _get_validation_exclusions para admitir la multiplicidad de correos excluyendo la validación de email singular del modelo, y en clean() se valida cada correo individualmente con validate_email sanitizándolo y uniéndolo con ", ". Para cualquier otra verticalidad se mantiene el comportamiento clásico e inflexible.
+- En templates/facturacion/modals/cliente_modal.html: se incorporó un componente interactivo de chips/etiquetas con Alpine.js cuando es_estudio es True, permitiendo agregar y remover múltiples correos y teléfonos cómodamente con inputs y tags individuales.
+- En verticalidades/estudio/models.py: se creó el modelo satélite EnvioFacturaEstudio con relación OneToOne a facturacion.Venta, FK a ClienteProveedor, periodo, destinatarios, estado (PENDIENTE, ENVIADO, ERROR), respuesta_smtp, intentos, fecha_envio e índices optimizados de PostgreSQL para (empresa, periodo, estado). Se aplicó la migración exclusiva estudio.0002_enviofacturaestudio sin afectar la base de producción.
+- En verticalidades/estudio/services/config_mail_service.py: se establecieron como valores predeterminados de la verticalidad el servidor propio mail.lopez-rios.com, puerto 465 y seguridad SSL directa (usar_ssl=True), permitiendo al usuario modificarlos a través del modal y persistirlos en media/config_mails/empresa_{id}_mails.json.
+- En verticalidades/estudio/services/smtp_service.py: se afinó la apertura de sesión smtplib.SMTP_SSL(host, port, timeout=20) asegurando compatibilidad nativa cuando port == 465 o usar_ssl está activo, reuso de sesión única por lote y rate-limiting de 1 segundo para no quemar la IP pública.
+- Blindaje Modular Absoluto (Zero-Spillover): Se eliminaron referencias directas y URLs hardcodeadas de Estudio en templates/configuracion/partials/hub.html y empresa_table_rows.html, reemplazándolas por hooks dinámicos {% hook_ui 'configuracion_hub' %} y {% hook_ui 'empresa_row_action' empresa=empresa %} alojados en verticalidades/estudio/templates/estudio/hooks/. De este modo, si la verticalidad Estudio está ausente o si se accede desde Armería o Agrícola, el sistema no evalúa rutas de estudio ni genera errores NoReverseMatch.
+- En facturacion/forms.py: se blindó la detección de empresa_id con fallback defensivo a self.instance.empresa_id para garantizar que las empresas que no sean ESTUDIO mantengan la validación de 1 solo correo y rechacen listas concatenadas.
+**Resultado de las pruebas:**
+- python manage.py check: 0 problemas encontrados.
+- python manage.py test verticalidades.estudio.tests: 6 tests ejecutados exitosamente (100% OK):
+  * test_clipro_multi_correo_y_telefono_en_estudio: OK
+  * test_clipro_correo_invalido_en_estudio: OK
+  * test_clipro_no_afecta_otras_verticalidades: OK (Validación de no-regresión para Armería/Agrícola)
+  * test_config_mail_service_guardar_y_leer: OK (Verificación con mail.lopez-rios.com:465 SSL)
+  * test_modelo_envio_factura_estudio: OK
+  * test_api_envios_facturas_descubrimiento_automatico: OK
+- Base de datos en producción erp-Ikigai-Estudio permanece 100% íntegra y sin migraciones ajenas.
+**Estado actual y siguientes pasos sugeridos:**
+- Módulo de Envío de Facturas por Lotes y Multi-contacto para Estudio Contable completado, probado con 6 pruebas unitarias exitosas y 100% desacoplado de las demás verticalidades.
+
+### Optimización de Rendimiento de Modales, Editores Divididos (Cuerpo y Firma/Logo) y Formato MIME con Negrita
+**Fecha:** 28 de Septiembre de 2026
+**Objetivo:** Eliminar la lentitud y bloqueo del navegador al abrir la configuración de correos removiendo los filtros de desenfoque (`backdrop-blur`), estructurar la personalización del mensaje en 2 botones interactivos ("Cuerpo del Mensaje" y "Firma y Logo") que abren modales amplios con pantalla dividida (izquierda edición con botón `<b>` e inserción de variables, derecha vista previa reactiva en tiempo real), permitir la carga y eliminación de archivos de logo de empresa, incorporar variables de usuario `{first_name}` y `{last_name}` de `auth_user`, y soportar formato dual MIME (HTML con negrita y logo inline `cid:firma_logo`, y texto plano limpio).
+**Archivos creados o modificados:**
+- `verticalidades/estudio/services/config_mail_service.py` [MODIFIED]
+- `verticalidades/estudio/services/smtp_service.py` [MODIFIED]
+- `verticalidades/estudio/views.py` [MODIFIED]
+- `verticalidades/estudio/templates/estudio/modals/config_mails_modal.html` [MODIFIED]
+- `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFIED]
+- `verticalidades/estudio/tests.py` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Rendimiento GPU / Eliminación de `backdrop-blur`:** Se detectó que las clases Tailwind `backdrop-blur-sm` y `backdrop-blur-md` provocaban recalcular en software/GPU el renderizado de tablas y sombras del ERP en Windows, congelando el navegador al abrir los modales. Se reemplazaron por fondos translúcidos nítidos (`bg-slate-900/60`, `bg-slate-900/70`, `bg-slate-900/80`), logrando una apertura instantánea y sin lag.
+2. **Arquitectura de Editores Divididos (2 Columnas con Vista Previa en Vivo):**
+   - **Cuerpo del Mensaje:** Modal panorámico (`max-w-6xl`) con editor a la izquierda (botón `<b> Negrita` que envuelve selecciones de texto, chips de variables con inserción en la posición del cursor para `{cliente}`, `{comprobante}`, `{periodo}`, `{total}`, `{empresa}`, `{first_name}`, `{last_name}`) y previsualizador a la derecha simulando una bandeja de entrada con datos de muestra, archivo adjunto y negritas nativas.
+   - **Firma y Logo:** Modal panorámico con subida de archivo de imagen (PNG, JPG, WebP, SVG) para el logo institucional guardado en `media/config_mails/firmas/`, botón para quitar logo, editor de texto de la firma con negritas `<b>` y variables `{first_name}`, `{last_name}`, `{empresa}`, y vista previa reactiva al pie del correo con el logo y el bloque de firma.
+3. **Soporte de Variables del Usuario Autenticado (`auth_user`):**
+   - En `smtp_service.py` y `views.py`, los envíos masivos y unitarios propagan `usuario=request.user` para resolver dinámicamente `{first_name}` y `{last_name}` (o fallback a `username`), permitiendo firmas y saludos personalizados de quien efectúa el envío.
+   - Función `safe_format` tolerante que no lanza `KeyError` ante variables inexistentes o no reconocidas.
+4. **Formato Dual MIME y Logo Inline Anti-Spam:**
+   - La versión `text/html` traduce `<b>...</b>` a etiquetas semánticas y `<br>` para saltos de línea.
+   - La versión `text/plain` remueve automáticamente cualquier etiqueta `<b>` o `</b>` mediante expresiones regulares para no ensuciar la lectura en clientes de solo texto.
+   - El logo se adjunta con arquitectura `multipart/related` como `MIMEImage` con `Content-ID: <firma_logo>` y `Content-Disposition: inline`, garantizando que clientes como Gmail, Outlook o Thunderbird lo rendericen de forma nativa e inmediata sin bloquearlo por considerarlo un rastreador externo.
+5. **Cero Impacto en Base de Datos:** Todo el almacenamiento de configuración de correo y logos se mantiene en la capa de medios (`media/config_mails/`), manteniendo la base de datos de producción intacta.
+**Resultado de las pruebas:**
+- `python manage.py check`: 0 problemas.
+- `python manage.py test verticalidades.estudio.tests`: 8 pruebas ejecutadas y aprobadas al 100% (`Ran 8 tests in 26.512s - OK`):
+  * `test_formato_variables_y_negrita_en_smtp_service`: OK
+  * `test_config_mails_guardar_firma_y_modal_sin_blur`: OK
+  * `test_clipro_multi_correo_y_telefono_en_estudio`: OK
+  * `test_clipro_correo_invalido_en_estudio`: OK
+  * `test_clipro_no_afecta_otras_verticalidades`: OK
+  * `test_config_mail_service_guardar_y_leer`: OK
+  * `test_modelo_envio_factura_estudio`: OK
+  * `test_api_envios_facturas_descubrimiento_automatico`: OK
+**Estado actual y siguientes pasos sugeridos:**
+- Sistema de configuración de emails de facturación totalmente optimizado, responsivo y fluido.
+- Proceder a la prueba operativa en el navegador por parte del usuario ingresando a la configuración de la empresa en la verticalidad Estudio.
+
+

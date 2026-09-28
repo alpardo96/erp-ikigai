@@ -7,4 +7,8 @@
     class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'estudio_facturacion_lotes' %}text-green-400 font-bold{% endif %}">
     Facturación por Lotes
 </a>
+<a href="{% url 'estudio_envios_facturas' %}"
+    class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'estudio_envios_facturas' %}text-green-400 font-bold{% endif %}">
+    Envío de Facturas
+</a>
 {% endif %}

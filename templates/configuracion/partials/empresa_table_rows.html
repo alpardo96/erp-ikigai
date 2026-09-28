@@ -1,3 +1,4 @@
+{% load vertical_tags %}
 {% for empresa in empresas %}
 <tr>
     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
@@ -23,6 +24,7 @@
     </td>
     <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
         <div class="flex items-center justify-end space-x-2">
+            {% hook_ui 'empresa_row_action' empresa=empresa %}
             <button hx-get="{% url 'config_empresa_edit' empresa.id %}" 
                     hx-target="#modal-container"
                     class="text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 p-2 rounded flex items-center justify-center transition-colors shadow-sm" title="Editar Empresa">

@@ -29,3 +29,38 @@ class TarifaEstudio(AuditModel):
 
     def __str__(self):
         return f"{self.cliente.razon_social} - {self.producto.detalle}"
+
+
+class EnvioFacturaEstudio(AuditModel):
+    """
+    Tabla satélite para el seguimiento y automatización de envíos
+    de facturas por mail en la verticalidad Estudio.
+    """
+    ESTADOS = [
+        ('PENDIENTE', 'Pendiente'),
+        ('ENVIADO', 'Enviado'),
+        ('ERROR', 'Error'),
+    ]
+
+    empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='envios_facturas_estudio')
+    venta = models.OneToOneField('facturacion.Venta', on_delete=models.CASCADE, related_name='envio_estudio', verbose_name="Factura/Comprobante")
+    cliente = models.ForeignKey(ClienteProveedor, on_delete=models.CASCADE, related_name='envios_facturas_estudio', verbose_name="Cliente")
+    periodo = models.CharField(max_length=6, db_index=True, verbose_name="Período Facturado (YYYYMM)")
+    destinatarios = models.CharField(max_length=500, blank=True, default='', verbose_name="Destinatarios (Mails)")
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE', db_index=True, verbose_name="Estado de Envío")
+    respuesta_smtp = models.TextField(null=True, blank=True, verbose_name="Respuesta SMTP / Registro")
+    fecha_envio = models.DateTimeField(null=True, blank=True, verbose_name="Fecha y Hora de Envío")
+    intentos = models.PositiveIntegerField(default=0, verbose_name="Intentos de Envío")
+
+    class Meta:
+        verbose_name = "Envío de Factura Estudio"
+        verbose_name_plural = "Envíos de Facturas Estudio"
+        db_table = 'estudio_envio_factura'
+        indexes = [
+            models.Index(fields=['empresa', 'estado']),
+            models.Index(fields=['empresa', 'periodo']),
+        ]
+
+    def __str__(self):
+        return f"Envío Venta {self.venta_id} ({self.cliente.razon_social}) - {self.estado}"
+
