@@ -535,12 +535,17 @@ document.addEventListener('alpine:init', () => {
             return t;
         },
         get totalAplicado() {
+            this.triggerCalc;
             let inputs = document.querySelectorAll('.aplicacion-importe');
             let t = 0;
             inputs.forEach(i => {
-                t += desformatearAR(i.value || 0);
+                let signo = parseInt(i.dataset.signo || '1');
+                t += desformatearAR(i) * signo;
             });
             return t;
+        },
+        onAplicacionInput(e) {
+            this.triggerCalc++;
         },
         get totalHaber() {
             this.triggerCalc;
@@ -657,7 +662,10 @@ document.addEventListener('alpine:init', () => {
                 document.getElementById('comprobantes_container').innerHTML = '<p class="text-sm text-gray-500 italic">Seleccione un cliente para ver sus comprobantes adeudados.</p>';
                 return;
             }
-            htmx.ajax('GET', `/tesoreria/htmx/comprobantes-pendientes/cliente/${this.data.cliente_id}/`, {target: '#comprobantes_container'});
+            htmx.ajax('GET', `/tesoreria/htmx/comprobantes-pendientes/cliente/${this.data.cliente_id}/`, {target: '#comprobantes_container'})
+                .then(() => {
+                    if (window.inicializarFormatoAR) window.inicializarFormatoAR();
+                });
         },
         clienteEditado() {
             if (this.data.cliente_id) {
@@ -727,7 +735,7 @@ document.addEventListener('alpine:init', () => {
                 this.data.aplicaciones = [];
                 let inputs = document.querySelectorAll('.aplicacion-importe');
                 inputs.forEach(i => {
-                    let val = desformatearAR(i.value || 0);
+                    let val = desformatearAR(i);
                     if (val > 0) {
                         this.data.aplicaciones.push({
                             id: i.dataset.id,

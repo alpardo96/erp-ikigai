@@ -382,6 +382,8 @@ def obtener_comprobantes_pendientes(request, tipo, id):
             else:
                 c.saldo_pesificado = c.saldo
                 c.total_pesificado = c.total
+            # Valor absoluto del saldo para validar topes en el frontend
+            c.saldo_pesificado_abs = abs(c.saldo_pesificado)
         template = 'tesoreria/partials/comprobantes_pendientes_venta.html'
     else:
         comprobantes = Compra.objects.filter(
