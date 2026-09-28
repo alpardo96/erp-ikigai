@@ -6,12 +6,14 @@ from datetime import datetime
 from dbfread import DBF
 
 # Configurar el entorno de Django
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).resolve().parent.parent.parent.parent))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from empresas.models import Empresa, Sucursal, Ejercicio
-from contable.models import Asiento, AsientoLinea
+from contable.models import Asiento, AsientoLinea, Cuenta
+from facturacion.models import ClienteProveedor
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -21,21 +23,57 @@ def parse_decimal(value):
         return Decimal('0.00')
     return Decimal(str(value))
 
-def get_modulo_int(modulo_str):
-    m = str(modulo_str).strip().upper()
-    if 'VENTA' in m: return 2
-    if 'COMPRA' in m: return 5
-    if 'BANCO' in m or 'CAJA' in m or 'RECIBO' in m or 'ORD_PAGO' in m: return 6
+def safe_int(value, default=0):
+    try:
+        if not value: return default
+        if isinstance(value, str):
+            value = ''.join(c for c in value if c.isdigit())
+        return int(value) if value else default
+    except (ValueError, TypeError):
+        return default
+
+def resolver_usuario_id(id_usu):
+    val = safe_int(id_usu, 1)
+    if val == 2:
+        return 3
+    elif val == 4:
+        return 4
     return 1
 
 def run():
-    print("Iniciando Fase 2: Bloque Contabilidad Core")
-    dir_path = r'D:\OneDrive\Escritorio\Migracion\eje_272'
+    print("Iniciando Fase 2: Bloque Contabilidad Core (Estudio)...")
+    dir_path = r'D:\OneDrive\Escritorio\Migracion\Estudio\eje_272'
     
     empresa = Empresa.objects.get(id=1)
     sucursal = Sucursal.objects.get(id=1)
-    ejercicio = Ejercicio.objects.get(id=1)
     user = User.objects.get(username='Ikigai')
+    
+    # Pre-cargar ejercicios de la empresa
+    ejercicios = list(Ejercicio.objects.filter(empresa=empresa).order_by('inicio'))
+    ejercicio_default = ejercicios[-1] if ejercicios else None
+
+    def resolver_ejercicio(fecha_doc):
+        if not fecha_doc:
+            return ejercicio_default
+        for ej in ejercicios:
+            if ej.inicio <= fecha_doc <= ej.cierre:
+                return ej
+        return ejercicio_default
+
+    # Pre-mapear ID_ASTO -> CAJA desde caja_diaria.dbf
+    caja_por_asiento = {}
+    caja_dbf = os.path.join(dir_path, 'caja_diaria.dbf')
+    if os.path.exists(caja_dbf):
+        t_caja = DBF(caja_dbf, ignore_missing_memofile=True, encoding='latin1')
+        for r in t_caja:
+            a = r.get('ID_ASTO')
+            c = r.get('CAJA')
+            if a and c:
+                caja_por_asiento[a] = c
+
+    # Pre-cargar IDs válidos
+    cuentas_validas = set(Cuenta.objects.filter(empresa=empresa).values_list('id', flat=True))
+    clipro_validos = set(ClienteProveedor.objects.filter(empresa=empresa).values_list('codigo_id', flat=True))
 
     # 1. Asiento de Apertura
     apertura_dbf = os.path.join(dir_path, 'apertura.dbf')
@@ -43,9 +81,10 @@ def run():
         table = DBF(apertura_dbf, ignore_missing_memofile=True, encoding='latin1')
         records = list(table)
         if records:
+            ej_apertura = resolver_ejercicio(datetime(2026, 6, 1).date())
             asiento_apertura = Asiento.objects.create(
                 asiento_id=99999999,
-                fecha=ejercicio.inicio,
+                fecha=ej_apertura.inicio if ej_apertura else datetime(2026, 6, 1).date(),
                 concepto="Asiento de Apertura Migrado",
                 condic=5, # Apertura
                 monto=0,
@@ -53,13 +92,17 @@ def run():
                 anulado=False,
                 empresa=empresa,
                 sucursal=sucursal,
-                ejercicio=ejercicio,
+                ejercicio=ej_apertura,
                 creado_por=user
             )
             
             lineas = []
             monto_total = Decimal('0.00')
             for i, row in enumerate(records):
+                cta_id = row.get('ID_CTA') or row.get('CODIGO')
+                if cta_id not in cuentas_validas:
+                    continue
+                    
                 debe = parse_decimal(row.get('DEBE'))
                 haber = parse_decimal(row.get('HABER'))
                 
@@ -84,7 +127,7 @@ def run():
                 lineas.append(AsientoLinea(
                     asiento=asiento_apertura,
                     orden=i+1,
-                    cuenta_id=row.get('ID_CTA') or row.get('CODIGO'),
+                    cuenta_id=cta_id,
                     leyenda="Saldo Inicial",
                     debe=debe,
                     haber=haber
@@ -102,33 +145,37 @@ def run():
         table = DBF(asto_enc_dbf, ignore_missing_memofile=True, encoding='latin1')
         asientos_to_create = []
         for row in table:
-            if row.get('ID_ASTO', 0) == 0:
+            asiento_id = row.get('ID_ASTO', 0)
+            if not asiento_id or asiento_id == 0:
                 continue
                 
             fecha = row.get('FECHA')
-            if not fecha:
-                fecha = ejercicio.inicio
-                
+            ej = resolver_ejercicio(fecha)
+            
             cli_pro_id = row.get('CLI_PRO')
-            if cli_pro_id == 0:
+            if cli_pro_id not in clipro_validos:
                 cli_pro_id = None
                 
+            caja_id = caja_por_asiento.get(asiento_id)
+            usu_id = resolver_usuario_id(row.get('ID_USU'))
+
             asientos_to_create.append(Asiento(
-                asiento_id=row['ID_ASTO'],
-                fecha=fecha,
-                concepto=row.get('CONCEPTO', '')[:200],
-                condic=row.get('CONDIC', 1),
+                asiento_id=asiento_id,
+                fecha=fecha or ej.inicio,
+                concepto=str(row.get('CONCEPTO', ''))[:200],
+                condic=int(row.get('CONDIC', 1) or 1),
                 monto=parse_decimal(row.get('MONTO')),
-                modulo=row.get('MODULO', 1),
+                modulo=int(row.get('MODULO', 1) or 1),
                 cli_pro_id=cli_pro_id,
-                anulado=False, # En este DBF no hay campo anulado
+                sesion_caja_id=None, # Se vincula en Fase 3 al crearse CajaSesion
+                anulado=False,
                 empresa=empresa,
                 sucursal=sucursal,
-                ejercicio=ejercicio,
-                creado_por=user
+                ejercicio=ej,
+                creado_por_id=usu_id
             ))
             
-        Asiento.objects.bulk_create(asientos_to_create, batch_size=1000)
+        Asiento.objects.bulk_create(asientos_to_create, ignore_conflicts=True, batch_size=1000)
         print(f"OK {len(asientos_to_create)} cabeceras de asientos procesadas.")
 
     # 3. Líneas de Asientos
@@ -137,12 +184,15 @@ def run():
         table = DBF(asto_mov_dbf, ignore_missing_memofile=True, encoding='latin1')
         lineas_to_create = []
         
-        # Guardamos en set los IDs validos de asientos para no romper FK
-        asientos_validos = set(Asiento.objects.values_list('asiento_id', flat=True))
+        asientos_validos = set(Asiento.objects.filter(empresa=empresa).values_list('asiento_id', flat=True))
         
         for row in table:
             asiento_id = row.get('ID_ASTO')
             if asiento_id not in asientos_validos:
+                continue
+                
+            cta_id = row.get('ID_CTA')
+            if cta_id not in cuentas_validas:
                 continue
                 
             debe = parse_decimal(row.get('DEBE'))
@@ -157,7 +207,6 @@ def run():
             
             # Constraint DB debe_xor_haber
             if debe > 0 and haber > 0:
-                # Si ambos tienen valor por algún error, nos quedamos con el neto
                 if debe > haber:
                     debe -= haber
                     haber = Decimal('0.00')
@@ -170,14 +219,14 @@ def run():
                 
             lineas_to_create.append(AsientoLinea(
                 asiento_id=asiento_id,
-                orden=row.get('ID_ASTO_MO', 1),
-                cuenta_id=row.get('ID_CTA'),
-                leyenda=row.get('LEYENDA', '')[:200],
+                orden=int(row.get('ID_ASTO_MO', 1) or 1),
+                cuenta_id=cta_id,
+                leyenda=str(row.get('LEYENDA', ''))[:200],
                 debe=debe,
                 haber=haber
             ))
             
-        AsientoLinea.objects.bulk_create(lineas_to_create, batch_size=2000)
+        AsientoLinea.objects.bulk_create(lineas_to_create, ignore_conflicts=True, batch_size=2000)
         print(f"OK {len(lineas_to_create)} líneas de asientos procesadas.")
 
     print("Fase 2 completada con éxito.")

@@ -1,11 +1,18 @@
 import json
 from decimal import Decimal
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET
 from django.db import transaction
-from verticalidades.estudio.models import TarifaEstudio
+from django.conf import settings
+from verticalidades.estudio.models import TarifaEstudio, EnvioFacturaEstudio
+from verticalidades.estudio.services.config_mail_service import (
+    get_config_mail, guardar_config_mail, is_config_activa,
+    guardar_logo_firma, eliminar_logo_firma
+)
+from verticalidades.estudio.services.smtp_service import SMTPService
+
 
 @login_required
 def actualizar_tarifas(request):
@@ -295,3 +302,337 @@ def generar_lote_facturacion(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=400)
+
+
+# =========================================================================
+# VISTAS DE ENVÍO DE FACTURAS POR CORREO ELECTRÓNICO (ESTUDIO)
+# =========================================================================
+
+@login_required
+def envios_facturas(request):
+    """
+    Renderiza la vista principal para gestión y envío de facturas por mail.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+
+    activa, motivo = is_config_activa(empresa.id)
+    config = get_config_mail(empresa.id)
+
+    return render(request, 'estudio/envios_facturas.html', {
+        'empresa_activa': empresa,
+        'config_mail': config,
+        'config_activa': activa,
+        'config_motivo': motivo,
+    })
+
+
+@login_required
+@require_GET
+def api_envios_facturas(request):
+    """
+    Retorna la lista de comprobantes emitidos en el período y su estado de envío por correo.
+    Descubre automáticamente comprobantes generados previamente que aún no tengan registro en EnvioFacturaEstudio.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+
+    periodo = request.GET.get('periodo', '').strip()
+    if not periodo or len(periodo) != 6:
+        return JsonResponse({'error': 'Período inválido (formato YYYYMM requerido)'}, status=400)
+
+    from facturacion.models import Venta
+    # Descubrir comprobantes del período sin registro de envío
+    ventas_sin_envio = Venta.objects.filter(
+        empresa=empresa,
+        periodo_facturado=periodo,
+        envio_estudio__isnull=True
+    ).select_related('cliente', 'tipo')
+
+    nuevos_envios = []
+    for v in ventas_sin_envio:
+        dest = v.cliente.correo if v.cliente and v.cliente.correo else ''
+        nuevos_envios.append(EnvioFacturaEstudio(
+            empresa=empresa,
+            venta=v,
+            cliente=v.cliente,
+            periodo=periodo,
+            destinatarios=dest,
+            estado='PENDIENTE',
+            creado_por=request.user,
+            modificado_por=request.user
+        ))
+    if nuevos_envios:
+        EnvioFacturaEstudio.objects.bulk_create(nuevos_envios)
+
+    # Consultar todos los envíos del período
+    envios_qs = EnvioFacturaEstudio.objects.filter(
+        empresa=empresa,
+        periodo=periodo
+    ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social', 'venta__numero')
+
+    items = []
+    conteo_total = 0
+    conteo_enviados = 0
+    conteo_pendientes = 0
+    conteo_errores = 0
+
+    for e in envios_qs:
+        v = e.venta
+        conteo_total += 1
+        if e.estado == 'ENVIADO':
+            conteo_enviados += 1
+        elif e.estado == 'PENDIENTE':
+            conteo_pendientes += 1
+        elif e.estado == 'ERROR':
+            conteo_errores += 1
+
+        tipo_cbte = v.tipo.detalle if v.tipo else 'Comprobante'
+        cbte_str = f"{tipo_cbte} {v.punto:04d}-{v.numero:08d}"
+        cliente_nombre = v.cliente_razon_social or (v.cliente.razon_social if v.cliente else 'Sin Identificar')
+
+        items.append({
+            'id': e.id,
+            'venta_id': v.ventas_id,
+            'fecha': v.fecha.strftime('%d/%m/%Y') if v.fecha else '',
+            'comprobante': cbte_str,
+            'tipo_codigo': v.tipo.codigo if v.tipo else '',
+            'cae': v.cae or '',
+            'total': float(v.total),
+            'cliente_id': v.cliente_id or '',
+            'cliente_razon': cliente_nombre,
+            'cliente_cuit': v.cliente_cuit or (v.cliente.cuit if v.cliente else ''),
+            'destinatarios': e.destinatarios or (v.cliente.correo if v.cliente else ''),
+            'estado': e.estado,
+            'respuesta_smtp': e.respuesta_smtp or '',
+            'fecha_envio': e.fecha_envio.strftime('%d/%m/%Y %H:%M') if e.fecha_envio else '',
+            'intentos': e.intentos
+        })
+
+    return JsonResponse({
+        'periodo': periodo,
+        'metricas': {
+            'total': conteo_total,
+            'enviados': conteo_enviados,
+            'pendientes': conteo_pendientes,
+            'errores': conteo_errores,
+        },
+        'items': items
+    })
+
+
+@login_required
+@require_POST
+def api_enviar_pendientes(request):
+    """
+    Endpoint de streaming para enviar masivamente todos los comprobantes pendientes o con error.
+    Utiliza StreamingHttpResponse con ndjson para actualización en tiempo real y bloqueo del frontend.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except Exception:
+        body = {}
+    periodo = body.get('periodo', request.POST.get('periodo', '')).strip()
+
+    if not periodo:
+        return JsonResponse({'error': 'Período no especificado'}, status=400)
+
+    envios_pendientes = EnvioFacturaEstudio.objects.filter(
+        empresa=empresa,
+        periodo=periodo,
+        estado__in=['PENDIENTE', 'ERROR']
+    ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social')
+
+    service = SMTPService(empresa.id)
+
+    def event_generator():
+        for event in service.procesar_lote_pendientes_streaming(envios_pendientes, usuario=request.user):
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+
+    response = StreamingHttpResponse(event_generator(), content_type='application/x-ndjson')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
+
+
+@login_required
+@require_POST
+def api_reenviar_factura(request, envio_id):
+    """
+    Reenvía un comprobante individual específico.
+    Solo disponible cuando el comprobante no está en estado ENVIADO.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+
+    envio = EnvioFacturaEstudio.objects.filter(
+        id=envio_id,
+        empresa=empresa
+    ).select_related('venta', 'venta__tipo', 'cliente').first()
+
+    if not envio:
+        return JsonResponse({'error': 'Registro de envío no encontrado'}, status=404)
+
+    service = SMTPService(empresa.id)
+    ok, respuesta = service.enviar_factura_individual(envio, usuario=request.user)
+
+    return JsonResponse({
+        'status': 'success' if ok else 'error',
+        'envio_id': envio.id,
+        'estado': envio.estado,
+        'respuesta_smtp': envio.respuesta_smtp,
+        'fecha_envio': envio.fecha_envio.strftime('%d/%m/%Y %H:%M') if envio.fecha_envio else '',
+        'intentos': envio.intentos,
+        'mensaje': respuesta
+    })
+
+
+# =========================================================================
+# CONFIGURACIÓN DE CORREO POR EMPRESA (MODAL Y GUARDADO EN MEDIA)
+# =========================================================================
+
+@login_required
+def config_mails_modal(request):
+    """
+    Renderiza el modal para configurar los datos SMTP y plantillas de correo de la empresa.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return HttpResponse('<div class="p-6 text-red-500 font-bold">No hay empresa activa.</div>')
+
+    config = get_config_mail(empresa.id)
+    return render(request, 'estudio/modals/config_mails_modal.html', {
+        'empresa': empresa,
+        'config': config,
+        'usuario': request.user,
+        'MEDIA_URL': settings.MEDIA_URL,
+    })
+
+
+@login_required
+@require_POST
+def config_mails_guardar(request):
+    """
+    Guarda la configuración SMTP y plantillas en el archivo JSON dentro de media/config_mails/.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+
+    try:
+        data = {
+            'activo': request.POST.get('activo') in ['on', 'true', True],
+            'email_remitente': request.POST.get('email_remitente', '').strip(),
+            'nombre_remitente': request.POST.get('nombre_remitente', '').strip(),
+            'servidor_smtp': request.POST.get('servidor_smtp', '').strip(),
+            'puerto_smtp': request.POST.get('puerto_smtp', '465').strip(),
+            'usuario_smtp': request.POST.get('usuario_smtp', '').strip(),
+            'password_smtp': request.POST.get('password_smtp', '').strip(),
+            'usar_tls': request.POST.get('usar_tls') in ['on', 'true', True],
+            'usar_ssl': request.POST.get('usar_ssl') in ['on', 'true', True],
+            'asunto': request.POST.get('asunto', '').strip(),
+            'mensaje': request.POST.get('mensaje', '').strip(),
+            'firma': request.POST.get('firma', '').strip(),
+        }
+
+        # Conservar contraseña anterior si se dejó vacía en el formulario
+        if not data['password_smtp']:
+            cfg_previa = get_config_mail(empresa.id)
+            data['password_smtp'] = cfg_previa.get('password_smtp', '')
+
+        # Manejo de logo de firma
+        if request.POST.get('eliminar_logo') == 'true':
+            eliminar_logo_firma(empresa.id)
+            data['logo_firma'] = ''
+        elif 'logo_firma' in request.FILES:
+            logo_rel = guardar_logo_firma(empresa.id, request.FILES['logo_firma'])
+            data['logo_firma'] = logo_rel
+        else:
+            cfg_previa = get_config_mail(empresa.id)
+            data['logo_firma'] = cfg_previa.get('logo_firma', '')
+
+        guardar_config_mail(empresa.id, data)
+        return JsonResponse({'status': 'success', 'message': 'Configuración de correo guardada con éxito.'})
+    except Exception as e:
+        return JsonResponse({'error': f"Error guardando configuración: {str(e)}"}, status=400)
+
+
+@login_required
+@require_POST
+def config_mails_probar(request):
+    """
+    Verifica las credenciales y conectividad SMTP sin realizar envíos a destinatarios.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+
+    data = {
+        'servidor_smtp': request.POST.get('servidor_smtp', '').strip(),
+        'puerto_smtp': request.POST.get('puerto_smtp', '587').strip(),
+        'usuario_smtp': request.POST.get('usuario_smtp', '').strip(),
+        'password_smtp': request.POST.get('password_smtp', '').strip(),
+        'usar_tls': request.POST.get('usar_tls') == 'on',
+        'usar_ssl': request.POST.get('usar_ssl') == 'on',
+    }
+
+    # Si la contraseña vino vacía en la prueba, usar la guardada previamente
+    if not data['password_smtp']:
+        cfg_previa = get_config_mail(empresa.id)
+        data['password_smtp'] = cfg_previa.get('password_smtp', '')
+
+    ok, mensaje = SMTPService.probar_conexion(data)
+    if ok:
+        return JsonResponse({'status': 'success', 'message': mensaje})
+    else:
+        return JsonResponse({'status': 'error', 'message': mensaje}, status=400)
+

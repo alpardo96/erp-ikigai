@@ -1,0 +1,22 @@
+{% if empresa_actual.tipo_actividad == 'ESTUDIO' %}
+<div class="mb-8">
+    <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center">
+        <span class="bg-indigo-100 text-indigo-700 p-1.5 rounded-lg mr-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+        </span>
+        Estudio Contable / Jurídico
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <button hx-get="{% url 'estudio_config_mails_modal' %}" hx-target="#modal-container"
+            class="text-left group bg-indigo-50/50 border border-indigo-100 p-5 rounded-2xl hover:bg-indigo-100 transition-all shadow-sm">
+            <div class="text-indigo-700 font-semibold text-lg group-hover:text-indigo-800 flex items-center justify-between">
+                <span>Mails de Facturación</span>
+                <span class="text-[10px] bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full font-bold">Estudio</span>
+            </div>
+            <div class="text-sm text-indigo-600/80 mt-1">Servidor SMTP, remitente, plantillas y automatización.</div>
+        </button>
+    </div>
+</div>
+{% endif %}

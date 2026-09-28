@@ -113,6 +113,8 @@ class ClienteProveedorForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         empresa_id = kwargs.pop('empresa_id', None)
         super().__init__(*args, **kwargs)
+        if not empresa_id and hasattr(self, 'instance') and getattr(self.instance, 'empresa_id', None):
+            empresa_id = self.instance.empresa_id
         self._empresa_id = empresa_id  # Disponible en clean() para validación de cuentas CLIPRO
         # Estilo base para todos los campos (Premium Design)
         for field_name, field in self.fields.items():
@@ -162,8 +164,24 @@ class ClienteProveedorForm(forms.ModelForm):
 
             from empresas.models import Empresa
             empresa = Empresa.objects.filter(id=empresa_id).first()
+            self._es_estudio = bool(empresa and empresa.tipo_actividad == 'ESTUDIO')
             if empresa and empresa.tipo_actividad == 'ARMERIA' and 'contacto' in self.fields:
                 self.fields['contacto'].widget = forms.HiddenInput()
+            if self._es_estudio:
+                if 'correo' in self.fields:
+                    self.fields['correo'] = forms.CharField(
+                        required=False,
+                        widget=forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono'})
+                    )
+                if 'telefono' in self.fields:
+                    self.fields['telefono'] = forms.CharField(
+                        required=False,
+                        widget=forms.TextInput(attrs={'class': 'w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono'})
+                    )
+                    self.fields['telefono'].widget.attrs.pop('pattern', None)
+                    self.fields['telefono'].widget.attrs.pop('inputmode', None)
+        else:
+            self._es_estudio = False
 
         if self.instance and self.instance.pk:
             if self.instance.tipo_entidad == 1:
@@ -193,6 +211,12 @@ class ClienteProveedorForm(forms.ModelForm):
             # Inicializar con valores vacíos para que Alpine JS se encargue
             self.cta_pat_nombre = ''
             self.cta_res_nombre = ''
+
+    def _get_validation_exclusions(self):
+        exclude = super()._get_validation_exclusions()
+        if getattr(self, '_es_estudio', False):
+            exclude.add('correo')
+        return exclude
 
     def clean(self):
         """
@@ -260,11 +284,30 @@ class ClienteProveedorForm(forms.ModelForm):
         if cleaned_data.get('cta_res') is None:
             cleaned_data['cta_res'] = 0
 
-        # Validación Correo
+        # Validación Correo y Teléfono
         correo = cleaned_data.get('correo')
-        if correo:
-            if '@' not in correo or '.' not in correo:
-                self.add_error('correo', 'Ingrese un correo electrónico válido.')
+        telefono = cleaned_data.get('telefono')
+
+        if getattr(self, '_es_estudio', False):
+            if correo:
+                from django.core.validators import validate_email
+                from django.core.exceptions import ValidationError
+                raw_mails = [m.strip() for m in str(correo).split(',') if m.strip()]
+                valid_mails = []
+                for m in raw_mails:
+                    try:
+                        validate_email(m)
+                        valid_mails.append(m)
+                    except ValidationError:
+                        self.add_error('correo', f"El correo '{m}' no tiene un formato válido.")
+                cleaned_data['correo'] = ", ".join(valid_mails)
+            if telefono:
+                raw_tels = [t.strip() for t in str(telefono).split(',') if t.strip()]
+                cleaned_data['telefono'] = ", ".join(raw_tels)
+        else:
+            if correo:
+                if '@' not in str(correo) or '.' not in str(correo):
+                    self.add_error('correo', 'Ingrese un correo electrónico válido.')
 
         # Validación CUIT duplicado considerando activo
         if cuit and cuit not in ['0', '00']:

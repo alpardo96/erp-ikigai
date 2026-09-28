@@ -386,6 +386,9 @@ def cliente_modal(request, id=None):
     form.default_cta_prov_id = (_par.cta_proveedores_default_id or '') if _par else ''
     form.default_cta_prov_nombre = _cta_nombre(_par.cta_proveedores_default_id) if _par else ''
 
+    empresa_obj = Empresa.objects.filter(id=empresa_id).first() if empresa_id else None
+    es_estudio = bool(empresa_obj and empresa_obj.tipo_actividad == 'ESTUDIO')
+
     context = {
         'form': form,
         'form_armeria': form_armeria,
@@ -395,6 +398,7 @@ def cliente_modal(request, id=None):
         'puede_distribuidora': puede_distribuidora,
         'origen': origen,
         'pedir_fecha_nacimiento': pedir_fecha_nacimiento,
+        'es_estudio': es_estudio,
         'cli_apellido': cli_apellido if request.method == 'GET' else '',
         'cli_nombre': cli_nombre if request.method == 'GET' else ''
     }

@@ -6,7 +6,7 @@ from core.services.numeracion import siguiente_numero_pre
 from django.db import transaction
 from django.utils import timezone
 from facturacion.models import Venta, VentaItem, VentaAlicuotaIva, ClienteProveedor, TipoComprobante
-from verticalidades.estudio.models import TarifaEstudio
+from verticalidades.estudio.models import TarifaEstudio, EnvioFacturaEstudio
 from productos.models import Producto, MovimientoStock, Sucursal
 from facturacion.services.afip_service import AFIPService
 from facturacion.views import validar_y_obtener_documento_receptor
@@ -207,6 +207,20 @@ class FacturacionLoteEstudioService:
                         # Re-guardar para que se dispare la señal contable, que requiere que existan ítems.
                         venta_f.save()
 
+                        # Registrar en cola de envíos de Estudio
+                        EnvioFacturaEstudio.objects.update_or_create(
+                            venta=venta_f,
+                            defaults={
+                                'empresa_id': self.empresa_id,
+                                'cliente': cliente,
+                                'periodo': periodo,
+                                'destinatarios': cliente.correo or '',
+                                'estado': 'PENDIENTE',
+                                'creado_por': self.usuario,
+                                'modificado_por': self.usuario,
+                            }
+                        )
+
                         msg_f = f"FISCAL: {tipo_fiscal.detalle} {numero_pto:04d}-{venta_f.numero:08d} Generada."
                     
                     # 2. Comprobante INTERNO (tarifa_p)
@@ -257,6 +271,20 @@ class FacturacionLoteEstudioService:
                         )
 
                         venta_p.save()
+
+                        # Registrar en cola de envíos de Estudio
+                        EnvioFacturaEstudio.objects.update_or_create(
+                            venta=venta_p,
+                            defaults={
+                                'empresa_id': self.empresa_id,
+                                'cliente': cliente,
+                                'periodo': periodo,
+                                'destinatarios': cliente.correo or '',
+                                'estado': 'PENDIENTE',
+                                'creado_por': self.usuario,
+                                'modificado_por': self.usuario,
+                            }
+                        )
 
                         msg_p = f"INTERNO: {tipo_interno.detalle} {punto_interno:04d}-{numero_fact_p:08d} Generada."
                     

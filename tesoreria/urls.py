@@ -28,16 +28,14 @@ urlpatterns = [
          views.ReciboCargaView.as_view(origen='MOSTRADOR'), name='recibo_carga_mostrador'),
     path('orden-pago/', views.OrdenPagoCargaView.as_view(), name='ordenpago_carga'),
 
-    # Listados de comprobantes de tesorería: consulta, anulación y reimpresión (Plan 035)
+    # Listados de comprobantes de tesorería: consulta y reimpresión
     path('ordenes-pago/', views_listados.ordenes_pago_listado, name='ordenpago_listado'),
     path('ordenes-pago/grilla/', views_listados.ordenes_pago_grilla, name='ordenpago_grilla'),
     path('ordenes-pago/<int:pk>/detalle/', views_listados.orden_pago_detalle, name='ordenpago_detalle'),
-    path('ordenes-pago/<int:pk>/anular/', views_listados.orden_pago_anular, name='ordenpago_anular'),
     path('ordenes-pago/<int:pk>/pdf/', views_listados.orden_pago_pdf, name='ordenpago_pdf'),
 
     path('recibos/', views_listados.recibos_listado, name='recibo_listado'),
     path('recibos/grilla/', views_listados.recibos_grilla, name='recibo_grilla'),
-    path('recibos/<int:pk>/anular/', views_listados.recibo_anular, name='recibo_anular'),
     path('recibos/<int:pk>/pdf/', views_listados.recibo_pdf, name='recibo_pdf'),
 
 
