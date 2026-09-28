@@ -129,5 +129,5 @@ def exportar_caja_diaria_pdf(sesion, movimientos, saldos):
 
     nombre = f"caja_diaria_{sesion.numero or sesion.id}_{timezone.localdate().strftime('%Y%m%d')}.pdf"
     respuesta = HttpResponse(resultado.getvalue(), content_type='application/pdf')
-    respuesta['Content-Disposition'] = f'attachment; filename="{nombre}"'
+    respuesta['Content-Disposition'] = f'inline; filename="{nombre}"'
     return respuesta

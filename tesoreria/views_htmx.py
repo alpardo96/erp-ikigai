@@ -515,6 +515,13 @@ def procesar_recibo(request):
                 # El saldo se DERIVA de las aplicaciones, nunca se decrementa (Plan 035 §1.3).
                 recalcular_saldo_venta(venta.pk)
             
+            # El concepto concatena el texto base y las observaciones si existen
+            concepto_base = f"Cobranza Recibo {recibo.numero}"
+            if recibo.observaciones and recibo.observaciones.strip():
+                concepto_mov = f"{concepto_base}. {recibo.observaciones.strip()}"[:200]
+            else:
+                concepto_mov = concepto_base
+
             mov_caja = MovimientoCaja.objects.create(
                 sesion=sesion_caja,
                 empresa_id=empresa_id,
@@ -523,7 +530,7 @@ def procesar_recibo(request):
                 fecha=recibo.fecha,
                 tipo='I',
                 importe=total,
-                concepto=f"Cobranza Recibo {recibo.numero}",
+                concepto=concepto_mov,
                 condic=condic,
                 recibo=recibo,
                 cli_pro=recibo.cliente,
@@ -763,7 +770,13 @@ def procesar_orden_pago(request):
                         leyenda=imp.get('leyenda', '')
                     )
 
-            # Movimiento de Caja (Egreso)
+            # Movimiento de Caja (Egreso) con concepto concatenado a observaciones
+            concepto_base = f"Orden de Pago {op.numero}"
+            if op.observaciones and op.observaciones.strip():
+                concepto_mov = f"{concepto_base}. {op.observaciones.strip()}"[:200]
+            else:
+                concepto_mov = concepto_base
+
             mov_caja = MovimientoCaja.objects.create(
                 sesion=sesion_caja,
                 empresa_id=empresa_id,
@@ -771,7 +784,7 @@ def procesar_orden_pago(request):
                 fecha=op.fecha,
                 tipo='E',
                 importe=total,
-                concepto=f"Orden de Pago {op.numero}",
+                concepto=concepto_mov,
                 condic=condic,
                 orden_pago=op,
                 cli_pro=op.proveedor,
@@ -1090,14 +1103,20 @@ def _guardar_reserva_preventa_transaccional(
 
     concepto_cobro = f"Cobranza Reserva Recibo #{recibo.numero} (Prev #{preventa.preventa_id})"
 
-    # 4. Movimientos en Caja Mostrador
+    # 4. Movimientos en Caja Mostrador con concepto concatenado a observaciones
+    concepto_base = f"Cobranza Reserva Recibo {recibo.numero}"
+    if recibo.observaciones and recibo.observaciones.strip():
+        concepto_mov = f"{concepto_base}. {recibo.observaciones.strip()}"[:200]
+    else:
+        concepto_mov = concepto_base
+
     mov_caja = MovimientoCaja.objects.create(
         sesion=sesion_caja,
         empresa_id=empresa_id,
         fecha=recibo.fecha,
         tipo='I',
         importe=total_ingresado,
-        concepto=f"Cobranza Reserva Recibo {recibo.numero}",
+        concepto=concepto_mov,
         condic=1,
         recibo=recibo,
         cli_pro=preventa.cliente,
@@ -1936,6 +1955,7 @@ def caja_cierre_modal(request):
     # Modal ciego
     context = {
         'sesion': sesion_caja,
+        'fecha_sugerida': sesion_caja.fecha_operativa or timezone.localdate(),
     }
     return render(request, 'tesoreria/modals/caja_cierre.html', context)
 
@@ -1954,6 +1974,16 @@ def caja_cierre_procesar(request):
             if not sesion_caja:
                 return HttpResponse(json.dumps({'status': 'error', 'message': 'Caja cerrada o sesión inválida.'}), status=400)
                 
+            fecha_str = data.get('fecha')
+            if fecha_str:
+                from datetime import datetime
+                try:
+                    fecha_caja = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+                except ValueError:
+                    fecha_caja = sesion_caja.fecha_operativa or timezone.localdate()
+            else:
+                fecha_caja = sesion_caja.fecha_operativa or timezone.localdate()
+
             contado_pesos = Decimal(str(data.get('contado_pesos', 0) or 0))
             contado_dolares = Decimal(str(data.get('contado_dolares', 0) or 0))
             fondo_fijo = Decimal(str(data.get('fondo_fijo', 0) or 0))
@@ -1989,8 +2019,8 @@ def caja_cierre_procesar(request):
                 mov_cierre = MovimientoCaja.objects.create(
                     sesion=sesion_caja,
                     empresa_id=empresa_id,
-                    # Movimiento interno del día; `cli_pro` nulo (no hay entidad).
-                    fecha=timezone.localdate(),
+                    # Movimiento interno del día con fecha operativa asignada a la caja
+                    fecha=fecha_caja,
                     tipo='R',
                     importe=efectivo_pesos + (efectivo_dolares * Decimal("1.0")),
                     concepto=f"Cierre de caja - Rendición #{retiro.id}",
@@ -2036,7 +2066,7 @@ def caja_cierre_procesar(request):
                 pesos=efectivo_pesos, 
                 dolares=efectivo_dolares, 
                 param=param, 
-                fecha=timezone.localdate(),
+                fecha=fecha_caja,
                 concepto_base=f"CIERRE CAJA {sesion_caja.id}",
                 usuario=request.user,
                 cuenta_origen=cuenta_origen_de_caja(caja, param)
@@ -2053,9 +2083,10 @@ def caja_cierre_procesar(request):
 
             # Cerrar sesión (ciego). Lo declarado que QUEDA en la caja es el fondo fijo.
             sesion_caja.estado = 'C'
+            sesion_caja.fecha_operativa = fecha_caja
             sesion_caja.fecha_cierre = timezone.localtime()
             sesion_caja.saldo_final_declarado = fondo_fijo
-            sesion_caja.save(update_fields=['estado', 'fecha_cierre', 'saldo_final_declarado'])
+            sesion_caja.save(update_fields=['estado', 'fecha_operativa', 'fecha_cierre', 'saldo_final_declarado'])
             
             return HttpResponse(json.dumps({'status': 'success'}), content_type="application/json")
         except Exception as e:

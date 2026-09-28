@@ -109,8 +109,17 @@ def caja_diaria_cerrar(request):
         messages.error(request, "No se encontró la caja a cerrar.")
         return redirect('caja_diaria_index')
 
+    fecha_operativa_raw = request.POST.get('fecha_operativa')
+    fecha_operativa = None
+    if fecha_operativa_raw:
+        from datetime import datetime
+        try:
+            fecha_operativa = datetime.strptime(fecha_operativa_raw, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
     try:
-        cerrada, nueva = cerrar_caja(sesion, request.user)
+        cerrada, nueva = cerrar_caja(sesion, request.user, fecha_operativa=fecha_operativa)
     except ValueError as error:
         messages.error(request, str(error))
         return redirect(f"{_url_index()}?sesion_id={sesion.id}")

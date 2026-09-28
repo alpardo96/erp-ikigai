@@ -198,7 +198,10 @@ def _contrapartidas_de_movimiento(movimiento, cuentas_por_pk):
             referencias = ".".join(f"{a.venta.tipo.codigo if a.venta.tipo else ''}{a.venta.numero}" for a in aplicaciones)
         else:
             referencias = ".".join(f"{a.compra.tipo.codigo if a.compra.tipo else ''}{a.compra.numero}" for a in aplicaciones)
-        return [(cuenta, f"Paga: {referencias}", abs(comprobante.total or CERO))]
+        desc = f"Paga: {referencias}"
+        if comprobante.observaciones and comprobante.observaciones.strip():
+            desc = f"{desc}. {comprobante.observaciones.strip()}"
+        return [(cuenta, desc, abs(comprobante.total or CERO))]
 
     return [(cuenta, movimiento.concepto, abs(comprobante.total or CERO))]
 

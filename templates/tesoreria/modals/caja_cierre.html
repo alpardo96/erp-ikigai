@@ -21,6 +21,11 @@
             <form id="formCierre" onsubmit="procesarCierre(event)">
                 <div class="space-y-6">
                     <div class="bg-gray-700 p-4 rounded-lg">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-amber-300 mb-1">Fecha de la Caja</label>
+                            <input type="date" id="cierreFecha" value="{{ fecha_sugerida|date:'Y-m-d' }}" required class="block w-full rounded-md bg-gray-600 border-amber-500 text-white shadow-sm focus:border-amber-400 focus:ring-amber-400 font-mono text-sm px-3 py-2">
+                            <span class="text-xs text-gray-400 mt-1 block">Esta será la fecha operativa registrada para la caja y sus traslados.</span>
+                        </div>
                         <h4 class="text-lg font-semibold text-white mb-4 border-b border-gray-600 pb-2">Declaración de Efectivo (Ciego)</h4>
                         <p class="text-sm text-gray-400 mb-4">Ingrese el total contado en el cajón y cuánto deja como fondo fijo (sencillo). El resto se rinde a Tesorería.</p>
                         <div class="space-y-4">
@@ -90,20 +95,26 @@
     function procesarCierre(event) {
         event.preventDefault();
 
+        var fechaCaja = document.getElementById('cierreFecha').value;
         var contPesos = parseFloat(document.getElementById('cierreContadoPesos').value) || 0;
         var contDolares = parseFloat(document.getElementById('cierreContadoDolares').value) || 0;
         var fondoFijo = parseFloat(document.getElementById('cierreFondoFijo').value) || 0;
         var observaciones = document.getElementById('cierreObservaciones').value;
 
+        if (!fechaCaja) {
+            alert('Por favor ingrese la fecha de la caja.');
+            return;
+        }
         if (fondoFijo > contPesos) {
             alert('El fondo fijo no puede superar el efectivo contado en pesos.');
             return;
         }
-        if (!confirm('¿Está seguro que desea cerrar la caja? Esta acción es irreversible.')) {
+        if (!confirm('¿Está seguro que desea cerrar la caja con fecha ' + fechaCaja + '? Esta acción es irreversible.')) {
             return;
         }
 
         const payload = {
+            fecha: fechaCaja,
             contado_pesos: contPesos,
             contado_dolares: contDolares,
             fondo_fijo: fondoFijo,

@@ -49,14 +49,18 @@
                         Excel
                     </a>
                     <a href="{% url 'caja_diaria_pdf' %}?sesion_id={{ sesion.id }}&sucursal_id={{ sucursal_id }}&condic={{ condic }}"
+                       target="_blank"
                        class="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50">
                         Imprimir
                     </a>
                     {% if sesion.estado == 'A' %}
-                        <form method="post" action="{% url 'caja_diaria_cerrar' %}"
-                              onsubmit="return confirm('¿Cerrar la caja N° {{ sesion.numero|default:sesion.id }}? Se congelan los saldos y se abre la caja siguiente.');">
+                        <form method="post" action="{% url 'caja_diaria_cerrar' %}" class="flex items-center gap-1.5"
+                              onsubmit="return confirm('¿Cerrar la caja N° {{ sesion.numero|default:sesion.id }} con fecha ' + (this.querySelector('[name=fecha_operativa]').value) + '? Se congelan los saldos y se abre la caja siguiente.');">
                             {% csrf_token %}
                             <input type="hidden" name="sesion_id" value="{{ sesion.id }}">
+                            <input type="date" name="fecha_operativa" value="{% now 'Y-m-d' %}" required
+                                   title="Fecha de la Caja"
+                                   class="text-xs rounded-lg border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 py-1 px-2 text-gray-700 font-mono">
                             <button type="submit"
                                     class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-700">
                                 Cerrar Caja
