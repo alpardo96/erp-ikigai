@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 import json
 from .models import MedioPago, CuentaBancaria, Tarjeta, Recibo, ReciboAplicacion, ValorTerceros, MovimientoCajaDetalle, TransaccionBancaria, OrdenPago, OrdenPagoAplicacion
