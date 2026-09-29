@@ -2128,7 +2128,7 @@ def buscar_jurisdiccion_por_cp(request):
     previo = (ClienteProveedor.objects
               .filter(codigo_postal__iexact=cp, jurisdiccion__isnull=False)
               .select_related('jurisdiccion')
-              .order_by('-modificado')
+              .order_by('-fecha_modificacion')
               .first())
 
     if previo and previo.jurisdiccion:

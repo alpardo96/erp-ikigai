@@ -5693,4 +5693,18 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - Sistema de configuración de emails de facturación totalmente optimizado, responsivo y fluido.
 - Proceder a la prueba operativa en el navegador por parte del usuario ingresando a la configuración de la empresa en la verticalidad Estudio.
 
-
+### Corrección de FieldError en Búsqueda de Jurisdicción por Código Postal
+**Autor:** Cristian - PC CASA
+**Fecha:** 29 de Septiembre de 2026
+**Objetivo:** Resolver excepción `django.core.exceptions.FieldError: Cannot resolve keyword 'modificado' into field` en la vista HTMX `/htmx/buscar-cp/` invocada desde el modal de alta y edición de clientes y proveedores.
+**Archivos creados o modificados:**
+- `facturacion/views_htmx.py` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Error de Campo en QuerySet:** En la función `buscar_jurisdiccion_por_cp`, al consultar si existía un registro previo con el mismo código postal, se aplicaba `.order_by('-modificado')`. Dado que el modelo `ClienteProveedor` hereda de `AuditModel`, el campo correcto de fecha de última modificación es `fecha_modificacion`.
+2. **Corrección Aplicada:** Se actualizó el ordenamiento a `.order_by('-fecha_modificacion')`, permitiendo la correcta deducción de la jurisdicción (provincia) y localidad sin fallas de ORM.
+3. **Cero Impacto en Esquema de Base de Datos:** Sin necesidad de migraciones.
+**Resultado de las pruebas:**
+- `python manage.py check`: `System check identified no issues (0 silenced)`.
+**Estado actual y siguientes pasos sugeridos:**
+- Búsqueda y autocompletado por Código Postal operativa y corregida.
