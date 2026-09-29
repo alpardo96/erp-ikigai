@@ -5804,3 +5804,22 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 - `python manage.py check`: `System check identified no issues (0 silenced)`.
 **Estado actual y siguientes pasos sugeridos:**
 - Búsqueda y autocompletado por Código Postal operativa y corregida.
+
+### Corrección de Alerta de Producto Duplicado en Carga de Preventa (Toast de 3s sin romper grilla)
+**Autor:** Cristian - PC CASA
+**Fecha:** 29 de Septiembre de 2026
+**Objetivo:** Evitar que al cargar un producto ya existente en la preventa la tabla de ítems sea reemplazada por un cartel estático pegado, implementando un Toast emergente de 3 segundos que desaparece automáticamente sin alterar ni romper la grilla de productos cargados.
+**Archivos creados o modificados:**
+- `facturacion/views_htmx.py` [MODIFIED]
+- `templates/facturacion/preventa_carga.html` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Causa del problema:** En `preventas_item_add` (`facturacion/views_htmx.py`), cuando el producto ya existía en `request.session['preventa_items_temp']`, se retornaba un `HttpResponse("<div class='...'>Este producto ya fue cargado.</div>")`. Dado que el target HTMX de la petición es `#items-tabla-container`, la tabla entera de ítems quedaba destruida y reemplazada por dicho `<div>`, quedando congelada permanentemente.
+2. **Solución en Backend:** Se estructuró la respuesta de error para que SIEMPRE devuelva el template de la tabla parcial (`facturacion/partials/preventa_items_tabla.html`) con los ítems existentes en la sesión, emitiendo mediante el header `HX-Trigger` el evento `alertaPreventa` junto con `limpiarInputsCargaPreventa`.
+3. **Solución en Frontend:** En `preventa_carga.html`, se configuró el listener para `alertaPreventa` que ejecuta SweetAlert2 Toast con `timer: 3000` (3 segundos), barra de progreso (`timerProgressBar: true`) y cierre automático sin requerir interacción del usuario, manteniendo el foco listo para continuar la carga.
+4. **Cero Impacto en Base de Datos:** Sin migraciones.
+**Resultado de las pruebas:**
+- Validación sintáctica de vistas y templates completada con éxito.
+**Estado actual y siguientes pasos sugeridos:**
+- Alerta no invasiva de 3 segundos lista y grilla de preventa protegida contra roturas.
+

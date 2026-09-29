@@ -1516,45 +1516,64 @@ def preventas_item_add(request):
     producto_id = request.POST.get('producto_id')
     credencial = request.POST.get('credencial', '').strip()
     from .helpers import parsear_decimal_ar
+    from empresas.models import Empresa as _Empresa
+    empresa_id = request.session.get('empresa_id')
+    empresa_activa = _Empresa.objects.filter(pk=empresa_id).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
+    items = request.session.get('preventa_items_temp', [])
+
+    def _render_error_preventa(mensaje, icon='warning'):
+        resp = render(request, 'facturacion/partials/preventa_items_tabla.html', {
+            'items': items,
+            'moneda': 'PES',
+            'modo_edicion': modo_edicion
+        })
+        resp['HX-Trigger'] = json.dumps({
+            'alertaPreventa': {
+                'tipo': icon,
+                'mensaje': mensaje
+            },
+            'limpiarInputsCargaPreventa': True
+        })
+        return resp
+
     dmp = parsear_decimal_ar(request.POST.get('dmp', 0))
     try:
         cantidad = parsear_decimal_ar(request.POST.get('cantidad', '1'), default=1.0)
         precio_lista = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
         descuento = parsear_decimal_ar(request.POST.get('descuento', '0'), default=0.0)
     except (ValueError, TypeError):
-        return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Valores inválidos.</div>", status=200)
-    
-    items = request.session.get('preventa_items_temp', [])
+        return _render_error_preventa("Valores numéricos ingresados inválidos.", icon='error')
     
     if not producto_id:
         return render(request, 'facturacion/partials/preventa_items_tabla.html', {
             'items': items,
-            'moneda': 'PES'
+            'moneda': 'PES',
+            'modo_edicion': modo_edicion
         })
 
     if any(str(item['producto_id']) == str(producto_id) for item in items):
-        return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Este producto ya fue cargado.</div>", status=200)
+        return _render_error_preventa("Este producto ya fue cargado.", icon='warning')
 
     from productos.models import Producto
     from empresas.models import CotizacionMoneda
     from .helpers import validar_clu_cliente_armeria
-    producto = get_object_or_404(Producto, id=producto_id, empresa_id=request.session.get('empresa_id'))
+    producto = get_object_or_404(Producto, id=producto_id, empresa_id=empresa_id)
 
     # Validación de exclusividad de armas (SIGIMAC / subprod=True)
     if producto.subprod:
         if len(items) > 0:
-            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Las armas/artículos trazables (SIGIMAC) deben reservarse en una preventa individual exclusiva.</div>", status=200)
+            return _render_error_preventa("Las armas/artículos trazables (SIGIMAC) deben reservarse en una preventa individual exclusiva.", icon='warning')
         if cantidad != 1:
-            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.</div>", status=200)
+            return _render_error_preventa("La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.", icon='warning')
     else:
         if any(item.get('subprod', False) for item in items):
-            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Esta preventa es exclusiva para la reserva de un arma. Para otros productos debe generar una preventa separada.</div>", status=200)
+            return _render_error_preventa("Esta preventa es exclusiva para la reserva de un arma. Para otros productos debe generar una preventa separada.", icon='warning')
 
     # Validación para empresas tipo ARMERÍA:
     # No se permite facturar productos con creden = True a clientes sin identificar (tipo_documento = 99 / Consumidor Final)
-    from empresas.models import Empresa as _Empresa
     from facturacion.models import ClienteProveedor
-    empresa_id = request.session.get('empresa_id')
     es_armeria = _Empresa.objects.filter(id=empresa_id, tipo_actividad__iexact="ARMERIA").exists()
 
     if es_armeria and producto.creden:
@@ -1563,17 +1582,12 @@ def preventas_item_add(request):
         if cliente_id:
             cliente_obj = ClienteProveedor.objects.filter(pk=cliente_id, empresa_id=empresa_id).first()
         if not cliente_obj or cliente_obj.tipo_documento == '99' or cliente_obj.codigo_id == 1:
-            return HttpResponse(
-                "<div class='p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-900 font-black text-[11px] rounded shadow-sm'>"
-                "⚠️ Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real."
-                "</div>",
-                status=200
-            )
+            return _render_error_preventa("Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.", icon='warning')
 
     # En Preventas, la credencial solo se exige cuando creden=True y subprod=False
     # (en armas/subprod=True es solo un anticipo/reserva y no aplica pedir credencial aquí)
     if producto.creden and not producto.subprod and not credencial:
-        return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Este producto requiere CREDENCIAL obligatoria.</div>", status=200)
+        return _render_error_preventa("Este producto requiere CREDENCIAL obligatoria.", icon='warning')
 
     # Nota: En Preventas no opera la restricción de CLU vigente ya que aquí
     # no se factura ni entrega el arma, sólo se genera la preventa/reserva (la traba

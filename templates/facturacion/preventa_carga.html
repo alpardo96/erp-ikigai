@@ -460,6 +460,23 @@
         document.getElementById('quick_producto_id').focus();
     });
 
+    // EVENTO DE ALERTA TEMPORAL (Toast de 3 segundos para productos repetidos o validaciones)
+    document.body.addEventListener('alertaPreventa', (e) => {
+        const data = e.detail;
+        const tipo = (typeof data === 'object' && data.tipo) ? data.tipo : 'warning';
+        const msg = (typeof data === 'object' && data.mensaje) ? data.mensaje : (typeof data === 'string' ? data : 'Atención');
+        Swal.fire({
+            icon: tipo,
+            title: 'Atención',
+            text: msg,
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false
+        });
+    });
+
     document.body.addEventListener('actualizarTotalesPreventa', (e) => {
         const total = e.detail.total;
         const requiere_aut = e.detail.requiere_autorizacion;
