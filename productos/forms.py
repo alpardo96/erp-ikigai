@@ -141,7 +141,7 @@ class ProductoForm(forms.ModelForm):
                 'hx-target': '#rubro-prod-margen',
                 'hx-vals': 'js:{tipo: "rubro", id: event.target.value}',
                 'hx-trigger': 'change',
-                'hx-on:change': 'htmx.ajax("GET", "/productos/filtrar-familias/", {target: "#id_familia", swap: "innerHTML", values: {id: this.value}})'
+                'hx-on:change': 'htmx.ajax("GET", "/productos/filtrar-familias/", {target: "#id_familia", swap: "innerHTML", values: {id: this.value}}); const sub = document.getElementById("id_subfamilia"); if(sub) { sub.innerHTML = "<option value=\\"\\">---------</option>"; const subM = document.getElementById("subfamilia-margen"); if(subM) subM.innerText = "0"; } const famM = document.getElementById("familia-margen"); if(famM) famM.innerText = "0";'
             }),
             'familia': forms.Select(attrs={
                 'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2',
@@ -149,7 +149,7 @@ class ProductoForm(forms.ModelForm):
                 'hx-target': '#familia-margen',
                 'hx-vals': 'js:{tipo: "familia", id: event.target.value}',
                 'hx-trigger': 'change',
-                'hx-on:change': 'htmx.ajax("GET", "/productos/filtrar-subfamilias/", {target: "#id_subfamilia", swap: "innerHTML", values: {id: this.value}})'
+                'hx-on:change': 'htmx.ajax("GET", "/productos/filtrar-subfamilias/", {target: "#id_subfamilia", swap: "innerHTML", values: {id: this.value}}); const subM = document.getElementById("subfamilia-margen"); if(subM) subM.innerText = "0";'
             }),
             'subfamilia': forms.Select(attrs={
                 'class': 'w-full bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-2',
@@ -193,16 +193,54 @@ class ProductoForm(forms.ModelForm):
         if empresa:
             self.fields['marca'].queryset = Marca.objects.filter(empresa=empresa).order_by('detalle')
             self.fields['rubro'].queryset = Rubro.objects.filter(empresa=empresa).order_by('detalle')
-            self.fields['familia'].queryset = Familia.objects.filter(empresa=empresa).order_by('detalle')
+
+            # Rubro activo
+            rubro_id = None
+            if self.is_bound and 'rubro' in self.data:
+                rubro_id = self.data.get('rubro') or None
+            elif self.instance and self.instance.rubro_id:
+                rubro_id = self.instance.rubro_id
+            elif self.initial and self.initial.get('rubro'):
+                rubro_id = self.initial.get('rubro')
+
+            # Familia activa
+            familia_id = None
+            if self.is_bound and 'familia' in self.data:
+                familia_id = self.data.get('familia') or None
+            elif self.instance and self.instance.familia_id:
+                familia_id = self.instance.familia_id
+            elif self.initial and self.initial.get('familia'):
+                familia_id = self.initial.get('familia')
+
+            if rubro_id:
+                qs_fam = Familia.objects.filter(empresa=empresa, rubro_id=rubro_id)
+                if familia_id:
+                    qs_fam = qs_fam | Familia.objects.filter(pk=familia_id, empresa=empresa)
+                self.fields['familia'].queryset = qs_fam.distinct().order_by('detalle')
+            else:
+                self.fields['familia'].queryset = Familia.objects.filter(empresa=empresa).order_by('detalle')
+
+            # Subfamilias: filtradas por la familia seleccionada
+            if familia_id:
+                qs_subfam = Subfamilia.objects.filter(empresa=empresa, familia_id=familia_id)
+                if self.instance and self.instance.subfamilia_id:
+                    qs_subfam = qs_subfam | Subfamilia.objects.filter(pk=self.instance.subfamilia_id, empresa=empresa)
+                self.fields['subfamilia'].queryset = qs_subfam.distinct().order_by('detalle')
+            else:
+                self.fields['subfamilia'].queryset = Subfamilia.objects.none()
+
             from facturacion.models import ClienteProveedor
             from django.db.models import Q
             qs_proveedor = ClienteProveedor.objects.filter(
                 Q(empresa=empresa) | Q(empresa__isnull=True), 
-                tipo_entidad=2
+                tipo_entidad=2,
+                activo=True
             )
             if self.instance and self.instance.proveedor_id:
                 qs_proveedor = qs_proveedor | ClienteProveedor.objects.filter(pk=self.instance.proveedor_id)
             self.fields['proveedor'].queryset = qs_proveedor.distinct().order_by('razon_social')
+        else:
+            self.fields['subfamilia'].queryset = Subfamilia.objects.none()
 
 
 class TomaInventarioFiltroForm(forms.Form):

@@ -54,40 +54,6 @@ def buscar_jurisdicciones(request):
     return render(request, 'configuracion/partials/jurisdiccion_table_rows.html', {'jurisdicciones': juris})
 
 @login_required
-def lista_productos_resultados(request):
-    """
-    Filtra productos por columnas específicas o búsqueda general.
-    """
-    q = request.GET.get('q', '').strip()
-    f_id = request.GET.get('f_id', '').strip()
-    f_prov = request.GET.get('f_prov', '').strip()
-    f_prov_hab = request.GET.get('f_prov_hab', '').strip()
-    f_det = request.GET.get('f_det', '').strip()
-
-    filtros = Q()
-    
-    if q:
-        if q.isdigit():
-            filtros &= (Q(id=q) | Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-        else:
-            filtros &= (Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-    
-    if f_id:
-        if f_id.isdigit():
-            filtros &= Q(id=f_id)
-        else:
-            filtros &= Q(id=-1)
-    if f_prov:
-        filtros &= Q(cod_prov__icontains=f_prov)
-    if f_prov_hab:
-        filtros &= Q(proveedor__razon_social__icontains=f_prov_hab)
-    if f_det:
-        filtros &= Q(detalle__icontains=f_det)
-
-    productos = Producto.objects.filter(filtros).select_related('proveedor').order_by('detalle')[:50]
-    return render(request, 'facturacion/partials/productos_search_results.html', {'productos': productos})
-
-@login_required
 def eliminar_jurisdiccion(request, id):
     """
     BORRAR JURISDICCIÓN
@@ -506,10 +472,11 @@ def buscar_producto_por_codigo(request):
     if request.GET.get('solo_trazables') == '1':
         filtros &= Q(subprod=True)
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa.
+    # Multi-tenant: SIEMPRE acotado a la empresa activa y activo=True.
     producto = Producto.objects.filter(
         filtros,
         empresa_id=request.session.get('empresa_id'),
+        activo=True,
     ).first()
 
     if producto:
@@ -539,7 +506,8 @@ def buscar_producto_por_codprov(request):
         return HttpResponse('', status=200)
 
     producto = Producto.objects.filter(
-        empresa_id=empresa_id, proveedor_id=proveedor_id, cod_prov__iexact=q
+        empresa_id=empresa_id, proveedor_id=proveedor_id, cod_prov__iexact=q,
+        activo=True
     ).first()
 
     response = HttpResponse()
@@ -606,9 +574,9 @@ def lista_productos_resultados(request):
     if request.GET.get('solo_trazables') == '1':
         filtros &= Q(subprod=True)
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa.
+    # Multi-tenant: SIEMPRE acotado a la empresa activa y productos habilitados.
     productos = list(Producto.objects.filter(
-        filtros, empresa_id=request.session.get('empresa_id')
+        filtros, empresa_id=request.session.get('empresa_id'), activo=True
     ).select_related('proveedor').order_by('detalle')[:100])
 
     items_temp = request.session.get('compra_items_temp', [])
@@ -1032,22 +1000,23 @@ def buscar_producto_venta_por_codigo(request):
         except CotizacionMoneda.DoesNotExist:
             pass
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa.
+    # Multi-tenant: SIEMPRE acotado a la empresa activa y activo=True.
     producto = None
 
     # Prioridad 0: Si viene id / producto_id explícito (desde modal o selector)
     if producto_id:
-        producto = Producto.objects.filter(id=producto_id, empresa_id=empresa_id).first()
+        producto = Producto.objects.filter(id=producto_id, empresa_id=empresa_id, activo=True).first()
 
     # Prioridad 1: Si 'q' es un número entero, buscar coincidencia EXACTA por primary key ID
     if not producto and q and q.isdigit():
-        producto = Producto.objects.filter(id=int(q), empresa_id=empresa_id).first()
+        producto = Producto.objects.filter(id=int(q), empresa_id=empresa_id, activo=True).first()
 
     # Prioridad 2: Coincidencia EXACTA por cod_prov, cod_fab o codigo_anterior
     if not producto and q:
         producto = Producto.objects.filter(
             Q(cod_prov__iexact=q) | Q(cod_fab__iexact=q) | Q(codigo_anterior__iexact=q),
             empresa_id=empresa_id,
+            activo=True,
         ).first()
 
     # Prioridad 3: Fallback a búsqueda inteligente multi-término
@@ -1097,7 +1066,7 @@ def lista_productos_venta_resultados(request):
             excluir_subprod=False
         )
     else:
-        productos_qs = Producto.objects.filter(empresa_id=empresa_id).order_by('detalle')
+        productos_qs = Producto.objects.filter(empresa_id=empresa_id, activo=True).order_by('detalle')
 
     if f_id:
         if f_id.isdigit():
@@ -1994,7 +1963,7 @@ def typeahead_clientes(request):
     q = (request.GET.get('q') or request.GET.get('q_cliente') or request.GET.get('q_proveedor') or '').strip()
     empresa_id = request.session.get('empresa_id')
     
-    filtros = Q(empresa_id=empresa_id) 
+    filtros = Q(empresa_id=empresa_id, activo=True) 
     if q:
         filtros &= (Q(razon_social__icontains=q) | Q(cuit__icontains=q))
 

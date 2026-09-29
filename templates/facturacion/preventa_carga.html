@@ -213,7 +213,7 @@
                 <!-- Precio (Ampliado a w-40 para que números grandes y con decimales no se corten) -->
                 <div class="w-40 shrink-0 relative">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5 text-right">
-                        {% if modo_edicion == 'PRECIO' %}Pcio. Final ($){% else %}Pcio. Lista ($){% endif %}
+                        {% if modo_edicion == 'PRECIO' %}Pcio. Unitario ($){% else %}Pcio. Lista ($){% endif %}
                     </label>
                     <input type="text" id="quick_precio" name="precio"
                         {% if modo_edicion == 'DESCUENTO' %}readonly tabindex="-1"{% endif %}

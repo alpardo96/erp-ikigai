@@ -1,7 +1,103 @@
-# BitÃ¡cora de Desarrollo - ERP Ikigai
+# Bitácora de Desarrollo - ERP Ikigai
+
+## Cristian - PC CASA
+- **Fecha/Día**: 29 de Septiembre de 2026
+- **Objetivo o Tarea**: Corrección de navegación y apertura de modal en la pantalla de Recepción de Rendiciones de Tesorería.
+- **Archivos creados o modificados**:
+  - `templates/tesoreria/rendiciones_recepcion.html` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Cierre de Enlace HTML (`<a>`):** El hipervínculo del botón de volver al menú de tesorería (`<a href="{% url 'tesoreria_index' %}">`) carecía de la etiqueta de cierre `</a>`, lo que provocaba que el navegador envolviera toda la grilla de rendiciones y el botón de acción "Recibir" dentro del enlace.
+  2. **Restauración de HTMX Modal:** Se cerró correctamente el tag `</a>`. Al hacer clic en "Recibir", HTMX ahora dispara con normalidad el endpoint `rendicion_recibir_modal` renderizando el arqueo/conteo dentro de `#modal-container` sin redirigir al menú.
+- **Resultado de las pruebas**: Verificación de sintaxis de plantilla y carga de modal HTMX.
+- **Estado actual y siguientes pasos sugeridos**: Recepción de rendiciones operativa para pruebas de tesorería.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 29 de Septiembre de 2026
+- **Objetivo o Tarea**: Persistencia integral de los datos de cabecera (Proveedor, Fecha, Tipo/Punto/Número de Comprobante, Período, Moneda, Cotización, Condición e Impuestos) en Carga de Compras ante modificaciones de productos y errores de validación.
+- **Archivos creados o modificados**:
+  - `templates/facturacion/compras_carga.html` [MODIFY]
+  - `facturacion/views.py` [MODIFY]
+  - `facturacion/tests/test_compras_persistencia.py` [NEW]
+- **Detalle Técnico e implicaciones**:
+  1. **Corrección de Renderizado Server-Side (POST con Errores):**
+     - En `facturacion/views.py` (`ComprasCargaView.post`): Se completó `ctx_base` para transferir de regreso al template la totalidad de los datos de cabecera (`periodo_sugerido`, `modo`, `empresa_usa_oc`, `proveedor_display`, `comprobante_display`, `cuentas`, `alicuotas_iva`) y se ordenó la inicialización de `es_gasto` e `items_temp` previo a su ensamblado.
+     - En `templates/facturacion/compras_carga.html`: Se corrigió el filtro de fecha `value="{{ form.fecha.value|date:'Y-m-d'|default:form.fecha.value|default:'' }}"` para evitar que el filtro `|date` de Django devuelva cadena vacía cuando el formulario está bindeado con strings en POST. Se vincularon los atributos `value` de `subtotal`, `descuento`, `neto`, `iva`, `p_iibb`, `p_iva`, `otros`, `total`, `condic` y `modo`. Se removió la llamada a `form.periodo` inexistente usando `periodo_sugerido`.
+  2. **Persistencia y Respaldo en SessionStorage:**
+     - Se ajustó `guardarCabeceraEnStorage()` para capturar todos los campos clave (fecha, período, proveedor ID y nombre, tipo ID y display, punto, número, moneda, cotización, condición, modo, impuestos).
+     - Se conectaron los disparadores automáticos en eventos personalizados `clienteVentaSeleccionado` y `comprobanteSeleccionado`.
+     - Se eliminó el borrado prematuro del draft en el evento `submit` del formulario, reemplazándolo por una limpieza controlada únicamente cuando la respuesta del servidor confirma éxito (`message.tags == 'success'`).
+  3. **Pruebas Automatizadas:** Se verificó mediante `test_compras_persistencia.py` que ante errores de validación en POST los datos de cabecera y montos persisten íntegros en el HTML de respuesta.
+- **Resultado de las pruebas**: `Ran 1 test in 0.562s - OK`.
+- **Estado actual y siguientes pasos sugeridos**: Carga de compras totalmente blindada contra pérdida de datos por error o recarga.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 29 de Septiembre de 2026
+- **Objetivo o Tarea**: Comando de management para actualizar masivamente Subproductos de estado 'USADO' a 'NUEVO'.
+- **Archivos creados o modificados**:
+  - `productos/management/commands/set_subproductos_nuevos.py` [NEW]
+  - `productos/tests/test_set_subproductos_nuevos.py` [NEW]
+- **Detalle Técnico e implicaciones**:
+  1. **Comando `set_subproductos_nuevos`:** Actualiza de forma atómica todos los registros de `Subproducto` con `estado='USADO'` a `estado='NUEVO'`. Admite los argumentos opcionales `--empresa-id <id>` (para acotar a una empresa específica) y `--dry-run` (para simulación).
+  2. **Pruebas Automatizadas:** Se validó la ejecución del comando con simulación y actualización real en `test_set_subproductos_nuevos.py`.
+- **Resultado de las pruebas**: `Ran 2 tests in 0.162s - OK`.
+- **Estado actual y siguientes pasos sugeridos**: Comando disponible para ejecución directa vía consola.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 29 de Septiembre de 2026
+- **Objetivo o Tarea**: Indexación de rendimiento y exclusión estricta de Productos y Clientes/Proveedores inactivos en búsquedas operativas (Preventa, Compra, Venta, Tesorería, Remitos).
+- **Archivos creados o modificados**:
+  - `productos/models.py` [MODIFY]
+  - `facturacion/models.py` [MODIFY]
+  - `facturacion/views_htmx.py` [MODIFY]
+  - `tesoreria/views_htmx.py` [MODIFY]
+  - `facturacion/forms.py` [MODIFY]
+  - `productos/forms.py` [MODIFY]
+  - `facturacion/migrations/0006_clienteproveedor_facturacion_empresa_bfa3eb_idx_and_more.py` [NEW]
+  - `productos/migrations/0009_alter_familia_options_and_more.py` [NEW]
+  - `facturacion/tests/test_filtros_activos_operativos.py` [NEW]
+- **Detalle Técnico e implicaciones**:
+  1. **Índices de Base de Datos PostgreSQL (`activo`):**
+     - En `Producto.Meta`: se crearon índices compuestos de cobertura `(empresa, activo, detalle)`, `(empresa, activo, cod_prov)`, `(empresa, activo, cod_fab)`, `(empresa, activo, codigo_anterior)` y `(empresa, activo)`. Se eliminó una declaración duplicada del campo `activo` en el modelo.
+     - En `ClienteProveedor.Meta`: se agregaron índices compuestos `(empresa, activo, tipo_entidad)`, `(empresa, activo, razon_social)`, `(empresa, activo, cuit)`, `(empresa, activo, codigo_anterior)` y `(empresa, activo)`.
+  2. **Exclusión en Circuitos Operativos:**
+     - En **Facturación/Preventa/Venta**: `buscar_producto_venta_por_codigo`, `lista_productos_venta_resultados`, `typeahead_clientes`, `PreventaForm` y `VentaForm` ahora imponen `activo=True` para garantizar que artículos y clientes dados de baja no aparezcan en la operatoria comercial.
+     - En **Compras**: `buscar_producto_por_codigo`, `buscar_producto_por_codprov`, `lista_productos_resultados` y `CompraForm` filtran productos y proveedores con `activo=True`.
+     - En **Tesorería**: `buscar_cliente_proveedor`, `lista_clientes_recibo_resultados` y `lista_proveedores_op_resultados` excluyen entidades inactivas en recibos y órdenes de pago.
+  3. **Pruebas Automatizadas:** Se creó `test_filtros_activos_operativos.py` testeando la exclusión en ventas, compras, typeaheads y tesorería.
+- **Resultado de las pruebas**: `Ran 7 tests in 3.318s - OK`.
+- **Estado actual y siguientes pasos sugeridos**: Listo para aplicar `migrate` en base de datos.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 29 de Septiembre de 2026
+- **Objetivo o Tarea**: Filtrado dinámico y persistente de Subfamilias por Familia en el alta, edición y duplicación de Productos.
+- **Archivos creados o modificados**:
+  - `productos/forms.py` [MODIFY]
+  - `productos/views_htmx.py` [MODIFY]
+  - `productos/models.py` [MODIFY]
+  - `templates/productos/modals/producto_modal.html` [MODIFY]
+  - `productos/tests/test_catalogos_familias.py` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Inicialización de Queryset en `ProductoForm`:** Al abrir el formulario de edición o duplicación de un producto, el campo `subfamilia` ahora lee la familia activa (`self.instance.familia_id`, `self.initial['familia']` o `self.data['familia']`) y restringe su queryset exclusivamente a las subfamilias pertenecientes a dicha familia y empresa. Si no hay familia seleccionada (alta limpia), el selector arranca vacío con `Subfamilia.objects.none()`.
+  2. **Casacada y Limpieza Dinámica (HTMX + JS):** Se actualizaron los listeners `hx-on:change` en los selectores de Rubro y Familia. Al cambiar de Rubro se resetea el selector de Subfamilia y sus márgenes sugeridos; al cambiar de Familia se cargan asíncronamente vía HTMX solo sus subfamilias hijas.
+  3. **Corrección de Render en Modal:** Se restauró el valor por defecto `0` en los `<span>` de los márgenes sugeridos de `producto_modal.html` para evitar excepciones `VariableDoesNotExist` de Django al evaluar claves nulas en la edición de productos huérfanos o sin relaciones.
+  4. **Unificación de `__str__`:** Se ajustó el método `__str__` del modelo `Subfamilia` para retornar `self.detalle`, alineándose de forma consistente con `Marca`, `Rubro` y `Familia`.
+- **Resultado de las pruebas**: `Ran 8 tests in 0.787s - OK` (incluye pruebas de renderizado del modal en edición y altas huérfanas).
+- **Estado actual y siguientes pasos sugeridos**: Validado y 100% operativo sin errores 500.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 29 de Septiembre de 2026
+- **Objetivo o Tarea**: Corrección de representación de nombres en catálogo de Familias para Subfamilias y selectores del ERP.
+- **Archivos creados o modificados**:
+  - `productos/models.py` [MODIFY]
+  - `productos/tests/test_catalogos_familias.py` [NEW]
+- **Detalle Técnico e implicaciones**:
+  1. **Método `__str__` y ordenamiento en `Familia`:** El modelo `Familia` carecía de la implementación del método `__str__`, provocando que en los formularios de Django (como `SubfamiliaForm`) y dropdowns de selección se mostrara la representación genérica por defecto de Python/Django (`Familia object (1)`). Se añadió el método `__str__` retornando `self.detalle` y se configuró `ordering = ['detalle']` en su clase `Meta`.
+  2. **Pruebas de Catálogo:** Se añadió suite de pruebas unitarias (`test_catalogos_familias.py`) comprobando que tanto `Familia` como `Subfamilia` y los selectores asociados presenten sus nombres descriptivos correctos.
+- **Resultado de las pruebas**: `Ran 3 tests in 0.151s - OK`.
+- **Estado actual y siguientes pasos sugeridos**: Corregido y validado.
 
 ## Antigravity
-- **Fecha/DÃ­a**: 14 de Septiembre de 2026
+- **Fecha/Día**: 14 de Septiembre de 2026
 - **Objetivo o Tarea**: Ocultar campos innecesarios en el maestro de productos/servicios para la verticalidad Estudio Contable.
 - **Archivos creados o modificados**:
   - `templates/productos/stock_index.html` [MODIFY]

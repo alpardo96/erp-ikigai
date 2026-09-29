@@ -44,7 +44,7 @@
                     <div class="w-44">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter text-left pl-3">Fecha
                             Emisión</label>
-                        <input type="date" name="fecha" id="id_fecha" value="{{ form.fecha.value|date:'Y-m-d' }}" required autofocus style="font-size: 18px !important;"
+                        <input type="date" name="fecha" id="id_fecha" value="{{ form.fecha.value|date:'Y-m-d'|default:form.fecha.value|default:'' }}" required autofocus style="font-size: 18px !important;"
                             class="h-10 w-full pl-3 pr-1 bg-slate-50 border border-slate-200 rounded-lg text-[13px] text-left font-black text-slate-800 outline-none focus:border-blue-500 shadow-inner">                        
                     </div>
 
@@ -204,12 +204,12 @@
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Condición</label>
                         <div class="flex items-center justify-center gap-5 h-10 bg-slate-50 border border-slate-200 rounded-lg shadow-inner px-3">
                             <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="radio" name="condic" value="1" checked
+                                <input type="radio" name="condic" value="1" {% if form.condic.value == 1 or form.condic.value == '1' or not form.condic.value %}checked{% endif %}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300">
                                 <span class="text-[11px] font-black text-slate-700 uppercase tracking-tighter">Real</span>
                             </label>
                             <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="radio" name="condic" value="2"
+                                <input type="radio" name="condic" value="2" {% if form.condic.value == 2 or form.condic.value == '2' %}checked{% endif %}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300">
                                 <span class="text-[11px] font-black text-slate-700 uppercase tracking-tighter">Presupuestado</span>
                             </label>
@@ -273,7 +273,7 @@
         {% endif %}
 
         <!-- TOGGLE: TIPO DE COMPRA -->
-        <input type="hidden" name="modo" id="id_modo" value="bienes">
+        <input type="hidden" name="modo" id="id_modo" value="{{ modo|default:'bienes' }}">
         <div class="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-slate-200 p-1.5 w-fit">
             <button type="button" id="btn_modo_bienes" onclick="setModo('bienes')"
                 class="px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all">Bienes de Cambio e Insumos</button>
@@ -479,26 +479,26 @@
                     <div class="grid grid-cols-4 gap-4">
                         <div class="space-y-1" id="cell_subtotal">
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Subtotal</label>
-                            <input type="text" name="subtotal" id="id_subtotal" oninput="recalcSubtotalDesc()"
+                            <input type="text" name="subtotal" id="id_subtotal" value="{{ form.subtotal.value|default:'' }}" oninput="recalcSubtotalDesc()"
                                 class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
                                 placeholder="0,00">
                         </div>
                         <div class="space-y-1" id="cell_descuento">
                             <label class="block text-[10px] font-black text-amber-600 uppercase tracking-tighter">(−) Descuento</label>
-                            <input type="text" name="descuento" id="id_descuento" oninput="recalcSubtotalDesc()"
+                            <input type="text" name="descuento" id="id_descuento" value="{{ form.descuento.value|default:'' }}" oninput="recalcSubtotalDesc()"
                                 class="w-full h-8 border-b-2 border-amber-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-amber-500 transition-all text-amber-700"
                                 placeholder="0,00">
                         </div>
                         <div class="space-y-1">
                             <label class="block text-[10px] font-black text-blue-600 uppercase tracking-tighter">Neto Gravado</label>
-                            <input type="text" name="neto" id="id_neto" readonly
+                            <input type="text" name="neto" id="id_neto" value="{{ form.neto.value|default:'' }}" readonly
                                 class="w-full h-8 border-b-2 border-blue-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent text-blue-800"
                                 placeholder="0,00">
                         </div>
                         <div class="space-y-1">
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">IVA
                                 Facturado</label>
-                            <input type="text" name="iva" id="id_iva" oninput="recalculateFinal()"
+                            <input type="text" name="iva" id="id_iva" value="{{ form.iva.value|default:'' }}" oninput="recalculateFinal()"
                                 class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
                                 placeholder="0,00">
                         </div>
@@ -510,7 +510,7 @@
                     <div class="space-y-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Perc.
                             IIBB</label>
-                        <input type="text" name="p_iibb" id="id_p_iibb" oninput="recalculateFinal()"
+                        <input type="text" name="p_iibb" id="id_p_iibb" value="{{ form.p_iibb.value|default:'' }}" oninput="recalculateFinal()"
                             onchange="if('{{ condicion_iibb }}'==='CM') abrirRetpercModal('iibb')"
                             class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
                             placeholder="0,00">
@@ -522,14 +522,14 @@
                     <div class="space-y-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Perc.
                             IVA</label>
-                        <input type="text" name="p_iva" id="id_p_iva" oninput="recalculateFinal()"
+                        <input type="text" name="p_iva" id="id_p_iva" value="{{ form.p_iva.value|default:'' }}" oninput="recalculateFinal()"
                             class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
                             placeholder="0,00">
                     </div>
                     <div class="space-y-1">
                         <label class="block text-[10px] font-black text-slate-400 uppercase tracking-tighter">Otros
                             Imp.</label>
-                        <input type="text" name="otros" id="id_otros" oninput="recalculateFinal()"
+                        <input type="text" name="otros" id="id_otros" value="{{ form.otros.value|default:'' }}" oninput="recalculateFinal()"
                             onchange="abrirRetpercModal('otros')"
                             class="w-full h-8 border-b-2 border-slate-100 font-black text-right outline-none text-[13px] fInputAR bg-transparent focus:border-blue-500 transition-all"
                             placeholder="0,00">
@@ -555,7 +555,7 @@
                         class="text-[9px] font-black bg-blue-600 px-2 py-0.5 rounded text-white uppercase">Final</span>
                 </div>
                 <div id="display_total" class="text-3xl font-black tabular-nums text-white tracking-tighter">$0,00</div>
-                <input type="hidden" name="total" id="id_total" value="0.00">
+                <input type="hidden" name="total" id="id_total" value="{{ form.total.value|default:'0.00' }}">
                 <button type="button" id="btn_confirmar"
                     data-modal-url="{% url 'compras_revisar_precios' %}"
                     onclick="confirmarCarga()"
@@ -990,10 +990,23 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        toggleTipoComprobante(document.getElementById('id_tipo').value);
-        toggleMoneda(document.getElementById('id_moneda').value);
-        setModo('bienes');
+        if (typeof restaurarCabeceraDeStorage === 'function') restaurarCabeceraDeStorage();
+        toggleTipoComprobante(document.getElementById('id_tipo')?.value || '');
+        toggleMoneda(document.getElementById('id_moneda')?.value || 'PES');
+        setModo(document.getElementById('id_modo')?.value || 'bienes');
         recalculateFinal();
+
+        // Listeners para guardar en storage ante cualquier cambio
+        ['id_fecha', 'id_periodo', 'proveedor_nombre_display', 'quick_comprobante_display', 'id_moneda', 'id_cotizacion', 'id_descuento', 'id_p_iibb', 'id_p_iva', 'id_otros'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', guardarCabeceraEnStorage);
+                el.addEventListener('input', guardarCabeceraEnStorage);
+            }
+        });
+        document.querySelector('input[name="punto"]')?.addEventListener('input', guardarCabeceraEnStorage);
+        document.querySelector('input[name="numero"]')?.addEventListener('input', guardarCabeceraEnStorage);
+        document.querySelectorAll('input[name="condic"]').forEach(r => r.addEventListener('change', guardarCabeceraEnStorage));
     });
 
     // Selección de proveedor desde el typeahead o el modal de búsqueda.
@@ -1003,12 +1016,13 @@
         document.getElementById('id_proveedor').value = e.detail.id;
         document.getElementById('proveedor_nombre_display').value = e.detail.razon_social;
         window._provCtaRes = e.detail.cta_res || '';
+        if (typeof guardarCabeceraEnStorage === 'function') guardarCabeceraEnStorage();
         
         // --- INICIO LÓGICA ORDEN DE COMPRA ---
         const empresaUsaOc = '{{ empresa_usa_oc|yesno:"true,false" }}' === 'true';
         const exigeOc = e.detail.usa_orden_compra === 'true';
         const tipoCompEl = document.getElementById('id_tipo');
-        const tipoComp = tipoCompEl.options[tipoCompEl.selectedIndex]?.text || '';
+        const tipoComp = tipoCompEl.options ? tipoCompEl.options[tipoCompEl.selectedIndex]?.text || '' : '';
         const esNotaCreditoDebito = tipoComp.toLowerCase().includes('nota de crédito') || tipoComp.toLowerCase().includes('nota de débito');
         
         if (getModo() === 'bienes' && empresaUsaOc && exigeOc && !esNotaCreditoDebito) {
@@ -1077,6 +1091,8 @@
         
         document.getElementById('id_tipo').value = e.detail.codigo;
         document.getElementById('quick_comprobante_display').value = `${e.detail.codigo} - ${e.detail.detalle}`;
+        toggleTipoComprobante(e.detail.codigo);
+        if (typeof guardarCabeceraEnStorage === 'function') guardarCabeceraEnStorage();
         
         document.getElementById('quick_comprobante_display').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
     });
@@ -1302,6 +1318,12 @@
                 numero: document.querySelector('input[name="numero"]')?.value || '',
                 moneda: document.getElementById('id_moneda')?.value || 'PES',
                 cotizacion: document.getElementById('id_cotizacion')?.value || '1',
+                condic: document.querySelector('input[name="condic"]:checked')?.value || '1',
+                modo: document.getElementById('id_modo')?.value || 'bienes',
+                descuento: document.getElementById('id_descuento')?.value || '',
+                p_iibb: document.getElementById('id_p_iibb')?.value || '',
+                p_iva: document.getElementById('id_p_iva')?.value || '',
+                otros: document.getElementById('id_otros')?.value || '',
             };
             sessionStorage.setItem(CABECERA_STORAGE_KEY, JSON.stringify(data));
         } catch(e) {}
@@ -1313,46 +1335,74 @@
         try {
             const data = JSON.parse(raw);
             const provInput = document.getElementById('id_proveedor');
+            const provDisp = document.getElementById('proveedor_nombre_display');
             if (provInput && !provInput.value && data.proveedor) {
                 provInput.value = data.proveedor;
-                const provDisp = document.getElementById('proveedor_nombre_display');
-                if (provDisp) provDisp.value = data.proveedor_nombre;
+                if (provDisp && data.proveedor_nombre) provDisp.value = data.proveedor_nombre;
+            } else if (provDisp && !provDisp.value && data.proveedor_nombre) {
+                provDisp.value = data.proveedor_nombre;
             }
+
             const tipoInput = document.getElementById('id_tipo');
+            const tipoDisp = document.getElementById('quick_comprobante_display');
             if (tipoInput && !tipoInput.value && data.tipo) {
                 tipoInput.value = data.tipo;
-                const tipoDisp = document.getElementById('quick_comprobante_display');
-                if (tipoDisp) tipoDisp.value = data.tipo_nombre;
+                if (tipoDisp && data.tipo_nombre) tipoDisp.value = data.tipo_nombre;
+                toggleTipoComprobante(data.tipo);
+            } else if (tipoDisp && !tipoDisp.value && data.tipo_nombre) {
+                tipoDisp.value = data.tipo_nombre;
             }
+
+            const fechaInput = document.getElementById('id_fecha');
+            if (fechaInput && !fechaInput.value && data.fecha) fechaInput.value = data.fecha;
+
+            const periodoInput = document.getElementById('id_periodo');
+            if (periodoInput && !periodoInput.value && data.periodo) periodoInput.value = data.periodo;
+
             const puntoInput = document.querySelector('input[name="punto"]');
             if (puntoInput && !puntoInput.value && data.punto) puntoInput.value = data.punto;
+
             const numInput = document.querySelector('input[name="numero"]');
             if (numInput && !numInput.value && data.numero) numInput.value = data.numero;
+
             const monSelect = document.getElementById('id_moneda');
-            if (monSelect && data.moneda && !monSelect.value) {
+            if (monSelect && data.moneda && (!monSelect.value || monSelect.value === 'PES')) {
                 monSelect.value = data.moneda;
                 toggleMoneda(data.moneda);
             }
             const cotInput = document.getElementById('id_cotizacion');
-            if (cotInput && data.cotizacion && cotInput.value === '1') cotInput.value = data.cotizacion;
+            if (cotInput && data.cotizacion && (cotInput.value === '1' || !cotInput.value)) cotInput.value = data.cotizacion;
+
+            if (data.condic) {
+                const condRadio = document.querySelector(`input[name="condic"][value="${data.condic}"]`);
+                if (condRadio) condRadio.checked = true;
+            }
+
+            if (data.descuento) {
+                const descEl = document.getElementById('id_descuento');
+                if (descEl && !descEl.value) descEl.value = data.descuento;
+            }
+            if (data.p_iibb) {
+                const iibbEl = document.getElementById('id_p_iibb');
+                if (iibbEl && !iibbEl.value) iibbEl.value = data.p_iibb;
+            }
+            if (data.p_iva) {
+                const pivaEl = document.getElementById('id_p_iva');
+                if (pivaEl && !pivaEl.value) pivaEl.value = data.p_iva;
+            }
+            if (data.otros) {
+                const otrosEl = document.getElementById('id_otros');
+                if (otrosEl && !otrosEl.value) otrosEl.value = data.otros;
+            }
         } catch(e) {}
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        restaurarCabeceraDeStorage();
-        // Guardar cada vez que cambien los campos principales
-        ['id_fecha', 'id_periodo', 'proveedor_nombre_display', 'quick_comprobante_display', 'id_moneda', 'id_cotizacion'].forEach(id => {
-            document.getElementById(id)?.addEventListener('change', guardarCabeceraEnStorage);
-            document.getElementById(id)?.addEventListener('input', guardarCabeceraEnStorage);
-        });
-        document.querySelector('input[name="punto"]')?.addEventListener('input', guardarCabeceraEnStorage);
-        document.querySelector('input[name="numero"]')?.addEventListener('input', guardarCabeceraEnStorage);
-    });
-
-    document.getElementById('compra-form')?.addEventListener('submit', function() {
-        // Al enviar con exito o limpiar se borra el borrador
-        sessionStorage.removeItem(CABECERA_STORAGE_KEY);
-    });
-
+    {% if messages %}
+        {% for message in messages %}
+            {% if 'success' in message.tags %}
+            try { sessionStorage.removeItem('erp_compras_cabecera_draft'); } catch(e) {}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
 </script>
 {% endblock %}

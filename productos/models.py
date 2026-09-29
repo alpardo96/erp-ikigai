@@ -116,11 +116,15 @@ class Familia(AuditModel):
     class Meta:
         verbose_name = "Familia"
         verbose_name_plural = "Familias"
+        ordering = ['detalle']
 
     def save(self, *args, **kwargs):
         if self.detalle:
             self.detalle = self.detalle.upper().strip()
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.detalle
 
 class Subfamilia(AuditModel):
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE)
@@ -148,7 +152,7 @@ class Subfamilia(AuditModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.familia.detalle} - {self.detalle}" if self.familia else self.detalle
+        return self.detalle
 
 class Producto(AuditModel):
     MONEDA_CHOICES = [
@@ -175,7 +179,6 @@ class Producto(AuditModel):
     familia = models.ForeignKey(Familia, on_delete=models.SET_NULL, null=True, blank=True)
     subfamilia = models.ForeignKey(Subfamilia, on_delete=models.SET_NULL, null=True, blank=True, related_name="productos", verbose_name="Subfamilia")
     subprod = models.BooleanField(default=False)
-    activo = models.BooleanField(default=True, db_index=True, verbose_name="Activo")
 
     # --- Distribución (Plan 074 §5.F) ---
     # `peso_unitario_kg` es la columna "Kgs" del Consolidado de Artículos, con el que el
@@ -309,6 +312,11 @@ class Producto(AuditModel):
         verbose_name = "Producto"
         verbose_name_plural = "Productos"
         indexes = [
+            models.Index(fields=['empresa', 'activo', 'detalle']),
+            models.Index(fields=['empresa', 'activo', 'cod_prov']),
+            models.Index(fields=['empresa', 'activo', 'cod_fab']),
+            models.Index(fields=['empresa', 'activo', 'codigo_anterior']),
+            models.Index(fields=['empresa', 'activo']),
             models.Index(fields=['empresa', 'detalle']),
             models.Index(fields=['empresa', 'cod_prov']),
             models.Index(fields=['empresa', 'cod_fab']),
