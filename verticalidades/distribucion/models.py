@@ -78,6 +78,10 @@ class Personal(AuditModel):
     es_vendedor = models.BooleanField(default=False, verbose_name="Vendedor")
     es_repartidor = models.BooleanField(default=False, verbose_name="Repartidor")
     es_cobrador = models.BooleanField(default=False, verbose_name="Cobrador")
+    es_predeterminado = models.BooleanField(
+        default=False,
+        verbose_name="Vendedor Predeterminado",
+        help_text="Vendedor por defecto para operaciones con clientes sin vendedor asignado.")
 
     comision_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=0,
                                               verbose_name="Comisión (%)")
@@ -131,6 +135,14 @@ class Personal(AuditModel):
             ultimo = (Personal.objects.filter(empresa_id=self.empresa_id)
                       .order_by('-codigo').values_list('codigo', flat=True).first())
             self.codigo = (ultimo or 0) + 1
+
+        if self.es_predeterminado and self.empresa_id:
+            # Solo puede haber un vendedor predeterminado por empresa
+            Personal.objects.filter(
+                empresa_id=self.empresa_id,
+                es_predeterminado=True
+            ).exclude(pk=self.pk).update(es_predeterminado=False)
+
         super().save(*args, **kwargs)
 
 

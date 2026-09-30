@@ -60,7 +60,7 @@ class PersonalForm(_BaseDistribucionForm):
     class Meta:
         model = Personal
         fields = ['codigo', 'nombre', 'documento', 'telefono', 'usuario',
-                  'es_vendedor', 'es_repartidor', 'es_cobrador',
+                  'es_vendedor', 'es_repartidor', 'es_cobrador', 'es_predeterminado',
                   'comision_porcentaje', 'zona', 'activo',
                   'fecha_alta', 'fecha_baja', 'codigo_anterior']
         widgets = {
@@ -233,13 +233,20 @@ class ExtensionDistribuidoraForm(forms.ModelForm):
     """Datos del cliente propios de la actividad DISTRIBUIDORA (Plan 074 §5.C).
 
     El coeficiente se carga a mano cliente por cliente; la clasificación es
-    descriptiva y no interviene en el precio.
+    descriptiva y no interviene en el precio; el vendedor asignado define la
+    cartera comercial del cliente.
     """
 
     coeficiente_mayorista = DecimalARField(
         max_digits=10, decimal_places=4, required=False, initial=1,
         label="Coeficiente Mayorista",
         widget=forms.TextInput(attrs={'class': 'fInputAR', 'placeholder': '1,0000'}))
+
+    vendedor = forms.ModelChoiceField(
+        queryset=Personal.objects.none(),
+        required=False,
+        label="Vendedor Asignado",
+        empty_label="--- Sin Vendedor Asignado ---")
 
     class Meta:
         from .models import ExtensionDistribuidora
@@ -255,6 +262,11 @@ class ExtensionDistribuidoraForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['clasificacion'].required = False
 
+        if empresa_id:
+            self.fields['vendedor'].queryset = Personal.objects.filter(
+                empresa_id=empresa_id, es_vendedor=True, activo=True
+            ).order_by('codigo', 'nombre')
+
         for field_name, field in self.fields.items():
             if isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs['class'] = "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
@@ -265,4 +277,5 @@ class ExtensionDistribuidoraForm(forms.ModelForm):
     def clean_coeficiente_mayorista(self):
         # Vacío significa "sin recargo ni descuento": el precio de lista tal cual.
         return self.cleaned_data.get('coeficiente_mayorista') or 1
+
 

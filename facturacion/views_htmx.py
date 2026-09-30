@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 import json
 
 from .models import ClienteProveedor, Jurisdiccion, Compra, CompraItem, Venta, VentaItem
@@ -85,9 +86,10 @@ def _obtener_empresa_id(request):
 def buscar_clientes(request):
     """
     BUSCADOR DE CLIENTES Y PROVEEDORES
-    - Filtra por Razón Social o CUIT.
+    - Filtra por Razón Social, CUIT (con o sin guiones), Código de sistema o Código anterior.
     - Soporta filtro de activación (Habilitados / Deshabilitados / Todos) exclusivo para Administrador.
     - Para usuarios no administradores, siempre restringe a activo=True.
+    - Respeta el filtro de Tipo de Entidad (1: Clientes, 2: Proveedores) sin anularse al buscar por texto.
     - Si no hay término de búsqueda 'q', ordena por -codigo_id para mostrar las entidades creadas recientemente arriba.
     """
     q = request.GET.get('q', '').strip()
@@ -106,14 +108,29 @@ def buscar_clientes(request):
     else:  # 'habilitados' por defecto
         clientes = clientes.filter(activo=True)
     
+    # 1. Filtro acumulativo por tipo de entidad
+    if tipo_entidad in ('1', '2'):
+        clientes = clientes.filter(tipo_entidad=int(tipo_entidad))
+
+    # 2. Filtro de búsqueda textual flexible
     if q:
-        clientes = clientes.filter(Q(razon_social__icontains=q) | Q(cuit__icontains=q)).order_by('razon_social')
-    elif tipo_entidad in ('1', '2'):
-        clientes = clientes.filter(tipo_entidad=int(tipo_entidad)).order_by('-codigo_id')
+        q_limpio = q.replace('-', '').strip()
+        filtro_q = Q(razon_social__icontains=q) | Q(cuit__icontains=q) | Q(cuit__icontains=q_limpio) | Q(codigo_anterior__icontains=q)
+        if q.isdigit():
+            filtro_q |= Q(codigo_id=int(q))
+        clientes = clientes.filter(filtro_q).order_by('razon_social')
     else:
         clientes = clientes.order_by('-codigo_id')
     
-    clientes = clientes.select_related('jurisdiccion', 'armeria')
+    # 3. select_related seguro según verticalidad presente
+    select_fields = ['jurisdiccion']
+    for rel in ['distribuidora', 'armeria']:
+        try:
+            ClienteProveedor._meta.get_field(rel)
+            select_fields.append(rel)
+        except Exception:
+            pass
+    clientes = clientes.select_related(*select_fields)
     
     return render(request, 'facturacion/partials/cliente_table_rows.html', {
         'clientes': clientes[:100],
@@ -197,7 +214,7 @@ def cliente_modal(request, id=None):
         try:
             empresa = Empresa.objects.get(id=empresa_id)
             puede_armeria = (empresa.tipo_actividad == 'ARMERIA')
-            puede_distribuidora = (empresa.tipo_actividad == 'DISTRIBUIDORA')
+            puede_distribuidora = (empresa.tipo_actividad in ('DISTRIBUCION', 'DISTRIBUIDORA'))
         except Empresa.DoesNotExist:
             pass
             
@@ -281,16 +298,41 @@ def cliente_modal(request, id=None):
                     ext_a.cliente = obj
                     ext_a.save()
 
-                if (puede_distribuidora and form_distribuidora
-                        and form_distribuidora.has_changed() and form_distribuidora.is_valid()):
-                    ext_d = form_distribuidora.save(commit=False)
-                    ext_d.cliente = obj
-                    ext_d.save()
+                if puede_distribuidora and form_distribuidora and form_distribuidora.is_valid():
+                    if form_distribuidora.has_changed():
+                        ext_d = form_distribuidora.save(commit=False)
+                        ext_d.cliente = obj
+                        ext_d.save()
+
+                    # Sincronizar CarteraVendedor (Personal es_vendedor)
+                    from verticalidades.distribucion.models import CarteraVendedor
+                    vendedor_seleccionado = form_distribuidora.cleaned_data.get('vendedor')
+                    if vendedor_seleccionado:
+                        CarteraVendedor.objects.update_or_create(
+                            empresa_id=empresa_id,
+                            cliente=obj,
+                            defaults={'vendedor': vendedor_seleccionado, 'activa': True}
+                        )
+                    else:
+                        CarteraVendedor.objects.filter(empresa_id=empresa_id, cliente=obj).delete()
             
             response = HttpResponse()
             if origen in ('venta', 'preventa', 'compra'):
+                vendedor_id = ''
+                if puede_distribuidora:
+                    from verticalidades.distribucion.models import CarteraVendedor
+                    cartera = CarteraVendedor.objects.filter(empresa_id=empresa_id, cliente=obj, activa=True).first()
+                    if cartera and cartera.vendedor_id:
+                        vendedor_id = cartera.vendedor_id
+
                 response['HX-Trigger'] = json.dumps({
-                    'clienteVentaSeleccionado': {'id': obj.codigo_id, 'razon_social': obj.razon_social, 'cta_res': obj.cta_res or 0, 'condicion_iva': obj.condicion_iva},
+                    'clienteVentaSeleccionado': {
+                        'id': obj.codigo_id,
+                        'razon_social': obj.razon_social,
+                        'cta_res': obj.cta_res or 0,
+                        'condicion_iva': obj.condicion_iva,
+                        'vendedor_id': vendedor_id
+                    },
                     'cerrarModal': True
                 })
             else:
@@ -310,8 +352,17 @@ def cliente_modal(request, id=None):
         # Modo GET: Carga forms vacíos o con instancia
         form = ClienteProveedorForm(instance=cliente, empresa_id=empresa_id)
         form_armeria = ExtensionArmeriaForm(instance=armeria) if puede_armeria else None
+        
+        initial_dist = {}
+        if puede_distribuidora and cliente:
+            from verticalidades.distribucion.models import CarteraVendedor
+            cartera = CarteraVendedor.objects.filter(empresa_id=empresa_id, cliente=cliente, activa=True).first()
+            if cartera and cartera.vendedor_id:
+                initial_dist['vendedor'] = cartera.vendedor_id
+
         form_distribuidora = (ExtensionDistribuidoraForm(instance=distribuidora,
-                                                         empresa_id=empresa_id)
+                                                         empresa_id=empresa_id,
+                                                         initial=initial_dist)
                               if puede_distribuidora else None)
 
         cli_apellido = ''
@@ -1437,8 +1488,23 @@ def lista_clientes_venta_resultados(request):
     if q:
         filtros &= (Q(razon_social__icontains=q) | Q(cuit__icontains=q))
 
-    clientes = ClienteProveedor.objects.filter(filtros).order_by('razon_social')[:30]
+    clientes = list(ClienteProveedor.objects.filter(filtros).order_by('razon_social')[:30])
     
+    from empresas.models import Empresa
+    if Empresa.objects.filter(id=empresa_id, tipo_actividad__in=['DISTRIBUCION', 'DISTRIBUIDORA']).exists():
+        from verticalidades.distribucion.models import CarteraVendedor, Personal
+        vendedor_default = Personal.objects.filter(
+            empresa_id=empresa_id, es_vendedor=True, es_predeterminado=True, activo=True
+        ).first()
+        default_vid = vendedor_default.id if vendedor_default else ''
+
+        carteras = CarteraVendedor.objects.filter(
+            empresa_id=empresa_id, cliente__in=clientes, activa=True
+        ).values('cliente_id', 'vendedor_id')
+        carteras_map = {c['cliente_id']: c['vendedor_id'] for c in carteras}
+        for c in clientes:
+            c.vendedor_asignado_id = carteras_map.get(c.pk) or default_vid
+
     return render(request, 'facturacion/partials/clientes_venta_search_results.html', {
         'clientes': clientes,
     })
@@ -1814,13 +1880,28 @@ def info_cliente_preventa(request):
         empresa_id = request.session.get('empresa_id')
         cliente = ClienteProveedor.objects.get(pk=cliente_id, empresa_id=empresa_id)
 
-        # Si es Distribuidora, renderizamos el panel de situación crediticia
-        if Empresa.objects.filter(id=empresa_id, tipo_actividad="DISTRIBUIDORA").exists():
+        # Si es Distribuidora, renderizamos el panel de situación crediticia y emitimos el vendedor asignado de Personal si existe
+        if Empresa.objects.filter(id=empresa_id, tipo_actividad__in=['DISTRIBUCION', 'DISTRIBUIDORA']).exists():
             from verticalidades.distribucion.services.credito import situacion_crediticia
-            return render(request, 'distribucion/partials/panel_credito.html', {
+            from verticalidades.distribucion.models import CarteraVendedor, Personal
+
+            vendedor_default = Personal.objects.filter(
+                empresa_id=empresa_id, es_vendedor=True, es_predeterminado=True, activo=True
+            ).first()
+            vendedor_personal_id = vendedor_default.id if vendedor_default else ''
+
+            cartera = CarteraVendedor.objects.filter(
+                empresa_id=empresa_id, cliente=cliente, activa=True
+            ).first()
+            if cartera and cartera.vendedor_id:
+                vendedor_personal_id = cartera.vendedor_id
+
+            resp = render(request, 'distribucion/partials/panel_credito.html', {
                 'cliente': cliente,
                 'credito': situacion_crediticia(cliente),
             })
+            resp['HX-Trigger'] = json.dumps({'vendedorPersonalAsignado': {'vendedor_id': vendedor_personal_id}})
+            return resp
 
         # Para Armería y resto de actividades: renderizamos la ficha con Tipo de Doc, CUIT, Condición IVA y Domicilio completo
         armeria = None
@@ -1995,10 +2076,25 @@ def typeahead_clientes(request):
                 Q(venta__cliente_id=OuterRef('pk'))
             )
         )
-        clientes = ClienteProveedor.objects.filter(filtros).annotate(en_trazabilidad=Exists(subproductos_con_cli)).filter(en_trazabilidad=True).order_by('razon_social')[:20]
+        clientes = list(ClienteProveedor.objects.filter(filtros).annotate(en_trazabilidad=Exists(subproductos_con_cli)).filter(en_trazabilidad=True).order_by('razon_social')[:20])
     else:
-        clientes = ClienteProveedor.objects.filter(filtros).order_by('razon_social')[:20]
+        clientes = list(ClienteProveedor.objects.filter(filtros).order_by('razon_social')[:20])
     
+    from empresas.models import Empresa
+    if Empresa.objects.filter(id=empresa_id, tipo_actividad__in=['DISTRIBUCION', 'DISTRIBUIDORA']).exists():
+        from verticalidades.distribucion.models import CarteraVendedor, Personal
+        vendedor_default = Personal.objects.filter(
+            empresa_id=empresa_id, es_vendedor=True, es_predeterminado=True, activo=True
+        ).first()
+        default_vid = vendedor_default.id if vendedor_default else ''
+
+        carteras = CarteraVendedor.objects.filter(
+            empresa_id=empresa_id, cliente__in=clientes, activa=True
+        ).values('cliente_id', 'vendedor_id')
+        carteras_map = {c['cliente_id']: c['vendedor_id'] for c in carteras}
+        for c in clientes:
+            c.vendedor_asignado_id = carteras_map.get(c.pk) or default_vid
+
     return render(request, 'facturacion/partials/clientes_typeahead.html', {
         'clientes': clientes,
     })

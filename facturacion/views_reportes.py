@@ -401,7 +401,11 @@ def exportar_clientes_excel(request):
     clientes = ClienteProveedor.objects.filter(empresa_id=empresa_id)
 
     if q:
-        clientes = clientes.filter(Q(razon_social__icontains=q) | Q(cuit__icontains=q))
+        q_limpio = q.replace('-', '').strip()
+        filtro_q = Q(razon_social__icontains=q) | Q(cuit__icontains=q) | Q(cuit__icontains=q_limpio) | Q(codigo_anterior__icontains=q)
+        if q.isdigit():
+            filtro_q |= Q(codigo_id=int(q))
+        clientes = clientes.filter(filtro_q)
 
     tipo_nombre = "Todos"
     if tipo_entidad in ('1', '2'):
@@ -409,7 +413,14 @@ def exportar_clientes_excel(request):
         clientes = clientes.filter(tipo_entidad=tipo_int)
         tipo_nombre = "Clientes" if tipo_int == 1 else "Proveedores"
 
-    clientes = clientes.select_related('jurisdiccion', 'armeria').order_by('razon_social')
+    select_fields = ['jurisdiccion']
+    for rel in ['distribuidora', 'armeria']:
+        try:
+            ClienteProveedor._meta.get_field(rel)
+            select_fields.append(rel)
+        except Exception:
+            pass
+    clientes = clientes.select_related(*select_fields).order_by('razon_social')
 
     filtros = {
         'q': q,

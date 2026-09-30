@@ -50,7 +50,7 @@ class DistribucionRequiredMixin(LoginRequiredMixin):
 
     def dispatch(self, request, *args, **kwargs):
         empresa_id = request.session.get('empresa_id')
-        if not Empresa.objects.filter(id=empresa_id, tipo_actividad='DISTRIBUIDORA').exists():
+        if not Empresa.objects.filter(id=empresa_id, tipo_actividad__in=['DISTRIBUCION', 'DISTRIBUIDORA']).exists():
             messages.error(request, "El módulo de Distribución no está habilitado para esta empresa.")
             return redirect('home')
         return super().dispatch(request, *args, **kwargs)
