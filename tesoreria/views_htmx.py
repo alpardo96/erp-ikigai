@@ -2165,16 +2165,10 @@ def caja_retiro_anular(request, retiro_id):
 # =========================================================================
 
 def _get_sesion_tesoreria(request, empresa_id, sucursal_id):
-    """Asegura una Caja de tipo Tesorería en la sucursal y una sesión abierta del tesorero.
-    (La apertura formal de la caja de tesorería se hará en una UI propia más adelante.)"""
-    caja_tes = Caja.objects.filter(empresa_id=empresa_id, sucursal_id=sucursal_id, tipo='T', activa=True).first()
-    if not caja_tes:
-        caja_tes = Caja.objects.create(
-            empresa_id=empresa_id, sucursal_id=sucursal_id, tipo='T',
-            nombre="Tesorería")
-    sesion = CajaSesion.objects.filter(caja=caja_tes, usuario=request.user, estado='A').first()
-    if not sesion:
-        sesion = CajaSesion.objects.create(caja=caja_tes, usuario=request.user, saldo_inicial=0, estado='A')
+    """Asegura una Caja de tipo Tesorería en la sucursal y una sesión abierta del tesorero
+    con el arrastre de saldos de la caja anterior."""
+    from tesoreria.services.caja_diaria import get_o_abrir_caja
+    _, sesion = get_o_abrir_caja(empresa_id, sucursal_id, request.user)
     return sesion
 
 

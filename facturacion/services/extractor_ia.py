@@ -125,16 +125,32 @@ def extraccion_gemini(file_bytes, filename):
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
 
-        # Llamar a Gemini con la imagen y el prompt
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[img, PROMPT_FACTURA],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=SCHEMA_FACTURA,
-                temperature=0.1,  # Baja temperatura para máxima precisión
-            ),
-        )
+        # Lista de modelos de Gemini (serie 3) con fallback automático en caso de saturación o disponibilidad
+        modelos_candidatos = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite']
+        response = None
+        ultimo_error = None
+        for modelo in modelos_candidatos:
+            try:
+                response = client.models.generate_content(
+                    model=modelo,
+                    contents=[img, PROMPT_FACTURA],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=SCHEMA_FACTURA,
+                        temperature=0.1,  # Baja temperatura para máxima precisión
+                    ),
+                )
+                if response and response.text:
+                    break
+            except Exception as e_mod:
+                ultimo_error = e_mod
+                print(f"[Gemini] Intento con modelo {modelo} falló: {e_mod}. Probando siguiente...")
+                continue
+
+        if not response or not response.text:
+            if ultimo_error:
+                raise ultimo_error
+            return None
 
         # Parsear la respuesta JSON
         resultado_raw = json.loads(response.text)
@@ -214,15 +230,23 @@ def extraccion_gemini_recorte(image_base64_crop):
         img_bytes = base64.b64decode(image_base64_crop)
         img = Image.open(io.BytesIO(img_bytes))
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=[img, "Leé el texto visible en esta imagen. Devolvé SOLO el texto, sin explicaciones ni formato adicional. Si hay números con decimales, conservá el formato original."],
-            config=types.GenerateContentConfig(
-                temperature=0.0,
-            ),
-        )
+        modelos_candidatos = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite']
+        response = None
+        for modelo in modelos_candidatos:
+            try:
+                response = client.models.generate_content(
+                    model=modelo,
+                    contents=[img, "Leé el texto visible en esta imagen. Devolvé SOLO el texto, sin explicaciones ni formato adicional. Si hay números con decimales, conservá el formato original."],
+                    config=types.GenerateContentConfig(
+                        temperature=0.0,
+                    ),
+                )
+                if response and response.text:
+                    break
+            except Exception:
+                continue
 
-        return response.text.strip() if response.text else ""
+        return response.text.strip() if response and response.text else ""
 
     except Exception as e:
         print(f"[Gemini] Error en OCR de recorte: {e}")

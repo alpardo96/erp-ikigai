@@ -41,22 +41,32 @@ def _contexto_base(request):
 
     caja = get_caja_tesoreria(empresa_id, sucursal_id)
 
-    cajas = list(
+    # 1. Asegurar la caja activa de la sucursal (arrastra saldos si recién se abre)
+    activa = get_sesion_activa(caja)
+    if not activa:
+        _, activa = get_o_abrir_caja(empresa_id, sucursal_id, request.user)
+
+    # 2. Obtener las últimas cajas cerradas
+    cerradas = list(
         CajaSesion.objects
-        .filter(caja=caja)
-        .order_by('-estado', '-numero', '-id')[:MAX_CAJAS_LISTADO]
+        .filter(caja=caja, estado='C')
+        .order_by('-numero', '-id')[:MAX_CAJAS_LISTADO]
     )
 
+    # La lista de cajas siempre mantiene la Activa al tope seguida de las cerradas
+    cajas = ([activa] if activa else []) + cerradas
+
+    # 3. Resolver la sesión a mostrar (por defecto la activa, o la pasada si se solicitó)
     sesion_id = request.GET.get('sesion_id')
     sesion = None
     if sesion_id:
         sesion = next((s for s in cajas if str(s.id) == str(sesion_id)), None)
+        if sesion is None:
+            sesion = CajaSesion.objects.filter(caja=caja, pk=sesion_id).first()
+            if sesion:
+                cajas.append(sesion)
     if sesion is None:
-        # Por defecto se muestra la caja activa; si no hay ninguna, se abre con el arrastre.
-        sesion = next((s for s in cajas if s.estado == 'A'), None)
-    if sesion is None:
-        _, sesion = get_o_abrir_caja(empresa_id, sucursal_id, request.user)
-        cajas.insert(0, sesion)
+        sesion = activa
 
     condic_raw = request.GET.get('condic', '')
     condic = int(condic_raw) if condic_raw in ('1', '2') else None

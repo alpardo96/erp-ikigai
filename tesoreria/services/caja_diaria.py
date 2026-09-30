@@ -92,8 +92,6 @@ def abrir_caja(caja, usuario, si_efectivo=None, si_dolares=None, si_valores=None
     caja = Caja.objects.select_for_update().get(pk=caja.pk)
 
     activa = get_sesion_activa(caja)
-    if activa:
-        return activa
 
     ultima_cerrada = CajaSesion.objects.filter(
         caja=caja, estado='C'
@@ -105,6 +103,30 @@ def abrir_caja(caja, usuario, si_efectivo=None, si_dolares=None, si_valores=None
         si_dolares = ultima_cerrada.sf_dolares if ultima_cerrada else CERO
     if si_valores is None:
         si_valores = ultima_cerrada.sf_valores if ultima_cerrada else CERO
+
+    # Si la última cerrada tenía saldos históricos pero no tenía sf_* congelados en la fila
+    if ultima_cerrada and si_efectivo == CERO and si_dolares == CERO and si_valores == CERO and (ultima_cerrada.saldo_inicial_neto > 0 or ultima_cerrada.saldo_final_calculado > 0):
+        datos_uc = armar_caja_diaria(ultima_cerrada)
+        si_efectivo = datos_uc['saldos']['final']['efectivo']
+        si_dolares = datos_uc['saldos']['final']['dolares']
+        si_valores = datos_uc['saldos']['final']['valores']
+        ultima_cerrada.sf_efectivo = si_efectivo
+        ultima_cerrada.sf_dolares = si_dolares
+        ultima_cerrada.sf_valores = si_valores
+        ultima_cerrada.saldo_final_calculado = datos_uc['saldos']['final']['neto']
+        ultima_cerrada.saldo_final_declarado = datos_uc['saldos']['final']['neto']
+        ultima_cerrada.save(update_fields=['sf_efectivo', 'sf_dolares', 'sf_valores', 'saldo_final_calculado', 'saldo_final_declarado'])
+
+    if activa:
+        # Si la caja activa ya existía pero con saldos en cero (ej: abierta antes del cierre),
+        # se sincronizan sus saldos iniciales con los saldos de la última caja cerrada.
+        if activa.saldo_inicial_neto == CERO and (si_efectivo != CERO or si_dolares != CERO or si_valores != CERO):
+            activa.si_efectivo = si_efectivo
+            activa.si_dolares = si_dolares
+            activa.si_valores = si_valores
+            activa.saldo_inicial = si_efectivo + si_dolares + si_valores
+            activa.save(update_fields=['si_efectivo', 'si_dolares', 'si_valores', 'saldo_inicial'])
+        return activa
 
     ultimo_numero = CajaSesion.objects.filter(
         caja__empresa_id=caja.empresa_id, caja__tipo='T'
@@ -500,13 +522,15 @@ def cerrar_caja(sesion, usuario, fecha_operativa=None):
     sesion.sf_dolares = final['dolares']
     sesion.sf_valores = final['valores']
     sesion.saldo_final_calculado = final['neto']
+    sesion.saldo_final_declarado = final['neto']
     sesion.fecha_operativa = fecha_operativa or timezone.localdate()
     sesion.fecha_cierre = timezone.localtime()
     sesion.estado = 'C'
     sesion.modificado_por = usuario
     sesion.save(update_fields=[
         'sf_efectivo', 'sf_dolares', 'sf_valores', 'saldo_final_calculado',
-        'fecha_operativa', 'fecha_cierre', 'estado', 'modificado_por',
+        'saldo_final_declarado', 'fecha_operativa', 'fecha_cierre', 'estado',
+        'modificado_por',
     ])
 
     nueva = abrir_caja(sesion.caja, usuario)
