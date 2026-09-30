@@ -45,7 +45,10 @@
                             <input type="hidden" id="id_cliente" name="cliente" required 
                                 value="{{ cliente_default.codigo_id|default:'1' }}"
                                 data-doc-tipo="{{ cliente_default.tipo_documento|default:'99' }}"
-                                hx-get="{% url 'preventas_cliente_info' %}" hx-trigger="change, load" hx-target="#cliente_info_container">
+                                hx-get="{% url 'preventas_cliente_info' %}" 
+                                hx-trigger="change, load" 
+                                hx-vals='js:{cliente: document.getElementById("id_cliente").value}'
+                                hx-target="#cliente_info_container">
 
                             <!-- Input visual (Editable para nombre ocasional si es Consumidor Final o búsqueda) -->
                             <input type="text" id="cliente_nombre_display" name="q"
@@ -99,7 +102,20 @@
 
                     <div class="flex-1 min-w-[200px] max-w-xs">
                         <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Vendedor Asignado</label>
-                        {{ form.vendedor }}
+                        {% if is_distribuidora %}
+                            <select name="vendedor_personal" id="id_vendedor_personal"
+                                class="w-full py-1.5 px-3 bg-white border border-slate-300 rounded text-sm font-bold text-slate-800 outline-none focus:border-blue-500 cursor-pointer shadow-sm uppercase">
+                                <option value="">--- Sin Vendedor Asignado ---</option>
+                                {% for v in vendedores_distribucion %}
+                                    <option value="{{ v.id }}" {% if v.id == vendedor_personal_id %}selected{% endif %}>
+                                        [{{ v.codigo }}] {{ v.nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" name="vendedor" value="{{ user.id }}">
+                        {% else %}
+                            {{ form.vendedor }}
+                        {% endif %}
                     </div>
 
                     {% comment %}
@@ -119,23 +135,23 @@
                 <!-- Distribución (Plan 074): condición de facturación, entrega y el panel
                      de crédito del cliente, que es con lo que el vendedor decide la venta. -->
                 <div class="col-span-12 mt-3 flex flex-wrap items-end gap-4">
-                    <div class="w-44">
+                    <div class="w-56">
                         <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Se facturará como</label>
                         <select name="condic_destino"
-                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none focus:border-indigo-500 focus:bg-white">
+                            class="w-full h-9 py-1.5 px-3 bg-white border border-slate-300 rounded text-xs font-bold text-slate-800 outline-none focus:border-blue-500 cursor-pointer shadow-sm">
                             <option value="1">Factura (Real)</option>
                             <option value="2">PRE (Presupuestado)</option>
                         </select>
                     </div>
-                    <div class="w-44">
+                    <div class="w-48">
                         <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Fecha de Entrega</label>
                         <input type="date" name="fecha_entrega"
-                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] font-black text-slate-900 outline-none focus:border-indigo-500 focus:bg-white">
+                            class="w-full h-9 px-3 bg-white border border-slate-300 rounded text-xs font-bold text-slate-800 outline-none focus:border-blue-500 shadow-sm">
                     </div>
-                    <div class="flex-1 min-w-[220px]">
+                    <div class="flex-1 min-w-[240px]">
                         <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Observaciones del Pedido</label>
                         <input type="text" name="observaciones_pedido" maxlength="255"
-                            class="w-full h-8 px-2 bg-slate-50 border border-slate-200 rounded text-[12px] text-slate-900 outline-none focus:border-indigo-500 focus:bg-white"
+                            class="w-full h-9 px-3 bg-white border border-slate-300 rounded text-xs text-slate-800 outline-none focus:border-blue-500 shadow-sm"
                             placeholder="Indicaciones de entrega, aclaraciones...">
                     </div>
                 </div>
@@ -148,7 +164,7 @@
             class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-visible border-t-2 border-t-blue-600 animate-in fade-in duration-300">
             <div class="bg-slate-50 p-2 flex items-end gap-2 italic font-bold rounded-t-lg">
                 <!-- ID y Búsqueda -->
-                <div class="w-32 relative" x-data="{ open: false }">
+                <div class="w-56 relative" x-data="{ open: false }">
                     <label class="block text-[9px] font-black text-slate-400 uppercase mb-0.5">Cód/Desc/ID</label>
                     <div class="relative">
                         <!-- ID definitivo seleccionado para el alta en el listado -->
@@ -162,7 +178,11 @@
                             autocomplete="off"
                             @focus="open = true" @click.outside="open = false" @keydown.escape="open = false"
                             oninput="if(document.getElementById('selected_producto_id').value !== this.value) document.getElementById('selected_producto_id').value = '';"
-                            class="w-full h-8 pl-2 pr-7 bg-white border border-slate-300 rounded text-[10px] font-black text-blue-600 outline-none focus:border-blue-500 uppercase"
+                            onblur="if(this.value && this.value.trim() !== '' && document.getElementById('selected_producto_id').value !== this.value.trim()) { 
+                                htmx.ajax('GET', '{% url 'ventas_producto_buscar_codigo' %}', {values: {q: this.value.trim()}, source: this}); 
+                                open = false; 
+                            }"
+                            class="w-full h-8 pl-2 pr-7 bg-white border border-slate-300 rounded text-[11px] font-black text-blue-600 outline-none focus:border-blue-500 uppercase"
                             placeholder="Buscar..."
                             onkeydown="if(event.key === 'Enter') { 
                                 htmx.ajax('GET', '{% url 'ventas_producto_buscar_codigo' %}', {values: {q: this.value}, source: this}); 
@@ -350,8 +370,23 @@
         // Disparar escape para cerrar el dropdown si está abierto
         document.getElementById('cliente_nombre_display').dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
         
-        // Disparar HTMX para info/CLU del cliente
+        // Si viene vendedor_id en el evento (Distribución), asignarlo de inmediato al combobox
+        const selectVendedor = document.getElementById('id_vendedor_personal');
+        if (selectVendedor && ('vendedor_id' in e.detail)) {
+            selectVendedor.value = e.detail.vendedor_id || '';
+        }
+
+        // Disparar HTMX para info/CLU del cliente y vendedor en Distribución
         htmx.trigger(inputId, 'change');
+    });
+
+    // EVENTO VENDEDOR ASIGNADO (Emitido exclusivamente en Distribución si el cliente tiene CarteraVendedor)
+    document.body.addEventListener('vendedorPersonalAsignado', (e) => {
+        const vId = e.detail && e.detail.vendedor_id;
+        const selectVendedor = document.getElementById('id_vendedor_personal');
+        if (selectVendedor) {
+            selectVendedor.value = vId || '';
+        }
     });
 
     // EVENTO PRODUCTO SELECCIONADO
@@ -424,7 +459,7 @@
 
         const inputPrecio = document.getElementById('quick_precio');
         const precioIngresado = (typeof window.desformatearAR === 'function') ? window.desformatearAR(inputPrecio) : desformatearAR(inputPrecio.value);
-        const precioBase = parseFloat(unidadPrecioSugerido) || 0;
+        const precioBase = (typeof window.desformatearAR === 'function') ? window.desformatearAR(unidadPrecioSugerido) : desformatearAR(unidadPrecioSugerido);
 
         const badgeDoble = document.getElementById('alerta_precio_doble_badge');
         if (badgeDoble) {

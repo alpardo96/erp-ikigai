@@ -902,7 +902,7 @@
 
                 {% if puede_distribuidora %}
                 <!-- Distribución (Plan 074): el coeficiente define el precio del cliente
-                     sobre el precio de lista con IVA. -->
+                     sobre el precio de lista con IVA y el vendedor asignado su cartera. -->
                 <div
                     class="bg-gradient-to-br from-amber-50 to-white p-8 rounded-3xl border border-amber-100 shadow-sm shadow-amber-50">
                     <h4 class="text-sm font-bold text-amber-600 uppercase tracking-wider mb-6 flex items-center">
@@ -915,27 +915,28 @@
                     </h4>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Vendedor Asignado</label>
+                            {{ form_distribuidora.vendedor }}
+                            <p class="mt-1 text-[10px] text-gray-400 italic">Vendedor responsable de la cartera.</p>
+                        </div>
+                        <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Coeficiente Mayorista</label>
                             {{ form_distribuidora.coeficiente_mayorista }}
-                            <p class="mt-1 text-[10px] text-gray-400 italic">Se aplica sobre el precio de lista con IVA del producto.</p>
+                            <p class="mt-1 text-[10px] text-gray-400 italic">Se aplica sobre el precio de lista con IVA.</p>
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">Clasificación</label>
                             {{ form_distribuidora.clasificacion }}
                         </div>
-                        <div class="flex items-end">
-                            <p class="text-[10px] text-gray-400 italic leading-tight">
-                                La zona de reparto se define en cada <strong>domicilio de entrega</strong>,
-                                porque un cliente con sucursales entrega en más de una.
-                            </p>
-                        </div>
                     </div>
-                    <div class="mt-6">
+                    <div class="mt-6 flex flex-wrap items-center justify-between gap-4">
                         <label class="flex items-center cursor-pointer">
                             {{ form_distribuidora.bloqueado_credito }}
                             <span class="ml-2 text-sm font-semibold text-gray-700">Bloqueado para crédito</span>
                         </label>
-                        <p class="mt-1 ml-6 text-[10px] text-gray-400 italic">Fuerza la venta de contado, con independencia del límite cargado.</p>
+                        <p class="text-[10px] text-gray-400 italic leading-tight">
+                            La zona de reparto se define en cada <strong>domicilio de entrega</strong>.
+                        </p>
                     </div>
                 </div>
                 {% endif %}

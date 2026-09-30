@@ -453,9 +453,9 @@
         const modo = "{{ modo_edicion }}";
         if (modo !== 'PRECIO') return;
 
-        const rawPrecio = document.getElementById('quick_precio').value.replace(/\./g, '').replace(',', '.');
-        const precioIngresado = parseFloat(rawPrecio) || 0;
-        const precioBase = parseFloat(unidadPrecioSugerido) || 0;
+        const inputPrecio = document.getElementById('quick_precio');
+        const precioIngresado = (typeof window.desformatearAR === 'function') ? window.desformatearAR(inputPrecio) : desformatearAR(inputPrecio.value);
+        const precioBase = (typeof window.desformatearAR === 'function') ? window.desformatearAR(unidadPrecioSugerido) : desformatearAR(unidadPrecioSugerido);
 
         const badgeDoble = document.getElementById('alerta_precio_doble_badge_venta');
         if (badgeDoble) {

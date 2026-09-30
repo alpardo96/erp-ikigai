@@ -1,11 +1,26 @@
 {% for c in clientes %}
 <tr class="bg-white hover:bg-blue-50 transition-colors group cursor-pointer"
-    onclick="document.body.dispatchEvent(new CustomEvent('clienteVentaSeleccionado', { detail: { id: '{{ c.pk }}', razon_social: '{{ c.razon_social|escapejs }}', tipo_documento: '{{ c.tipo_documento }}', cuit: '{{ c.cuit|default:""|escapejs }}', cta_res: '{{ c.cta_res|default:0 }}', condicion_iva: '{{ c.condicion_iva|escapejs }}', usa_orden_compra: '{% if c.usa_orden_compra %}true{% else %}false{% endif %}', clasificacion: '{{ c.clasificacion|escapejs }}' } }))">
+    onclick="document.body.dispatchEvent(new CustomEvent('clienteVentaSeleccionado', { detail: { id: '{{ c.pk }}', razon_social: '{{ c.razon_social|escapejs }}', tipo_documento: '{{ c.tipo_documento }}', cuit: '{{ c.cuit|default:""|escapejs }}', cta_res: '{{ c.cta_res|default:0 }}', condicion_iva: '{{ c.condicion_iva|escapejs }}', usa_orden_compra: '{% if c.usa_orden_compra %}true{% else %}false{% endif %}', clasificacion: '{{ c.clasificacion|escapejs }}', vendedor_id: '{{ c.vendedor_asignado_id|default:"" }}' } }))">
     <td class="px-3 py-2 border-b border-slate-100">
         <span class="text-[10px] font-black text-slate-400">#{{ c.pk }}</span>
     </td>
     <td class="px-3 py-2 border-b border-slate-100">
         <span class="text-xs font-bold text-slate-800 uppercase">{{ c.razon_social }}</span>
+    </td>
+    <td class="px-3 py-2 border-b border-slate-100 text-center">
+        {% if c.tipo_entidad == 1 %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black bg-blue-50 text-blue-700 border border-blue-200 uppercase">
+                Cliente
+            </span>
+        {% elif c.tipo_entidad == 2 %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black bg-purple-50 text-purple-700 border border-purple-200 uppercase">
+                Proveedor
+            </span>
+        {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase">
+                {{ c.get_tipo_entidad_display|default:"-" }}
+            </span>
+        {% endif %}
     </td>
     <td class="px-3 py-2 border-b border-slate-100">
         <span class="text-[10px] font-bold text-slate-500">{{ c.cuit|default:"-" }}</span>
@@ -22,9 +37,9 @@
 </tr>
 {% empty %}
 <tr>
-    <td colspan="5" class="px-6 py-10 text-center bg-white rounded-b-lg">
+    <td colspan="6" class="px-6 py-10 text-center bg-white rounded-b-lg">
         <svg class="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-        <p class="text-xs font-black text-slate-500 uppercase tracking-widest">No se encontraron clientes.</p>
+        <p class="text-xs font-black text-slate-500 uppercase tracking-widest">No se encontraron clientes ni proveedores.</p>
         <p class="text-[10px] text-slate-400 mt-1">Intente con otro nombre o CUIT.</p>
     </td>
 </tr>

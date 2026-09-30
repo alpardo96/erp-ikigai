@@ -51,10 +51,9 @@ def validar_clu_cliente_armeria(cliente, empresa_id):
 def parsear_decimal_ar(val, default=0.0):
     """
     Parsea de forma segura y robusta un valor numérico recibido desde el frontend,
-    manejando tanto formato es-AR ('444.808,00' o '444.808,0'),
-    formato desformateado por JS ('444808.00' o '444808.0'),
+    manejando formato es-AR ('444.808,00', '180.000', '1.500'),
+    formato decimal desformateado por JS ('444808.00' o '444808.0'),
     números directos (int, float, Decimal) o valores vacíos.
-    Evita la multiplicación por 100 causada por eliminar el punto en valores ya normalizados.
     """
     if val is None:
         return default
@@ -68,7 +67,7 @@ def parsear_decimal_ar(val, default=0.0):
     if not texto:
         return default
 
-    # Si contiene coma y punto: ej. "1.234.567,89" -> punto es miles, coma es decimal
+    # Si contiene coma y punto: ej. "1.234.567,89" o "180.000,00" -> punto es miles, coma es decimal
     if ',' in texto and '.' in texto:
         texto = texto.replace('.', '').replace(',', '.')
     # Si contiene sólo coma: ej. "1234,56" o "444808,0" -> coma es decimal
@@ -80,8 +79,11 @@ def parsear_decimal_ar(val, default=0.0):
         if len(partes) > 2:
             # Múltiples puntos: "1.234.567" -> separador de miles
             texto = texto.replace('.', '')
+        elif len(partes) == 2 and len(partes[1]) == 3 and partes[0].isdigit() and partes[1].isdigit():
+            # Un solo punto seguido de exactamente 3 dígitos: "1.500", "25.000", "180.000" -> separador de miles
+            texto = texto.replace('.', '')
         else:
-            # Un solo punto: notación decimal estándar (ej. "444808.00", "444808.0", "12.5")
+            # Notación decimal estándar (ej. "444808.00", "444808.0", "12.5")
             pass
 
     try:

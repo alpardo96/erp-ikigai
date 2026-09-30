@@ -1,8 +1,10 @@
+{% load l10n %}
 <div class="divide-y divide-slate-100 bg-white">
     {% for p in productos %}
     <button type="button"
             class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left {% if p.subprod %}bg-amber-50/70 hover:bg-amber-100/80 border-l-4 border-amber-500{% else %}hover:bg-blue-50{% endif %} transition-colors"
-            onclick="document.body.dispatchEvent(new CustomEvent('productoVentaEncontrado', { bubbles: true, detail: { id: '{{ p.id }}', detalle: '{{ p.detalle|escapejs }}', precio_sugerido: '{{ p.precio_mostrar|floatformat:2|default:0 }}', requiere_credencial: {% if p.creden %}true{% else %}false{% endif %}, subprod: {% if p.subprod %}true{% else %}false{% endif %} } }))">
+            onmousedown="event.preventDefault();"
+            onclick="document.body.dispatchEvent(new CustomEvent('productoVentaEncontrado', { bubbles: true, detail: { id: '{{ p.id }}', detalle: '{{ p.detalle|escapejs }}', precio_sugerido: '{{ p.precio_mostrar|unlocalize }}', requiere_credencial: {% if p.creden %}true{% else %}false{% endif %}, subprod: {% if p.subprod %}true{% else %}false{% endif %} } }))">
         <span class="min-w-0">
             <span class="flex items-center gap-2">
                 <span class="block truncate text-xs font-bold uppercase {% if p.subprod %}text-amber-900 font-black{% else %}text-slate-800{% endif %}">{{ p.detalle }}</span>

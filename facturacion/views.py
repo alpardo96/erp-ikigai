@@ -391,6 +391,9 @@ class PreventaCargaView(LoginRequiredMixin, View):
         if not cliente_default:
             cliente_default = ClienteProveedor.objects.filter(empresa_id=empresa_id, tipo_documento='99').order_by('codigo_id').first()
 
+        es_distribuidora = Empresa.objects.filter(
+            id=empresa_id, tipo_actividad__in=["DISTRIBUCION", "DISTRIBUIDORA"]).exists()
+
         initial_data = {
             'vendedor': request.user.id,
             'cliente': cliente_default.codigo_id if cliente_default else 1
@@ -399,18 +402,37 @@ class PreventaCargaView(LoginRequiredMixin, View):
         
         # Filtrar clientes por empresa
         form.fields['cliente'].queryset = ClienteProveedor.objects.filter(empresa_id=empresa_id, tipo_entidad=1).order_by('razon_social')
-        
-        es_distribuidora = Empresa.objects.filter(
-            id=empresa_id, tipo_actividad="DISTRIBUIDORA").exists()
 
+        vendedores_distribucion = []
+        vendedor_personal_id = None
         # El vendedor sólo ve su cartera; un administrativo sin `Personal` asociado ve
         # todos los clientes, porque es quien toma los pedidos telefónicos (Plan 074).
         if es_distribuidora:
             from verticalidades.distribucion.services.pedidos import clientes_de_la_cartera
-            cartera = clientes_de_la_cartera(request.user, empresa_id)
-            if cartera is not None:
+            from verticalidades.distribucion.models import Personal, CarteraVendedor
+            vendedores_distribucion = Personal.objects.filter(
+                empresa_id=empresa_id, es_vendedor=True, activo=True
+            ).order_by('nombre')
+
+            vendedor_default = Personal.objects.filter(
+                empresa_id=empresa_id, es_vendedor=True, es_predeterminado=True, activo=True
+            ).first()
+
+            if cliente_default:
+                cartera = CarteraVendedor.objects.filter(
+                    empresa_id=empresa_id, cliente=cliente_default, activa=True
+                ).first()
+                if cartera and cartera.vendedor_id:
+                    vendedor_personal_id = cartera.vendedor_id
+                elif vendedor_default:
+                    vendedor_personal_id = vendedor_default.id
+            elif vendedor_default:
+                vendedor_personal_id = vendedor_default.id
+
+            cartera_clientes = clientes_de_la_cartera(request.user, empresa_id)
+            if cartera_clientes is not None:
                 form.fields['cliente'].queryset = form.fields['cliente'].queryset.filter(
-                    codigo_id__in=cartera)
+                    codigo_id__in=cartera_clientes)
 
         empresa_activa = Empresa.objects.filter(pk=empresa_id).first()
         modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
@@ -420,6 +442,8 @@ class PreventaCargaView(LoginRequiredMixin, View):
             'cliente_default': cliente_default,
             'is_armeria': Empresa.objects.filter(id=empresa_id, tipo_actividad="ARMERIA").exists(),
             'is_distribuidora': es_distribuidora,
+            'vendedores_distribucion': vendedores_distribucion,
+            'vendedor_personal_id': vendedor_personal_id,
             'modo_edicion': modo_edicion,
         }
         return render(request, 'facturacion/preventa_carga.html', context)
@@ -563,11 +587,21 @@ class PreventaCargaView(LoginRequiredMixin, View):
                     # lleva su número correlativo propio, que es el eslabón entre el
                     # pedido del cliente, su comprobante y la devolución.
                     pedido_dist = None
-                    if Empresa.objects.filter(id=empresa_id, tipo_actividad='DISTRIBUIDORA').exists():
+                    if Empresa.objects.filter(id=empresa_id, tipo_actividad__in=['DISTRIBUCION', 'DISTRIBUIDORA']).exists():
                         from verticalidades.distribucion.services.pedidos import registrar_pedido
+                        from verticalidades.distribucion.models import Personal
+
+                        vendedor_personal = None
+                        vendedor_personal_id = request.POST.get('vendedor_personal')
+                        if vendedor_personal_id:
+                            vendedor_personal = Personal.objects.filter(
+                                id=vendedor_personal_id, empresa_id=empresa_id, es_vendedor=True
+                            ).first()
+
                         pedido_dist = registrar_pedido(
                             preventa,
                             usuario=request.user,
+                            vendedor=vendedor_personal,
                             condic_destino=int(request.POST.get('condic_destino') or 1),
                             fecha_entrega=request.POST.get('fecha_entrega') or None,
                             observaciones=request.POST.get('observaciones_pedido') or None,

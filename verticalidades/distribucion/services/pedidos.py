@@ -127,7 +127,7 @@ def guardar_pedido(*, empresa_id, sucursal_id, cliente, usuario, items,
 
 
 @transaction.atomic
-def registrar_pedido(preventa, *, usuario=None, condic_destino=1, fecha_entrega=None,
+def registrar_pedido(preventa, *, usuario=None, vendedor=None, condic_destino=1, fecha_entrega=None,
                      origen=ExtensionPedidoDistribucion.ORIGEN_PC, observaciones=None,
                      domicilio_entrega=None):
     """Crea la extensión de distribución de una preventa y le asigna su número.
@@ -147,7 +147,8 @@ def registrar_pedido(preventa, *, usuario=None, condic_destino=1, fecha_entrega=
     numero = siguiente_numero(empresa_id, punto, ContadorDocumento.PEDIDO)
 
     cliente = preventa.cliente
-    vendedor = vendedor_de(cliente, empresa_id) or vendedor_del_usuario(usuario, empresa_id)
+    if vendedor is None:
+        vendedor = vendedor_de(cliente, empresa_id) or vendedor_del_usuario(usuario, empresa_id)
 
     # A dónde se entrega. Si no se indicó, se propone el principal (que sale del
     # domicilio fiscal), pero la responsabilidad de que sea el correcto es del vendedor.
