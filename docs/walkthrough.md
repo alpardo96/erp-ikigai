@@ -1,6 +1,28 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
 ## Cristian - PC CASA
+- **Fecha/Día**: 30 de Septiembre de 2026
+- **Objetivo o Tarea**: Optimización integral de filtros, selectores múltiples estilo Excel para Marca y Calibre, redimensionamiento de campos de búsqueda y formato de moneda argentino (`formato_ar`) en Stock de Armas (`/stock/armas/`).
+- **Archivos creados o modificados**:
+  - `docs/planes/100_filtros_marca_calibre_formato_stock_armas.md` [NEW]
+  - `verticalidades/armeria/views.py` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/stock_armas_list.html` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/partials/stock_armas_grilla.html` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/partials/stock_armas_detalle_modal.html` [MODIFY]
+  - `verticalidades/armeria/tests.py` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Corrección de "Seleccionar Todo" / "Limpiar" en Filtros Excel:** Se corrigió la referencia del DOM en la función `toggleAll` y `updateSelected` de Alpine.js utilizando `this.$root || this.$el.closest('[x-data]')`, evitando que `this.$el` se refiriera al botón clickeado y garantizando que se tilden/destilden correctamente todas las casillas visibles del desplegable y se emita el submit a HTMX.
+  2. **Revisión de `fecha_nacimiento` en Clientes:** Se verificó el campo `fecha_nacimiento` en `ClienteProveedor` y `ClienteProveedorForm`. Es un campo opcional (`null=True, blank=True`), por lo que no bloquea ni rompe ninguna otra verticalidad. Se aseguró en `facturacion/views_htmx.py` (`cliente_modal`) que `pedir_fecha_nacimiento` se active automáticamente cuando la empresa es de tipo Armería o Automotor (`empresa.tipo_actividad in ['armeria', 'automotor']`).
+  3. **Eliminación de redundancia en Condición:** Se removió la píldora `USADAS` del grupo de familias superior (`#familia-pills`), conservando únicamente las familias reales (`TODOS`, `PISTOLA`, `ESCOPETA`, `CARABINA`, `FUSIL`, `PISTOLÓN`) y dejando el filtrado por condición estrictamente en el selector `<select name="estado">` (`Todas`, `Nuevo`, `Usado`).
+  4. **Formato Argentino (`formato_ar`):** Se cargó `{% load formato_tags %}` y se aplicó `|formato_ar` en todos los montos y cotizaciones de la grilla de stock y del modal de detalle de artículo.
+  5. **Rebalanceo de Tamaños de Entrada:** Se asignó `maxlength="16"` y ancho visual de 16 caracteres mono (`w-44`) al campo **Nro. Serie**, y `maxlength="9"` con ancho mono (`w-28`) al campo **CUIM**, acotando la **Búsqueda Rápida** a Producto/Código con ancho controlado.
+  6. **Filtros Múltiples estilo Excel (Marca y Calibre):**
+     - Se crearon popovers compactos con Alpine.js (`excelFilter`) que incluyen buscador de texto en vivo, botones de "Seleccionar todo" / "Limpiar", scroll acotado a 180px con overflow contenido (`style="max-height: 180px; overflow-y: auto;"`), y sincronización reactiva directa mediante HTMX al modificar checkboxes.
+     - En backend (`StockArmasListView`): se reciben listas `marcas` y `calibres`, se acotan las marcas del contexto únicamente a las que tienen subproductos en depósito, y se excluyó marca/calibre de la búsqueda general por texto.
+- **Resultado de las pruebas**: Integración de pruebas automatizadas `StockArmasFiltrosTests` en `verticalidades/armeria/tests.py`.
+- **Estado actual y siguientes pasos sugeridos**: Vistas de stock de armas y modales optimizados y estilizados.
+
+## Cristian - PC CASA
 - **Fecha/Día**: 29 de Septiembre de 2026
 - **Objetivo o Tarea**: Corrección de navegación y apertura de modal en la pantalla de Recepción de Rendiciones de Tesorería.
 - **Archivos creados o modificados**:

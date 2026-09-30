@@ -1,3 +1,4 @@
+{% load formato_tags %}
 <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="closeModal()"></div>
@@ -45,21 +46,21 @@
                             <div class="mt-2 p-2.5 bg-blue-50/70 border border-blue-100 rounded-xl text-xs space-y-1">
                                 <div class="flex justify-between items-center text-blue-900 font-bold">
                                     <span>Moneda Original: USD</span>
-                                    <span>U$S {{ precio_usd|floatformat:2 }}</span>
+                                    <span>U$S {{ precio_usd|formato_ar }}</span>
                                 </div>
                                 <div class="flex justify-between items-center text-blue-700 text-[11px]">
                                     <span>Dólar Cobranza Global:</span>
-                                    <span class="font-mono font-semibold">${{ dolar_cobranza|floatformat:2 }}</span>
+                                    <span class="font-mono font-semibold">$ {{ dolar_cobranza|formato_ar }}</span>
                                 </div>
                                 <div class="flex justify-between items-center text-blue-950 font-black text-sm pt-1 border-t border-blue-200/50">
                                     <span>Precio Pesificado:</span>
-                                    <span>${{ precio_pesos|floatformat:2 }}</span>
+                                    <span>$ {{ precio_pesos|formato_ar }}</span>
                                 </div>
                             </div>
                             {% else %}
                             <div class="mt-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs flex justify-between items-center text-gray-900 font-black text-sm">
                                 <span>Precio de Lista:</span>
-                                <span>${{ precio_pesos|floatformat:2 }}</span>
+                                <span>$ {{ precio_pesos|formato_ar }}</span>
                             </div>
                             {% endif %}
 
@@ -83,7 +84,7 @@
                             <div class="flex justify-between items-center py-1 border-b border-gray-50 last:border-0">
                                 <span class="text-sm font-medium text-gray-600">{{ d.medio.nombre }}</span>
                                 <span class="text-base font-bold text-gray-900">
-                                    {% if d.es_dolar %}U$S{% else %}${% endif %} {{ d.precio_final|floatformat:2 }}
+                                    {% if d.es_dolar %}U$S{% else %}${% endif %} {{ d.precio_final|formato_ar }}
                                 </span>
                             </div>
                             {% empty %}
@@ -104,7 +105,7 @@
                                  hx-get="{% url 'stock_armas_detalle_modal' osp.subpro %}" 
                                  hx-include="#form-filtros-stock-armas"
                                  hx-target="#modal-container" title="Ver Detalle y Desglose de este artículo">
-                                <div class="flex justify-between items-start mb-1">
+                                 <div class="flex justify-between items-start mb-1">
                                     <span class="font-mono text-xs font-bold text-indigo-600">{{ osp.serie }}</span>
                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-md {% if osp.estado == 'NUEVO' %}bg-blue-100 text-blue-800{% else %}bg-orange-100 text-orange-800{% endif %}">
                                         {{ osp.get_estado_display }}
@@ -116,7 +117,7 @@
                                         {{ osp.sucursal.nombre }}
                                     </span>
                                     <!-- Precio de Referencia Pesificado -->
-                                    <span class="text-xs font-bold text-gray-900">${{ osp.precio_pesos|floatformat:2 }}</span>
+                                    <span class="text-xs font-bold text-gray-900">$ {{ osp.precio_pesos|formato_ar }}</span>
                                 </div>
                             </div>
                             {% empty %}

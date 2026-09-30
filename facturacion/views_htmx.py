@@ -330,7 +330,10 @@ def cliente_modal(request, id=None):
         from empresas.models import Empresa
         try:
             empresa = Empresa.objects.get(id=empresa_id)
-            pedir_fecha_nacimiento = empresa.pedir_fecha_nacimiento_cliente
+            pedir_fecha_nacimiento = bool(
+                empresa.pedir_fecha_nacimiento_cliente or 
+                (empresa.tipo_actividad and empresa.tipo_actividad.lower() in ['armeria', 'automotor'])
+            )
         except Empresa.DoesNotExist:
             pass
 

@@ -14,7 +14,7 @@
         </div>
     </div>
 
-    <!-- Pestañas Rápidas por Familia / Estado -->
+    <!-- Pestañas Rápidas por Familia -->
     <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold" id="familia-pills">
         <button type="button" onclick="setFamilia('TODOS', this)" 
                 class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'TODOS' or not selected_familia %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
@@ -40,13 +40,9 @@
                 class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'PISTOLON' %}bg-indigo-600 text-white font-black shadow-indigo-200{% else %}bg-white text-gray-600 hover:bg-gray-100 border border-gray-200{% endif %}">
             PISTOLÓN
         </button>
-        <button type="button" onclick="setFamilia('USADAS', this)" 
-                class="pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm {% if selected_familia == 'USADAS' %}bg-amber-600 text-white font-black shadow-amber-200{% else %}bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200{% endif %}">
-            USADAS
-        </button>
     </div>
 
-    <!-- Buscador y Filtros (Fila Única Ultra-Compacta con Flexbox Proporcional) -->
+    <!-- Buscador y Filtros (Fila Única con Dropdowns Estilo Excel) -->
     <form id="form-filtros-stock-armas" 
           hx-get="{% url 'stock_armas_listado' %}" 
           hx-target="#stock-armas-rows" 
@@ -54,10 +50,10 @@
         
         <input type="hidden" name="familia" id="familia_input" value="{{ selected_familia|default:'TODOS' }}">
 
-        <!-- Búsqueda Rápida en Vivo (Ampliación Proporcional flex-1) -->
-        <div class="relative flex-1 min-w-[200px]">
-            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Búsqueda Rápida (Producto / Marca / Calibre)</label>
-            <input type="text" name="producto" id="producto_input" placeholder="Ej: BERSA C.380..." autocomplete="off"
+        <!-- Búsqueda Rápida de Producto / Código (Ancho Acotado) -->
+        <div class="relative w-48 sm:w-56 flex-shrink-0">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Búsqueda (Producto / Código)</label>
+            <input type="text" name="producto" id="producto_input" placeholder="Ej: Bersa Thunder..." autocomplete="off"
                    hx-get="{% url 'stock_armas_listado' %}" 
                    hx-trigger="keyup changed delay:300ms, search"
                    hx-target="#stock-armas-rows" 
@@ -65,10 +61,10 @@
                    class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs focus:ring-indigo-500 focus:border-indigo-500">
         </div>
 
-        <!-- Nro. Serie / Identificador (Ancho Compacto Reducido w-32) -->
-        <div class="relative w-32 flex-shrink-0">
+        <!-- Nro. Serie / Identificador (Ancho Cómodo para 16 Caracteres) -->
+        <div class="relative w-44 flex-shrink-0">
             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Nro. Serie</label>
-            <input type="text" name="serie" id="serie_input" placeholder="Serie..." autocomplete="off"
+            <input type="text" name="serie" id="serie_input" placeholder="Serie..." maxlength="16" autocomplete="off"
                    hx-get="{% url 'stock_armas_listado' %}"
                    hx-trigger="keyup[this.value.length >= 3 || this.value.length == 0] changed delay:250ms, search"
                    hx-target="#stock-armas-rows"
@@ -76,10 +72,10 @@
                    class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs font-mono font-semibold focus:ring-indigo-500 focus:border-indigo-500 uppercase">
         </div>
         
-        <!-- CUIM (Ancho Compacto Reducido w-28) -->
+        <!-- CUIM (Ancho Cómodo para 9 Caracteres) -->
         <div class="relative w-28 flex-shrink-0">
             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">CUIM</label>
-            <input type="text" name="cuim" id="cuim_input" placeholder="CUIM..." autocomplete="off"
+            <input type="text" name="cuim" id="cuim_input" placeholder="CUIM..." maxlength="9" autocomplete="off"
                    hx-get="{% url 'stock_armas_listado' %}"
                    hx-trigger="keyup[this.value.length >= 3 || this.value.length == 0] changed delay:250ms, search"
                    hx-target="#stock-armas-rows"
@@ -87,8 +83,78 @@
                    class="w-full border-gray-300 rounded-lg px-2.5 py-1 h-8 text-xs font-mono focus:ring-indigo-500 focus:border-indigo-500 uppercase">
         </div>
 
-        <!-- Condición (Ancho Compacto Reducido w-36) -->
-        <div class="relative w-36 flex-shrink-0">
+        <!-- Filtro Múltiple de Marca (Tipo Excel) -->
+        <div class="relative w-40 flex-shrink-0" x-data="excelFilter({ name: 'marcas', label: 'Marca' })" @click.outside="open = false">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Marca</label>
+            <button type="button" @click="open = !open" 
+                    :class="selected.length > 0 ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 font-bold' : 'border-gray-300 bg-white text-gray-700'"
+                    class="w-full border rounded-lg px-2.5 py-1 h-8 text-xs flex items-center justify-between transition-colors shadow-sm focus:ring-1 focus:ring-indigo-500">
+                <span class="truncate" x-text="selected.length > 0 ? selected.length + ' sel.' : 'Todas'">Todas</span>
+                <svg class="w-3.5 h-3.5 text-gray-400 ml-1 flex-shrink-0 transition-transform" :class="open ? 'rotate-180 text-indigo-600' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            <!-- Popover Dropdown Compacto -->
+            <div x-show="open" x-cloak 
+                 style="max-height: 280px; width: 240px;"
+                 class="absolute left-0 top-full mt-1.5 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 p-2.5 space-y-2 flex flex-col">
+                <div class="relative flex-shrink-0">
+                    <input type="text" x-model="search" placeholder="Buscar marca..." 
+                           class="w-full border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="flex items-center justify-between px-1 text-[11px] font-semibold border-b border-gray-100 pb-1 flex-shrink-0">
+                    <button type="button" @click="toggleAll(true)" class="text-indigo-600 hover:text-indigo-800 hover:underline">Seleccionar todo</button>
+                    <button type="button" @click="toggleAll(false)" class="text-gray-500 hover:text-gray-800 hover:underline">Limpiar</button>
+                </div>
+                <div style="max-height: 180px; overflow-y: auto;" class="space-y-0.5 pr-1 divide-y divide-gray-50 flex-1">
+                    {% for m in marcas %}
+                    <label x-show="matches('{{ m.detalle|escapejs }}')" class="flex items-center gap-2 px-2 py-1.5 hover:bg-indigo-50/60 rounded-lg cursor-pointer text-xs select-none transition-colors">
+                        <input type="checkbox" name="marcas" value="{{ m.id }}" @change="onCheckChange()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5">
+                        <span class="text-gray-700 font-medium truncate">{{ m.detalle }}</span>
+                    </label>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 text-center py-2 italic">Sin marcas con stock</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtro Múltiple de Calibre (Tipo Excel) -->
+        <div class="relative w-36 flex-shrink-0" x-data="excelFilter({ name: 'calibres', label: 'Calibre' })" @click.outside="open = false">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Calibre</label>
+            <button type="button" @click="open = !open" 
+                    :class="selected.length > 0 ? 'border-indigo-500 bg-indigo-50/70 text-indigo-900 font-bold' : 'border-gray-300 bg-white text-gray-700'"
+                    class="w-full border rounded-lg px-2.5 py-1 h-8 text-xs flex items-center justify-between transition-colors shadow-sm focus:ring-1 focus:ring-indigo-500">
+                <span class="truncate" x-text="selected.length > 0 ? selected.length + ' sel.' : 'Todos'">Todos</span>
+                <svg class="w-3.5 h-3.5 text-gray-400 ml-1 flex-shrink-0 transition-transform" :class="open ? 'rotate-180 text-indigo-600' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            <!-- Popover Dropdown Compacto -->
+            <div x-show="open" x-cloak 
+                 style="max-height: 280px; width: 220px;"
+                 class="absolute left-0 top-full mt-1.5 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 p-2.5 space-y-2 flex flex-col">
+                <div class="relative flex-shrink-0">
+                    <input type="text" x-model="search" placeholder="Buscar calibre..." 
+                           class="w-full border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="flex items-center justify-between px-1 text-[11px] font-semibold border-b border-gray-100 pb-1 flex-shrink-0">
+                    <button type="button" @click="toggleAll(true)" class="text-indigo-600 hover:text-indigo-800 hover:underline">Seleccionar todo</button>
+                    <button type="button" @click="toggleAll(false)" class="text-gray-500 hover:text-gray-800 hover:underline">Limpiar</button>
+                </div>
+                <div style="max-height: 180px; overflow-y: auto;" class="space-y-0.5 pr-1 divide-y divide-gray-50 flex-1">
+                    {% for c in calibres %}
+                    <label x-show="matches('{{ c|escapejs }}')" class="flex items-center gap-2 px-2 py-1.5 hover:bg-indigo-50/60 rounded-lg cursor-pointer text-xs select-none transition-colors">
+                        <input type="checkbox" name="calibres" value="{{ c }}" @change="onCheckChange()" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5">
+                        <span class="text-gray-700 font-medium truncate">{{ c }}</span>
+                    </label>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 text-center py-2 italic">Sin calibres con stock</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Condición (Ancho Compacto w-32) -->
+        <div class="relative w-32 flex-shrink-0">
             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Condición</label>
             <select name="estado" id="estado_input"
                     hx-get="{% url 'stock_armas_listado' %}" 
@@ -101,7 +167,7 @@
             </select>
         </div>
         
-        <!-- Sucursal (Ancho Compacto Reducido w-36) -->
+        <!-- Sucursal (Ancho Compacto w-36) -->
         <div class="relative w-36 flex-shrink-0">
             <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Sucursal</label>
             <select name="sucursal" id="sucursal_input"
@@ -132,16 +198,54 @@
     </form>
 
     <script>
+        function excelFilter(config) {
+            return {
+                open: false,
+                search: '',
+                name: config.name,
+                label: config.label,
+                selected: config.selected || [],
+                init() {
+                    this.$nextTick(() => {
+                        this.updateSelected();
+                    });
+                },
+                matches(text) {
+                    if (!this.search) return true;
+                    return text.toLowerCase().includes(this.search.toLowerCase());
+                },
+                toggleAll(select) {
+                    const root = this.$root || this.$el.closest('[x-data]');
+                    const checkboxes = root.querySelectorAll(`input[name="${this.name}"]`);
+                    checkboxes.forEach(cb => {
+                        const label = cb.closest('label');
+                        const isVisible = !this.search || (label && label.style.display !== 'none');
+                        if (isVisible) {
+                            cb.checked = select;
+                        }
+                    });
+                    this.updateSelected();
+                    htmx.trigger('#form-filtros-stock-armas', 'submit');
+                },
+                updateSelected() {
+                    const root = this.$root || this.$el.closest('[x-data]');
+                    if (!root) return;
+                    const checkboxes = root.querySelectorAll(`input[name="${this.name}"]:checked`);
+                    this.selected = Array.from(checkboxes).map(cb => cb.value);
+                },
+                onCheckChange() {
+                    this.updateSelected();
+                    htmx.trigger('#form-filtros-stock-armas', 'submit');
+                }
+            };
+        }
+
         function setFamilia(familia, btn) {
             document.getElementById('familia_input').value = familia;
             document.querySelectorAll('.pill-familia').forEach(el => {
                 el.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200";
             });
-            if (familia === 'USADAS') {
-                btn.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-amber-600 text-white font-black shadow-amber-200";
-            } else {
-                btn.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-indigo-600 text-white font-black shadow-indigo-200";
-            }
+            btn.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-indigo-600 text-white font-black shadow-indigo-200";
             htmx.trigger('#form-filtros-stock-armas', 'submit');
         }
 
@@ -153,6 +257,15 @@
                     el.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-indigo-600 text-white font-black shadow-indigo-200";
                 } else {
                     el.className = "pill-familia px-3 py-1.5 rounded-xl transition-all shadow-sm bg-white text-gray-600 hover:bg-gray-100 border border-gray-200";
+                }
+            });
+            document.querySelectorAll('#form-filtros-stock-armas input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            document.querySelectorAll('[x-data]').forEach(el => {
+                if (el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].updateSelected === 'function') {
+                    el._x_dataStack[0].selected = [];
+                    el._x_dataStack[0].search = '';
                 }
             });
             htmx.trigger('#form-filtros-stock-armas', 'submit');
