@@ -2,6 +2,20 @@
 
 ## Cristian - PC CASA
 - **Fecha/Día**: 30 de Septiembre de 2026
+- **Objetivo o Tarea**: Corrección de `AttributeError: 'Producto' object has no attribute 'pr_vta1'` en `Subproducto` y limpieza de partial duplicado `serie_typeahead.html` en facturación.
+- **Archivos creados o modificados**:
+  - `productos/models.py` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/partials/serie_typeahead.html` [MODIFY]
+  - `templates/facturacion/partials/serie_typeahead.html` [DELETED]
+- **Detalle Técnico e implicaciones**:
+  1. **Corrección de `AttributeError` en `Subproducto`:** En `productos/models.py`, las propiedades `precio_pesos`, `calcular_precio_pesos` y `precio_usd_referencia` intentaban acceder a `self.producto.pr_vta1` como respaldo. Dado que `Producto` utiliza `precio_neto` y no posee el campo histórico `pr_vta1`, se corrigió la lógica accediendo a `float((self.producto.precio_neto if self.producto else 0) or 0)`.
+  2. **Actualización de `serie_typeahead.html`:** En `verticalidades/armeria/templates/armeria/partials/serie_typeahead.html`, se reemplazaron las llamadas obsoletas a `sub.producto.pr_vta1` y `sub.producto.iva` por `sub.producto.precio_neto` y `sub.producto.alic_iva`.
+  3. **Eliminación de duplicación en Core:** Se eliminó el archivo residual `templates/facturacion/partials/serie_typeahead.html`, dejando el componente encapsulado exclusivamente dentro del enchufe de la verticalidad de armería (`verticalidades/armeria/`).
+- **Resultado de las pruebas**: Verificación de sintaxis y eliminación de referencias huérfanas en plantillas y modelos.
+- **Estado actual y siguientes pasos sugeridos**: Vistas de stock de armas y búsqueda typeahead por series operativas y libres de errores.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 30 de Septiembre de 2026
 - **Objetivo o Tarea**: Optimización integral de filtros, selectores múltiples estilo Excel para Marca y Calibre, redimensionamiento de campos de búsqueda y formato de moneda argentino (`formato_ar`) en Stock de Armas (`/stock/armas/`).
 - **Archivos creados o modificados**:
   - `docs/planes/100_filtros_marca_calibre_formato_stock_armas.md` [NEW]

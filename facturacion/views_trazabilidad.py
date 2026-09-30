@@ -710,7 +710,7 @@ def typeahead_series_trazabilidad(request):
         Q(serie__icontains=q) | Q(cuim__icontains=q) | Q(producto__detalle__icontains=q)
     ).select_related('producto').order_by('serie')[:10]
 
-    return render(request, 'facturacion/partials/serie_typeahead.html', {
+    return render(request, 'armeria/partials/serie_typeahead.html', {
         'subproductos': subproductos,
     })
 
