@@ -1,6 +1,42 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
 ## Cristian - PC CASA
+- **Fecha/Día**: 30 de Septiembre de 2026
+- **Objetivo o Tarea**: Corrección de `AttributeError: 'Producto' object has no attribute 'pr_vta1'` en `Subproducto` y limpieza de partial duplicado `serie_typeahead.html` en facturación.
+- **Archivos creados o modificados**:
+  - `productos/models.py` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/partials/serie_typeahead.html` [MODIFY]
+  - `templates/facturacion/partials/serie_typeahead.html` [DELETED]
+- **Detalle Técnico e implicaciones**:
+  1. **Corrección de `AttributeError` en `Subproducto`:** En `productos/models.py`, las propiedades `precio_pesos`, `calcular_precio_pesos` y `precio_usd_referencia` intentaban acceder a `self.producto.pr_vta1` como respaldo. Dado que `Producto` utiliza `precio_neto` y no posee el campo histórico `pr_vta1`, se corrigió la lógica accediendo a `float((self.producto.precio_neto if self.producto else 0) or 0)`.
+  2. **Actualización de `serie_typeahead.html`:** En `verticalidades/armeria/templates/armeria/partials/serie_typeahead.html`, se reemplazaron las llamadas obsoletas a `sub.producto.pr_vta1` y `sub.producto.iva` por `sub.producto.precio_neto` y `sub.producto.alic_iva`. Se normalizó la sintaxis de filtros de Django (`default:0`, `default:21`, `default:""|escapejs`) resolviendo el `TemplateSyntaxError` de argumentos en `default`.
+  3. **Eliminación de duplicación en Core:** Se eliminó el archivo residual `templates/facturacion/partials/serie_typeahead.html`, dejando el componente encapsulado exclusivamente dentro del enchufe de la verticalidad de armería (`verticalidades/armeria/`).
+- **Resultado de las pruebas**: Verificación de sintaxis y eliminación de referencias huérfanas en plantillas y modelos.
+- **Estado actual y siguientes pasos sugeridos**: Vistas de stock de armas y búsqueda typeahead por series operativas y libres de errores.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 30 de Septiembre de 2026
+- **Objetivo o Tarea**: Optimización integral de filtros, selectores múltiples estilo Excel para Marca y Calibre, redimensionamiento de campos de búsqueda y formato de moneda argentino (`formato_ar`) en Stock de Armas (`/stock/armas/`).
+- **Archivos creados o modificados**:
+  - `docs/planes/100_filtros_marca_calibre_formato_stock_armas.md` [NEW]
+  - `verticalidades/armeria/views.py` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/stock_armas_list.html` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/partials/stock_armas_grilla.html` [MODIFY]
+  - `verticalidades/armeria/templates/armeria/partials/stock_armas_detalle_modal.html` [MODIFY]
+  - `verticalidades/armeria/tests.py` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Corrección de "Seleccionar Todo" / "Limpiar" en Filtros Excel:** Se corrigió la referencia del DOM en la función `toggleAll` y `updateSelected` de Alpine.js utilizando `this.$root || this.$el.closest('[x-data]')`, evitando que `this.$el` se refiriera al botón clickeado y garantizando que se tilden/destilden correctamente todas las casillas visibles del desplegable y se emita el submit a HTMX.
+  2. **Revisión de `fecha_nacimiento` en Clientes:** Se verificó el campo `fecha_nacimiento` en `ClienteProveedor` y `ClienteProveedorForm`. Es un campo opcional (`null=True, blank=True`), por lo que no bloquea ni rompe ninguna otra verticalidad. Se aseguró en `facturacion/views_htmx.py` (`cliente_modal`) que `pedir_fecha_nacimiento` se active automáticamente cuando la empresa es de tipo Armería o Automotor (`empresa.tipo_actividad in ['armeria', 'automotor']`).
+  3. **Eliminación de redundancia en Condición:** Se removió la píldora `USADAS` del grupo de familias superior (`#familia-pills`), conservando únicamente las familias reales (`TODOS`, `PISTOLA`, `ESCOPETA`, `CARABINA`, `FUSIL`, `PISTOLÓN`) y dejando el filtrado por condición estrictamente en el selector `<select name="estado">` (`Todas`, `Nuevo`, `Usado`).
+  4. **Formato Argentino (`formato_ar`):** Se cargó `{% load formato_tags %}` y se aplicó `|formato_ar` en todos los montos y cotizaciones de la grilla de stock y del modal de detalle de artículo.
+  5. **Rebalanceo de Tamaños de Entrada:** Se asignó `maxlength="16"` y ancho visual de 16 caracteres mono (`w-44`) al campo **Nro. Serie**, y `maxlength="9"` con ancho mono (`w-28`) al campo **CUIM**, acotando la **Búsqueda Rápida** a Producto/Código con ancho controlado.
+  6. **Filtros Múltiples estilo Excel (Marca y Calibre):**
+     - Se crearon popovers compactos con Alpine.js (`excelFilter`) que incluyen buscador de texto en vivo, botones de "Seleccionar todo" / "Limpiar", scroll acotado a 180px con overflow contenido (`style="max-height: 180px; overflow-y: auto;"`), y sincronización reactiva directa mediante HTMX al modificar checkboxes.
+     - En backend (`StockArmasListView`): se reciben listas `marcas` y `calibres`, se acotan las marcas del contexto únicamente a las que tienen subproductos en depósito, y se excluyó marca/calibre de la búsqueda general por texto.
+- **Resultado de las pruebas**: Integración de pruebas automatizadas `StockArmasFiltrosTests` en `verticalidades/armeria/tests.py`.
+- **Estado actual y siguientes pasos sugeridos**: Vistas de stock de armas y modales optimizados y estilizados.
+
+## Cristian - PC CASA
 - **Fecha/Día**: 29 de Septiembre de 2026
 - **Objetivo o Tarea**: Corrección de navegación y apertura de modal en la pantalla de Recepción de Rendiciones de Tesorería.
 - **Archivos creados o modificados**:

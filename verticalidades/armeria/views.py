@@ -1406,6 +1406,8 @@ class StockArmasListView(LoginRequiredMixin, ListView):
         search_sucursal = self.request.GET.get('sucursal', '').strip()
         search_estado = self.request.GET.get('estado', '').strip()
         search_familia = self.request.GET.get('familia', '').strip().upper()
+        selected_marcas = [m for m in self.request.GET.getlist('marcas') if m]
+        selected_calibres = [c for c in self.request.GET.getlist('calibres') if c]
 
         from django.db.models import Subquery, Q
         
@@ -1420,19 +1422,20 @@ class StockArmasListView(LoginRequiredMixin, ListView):
             for tok in tokens:
                 qs = qs.filter(
                     Q(producto__detalle__icontains=tok) |
-                    Q(producto__marca__detalle__icontains=tok) |
-                    Q(producto__unidad_venta__icontains=tok) |
-                    Q(producto__cod_prov__icontains=tok)
+                    Q(producto__cod_prov__icontains=tok) |
+                    Q(producto__cod_fab__icontains=tok) |
+                    Q(producto__id__icontains=tok)
                 )
+        if selected_marcas:
+            qs = qs.filter(producto__marca_id__in=selected_marcas)
+        if selected_calibres:
+            qs = qs.filter(producto__unidad_venta__in=selected_calibres)
         if search_sucursal:
             qs = qs.filter(sucursal_id=search_sucursal)
         if search_estado:
             qs = qs.filter(estado=search_estado)
         if search_familia and search_familia != 'TODOS':
-            if search_familia == 'USADAS':
-                qs = qs.filter(estado='USADO')
-            else:
-                qs = qs.filter(producto__familia__detalle__icontains=search_familia)
+            qs = qs.filter(producto__familia__detalle__icontains=search_familia)
 
         latest_ids = qs.order_by('serie', '-feccpra', '-subpro').distinct('serie').values('subpro')
         qs = Subproducto.objects.filter(subpro__in=Subquery(latest_ids))
@@ -1479,9 +1482,26 @@ class StockArmasListView(LoginRequiredMixin, ListView):
         if empresa_id:
             context['sucursales'] = Sucursal.objects.filter(empresa_id=empresa_id).order_by('nombre')
             from empresas.models import CotizacionMoneda
+            from productos.models import Marca
             cotiz = CotizacionMoneda.objects.filter(empresa_id=empresa_id).first()
             context['dolar_cobranza'] = float(cotiz.dolar_cobranza) if cotiz and cotiz.dolar_cobranza else 1.0
+            
+            # Solo marcas con subproductos en stock / depósito
+            marcas_ids = Subproducto.objects.filter(empresa_id=empresa_id, situacion='DEPOSITO')\
+                .values_list('producto__marca_id', flat=True).distinct()
+            context['marcas'] = Marca.objects.filter(id__in=marcas_ids).order_by('detalle')
+            
+            calibres = Subproducto.objects.filter(empresa_id=empresa_id, situacion='DEPOSITO')\
+                .exclude(producto__unidad_venta__isnull=True)\
+                .exclude(producto__unidad_venta__in=['', 'UNIDAD'])\
+                .values_list('producto__unidad_venta', flat=True)\
+                .distinct()\
+                .order_by('producto__unidad_venta')
+            context['calibres'] = list(calibres)
+
         context['selected_familia'] = self.request.GET.get('familia', 'TODOS').upper()
+        context['selected_marcas'] = [m for m in self.request.GET.getlist('marcas') if m]
+        context['selected_calibres'] = [c for c in self.request.GET.getlist('calibres') if c]
         return context
 
 @login_required

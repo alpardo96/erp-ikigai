@@ -276,3 +276,118 @@ class ArmeriaModificacionesTests(TestCase):
         )
         self.assertIsNotNone(preventa.preventa_id)
 
+
+class StockArmasFiltrosTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='operador_armeria_stock', password='password123')
+        self.client = Client()
+        self.client.login(username='operador_armeria_stock', password='password123')
+
+        self.empresa = Empresa.objects.create(nombre="Armeria Test SA", cuit="30799999992", tipo_actividad="armeria")
+        self.sucursal = Sucursal.objects.create(empresa=self.empresa, nombre="Sucursal Central")
+
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session['sucursal_id'] = self.sucursal.id
+        session.save()
+
+        from productos.models import Marca, Familia
+        self.marca_bersa = Marca.objects.create(empresa=self.empresa, detalle="BERSA")
+        self.marca_glock = Marca.objects.create(empresa=self.empresa, detalle="GLOCK")
+        self.marca_taurus = Marca.objects.create(empresa=self.empresa, detalle="TAURUS")
+
+        self.familia_pistola = Familia.objects.create(empresa=self.empresa, detalle="PISTOLA")
+
+        # Producto 1: BERSA .380
+        self.prod_bersa = Producto.objects.create(
+            empresa=self.empresa,
+            detalle="BERSA THUNDER .380 PLUS",
+            marca=self.marca_bersa,
+            familia=self.familia_pistola,
+            unidad_venta="C.380",
+            subprod=True,
+            precio_neto=Decimal('1250000.00'),
+            moneda='PES'
+        )
+        self.sub_bersa = Subproducto.objects.create(
+            empresa=self.empresa,
+            producto=self.prod_bersa,
+            sucursal=self.sucursal,
+            serie="BER1234567890123",
+            cuim="CUIM12345",
+            feccpra=timezone.localdate(),
+            estado="NUEVO",
+            situacion="DEPOSITO",
+            moneda='PES'
+        )
+
+        # Producto 2: GLOCK 9mm
+        self.prod_glock = Producto.objects.create(
+            empresa=self.empresa,
+            detalle="GLOCK 17 GEN 5 9X19",
+            marca=self.marca_glock,
+            familia=self.familia_pistola,
+            unidad_venta="9X19",
+            subprod=True,
+            precio_neto=Decimal('850.00'),
+            moneda='DOL'
+        )
+        self.sub_glock = Subproducto.objects.create(
+            empresa=self.empresa,
+            producto=self.prod_glock,
+            sucursal=self.sucursal,
+            serie="GLK9876543210987",
+            cuim="CUIM99999",
+            feccpra=timezone.localdate(),
+            estado="USADO",
+            situacion="DEPOSITO",
+            moneda='DOL'
+        )
+
+    def test_stock_armas_contexto_y_formato_ar_grilla(self):
+        """Verifica que la grilla cargue catálogos de marcas y calibres y formatee precios con formato_ar."""
+        response = self.client.get(reverse('stock_armas_listado'), HTTP_HX_REQUEST='true')
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8')
+        
+        # Debe contener precio formateado con punto de miles y coma decimal
+        self.assertIn('1.250.000,00', content)
+        # Debe contener la serie de 16 caracteres
+        self.assertIn('BER1234567890123', content)
+
+    def test_stock_armas_filtro_marcas_multiples(self):
+        """Verifica el filtrado múltiple por marcas."""
+        # Filtrar solo BERSA
+        response = self.client.get(reverse('stock_armas_listado'), {'marcas': [str(self.marca_bersa.id)]}, HTTP_HX_REQUEST='true')
+        content = response.content.decode('utf-8')
+        self.assertIn('BER1234567890123', content)
+        self.assertNotIn('GLK9876543210987', content)
+
+        # Filtrar BERSA y GLOCK
+        response = self.client.get(reverse('stock_armas_listado'), {'marcas': [str(self.marca_bersa.id), str(self.marca_glock.id)]}, HTTP_HX_REQUEST='true')
+        content = response.content.decode('utf-8')
+        self.assertIn('BER1234567890123', content)
+        self.assertIn('GLK9876543210987', content)
+
+    def test_stock_armas_filtro_calibres_multiples(self):
+        """Verifica el filtrado múltiple por calibres."""
+        response = self.client.get(reverse('stock_armas_listado'), {'calibres': ['9X19']}, HTTP_HX_REQUEST='true')
+        content = response.content.decode('utf-8')
+        self.assertNotIn('BER1234567890123', content)
+        self.assertIn('GLK9876543210987', content)
+
+    def test_stock_armas_filtro_estado(self):
+        """Verifica el filtrado por condición (NUEVO / USADO)."""
+        response = self.client.get(reverse('stock_armas_listado'), {'estado': 'USADO'}, HTTP_HX_REQUEST='true')
+        content = response.content.decode('utf-8')
+        self.assertNotIn('BER1234567890123', content)
+        self.assertIn('GLK9876543210987', content)
+
+    def test_stock_armas_detalle_modal_formato_ar(self):
+        """Verifica que el modal de detalle aplique formato_ar."""
+        response = self.client.get(reverse('stock_armas_detalle_modal', args=[self.sub_bersa.subpro]))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8')
+        self.assertIn('1.250.000,00', content)
+
+

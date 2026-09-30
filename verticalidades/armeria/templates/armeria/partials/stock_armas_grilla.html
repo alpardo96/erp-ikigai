@@ -1,3 +1,4 @@
+{% load formato_tags %}
 {% for sp in subproductos %}
 <tr class="hover:bg-gray-50 transition-colors border-b border-gray-100 cursor-pointer"
     hx-get="{% url 'stock_armas_detalle_modal' sp.subpro %}" 
@@ -15,9 +16,9 @@
     <td class="px-2 py-2 text-xs text-gray-700 font-medium">{% if sp.producto.unidad_venta and sp.producto.unidad_venta != 'UNIDAD' %}{{ sp.producto.unidad_venta }}{% else %}-{% endif %}</td>
     
     <td class="px-2 py-2 text-right">
-        <div class="text-xs font-bold text-gray-900 font-mono">${{ sp.precio_pesos|floatformat:2 }}</div>
+        <div class="text-xs font-bold text-gray-900 font-mono">$ {{ sp.precio_pesos|formato_ar }}</div>
         {% if sp.es_moneda_dolar %}
-            <div class="text-[10px] text-gray-500 font-mono font-medium">U$S {{ sp.precio_usd_referencia|floatformat:2 }}</div>
+            <div class="text-[10px] text-gray-500 font-mono font-medium">U$S {{ sp.precio_usd_referencia|formato_ar }}</div>
         {% endif %}
     </td>
 

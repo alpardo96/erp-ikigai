@@ -420,7 +420,7 @@ class Subproducto(AuditModel):
 
     @property
     def precio_pesos(self):
-        base = float(self.producto.precio_neto or self.producto.pr_vta1 or 0)
+        base = float((self.producto.precio_neto if self.producto else 0) or 0)
         if self.es_moneda_dolar:
             cotiz = getattr(self.empresa, 'cotizacion_moneda', None)
             dc = float(cotiz.dolar_cobranza) if cotiz and cotiz.dolar_cobranza else 1.0
@@ -428,7 +428,7 @@ class Subproducto(AuditModel):
         return round(base, 2)
 
     def calcular_precio_pesos(self, dolar_cobranza=1.0):
-        base = float(self.producto.precio_neto or self.producto.pr_vta1 or 0)
+        base = float((self.producto.precio_neto if self.producto else 0) or 0)
         if self.es_moneda_dolar:
             dc = float(dolar_cobranza) if (dolar_cobranza and float(dolar_cobranza) > 0) else 1.0
             return round(base * dc, 2)
@@ -436,7 +436,7 @@ class Subproducto(AuditModel):
 
     @property
     def precio_usd_referencia(self):
-        base = float(self.producto.precio_neto or self.producto.pr_vta1 or 0)
+        base = float((self.producto.precio_neto if self.producto else 0) or 0)
         return round(base, 2)
 
     def clean(self):
