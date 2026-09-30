@@ -37,6 +37,7 @@
     <td class="col-marca px-3 py-4 text-sm text-gray-500">{{ producto.marca.detalle|default:"-" }}</td>
     <td class="col-rubro px-3 py-4 text-sm text-gray-500">{{ producto.rubro.detalle|default:"-" }}</td>
     <td class="col-familia px-3 py-4 text-sm text-gray-500">{{ producto.familia.detalle|default:"-" }}</td>
+    <td class="col-subfamilia px-3 py-4 text-sm text-gray-500">{{ producto.subfamilia.detalle|default:"-" }}</td>
     <td class="col-subprod px-3 py-4 text-sm text-gray-500">
         {% if producto.subprod %}
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Sí</span>

@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 import json
 
 from .models import ClienteProveedor, Jurisdiccion, Compra, CompraItem, Venta, VentaItem
@@ -119,9 +120,10 @@ def _obtener_empresa_id(request):
 def buscar_clientes(request):
     """
     BUSCADOR DE CLIENTES Y PROVEEDORES
-    - Filtra por Razón Social o CUIT.
+    - Filtra por Razón Social, CUIT (con o sin guiones), Código de sistema o Código anterior.
     - Soporta filtro de activación (Habilitados / Deshabilitados / Todos) exclusivo para Administrador.
     - Para usuarios no administradores, siempre restringe a activo=True.
+    - Respeta el filtro de Tipo de Entidad (1: Clientes, 2: Proveedores) sin anularse al buscar por texto.
     - Si no hay término de búsqueda 'q', ordena por -codigo_id para mostrar las entidades creadas recientemente arriba.
     """
     q = request.GET.get('q', '').strip()
@@ -140,14 +142,29 @@ def buscar_clientes(request):
     else:  # 'habilitados' por defecto
         clientes = clientes.filter(activo=True)
     
+    # 1. Filtro acumulativo por tipo de entidad
+    if tipo_entidad in ('1', '2'):
+        clientes = clientes.filter(tipo_entidad=int(tipo_entidad))
+
+    # 2. Filtro de búsqueda textual flexible
     if q:
-        clientes = clientes.filter(Q(razon_social__icontains=q) | Q(cuit__icontains=q)).order_by('razon_social')
-    elif tipo_entidad in ('1', '2'):
-        clientes = clientes.filter(tipo_entidad=int(tipo_entidad)).order_by('-codigo_id')
+        q_limpio = q.replace('-', '').strip()
+        filtro_q = Q(razon_social__icontains=q) | Q(cuit__icontains=q) | Q(cuit__icontains=q_limpio) | Q(codigo_anterior__icontains=q)
+        if q.isdigit():
+            filtro_q |= Q(codigo_id=int(q))
+        clientes = clientes.filter(filtro_q).order_by('razon_social')
     else:
         clientes = clientes.order_by('-codigo_id')
     
-    clientes = clientes.select_related('jurisdiccion', 'armeria')
+    # 3. select_related seguro según verticalidad presente
+    select_fields = ['jurisdiccion']
+    for rel in ['distribuidora', 'armeria']:
+        try:
+            ClienteProveedor._meta.get_field(rel)
+            select_fields.append(rel)
+        except Exception:
+            pass
+    clientes = clientes.select_related(*select_fields)
     
     return render(request, 'facturacion/partials/cliente_table_rows.html', {
         'clientes': clientes[:100],

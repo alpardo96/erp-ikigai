@@ -30,7 +30,7 @@ def construir_filtro_busqueda_producto(q, empresa_id, solo_trazabilidad=False, e
     ).values('producto_id').annotate(total=Sum('cantidad')).values('total')
 
     qs = Producto.objects.filter(empresa_filtros).select_related(
-        'proveedor', 'marca', 'rubro', 'familia'
+        'proveedor', 'marca', 'rubro', 'familia', 'subfamilia'
     ).annotate(
         stock_total_calc=Coalesce(
             Subquery(subq_stock, output_field=DecimalField(max_digits=15, decimal_places=2)),
