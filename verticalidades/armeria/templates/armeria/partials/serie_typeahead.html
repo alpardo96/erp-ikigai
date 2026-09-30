@@ -2,7 +2,7 @@
 {% if subproductos %}
 <div class="py-1 divide-y divide-slate-100">
     {% for sub in subproductos %}
-    <div onclick="seleccionarSerieVenta('{{ sub.producto.id }}', '{{ sub.producto.detalle|escapejs }}', '{{ sub.serie|escapejs }}', '{{ sub.producto.precio_neto|unlocalize|default:\"0\" }}', '{{ sub.producto.alic_iva|unlocalize|default:\"21\" }}', '{{ sub.cuim|escapejs|default:\"\" }}', '{{ sub.situacion }}')"
+    <div onclick="seleccionarSerieVenta('{{ sub.producto.id }}', '{{ sub.producto.detalle|escapejs }}', '{{ sub.serie|escapejs }}', '{{ sub.producto.precio_neto|unlocalize|default:0 }}', '{{ sub.producto.alic_iva|unlocalize|default:21 }}', '{{ sub.cuim|default:""|escapejs }}', '{{ sub.situacion }}')"
         class="px-4 py-2.5 hover:bg-amber-50 cursor-pointer flex items-center justify-between transition-colors">
         <div>
             <div class="flex items-center gap-2">
