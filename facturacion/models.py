@@ -105,6 +105,11 @@ class ClienteProveedor(AuditModel):
         verbose_name = "Cliente/Proveedor"
         verbose_name_plural = "Clientes y Proveedores"
         indexes = [
+            models.Index(fields=['empresa', 'activo', 'tipo_entidad']),
+            models.Index(fields=['empresa', 'activo', 'razon_social']),
+            models.Index(fields=['empresa', 'activo', 'cuit']),
+            models.Index(fields=['empresa', 'activo', 'codigo_anterior']),
+            models.Index(fields=['empresa', 'activo']),
             models.Index(fields=['empresa', 'razon_social']),
             models.Index(fields=['empresa', 'tipo_entidad']),
         ]

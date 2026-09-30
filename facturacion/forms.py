@@ -15,10 +15,16 @@ class PreventaForm(forms.ModelForm):
         }
         
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
         self.fields['vendedor'].empty_label = None
         if 'es_consumidor_final' in self.fields:
             self.fields['es_consumidor_final'].required = False
+        if 'cliente' in self.fields:
+            qs = ClienteProveedor.objects.filter(activo=True, tipo_entidad=1)
+            if empresa:
+                qs = qs.filter(empresa=empresa)
+            self.fields['cliente'].queryset = qs.order_by('razon_social')
 
 
 class VentaForm(forms.ModelForm):
@@ -59,6 +65,7 @@ class VentaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
         # Hacemos que todos los campos de importes y cobros sean opcionales en el form
         opcionales = [
@@ -74,6 +81,12 @@ class VentaForm(forms.ModelForm):
         if 'tipo' in self.fields:
             self.fields['tipo'].queryset = TipoComprobante.objects.filter(estado=True)
             self.fields['tipo'].to_field_name = "codigo"
+
+        if 'cliente' in self.fields:
+            qs = ClienteProveedor.objects.filter(activo=True, tipo_entidad=1)
+            if empresa:
+                qs = qs.filter(empresa=empresa)
+            self.fields['cliente'].queryset = qs.order_by('razon_social')
 
 class ClienteProveedorForm(forms.ModelForm):
     clasificacion_cli = forms.ChoiceField(choices=ClienteProveedor.CLASIFICACION_CLI, required=False, label="Clasificación (Cliente)")
@@ -376,6 +389,7 @@ class CompraForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
         # Hacemos que todos los campos de importes sean opcionales
         opcionales = [
@@ -389,3 +403,9 @@ class CompraForm(forms.ModelForm):
         if 'tipo' in self.fields:
             self.fields['tipo'].queryset = TipoComprobante.objects.all()
             self.fields['tipo'].to_field_name = "codigo"
+
+        if 'proveedor' in self.fields:
+            qs = ClienteProveedor.objects.filter(activo=True, tipo_entidad=2)
+            if empresa:
+                qs = qs.filter(empresa=empresa)
+            self.fields['proveedor'].queryset = qs.order_by('razon_social')

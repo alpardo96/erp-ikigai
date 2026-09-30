@@ -796,15 +796,21 @@ class ComprasCargaView(LoginRequiredMixin, View):
             if tc_obj:
                 comprobante_display = f"{tc_obj.codigo} - {tc_obj.detalle}"
 
+        es_gasto = request.POST.get('modo') == 'gasto'
+        items_temp = request.session.get('compra_items_temp', [])
+
         ctx_base = {
-            'form': form, 'cuentas': cuentas, 'alicuotas_iva': alicuotas_iva,
+            'form': form,
+            'cuentas': cuentas,
+            'alicuotas_iva': alicuotas_iva,
             'condicion_iibb': empresa_ctx.condicion_iibb if empresa_ctx else 'LOCAL',
             'jurisdicciones_iibb': empresa_ctx.jurisdicciones_iibb.order_by('codigo') if empresa_ctx else [],
+            'empresa_usa_oc': empresa_ctx.usa_orden_compra if empresa_ctx else False,
             'proveedor_display': proveedor_display,
             'comprobante_display': comprobante_display,
+            'periodo_sugerido': data.get('periodo', '').strip() or obtener_primer_periodo_vigente_compra(request.session.get('empresa_id'), data.get('fecha')),
+            'modo': 'gasto' if es_gasto else 'bienes',
         }
-        items_temp = request.session.get('compra_items_temp', [])
-        es_gasto = request.POST.get('modo') == 'gasto'
 
         if not items_temp and not es_gasto:
             messages.error(request, "Debe cargar al menos un producto en la grilla.")

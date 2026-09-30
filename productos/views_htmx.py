@@ -325,19 +325,21 @@ def obtener_margen(request):
 
 def filtrar_familias(request):
     rubro_id = request.GET.get('id')
+    empresa_id = request.session.get('empresa_id')
     if not rubro_id:
-        familias = Familia.objects.filter(empresa_id=request.session.get('empresa_id'))
+        familias = Familia.objects.filter(empresa_id=empresa_id).order_by('detalle')
     else:
-        familias = Familia.objects.filter(rubro_id=rubro_id, empresa_id=request.session.get('empresa_id'))
+        familias = Familia.objects.filter(rubro_id=rubro_id, empresa_id=empresa_id).order_by('detalle')
     
     return render(request, 'productos/partials/familia_options.html', {'familias': familias})
 
 def filtrar_subfamilias(request):
     familia_id = request.GET.get('id')
+    empresa_id = request.session.get('empresa_id')
     if not familia_id:
-        subfamilias = Subfamilia.objects.filter(empresa_id=request.session.get('empresa_id'))
+        subfamilias = Subfamilia.objects.none()
     else:
-        subfamilias = Subfamilia.objects.filter(familia_id=familia_id, empresa_id=request.session.get('empresa_id'))
+        subfamilias = Subfamilia.objects.filter(familia_id=familia_id, empresa_id=empresa_id).order_by('detalle')
     
     return render(request, 'productos/partials/subfamilia_options.html', {'subfamilias': subfamilias})
 

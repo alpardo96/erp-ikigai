@@ -55,40 +55,6 @@ def buscar_jurisdicciones(request):
     return render(request, 'configuracion/partials/jurisdiccion_table_rows.html', {'jurisdicciones': juris})
 
 @login_required
-def lista_productos_resultados(request):
-    """
-    Filtra productos por columnas específicas o búsqueda general.
-    """
-    q = request.GET.get('q', '').strip()
-    f_id = request.GET.get('f_id', '').strip()
-    f_prov = request.GET.get('f_prov', '').strip()
-    f_prov_hab = request.GET.get('f_prov_hab', '').strip()
-    f_det = request.GET.get('f_det', '').strip()
-
-    filtros = Q()
-    
-    if q:
-        if q.isdigit():
-            filtros &= (Q(id=q) | Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-        else:
-            filtros &= (Q(cod_prov__icontains=q) | Q(cod_fab__icontains=q) | Q(detalle__icontains=q))
-    
-    if f_id:
-        if f_id.isdigit():
-            filtros &= Q(id=f_id)
-        else:
-            filtros &= Q(id=-1)
-    if f_prov:
-        filtros &= Q(cod_prov__icontains=f_prov)
-    if f_prov_hab:
-        filtros &= Q(proveedor__razon_social__icontains=f_prov_hab)
-    if f_det:
-        filtros &= Q(detalle__icontains=f_det)
-
-    productos = Producto.objects.filter(filtros).select_related('proveedor').order_by('detalle')[:50]
-    return render(request, 'facturacion/partials/productos_search_results.html', {'productos': productos})
-
-@login_required
 def eliminar_jurisdiccion(request, id):
     """
     BORRAR JURISDICCIÓN
@@ -523,10 +489,11 @@ def buscar_producto_por_codigo(request):
     if request.GET.get('solo_trazables') == '1':
         filtros &= Q(subprod=True)
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa.
+    # Multi-tenant: SIEMPRE acotado a la empresa activa y activo=True.
     producto = Producto.objects.filter(
         filtros,
         empresa_id=request.session.get('empresa_id'),
+        activo=True,
     ).first()
 
     if producto:
@@ -556,7 +523,8 @@ def buscar_producto_por_codprov(request):
         return HttpResponse('', status=200)
 
     producto = Producto.objects.filter(
-        empresa_id=empresa_id, proveedor_id=proveedor_id, cod_prov__iexact=q
+        empresa_id=empresa_id, proveedor_id=proveedor_id, cod_prov__iexact=q,
+        activo=True
     ).first()
 
     response = HttpResponse()
@@ -623,9 +591,9 @@ def lista_productos_resultados(request):
     if request.GET.get('solo_trazables') == '1':
         filtros &= Q(subprod=True)
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa.
+    # Multi-tenant: SIEMPRE acotado a la empresa activa y productos habilitados.
     productos = list(Producto.objects.filter(
-        filtros, empresa_id=request.session.get('empresa_id')
+        filtros, empresa_id=request.session.get('empresa_id'), activo=True
     ).select_related('proveedor').order_by('detalle')[:100])
 
     items_temp = request.session.get('compra_items_temp', [])
@@ -1049,22 +1017,23 @@ def buscar_producto_venta_por_codigo(request):
         except CotizacionMoneda.DoesNotExist:
             pass
 
-    # Multi-tenant: SIEMPRE acotado a la empresa activa.
+    # Multi-tenant: SIEMPRE acotado a la empresa activa y activo=True.
     producto = None
 
     # Prioridad 0: Si viene id / producto_id explícito (desde modal o selector)
     if producto_id:
-        producto = Producto.objects.filter(id=producto_id, empresa_id=empresa_id).first()
+        producto = Producto.objects.filter(id=producto_id, empresa_id=empresa_id, activo=True).first()
 
     # Prioridad 1: Si 'q' es un número entero, buscar coincidencia EXACTA por primary key ID
     if not producto and q and q.isdigit():
-        producto = Producto.objects.filter(id=int(q), empresa_id=empresa_id).first()
+        producto = Producto.objects.filter(id=int(q), empresa_id=empresa_id, activo=True).first()
 
     # Prioridad 2: Coincidencia EXACTA por cod_prov, cod_fab o codigo_anterior
     if not producto and q:
         producto = Producto.objects.filter(
             Q(cod_prov__iexact=q) | Q(cod_fab__iexact=q) | Q(codigo_anterior__iexact=q),
             empresa_id=empresa_id,
+            activo=True,
         ).first()
 
     # Prioridad 3: Fallback a búsqueda inteligente multi-término
@@ -1114,7 +1083,7 @@ def lista_productos_venta_resultados(request):
             excluir_subprod=False
         )
     else:
-        productos_qs = Producto.objects.filter(empresa_id=empresa_id).order_by('detalle')
+        productos_qs = Producto.objects.filter(empresa_id=empresa_id, activo=True).order_by('detalle')
 
     if f_id:
         if f_id.isdigit():
@@ -1564,45 +1533,64 @@ def preventas_item_add(request):
     producto_id = request.POST.get('producto_id')
     credencial = request.POST.get('credencial', '').strip()
     from .helpers import parsear_decimal_ar
+    from empresas.models import Empresa as _Empresa
+    empresa_id = request.session.get('empresa_id')
+    empresa_activa = _Empresa.objects.filter(pk=empresa_id).first()
+    modo_edicion = getattr(empresa_activa, 'modo_edicion_facturacion', 'DESCUENTO')
+
+    items = request.session.get('preventa_items_temp', [])
+
+    def _render_error_preventa(mensaje, icon='warning'):
+        resp = render(request, 'facturacion/partials/preventa_items_tabla.html', {
+            'items': items,
+            'moneda': 'PES',
+            'modo_edicion': modo_edicion
+        })
+        resp['HX-Trigger'] = json.dumps({
+            'alertaPreventa': {
+                'tipo': icon,
+                'mensaje': mensaje
+            },
+            'limpiarInputsCargaPreventa': True
+        })
+        return resp
+
     dmp = parsear_decimal_ar(request.POST.get('dmp', 0))
     try:
         cantidad = parsear_decimal_ar(request.POST.get('cantidad', '1'), default=1.0)
         precio_lista = parsear_decimal_ar(request.POST.get('precio', '0'), default=0.0)
         descuento = parsear_decimal_ar(request.POST.get('descuento', '0'), default=0.0)
     except (ValueError, TypeError):
-        return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Valores inválidos.</div>", status=200)
-    
-    items = request.session.get('preventa_items_temp', [])
+        return _render_error_preventa("Valores numéricos ingresados inválidos.", icon='error')
     
     if not producto_id:
         return render(request, 'facturacion/partials/preventa_items_tabla.html', {
             'items': items,
-            'moneda': 'PES'
+            'moneda': 'PES',
+            'modo_edicion': modo_edicion
         })
 
     if any(str(item['producto_id']) == str(producto_id) for item in items):
-        return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Este producto ya fue cargado.</div>", status=200)
+        return _render_error_preventa("Este producto ya fue cargado.", icon='warning')
 
     from productos.models import Producto
     from empresas.models import CotizacionMoneda
     from .helpers import validar_clu_cliente_armeria
-    producto = get_object_or_404(Producto, id=producto_id, empresa_id=request.session.get('empresa_id'))
+    producto = get_object_or_404(Producto, id=producto_id, empresa_id=empresa_id)
 
     # Validación de exclusividad de armas (SIGIMAC / subprod=True)
     if producto.subprod:
         if len(items) > 0:
-            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Las armas/artículos trazables (SIGIMAC) deben reservarse en una preventa individual exclusiva.</div>", status=200)
+            return _render_error_preventa("Las armas/artículos trazables (SIGIMAC) deben reservarse en una preventa individual exclusiva.", icon='warning')
         if cantidad != 1:
-            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.</div>", status=200)
+            return _render_error_preventa("La cantidad de reserva para un arma trazable debe ser exactamente 1 unidad.", icon='warning')
     else:
         if any(item.get('subprod', False) for item in items):
-            return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Esta preventa es exclusiva para la reserva de un arma. Para otros productos debe generar una preventa separada.</div>", status=200)
+            return _render_error_preventa("Esta preventa es exclusiva para la reserva de un arma. Para otros productos debe generar una preventa separada.", icon='warning')
 
     # Validación para empresas tipo ARMERÍA:
     # No se permite facturar productos con creden = True a clientes sin identificar (tipo_documento = 99 / Consumidor Final)
-    from empresas.models import Empresa as _Empresa
     from facturacion.models import ClienteProveedor
-    empresa_id = request.session.get('empresa_id')
     es_armeria = _Empresa.objects.filter(id=empresa_id, tipo_actividad__iexact="ARMERIA").exists()
 
     if es_armeria and producto.creden:
@@ -1611,17 +1599,12 @@ def preventas_item_add(request):
         if cliente_id:
             cliente_obj = ClienteProveedor.objects.filter(pk=cliente_id, empresa_id=empresa_id).first()
         if not cliente_obj or cliente_obj.tipo_documento == '99' or cliente_obj.codigo_id == 1:
-            return HttpResponse(
-                "<div class='p-3.5 bg-amber-50 border-l-4 border-amber-500 text-amber-900 font-black text-[11px] rounded shadow-sm'>"
-                "⚠️ Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real."
-                "</div>",
-                status=200
-            )
+            return _render_error_preventa("Debe identificar al cliente que compra este tipo de producto. Para poder avanzar debe seleccionar al cliente real.", icon='warning')
 
     # En Preventas, la credencial solo se exige cuando creden=True y subprod=False
     # (en armas/subprod=True es solo un anticipo/reserva y no aplica pedir credencial aquí)
     if producto.creden and not producto.subprod and not credencial:
-        return HttpResponse("<div class='p-4 bg-red-100 text-red-700 font-bold'>Este producto requiere CREDENCIAL obligatoria.</div>", status=200)
+        return _render_error_preventa("Este producto requiere CREDENCIAL obligatoria.", icon='warning')
 
     # Nota: En Preventas no opera la restricción de CLU vigente ya que aquí
     # no se factura ni entrega el arma, sólo se genera la preventa/reserva (la traba
@@ -2011,7 +1994,7 @@ def typeahead_clientes(request):
     q = (request.GET.get('q') or request.GET.get('q_cliente') or request.GET.get('q_proveedor') or '').strip()
     empresa_id = request.session.get('empresa_id')
     
-    filtros = Q(empresa_id=empresa_id) 
+    filtros = Q(empresa_id=empresa_id, activo=True) 
     if q:
         filtros &= (Q(razon_social__icontains=q) | Q(cuit__icontains=q))
 

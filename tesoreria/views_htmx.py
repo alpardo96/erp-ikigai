@@ -224,7 +224,7 @@ def buscar_cliente_proveedor(request, tipo):
     empresa_id = request.session.get('empresa_id')
     q = request.GET.get('q', '').strip()
     
-    entidades = ClienteProveedor.objects.filter(empresa_id=empresa_id)
+    entidades = ClienteProveedor.objects.filter(empresa_id=empresa_id, activo=True)
     if q:
         entidades = entidades.filter(Q(razon_social__icontains=q) | Q(cuit__icontains=q))
         
@@ -261,7 +261,7 @@ def lista_clientes_recibo_resultados(request):
     q = request.GET.get('q', '').strip()
     empresa_id = request.session.get('empresa_id')
 
-    clientes = ClienteProveedor.objects.filter(empresa_id=empresa_id).annotate(
+    clientes = ClienteProveedor.objects.filter(empresa_id=empresa_id, activo=True).annotate(
         saldo_pendiente=Coalesce(Sum('venta__saldo', filter=Q(venta__estado=0, venta__saldo__gt=0)), Decimal('0'))
     )
     if q:
@@ -328,7 +328,7 @@ def lista_proveedores_op_resultados(request):
     q = request.GET.get('q', '').strip()
     empresa_id = request.session.get('empresa_id')
 
-    proveedores = ClienteProveedor.objects.filter(empresa_id=empresa_id).annotate(
+    proveedores = ClienteProveedor.objects.filter(empresa_id=empresa_id, activo=True).annotate(
         saldo_pendiente=Coalesce(Sum('compra__saldo', filter=Q(compra__saldo__gt=0)), Decimal('0'))
     )
     if q:
