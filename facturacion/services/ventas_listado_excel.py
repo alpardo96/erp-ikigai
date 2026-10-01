@@ -190,18 +190,21 @@ def exportar_ventas_listado_excel_service(ventas_qs, empresa, filtros):
         vendedor_nombre = vdor_obj.get_full_name() or vdor_obj.username if vdor_obj else ''
         usuario_nombre = usu_obj.username if usu_obj else ''
 
-        # Importes
-        neto_val = Decimal(str(vta.neto or 0))
-        no_grav_val = Decimal(str(vta.no_gravado or 0))
-        exento_val = Decimal(str(vta.exento or 0))
-        iva_val = Decimal(str(vta.iva or 0))
-        p_iibb_val = Decimal(str(vta.p_iibb or 0))
-        p_iva_val = Decimal(str(vta.p_iva or 0))
-        p_gcia_val = Decimal(str(vta.p_gcia or 0))
-        otras_perc_val = Decimal(str(vta.p_sircreb or 0)) + Decimal(str(vta.p_mun or 0)) + Decimal(str(vta.p_recbc or 0)) + Decimal(str(vta.otros or 0))
-        total_val = Decimal(str(vta.total or 0))
-        cobrado_val = Decimal(str(vta.cobrado or 0))
-        saldo_val = Decimal(str(vta.saldo or 0))
+        # Obtener el signo del comprobante (por defecto 1 si no está definido)
+        signo = Decimal(str(vta.tipo.signo if vta.tipo and vta.tipo.signo else 1))
+        
+        # Importes aplicando el signo correspondiente (NC restan)
+        neto_val = Decimal(str(vta.neto or 0)) * signo
+        no_grav_val = Decimal(str(vta.no_gravado or 0)) * signo
+        exento_val = Decimal(str(vta.exento or 0)) * signo
+        iva_val = Decimal(str(vta.iva or 0)) * signo
+        p_iibb_val = Decimal(str(vta.p_iibb or 0)) * signo
+        p_iva_val = Decimal(str(vta.p_iva or 0)) * signo
+        p_gcia_val = Decimal(str(vta.p_gcia or 0)) * signo
+        otras_perc_val = (Decimal(str(vta.p_sircreb or 0)) + Decimal(str(vta.p_mun or 0)) + Decimal(str(vta.p_recbc or 0)) + Decimal(str(vta.otros or 0))) * signo
+        total_val = Decimal(str(vta.total or 0)) * signo
+        cobrado_val = Decimal(str(vta.cobrado or 0)) * signo
+        saldo_val = Decimal(str(vta.saldo or 0)) * signo
 
         # Sumar a totales si no está anulada
         if vta.estado != 1:

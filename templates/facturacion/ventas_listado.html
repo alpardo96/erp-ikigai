@@ -201,9 +201,9 @@
                             </button>
                             {% endif %}
                         </div>
-                                      <td class="px-4 py-2 text-right tabular-nums">$ {{ v.neto|formato_ar }}</td>
-                    <td class="px-4 py-2 text-right tabular-nums text-slate-500">$ {{ v.iva|formato_ar }}</td>
-                    <td class="px-4 py-2 text-right font-black tabular-nums">$ {{ v.total|formato_ar }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums {% if v.tipo.signo == -1 %}text-red-500{% endif %}">{% if v.tipo.signo == -1 %}-{% endif %}$ {{ v.neto|formato_ar }}</td>
+                    <td class="px-4 py-2 text-right tabular-nums {% if v.tipo.signo == -1 %}text-red-400{% else %}text-slate-500{% endif %}">{% if v.tipo.signo == -1 %}-{% endif %}$ {{ v.iva|formato_ar }}</td>
+                    <td class="px-4 py-2 text-right font-black tabular-nums {% if v.tipo.signo == -1 %}text-red-600{% endif %}">{% if v.tipo.signo == -1 %}-{% endif %}$ {{ v.total|formato_ar }}</td>
                     <td class="px-4 py-2 text-center text-slate-500 uppercase text-[10px] font-bold">{{ v.sucursal.nombre }}</td>
                     <td class="px-4 py-2 text-center flex items-center justify-center gap-1.5">
                         <button type="button"

@@ -97,10 +97,9 @@ def emitir_nota_credito_desde_venta(venta_original: Venta, items_devolucion: dic
             
         hay_items = True
         
-        # El subtotal se recalcula en base a la cantidad devuelta
-        precio = original_item.precio_unitario
-        desc = original_item.porcentaje_descuento
-        total_item = (precio * cantidad_decimal) * (Decimal('1') - (desc / Decimal('100')))
+        # El subtotal se recalcula en base a la cantidad devuelta de forma proporcional
+        proporcion = cantidad_decimal / original_item.cantidad
+        total_item = original_item.total * proporcion
             
         VentaItem.objects.create(
             venta=nueva_nc,

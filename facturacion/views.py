@@ -1566,7 +1566,12 @@ class VentasListView(LoginRequiredMixin, View):
             
         ventas = ventas.order_by('-fecha', '-ventas_id')
 
-        totales = ventas.aggregate(neto=Sum('neto'), iva=Sum('iva'), total=Sum('total'))
+        from django.db.models import F
+        totales = ventas.aggregate(
+            neto=Sum(F('neto') * F('tipo__signo')),
+            iva=Sum(F('iva') * F('tipo__signo')),
+            total=Sum(F('total') * F('tipo__signo'))
+        )
         
         # Opciones para filtros
         from empresas.models import Sucursal
@@ -1675,9 +1680,12 @@ class VentaEmitirNotaCreditoView(LoginRequiredMixin, View):
                 orig_item = VentaItem.objects.filter(id=item_id, venta=venta_original).first()
                 if orig_item:
                     cant_dec = Decimal(str(cantidad))
-                    precio = orig_item.precio_unitario
-                    desc = orig_item.porcentaje_descuento or Decimal('0.00')
-                    total_item = (precio * cant_dec) * (Decimal('1') - (desc / Decimal('100')))
+                    
+                    # Tomar la proporción del total original en lugar de multiplicar precio_unitario
+                    # para evitar problemas si el precio estaba almacenado como neto o bruto
+                    proporcion = cant_dec / orig_item.cantidad
+                    total_item = orig_item.total * proporcion
+
                     
                     alic_val = Decimal(str(orig_item.iva_alicuota or '21.00'))
                     alicuota_factor = Decimal("1.00") + (alic_val / Decimal("100.00"))

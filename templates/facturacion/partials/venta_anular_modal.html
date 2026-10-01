@@ -1,4 +1,7 @@
-<div id="modal" x-data="{ cargando: false }" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+<div id="modal" 
+     x-data="ncModalData()" 
+     class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all relative">
         
         <!-- OVERLAY DE CARGA / ARCA -->
@@ -46,35 +49,75 @@
 
             <form id="ncForm" hx-post="{% url 'venta_emitir_nc' venta.ventas_id %}" hx-target="body" @submit="cargando = true">
                 {% csrf_token %}
-                <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3">Ítems Facturados (Seleccione cantidades a devolver)</h4>
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                    <h4 class="text-[10px] font-black uppercase text-slate-400 tracking-widest">Ítems Facturados (Seleccione cantidades a devolver)</h4>
+                    
+                    <label class="flex items-center gap-2 cursor-pointer group bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:border-red-300 transition-colors">
+                        <input type="checkbox" x-model="devolverTodo" @change="toggleTodo()" class="w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500 cursor-pointer">
+                        <span class="text-[11px] font-bold text-slate-700 group-hover:text-red-700 transition-colors uppercase tracking-tight">Anular factura completa</span>
+                    </label>
+                </div>
+                
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-4">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-900 text-white uppercase tracking-wider text-[10px]">
                             <tr>
+                                <th class="px-4 py-2">ID</th>
                                 <th class="px-4 py-2">Producto</th>
                                 <th class="px-4 py-2 text-right">Cant. Facturada</th>
-                                <th class="px-4 py-2 text-right">Precio Unitario</th>
+                                <th class="px-4 py-2 text-right">Precio</th>
+                                <th class="px-4 py-2 text-right">IVA</th>
                                 <th class="px-4 py-2 text-center bg-red-900/50 w-32">Cant. a Devolver</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
-                            {% for item in items %}
-                            <tr class="hover:bg-slate-50">
-                                <td class="px-4 py-2 font-medium text-slate-800">{{ item.producto.nombre }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-600">{{ item.cantidad|floatformat:2 }}</td>
-                                <td class="px-4 py-2 text-right tabular-nums text-slate-600">$ {{ item.precio_unitario|floatformat:2 }}</td>
-                                <td class="px-4 py-2 bg-red-50 text-center">
-                                    <input type="number" name="cant_devolver_{{ item.id }}" value="{{ item.cantidad|stringformat:'f' }}" step="0.01" min="0" max="{{ item.cantidad|stringformat:'f' }}" class="w-full text-right h-7 px-1 text-xs font-bold border border-red-200 rounded outline-none focus:border-red-500 text-red-700 bg-white">
+                            <template x-for="item in items" :key="item.id">
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-4 py-2 text-slate-500 font-mono text-[10px]" x-text="item.producto_id"></td>
+                                    <td class="px-4 py-2 font-medium text-slate-800" x-text="item.nombre"></td>
+                                    <td class="px-4 py-2 text-right tabular-nums text-slate-600" x-text="parseFloat(item.cant_facturada).toFixed(2)"></td>
+                                    <td class="px-4 py-2 text-right tabular-nums text-slate-600" x-text="'$ ' + parseFloat(item.precio).toFixed(2)"></td>
+                                    <td class="px-4 py-2 text-right tabular-nums text-slate-500" x-text="item.alicuota + '%'"></td>
+                                    <td class="px-4 py-2 bg-red-50 text-center">
+                                        <!-- Inputs ocultos para enviar al backend (ya que el loop es en Alpine) -->
+                                        <input type="hidden" :name="'cant_devolver_' + item.id" :value="item.cant_devolver">
+                                        
+                                        <input type="number" x-model.number="item.cant_devolver" @input="updateDevolverTodo()" step="0.01" min="0" :max="item.cant_facturada" class="w-full text-right h-7 px-1 text-xs font-bold border border-red-200 rounded outline-none focus:border-red-500 text-red-700 bg-white">
+                                    </td>
+                                </tr>
+                            </template>
+                            <tr x-show="items.length === 0" style="display: none;">
+                                <td colspan="6" class="px-4 py-6 text-center text-slate-400 italic">No hay ítems.</td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="bg-slate-50 border-t border-slate-200" x-show="items.length > 0">
+                            <tr>
+                                <td colspan="4" class="px-4 py-3 text-right uppercase text-[10px] font-black tracking-widest text-slate-500">
+                                    Totales Nota de Crédito
+                                </td>
+                                <td colspan="2" class="px-4 py-3 bg-white border-l border-slate-100">
+                                    <div class="flex flex-col gap-1 text-xs tabular-nums text-right">
+                                        <div class="flex justify-between items-center text-slate-500">
+                                            <span class="font-bold uppercase text-[9px] tracking-wider">Neto:</span>
+                                            <span x-text="'$ ' + totales.neto.toFixed(2)"></span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-slate-500">
+                                            <span class="font-bold uppercase text-[9px] tracking-wider">IVA:</span>
+                                            <span x-text="'$ ' + totales.iva.toFixed(2)"></span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-slate-900 border-t border-slate-100 pt-1 mt-1">
+                                            <span class="font-black uppercase text-[10px] tracking-wider">Total:</span>
+                                            <span class="font-black text-sm text-red-600" x-text="'$ ' + totales.total.toFixed(2)"></span>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
-                            {% empty %}
-                            <tr><td colspan="4" class="px-4 py-6 text-center text-slate-400 italic">No hay ítems.</td></tr>
-                            {% endfor %}
-                        </tbody>
+                        </tfoot>
                     </table>
                 </div>
             </form>
-            <div class="mt-4 text-[10px] text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-100 italic">
+            <div class="text-[10px] text-slate-500 bg-blue-50 p-3 rounded-lg border border-blue-100 italic">
                 <strong>Nota:</strong> Se generará una Nota de Crédito correspondiente (Ej: Factura A -> NC A) y se restaurará el stock de las cantidades indicadas como devolución.
             </div>
         </div>
@@ -91,3 +134,66 @@
         </div>
     </div>
 </div>
+
+<script>
+function ncModalData() {
+    return {
+        cargando: false,
+        devolverTodo: true,
+        items: [
+            {% for item in items %}
+            {
+                id: {{ item.id }},
+                producto_id: '{{ item.producto_id }}',
+                nombre: '{{ item.producto.nombre|escapejs }}',
+                cant_facturada: {{ item.cantidad|stringformat:'f' }},
+                cant_devolver: {{ item.cantidad|stringformat:'f' }},
+                precio: {{ item.precio_unitario|stringformat:'f' }},
+                alicuota: {{ item.iva_alicuota|stringformat:'f' }},
+                total_facturado: {{ item.total|stringformat:'f' }}
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        get totales() {
+            let neto = 0;
+            let iva = 0;
+            let total = 0;
+            
+            this.items.forEach(item => {
+                let cant_dev = parseFloat(item.cant_devolver) || 0;
+                if(cant_dev > 0) {
+                    let cant_fac = parseFloat(item.cant_facturada) || 1;
+                    let proporcion = cant_dev / cant_fac;
+                    
+                    // Calculamos a partir del total que ya fue facturado para evitar errores
+                    // de si el precio era neto o bruto en la base
+                    let total_item = parseFloat(item.total_facturado) * proporcion;
+                    let alicuota_factor = 1.0 + (parseFloat(item.alicuota) / 100.0);
+                    let neto_item = total_item / alicuota_factor;
+                    let iva_item = total_item - neto_item;
+                    
+                    neto += neto_item;
+                    iva += iva_item;
+                    total += total_item;
+                }
+            });
+            
+            return { neto, iva, total };
+        },
+        toggleTodo() {
+            if(this.devolverTodo) {
+                this.items.forEach(i => i.cant_devolver = i.cant_facturada);
+            } else {
+                this.items.forEach(i => i.cant_devolver = 0);
+            }
+        },
+        updateDevolverTodo() {
+            this.devolverTodo = this.items.every(i => {
+                let d = parseFloat(i.cant_devolver) || 0;
+                let f = parseFloat(i.cant_facturada) || 0;
+                return Math.abs(d - f) < 0.001;
+            });
+        }
+    }
+}
+</script>
