@@ -8,7 +8,9 @@ con arrastre y el aislamiento por empresa/sucursal.
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.test import RequestFactory, TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from contable.models import Asiento, Cuenta
@@ -239,3 +241,24 @@ class CajaDiariaTestCase(TestCase):
 
         ingresos = next(s for s in secciones if s['titulo'] == 'INGRESOS')
         self.assertEqual(ingresos['total']['total'], Decimal("500.00"))
+
+    def test_caja_diaria_index_view_responde_ok(self):
+        """Verifica que la vista caja_diaria_index y _contexto_base resuelvan la caja activa sin NameError."""
+        from tesoreria.views_caja_diaria import caja_diaria_index, _contexto_base
+        factory = RequestFactory()
+        request = factory.get(reverse('caja_diaria_index'))
+        request.user = self.usuario
+        request.session = {
+            'empresa_id': self.empresa.id,
+            'sucursal_id': self.sucursal.id,
+        }
+        setattr(request, '_messages', FallbackStorage(request))
+
+        contexto = _contexto_base(request)
+        self.assertIsNotNone(contexto)
+        self.assertEqual(contexto['sesion'].id, self.sesion.id)
+        self.assertEqual(contexto['caja'].id, self.caja.id)
+
+        response = caja_diaria_index(request)
+        self.assertEqual(response.status_code, 200)
+
