@@ -127,14 +127,11 @@ def generar_pdf_venta(venta_id):
         builder.draw_rect(270, 45, 55, 45)
         builder.draw_line(297.5, 90, 297.5, 170)
         
-    # Horizontal line separating client data from periods
+    # Horizontal line separating client data from items header
     builder.draw_line(15, 235, 580, 235)
     
-    # Horizontal line below client info (now periods)
-    builder.draw_line(15, 255, 580, 255)
-    
     # Horizontal line below items header
-    builder.draw_line(15, 275, 580, 275)
+    builder.draw_line(15, 255, 580, 255)
     
     # Horizontal line above totals (footer)
     builder.draw_line(15, 700, 580, 700)
@@ -236,15 +233,6 @@ def generar_pdf_venta(venta_id):
         builder.draw_text("Condicion de venta:", 340, 230, font_name="Helvetica-Bold", font_size=9)
         builder.draw_text(cond_venta, 435, 230, font_size=9)
         
-        # Periodos
-        builder.draw_text("Periodo Facturado Desde:", 25, 250, font_name="Helvetica-Bold", font_size=9)
-        builder.draw_text(venta.fecha.strftime('%d/%m/%Y'), 145, 250, font_size=9)
-        
-        builder.draw_text("Hasta:", 230, 250, font_name="Helvetica-Bold", font_size=9)
-        builder.draw_text(venta.fecha.strftime('%d/%m/%Y'), 265, 250, font_size=9)
-        
-        builder.draw_text("Fecha de Vto. para el Pago:", 350, 250, font_name="Helvetica-Bold", font_size=9)
-        builder.draw_text(venta.fecha.strftime('%d/%m/%Y'), 485, 250, font_size=9)
     else:
         builder.draw_text("Apellido y Nombres / Razon Social:", 25, 195, font_name="Helvetica-Bold", font_size=9)
         builder.draw_text(venta.cliente_razon_social or cliente.razon_social, 195, 195, font_size=9)
@@ -252,19 +240,19 @@ def generar_pdf_venta(venta_id):
         builder.draw_text("Domicilio:", 25, 215, font_name="Helvetica-Bold", font_size=9)
         builder.draw_text(dom_cliente, 75, 215, font_size=9)
         
-        builder.draw_text("Condicion de venta:", 25, 250, font_name="Helvetica-Bold", font_size=9)
-        builder.draw_text("Cuenta Corriente", 125, 250, font_size=9)
+        builder.draw_text("Condicion de venta:", 25, 230, font_name="Helvetica-Bold", font_size=9)
+        builder.draw_text("Cuenta Corriente", 125, 230, font_size=9)
 
     # === ITEMS HEADER ===
-    builder.draw_text("Codigo", 25, 270, font_name="Helvetica-Bold", font_size=9)
-    builder.draw_text("Detalle", 85, 270, font_name="Helvetica-Bold", font_size=9)
-    builder.draw_text("Cantidad", 385, 270, font_name="Helvetica-Bold", font_size=9, align="right")
-    builder.draw_text("Precio Unit.", 475, 270, font_name="Helvetica-Bold", font_size=9, align="right")
-    builder.draw_text("Importe", 565, 270, font_name="Helvetica-Bold", font_size=9, align="right")
+    builder.draw_text("Codigo", 25, 250, font_name="Helvetica-Bold", font_size=9)
+    builder.draw_text("Detalle", 85, 250, font_name="Helvetica-Bold", font_size=9)
+    builder.draw_text("Cantidad", 385, 250, font_name="Helvetica-Bold", font_size=9, align="right")
+    builder.draw_text("Precio Unit.", 475, 250, font_name="Helvetica-Bold", font_size=9, align="right")
+    builder.draw_text("Importe", 565, 250, font_name="Helvetica-Bold", font_size=9, align="right")
     
     from reportlab.lib.utils import simpleSplit
     # === ITEMS ROWS ===
-    y_items = 290
+    y_items = 270
     for item in venta.items.all():
         codigo_str = str(item.producto_id) if item.producto_id else ""
         concepto_str = item.concepto or (item.producto.detalle if hasattr(item, 'producto') and item.producto else "")
