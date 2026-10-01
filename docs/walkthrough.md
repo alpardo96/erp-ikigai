@@ -6033,5 +6033,31 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 **Estado actual y siguientes pasos sugeridos:**
 - Sistema listo y entregado. Permite la gestión completa de envíos selectivos con reemplazo o adición de comprobantes externos.
 
+---
 
+## 2026-10-01 — Corrección de Desacoplamiento "Modo Enchufe" (Armería)
 
+**Objetivo:**
+Solucionar el fallo en producción (`ModuleNotFoundError: No module named 'verticalidades.armeria'`) disparado al consultar detalles de clientes en entornos con actividad no armamentística (ej. Estudio) donde la carpeta `verticalidades/armeria` no está instalada.
+
+**Archivos creados o modificados:**
+- `facturacion/views_htmx.py` [MODIFIED]
+- `facturacion/helpers.py` [MODIFIED]
+- `tesoreria/views_htmx.py` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Desacoplamiento Estricto (Plan 075):**
+   - En `facturacion/views_htmx.py` se eliminaron las sentencias de importación incondicionales `from verticalidades.armeria.models import ExtensionArmeria` en `venta_cliente_detalle` y `info_cliente_preventa`. Se utiliza la referencia tolerante a fallos definida al inicio del módulo (`ExtensionArmeria = None` si el módulo no existe) condicionada estrictamente a `if empresa.tipo_actividad == 'ARMERIA' and ExtensionArmeria:`.
+   - En `facturacion/helpers.py` (`validar_clu_cliente_armeria`), se protegió la importación con verificación previa de actividad y bloque `try ... except ImportError`.
+   - En `tesoreria/views_htmx.py` (`_guardar_reserva_preventa_transaccional`), se envolvió la carga de `ReservaArma` con `try ... except ImportError` para emitir una respuesta 400 descriptiva en lugar de un error 500 no controlado.
+2. **Restauración de Archivos de Formato Frontend:**
+   - Se revirtieron a su estado original íntegro `static/js/formato_ar.js`, los templates de carga (`compras_carga.html`, `ventas_carga.html`, `preventa_carga.html`, `ventas_trazabilidad_carga.html`) y la lógica de parseo original de números.
+
+**Resultado de las pruebas:**
+- `python manage.py check`: 0 errores (System check identified no issues).
+
+**Estado actual y siguientes pasos sugeridos:**
+- El Core del ERP puede operar plenamente bajo cualquier verticalidad o rubro (como Estudio) sin requerir físicamente el módulo de Armería.
+
+- Corrección adicional: se incorporó la validación preventiva if comma in raw_precio en facturacion/views_htmx.py para no truncar el punto decimal enviado por HTMX al ingresar importes con coma o punto.

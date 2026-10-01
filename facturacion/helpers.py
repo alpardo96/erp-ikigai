@@ -8,7 +8,6 @@ def validar_clu_cliente_armeria(cliente, empresa_id):
     """
     from empresas.models import Empresa
     from facturacion.models import ClienteProveedor
-    from verticalidades.armeria.models import ExtensionArmeria
     
     if not empresa_id:
         return True, ""
@@ -18,6 +17,11 @@ def validar_clu_cliente_armeria(cliente, empresa_id):
         if not empresa.tipo_actividad or empresa.tipo_actividad.upper() != "ARMERIA":
             return True, ""
     except Empresa.DoesNotExist:
+        return True, ""
+
+    try:
+        from verticalidades.armeria.models import ExtensionArmeria
+    except ImportError:
         return True, ""
 
     if not cliente:

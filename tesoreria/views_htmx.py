@@ -1047,7 +1047,14 @@ def _guardar_reserva_preventa_transaccional(
     Emite un Recibo oficial por el importe señado, registra los fondos en la sesión de caja mostrador,
     crea el registro de control ReservaArma en estado PENDIENTE y marca la Preventa como cobrada.
     """
-    from verticalidades.armeria.models import ReservaArma
+    try:
+        from verticalidades.armeria.models import ReservaArma
+    except ImportError:
+        ReservaArma = None
+
+    if not ReservaArma:
+        return HttpResponse(json.dumps({'status': 'error', 'message': 'El módulo de Armería no está disponible en este sistema.'}), status=400)
+
     from contable.models import ParametrosContables, Cuenta
     from tesoreria.models import (
         Recibo, ReciboImputacion, MovimientoCaja, CobroTarjeta, 

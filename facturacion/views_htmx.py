@@ -478,8 +478,7 @@ def eliminar_cliente(request, id):
         # Sincronización con Armería si aplica
         from empresas.models import Empresa
         empresa = Empresa.objects.filter(id=empresa_id).first()
-        if empresa and empresa.tipo_actividad == 'ARMERIA':
-            from verticalidades.armeria.models import ExtensionArmeria
+        if empresa and empresa.tipo_actividad == 'ARMERIA' and ExtensionArmeria:
             armeria, created = ExtensionArmeria.objects.get_or_create(cliente=cliente)
             armeria.activo = cliente.activo
             armeria.save(update_fields=['activo'])
@@ -695,9 +694,18 @@ def agregar_item_sesion(request):
     Bloquea duplicados y trata el precio como Total de Línea.
     """
     producto_id = request.POST.get('producto_id', '').strip()
-    raw_cantidad = request.POST.get('cantidad', '1').replace('.', '').replace(',', '.')
-    raw_precio = request.POST.get('precio', '0').replace('.', '').replace(',', '.')
-    raw_precio_lista = request.POST.get('precio_lista', '0').replace('.', '').replace(',', '.')
+    raw_cantidad = str(request.POST.get('cantidad', '1')).strip()
+    if ',' in raw_cantidad:
+        raw_cantidad = raw_cantidad.replace('.', '').replace(',', '.')
+
+    raw_precio = str(request.POST.get('precio', '0')).strip()
+    if ',' in raw_precio:
+        raw_precio = raw_precio.replace('.', '').replace(',', '.')
+
+    raw_precio_lista = str(request.POST.get('precio_lista', '0')).strip()
+    if ',' in raw_precio_lista:
+        raw_precio_lista = raw_precio_lista.replace('.', '').replace(',', '.')
+
     try:
         cantidad = float(raw_cantidad or 1)
         total_linea_ingresado = float(raw_precio or 0)
@@ -784,7 +792,10 @@ def editar_item_sesion(request, index):
     items = request.session.get('compra_items_temp', [])
     if 0 <= index < len(items):
         try:
-            total_linea = float(request.POST.get('total_linea', 0).replace('.', '').replace(',', '.') or 0)
+            raw_total = str(request.POST.get('total_linea', 0)).strip()
+            if ',' in raw_total:
+                raw_total = raw_total.replace('.', '').replace(',', '.')
+            total_linea = float(raw_total or 0)
             item = items[index]
             item['total'] = total_linea
             cant = float(item['cantidad'])
@@ -1317,7 +1328,9 @@ def agregar_item_venta_sesion(request):
 
     if modo_edicion == 'PRECIO':
         # En modo PRECIO se toma el precio ingresado por el usuario
-        raw_precio = str(request.POST.get('precio', '')).strip().replace('.', '').replace(',', '.')
+        raw_precio = str(request.POST.get('precio', '')).strip()
+        if ',' in raw_precio:
+            raw_precio = raw_precio.replace('.', '').replace(',', '.')
         if raw_precio != '':
             try:
                 precio_ingresado = float(raw_precio)
@@ -1526,7 +1539,6 @@ def venta_cliente_detalle(request, id):
     """
     cliente = get_object_or_404(ClienteProveedor, pk=id)
     from .models import Jurisdiccion
-    from verticalidades.armeria.models import ExtensionArmeria
     from empresas.models import Empresa
     from django.utils import timezone
     jurisdicciones = Jurisdiccion.objects.all()
@@ -1536,7 +1548,7 @@ def venta_cliente_detalle(request, id):
     if empresa_id:
         try:
             empresa = Empresa.objects.get(pk=empresa_id)
-            if empresa.tipo_actividad and empresa.tipo_actividad.lower() == 'armeria':
+            if empresa.tipo_actividad and empresa.tipo_actividad.lower() == 'armeria' and ExtensionArmeria:
                 try:
                     armeria = ExtensionArmeria.objects.get(cliente=cliente)
                 except ExtensionArmeria.DoesNotExist:
@@ -1885,7 +1897,6 @@ def info_cliente_preventa(request):
     
     try:
         from .models import ClienteProveedor
-        from verticalidades.armeria.models import ExtensionArmeria
         from empresas.models import Empresa
         empresa_id = request.session.get('empresa_id')
         cliente = ClienteProveedor.objects.get(pk=cliente_id, empresa_id=empresa_id)
@@ -1915,7 +1926,7 @@ def info_cliente_preventa(request):
 
         # Para Armería y resto de actividades: renderizamos la ficha con Tipo de Doc, CUIT, Condición IVA y Domicilio completo
         armeria = None
-        if Empresa.objects.filter(id=empresa_id, tipo_actividad="ARMERIA").exists():
+        if Empresa.objects.filter(id=empresa_id, tipo_actividad="ARMERIA").exists() and ExtensionArmeria:
             armeria = ExtensionArmeria.objects.filter(cliente=cliente).first()
 
         return render(request, 'facturacion/partials/preventa_cliente_info.html', {
