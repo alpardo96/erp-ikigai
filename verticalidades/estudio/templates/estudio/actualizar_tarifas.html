@@ -31,7 +31,8 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-600 uppercase">Servicio / Producto</label>
-                                    <select x-model="tarifaEditando.producto_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                    <select x-model="tarifaEditando.producto_id" @change="onProductoModalChange()" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                        <option value="">-- Seleccionar Servicio / Producto --</option>
                                         {% for p in productos %}
                                         <option value="{{ p.id }}">{{ p.detalle }}</option>
                                         {% endfor %}
@@ -130,7 +131,7 @@
             <!-- Ajuste Global (Tarjeta ampliada) -->
             <div class="flex items-center gap-3 bg-blue-50 px-4 h-10 rounded-lg border-2 border-blue-300 shadow-md">
                 <span class="text-base font-extrabold text-blue-900 tracking-wide uppercase whitespace-nowrap">Ajuste:</span>
-                <input type="number" x-model="ajusteGlobal" @focus="$event.target.select()" @click="$event.target.select()" class="h-8 text-center rounded-md border-2 border-blue-400 py-1 px-2 text-base font-extrabold text-blue-950 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white shadow-inner" style="width: 85px; min-width: 85px; max-width: 85px;" placeholder="0">
+                <input type="text" inputmode="decimal" x-model="ajusteGlobal" @keydown="validarDecimalKey($event)" @focus="$event.target.select()" @click="$event.target.select()" class="h-8 text-center rounded-md border-2 border-blue-400 py-1 px-2 text-base font-extrabold text-blue-950 focus:ring-2 focus:ring-blue-600 focus:border-blue-600 bg-white shadow-inner" style="width: 85px; min-width: 85px; max-width: 85px;" placeholder="0">
                 <span class="text-base font-extrabold text-blue-900">%</span>
                 <button @click="aplicarAjuste()" class="bg-blue-700 hover:bg-blue-800 text-white px-4 py-1.5 rounded-md text-xs font-extrabold shadow hover:shadow-md transition uppercase tracking-wider ml-1 whitespace-nowrap">
                     APLICAR A SELECCIONADOS
@@ -185,7 +186,7 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-100">
                     <template x-for="item in itemsFiltrados" :key="item.id">
-                        <tr class="hover:bg-blue-50 transition group" :class="{'bg-yellow-50/30': (item.tarifa_f_nueva != item.tarifa_f_ant || item.tarifa_p_nueva != item.tarifa_p_ant || item.activo != item.activo_ant || item.producto_id != item.producto_id_ant || item.cuenta_id != item.cuenta_id_ant), 'opacity-60': !item.activo}">
+                        <tr class="hover:bg-blue-50 transition group" :class="{'bg-yellow-50/30': (parseNumber(item.tarifa_f_nueva) != parseNumber(item.tarifa_f_ant) || parseNumber(item.tarifa_p_nueva) != parseNumber(item.tarifa_p_ant) || item.activo != item.activo_ant || item.producto_id != item.producto_id_ant || item.cuenta_id != item.cuenta_id_ant), 'opacity-60': !item.activo}">
                             <!-- Checkbox -->
                             <td class="py-1 px-3 text-center border-r border-gray-100 bg-gray-50 group-hover:bg-blue-100/50">
                                 <input type="checkbox" x-model="item.selected" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer">
@@ -211,9 +212,12 @@
                                 x-text="formatAR(varPorc(item.tarifa_f_nueva, item.tarifa_f_ant)) + '%'">
                             </td>
                             <td class="py-1 px-1">
-                                <input type="number" step="0.01" style="min-width: 125px;" class="w-full text-right rounded border-gray-200 py-1 text-[11px] font-mono font-bold focus:ring-blue-500 focus:border-blue-500 bg-blue-50/30 hide-spinners" 
+                                <input type="text" inputmode="decimal" style="min-width: 125px;" class="w-full text-right rounded border-gray-200 py-1 text-[11px] font-mono font-bold focus:ring-blue-500 focus:border-blue-500 bg-blue-50/30" 
                                     :class="!item.activo ? 'text-gray-400' : 'text-blue-900'"
-                                    x-model.number="item.tarifa_f_nueva" @focus="$event.target.select()">
+                                    x-model="item.tarifa_f_nueva"
+                                    @keydown="validarDecimalKey($event)"
+                                    @blur="item.tarifa_f_nueva = parseNumber(item.tarifa_f_nueva)"
+                                    @focus="$event.target.select()">
                             </td>
 
                             <!-- P -->
@@ -222,14 +226,17 @@
                                 x-text="formatAR(varPorc(item.tarifa_p_nueva, item.tarifa_p_ant)) + '%'">
                             </td>
                             <td class="py-1 px-1">
-                                <input type="number" step="0.01" style="min-width: 125px;" class="w-full text-right rounded border-gray-200 py-1 text-[11px] font-mono font-bold focus:ring-blue-500 focus:border-blue-500 bg-blue-50/30 hide-spinners" 
+                                <input type="text" inputmode="decimal" style="min-width: 125px;" class="w-full text-right rounded border-gray-200 py-1 text-[11px] font-mono font-bold focus:ring-blue-500 focus:border-blue-500 bg-blue-50/30" 
                                     :class="!item.activo ? 'text-gray-400' : 'text-blue-900'"
-                                    x-model.number="item.tarifa_p_nueva" @focus="$event.target.select()">
+                                    x-model="item.tarifa_p_nueva"
+                                    @keydown="validarDecimalKey($event)"
+                                    @blur="item.tarifa_p_nueva = parseNumber(item.tarifa_p_nueva)"
+                                    @focus="$event.target.select()">
                             </td>
 
                             <!-- Info IVA -->
                             <td class="py-1 px-3 text-xs text-right font-mono text-emerald-700 font-bold border-l border-gray-100" 
-                                x-text="formatAR(item.tarifa_f_nueva * (1 + (item.alic_iva/100)))">
+                                x-text="formatAR(parseNumber(item.tarifa_f_nueva) * (1 + (item.alic_iva/100)))">
                             </td>
 
                             <!-- Producto (Al final) -->
@@ -299,6 +306,13 @@
 </div>
 
 <script>
+// Diccionario producto_id -> cuenta_id del Rubro (para autocompletar la cuenta contable al seleccionar el producto)
+const productosCtaMap = {
+    {% for p in productos %}
+    "{{ p.id }}": "{{ p.rubro.cta_ventas_id|default:'' }}",
+    {% endfor %}
+};
+
 function tarifasGrid() {
     return {
         items: [],
@@ -310,6 +324,7 @@ function tarifasGrid() {
         isLoading: false,
         tarifaEditando: null,
         isNew: false,
+        productosCtaMap: productosCtaMap,
 
         init() {
             this.cargarDatos();
@@ -356,6 +371,15 @@ function tarifasGrid() {
                 activo_ant: true,
                 selected: false
             };
+        },
+        onProductoModalChange() {
+            if (!this.tarifaEditando) return;
+            const prodId = this.tarifaEditando.producto_id;
+            if (prodId && this.productosCtaMap[prodId]) {
+                this.tarifaEditando.cuenta_id = parseInt(this.productosCtaMap[prodId]);
+            } else if (!prodId) {
+                this.tarifaEditando.cuenta_id = '';
+            }
         },
         guardarModal() {
             if (!this.tarifaEditando) return;
@@ -418,10 +442,47 @@ function tarifasGrid() {
             this.itemsFiltrados.forEach(i => i.selected = val);
         },
 
+        validarDecimalKey(e) {
+            // Teclas de navegación y edición estándar
+            const allowedControlKeys = [
+                'Backspace', 'Tab', 'Enter', 'Escape', 'Delete',
+                'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                'Home', 'End'
+            ];
+            if (allowedControlKeys.includes(e.key) || e.ctrlKey || e.metaKey) {
+                return;
+            }
+            
+            // Dígitos (0-9)
+            if (/^[0-9]$/.test(e.key)) {
+                return;
+            }
+            
+            // Separador decimal (punto o coma, teclado estándar o teclado numérico NumpadDecimal)
+            const isDecimalKey = (e.key === '.' || e.key === ',' || e.code === 'NumpadDecimal');
+            if (isDecimalKey) {
+                const val = e.target.value ? String(e.target.value) : '';
+                const selectedText = window.getSelection ? window.getSelection().toString() : '';
+                const hasSelectedSeparator = selectedText.includes('.') || selectedText.includes(',');
+                
+                // Si ya tiene separador decimal y no está seleccionado para reemplazar, bloquear
+                if ((val.includes('.') || val.includes(',')) && !hasSelectedSeparator) {
+                    e.preventDefault();
+                    return;
+                }
+                return;
+            }
+            
+            // Bloquear cualquier otra tecla
+            e.preventDefault();
+        },
+
         varPorc(nueva, antigua) {
-            if (!antigua || antigua == 0) return 0;
-            if (!nueva || nueva == 0) return -100;
-            return ((nueva / antigua) - 1) * 100;
+            const n = this.parseNumber(nueva);
+            const a = this.parseNumber(antigua);
+            if (!a || a == 0) return 0;
+            if (!n || n == 0) return -100;
+            return ((n / a) - 1) * 100;
         },
 
         formatAR(val) {
@@ -434,16 +495,17 @@ function tarifasGrid() {
         },
         
         parseNumber(valStr) {
-            if (!valStr) return 0;
+            if (valStr === null || valStr === undefined || valStr === '') return 0;
+            if (typeof valStr === 'number') return isNaN(valStr) ? 0 : valStr;
             let s = String(valStr).trim();
             const lastComma = s.lastIndexOf(',');
             const lastDot = s.lastIndexOf('.');
             
             if (lastComma > lastDot) {
-                // ES/AR format: 1.000,50
+                // Formato ES/AR: 1.000,50 o 1000,50
                 s = s.replace(/\./g, '').replace(',', '.');
             } else if (lastDot > lastComma && lastComma !== -1) {
-                // EN format: 1,000.50
+                // Formato EN: 1,000.50
                 s = s.replace(/,/g, '');
             } else if (lastComma !== -1 && lastDot === -1) {
                 // Solo coma: 1000,50
@@ -478,8 +540,8 @@ function tarifasGrid() {
                 res = res.filter(i => !i.activo);
             } else if (this.filtroVista === 'ajustados') {
                 res = res.filter(i => 
-                    i.tarifa_f_nueva != i.tarifa_f_ant || 
-                    i.tarifa_p_nueva != i.tarifa_p_ant || 
+                    this.parseNumber(i.tarifa_f_nueva) != this.parseNumber(i.tarifa_f_ant) || 
+                    this.parseNumber(i.tarifa_p_nueva) != this.parseNumber(i.tarifa_p_ant) || 
                     i.activo != i.activo_ant || 
                     i.producto_id != i.producto_id_ant || 
                     i.cuenta_id != i.cuenta_id_ant
@@ -493,10 +555,10 @@ function tarifasGrid() {
             let ant_f = 0, ant_p = 0, nueva_f = 0, nueva_p = 0;
             // Los totales generalmente tienen sentido calcularlos solo para los clientes ACTIVOS visibles
             this.itemsFiltrados.filter(i => i.activo).forEach(i => {
-                ant_f += Number(i.tarifa_f_ant);
-                ant_p += Number(i.tarifa_p_ant);
-                nueva_f += Number(i.tarifa_f_nueva);
-                nueva_p += Number(i.tarifa_p_nueva);
+                ant_f += this.parseNumber(i.tarifa_f_ant);
+                ant_p += this.parseNumber(i.tarifa_p_ant);
+                nueva_f += this.parseNumber(i.tarifa_f_nueva);
+                nueva_p += this.parseNumber(i.tarifa_p_nueva);
             });
             const total_anterior = ant_f + ant_p;
             const total_general = nueva_f + nueva_p;
@@ -521,13 +583,16 @@ function tarifasGrid() {
             }
             if(!confirm(`¿Aplicar ajuste del ${this.ajusteGlobal}% a los registros seleccionados en pantalla?`)) return;
             
-            const factor = 1 + (Number(this.ajusteGlobal) / 100);
+            const ajusteNum = this.parseNumber(this.ajusteGlobal);
+            const factor = 1 + (ajusteNum / 100);
             let modificados = 0;
             
             this.itemsFiltrados.forEach(i => {
                 if(i.selected && i.activo) { 
-                    if(i.tarifa_f_ant > 0) i.tarifa_f_nueva = parseFloat((i.tarifa_f_ant * factor).toFixed(2));
-                    if(i.tarifa_p_ant > 0) i.tarifa_p_nueva = parseFloat((i.tarifa_p_ant * factor).toFixed(2));
+                    const antF = this.parseNumber(i.tarifa_f_ant);
+                    const antP = this.parseNumber(i.tarifa_p_ant);
+                    if(antF > 0) i.tarifa_f_nueva = parseFloat((antF * factor).toFixed(2));
+                    if(antP > 0) i.tarifa_p_nueva = parseFloat((antP * factor).toFixed(2));
                     modificados++;
                 }
             });
@@ -538,22 +603,26 @@ function tarifasGrid() {
         },
 
         async saveData() {
-            // Recopilar los que han cambiado o son nuevos
+            // Recopilar los que han cambiado o son nuevos normalizando los números
             const modificados = this.items.filter(i => 
                 (String(i.id).startsWith('new_')) ||
-                i.tarifa_f_nueva != i.tarifa_f_ant || 
-                i.tarifa_p_nueva != i.tarifa_p_ant || 
+                this.parseNumber(i.tarifa_f_nueva) != this.parseNumber(i.tarifa_f_ant) || 
+                this.parseNumber(i.tarifa_p_nueva) != this.parseNumber(i.tarifa_p_ant) || 
                 i.activo != i.activo_ant || 
                 i.producto_id != i.producto_id_ant || 
                 i.cuenta_id != i.cuenta_id_ant
-            );
+            ).map(i => ({
+                ...i,
+                tarifa_f_nueva: this.parseNumber(i.tarifa_f_nueva),
+                tarifa_p_nueva: this.parseNumber(i.tarifa_p_nueva)
+            }));
             
             if (modificados.length === 0) {
                 alert("No hay cambios para guardar.");
                 return;
             }
 
-            const enCero = modificados.filter(i => i.activo && i.tarifa_f_nueva == 0 && i.tarifa_p_nueva == 0);
+            const enCero = modificados.filter(i => i.activo && this.parseNumber(i.tarifa_f_nueva) == 0 && this.parseNumber(i.tarifa_p_nueva) == 0);
             if (enCero.length > 0) {
                 if (confirm(`Atención: Hay ${enCero.length} tarifas configuradas en cero pero que permanecen en estado "Activo". ¿Desea que el sistema las marque como "Inactivas" antes de grabar? (Click en Aceptar para Desactivarlas, Cancelar para dejarlas Activas en cero)`)) {
                     enCero.forEach(i => i.activo = false);

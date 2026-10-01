@@ -29,7 +29,8 @@ def actualizar_tarifas(request):
     from contable.models import Cuenta
     from facturacion.models import ClienteProveedor
     
-    productos = Producto.objects.filter(empresa=empresa).order_by('detalle')
+    # Optimización: precargar rubro y su cuenta contable de ventas para asignación automática en la UI
+    productos = Producto.objects.filter(empresa=empresa).select_related('rubro', 'rubro__cta_ventas').order_by('detalle')
     cuentas = Cuenta.objects.filter(empresa=empresa, imputable=True).order_by('codigo')
     clientes = ClienteProveedor.objects.filter(empresa=empresa, tipo_entidad=1).order_by('razon_social')
 
@@ -96,6 +97,16 @@ def guardar_tarifas(request):
         if empresa_id:
             empresa = Empresa.objects.filter(id=empresa_id).first()
 
+    def _parse_decimal(val):
+        """Convierte cadenas con punto o coma a Decimal de forma segura."""
+        if val is None or val == '':
+            return Decimal('0')
+        s = str(val).strip().replace(',', '.')
+        try:
+            return Decimal(s)
+        except Exception:
+            return Decimal('0')
+
     try:
         data = json.loads(request.body)
         
@@ -106,9 +117,9 @@ def guardar_tarifas(request):
                     tarifa = TarifaEstudio.objects.select_for_update().get(id=item_id, empresa=empresa)
                     modificado = False
                     
-                    # Convertir a Decimal para la DB
-                    t_f_nueva = Decimal(str(item.get('tarifa_f_nueva', 0)))
-                    t_p_nueva = Decimal(str(item.get('tarifa_p_nueva', 0)))
+                    # Convertir a Decimal para la DB sanitizando coma o punto
+                    t_f_nueva = _parse_decimal(item.get('tarifa_f_nueva', 0))
+                    t_p_nueva = _parse_decimal(item.get('tarifa_p_nueva', 0))
                     
                     if tarifa.tarifa_f != t_f_nueva:
                         tarifa.tarifa_f = t_f_nueva
@@ -123,7 +134,7 @@ def guardar_tarifas(request):
                         tarifa.producto_id = nuevo_producto_id
                         modificado = True
 
-                    nuevo_cuenta_id = item.get('cuenta_id')
+                    nuevo_cuenta_id = item.get('cuenta_id') or None
                     if tarifa.cuenta_id != nuevo_cuenta_id:
                         tarifa.cuenta_id = nuevo_cuenta_id
                         modificado = True
@@ -146,8 +157,8 @@ def guardar_tarifas(request):
                             cliente_id=cliente_id,
                             producto_id=producto_id,
                             cuenta_id=item.get('cuenta_id') or None,
-                            tarifa_f=Decimal(str(item.get('tarifa_f_nueva', 0))),
-                            tarifa_p=Decimal(str(item.get('tarifa_p_nueva', 0))),
+                            tarifa_f=_parse_decimal(item.get('tarifa_f_nueva', 0)),
+                            tarifa_p=_parse_decimal(item.get('tarifa_p_nueva', 0)),
                             activo=item.get('activo', True),
                             creado_por=request.user
                         )
