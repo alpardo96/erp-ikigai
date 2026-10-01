@@ -142,25 +142,26 @@ class AFIPService:
                     'CbteTipo': cbte_tipo
                 }
 
-                imp_neto = float(datos_factura.get('imp_neto', 0))
-                imp_op_ex = float(datos_factura.get('imp_op_ex', 0))
-                imp_iva = float(datos_factura.get('imp_iva', 0))
-                imp_tot_conc = float(datos_factura.get('imp_tot_conc', 0))
+                imp_neto = round(float(datos_factura.get('imp_neto', 0)), 2)
+                imp_op_ex = round(float(datos_factura.get('imp_op_ex', 0)), 2)
+                imp_iva = round(float(datos_factura.get('imp_iva', 0)), 2)
+                imp_tot_conc = round(float(datos_factura.get('imp_tot_conc', 0)), 2)
                 
                 total_tributos = 0.0
                 tributos_payload = []
                 if tributos_list:
                     for t in tributos_list:
-                        importe_t = float(t['importe'])
+                        importe_t = round(float(t['importe']), 2)
                         tributos_payload.append({
                             'Id': int(t['id']),
                             'Desc': str(t['desc']).strip(),
-                            'BaseImp': float(t['base_imp']),
-                            'Alic': float(t['alic']),
+                            'BaseImp': round(float(t['base_imp']), 2),
+                            'Alic': round(float(t['alic']), 2),
                             'Importe': importe_t
                         })
                         total_tributos += importe_t
 
+                total_tributos = round(total_tributos, 2)
                 imp_total_calculado = round(imp_neto + imp_op_ex + imp_iva + total_tributos + imp_tot_conc, 2)
 
                 detalle = {
@@ -174,7 +175,7 @@ class AFIPService:
                     'ImpTotConc': imp_tot_conc,
                     'ImpNeto': imp_neto,
                     'ImpOpEx': imp_op_ex,
-                    'ImpTrib': round(total_tributos, 2),
+                    'ImpTrib': total_tributos,
                     'ImpIVA': imp_iva,
                     'MonId': str(datos_factura.get('mon_id', 'PES')),
                     'MonCotiz': float(datos_factura.get('mon_cotiz', 1))

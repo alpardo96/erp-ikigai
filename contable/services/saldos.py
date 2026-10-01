@@ -196,10 +196,16 @@ def pendiente_de_aplicar_op(orden_pago) -> Decimal:
 
     # Imputaciones que aportan las verticalidades (Plan 080).
     for extra in _APLICACIONES_OP_EXTRA:
-        aplicado += _suma(
-            extra['modelo'].objects.filter(**{extra['campo_op']: orden_pago}),
-            extra['campo_importe'],
-        )
+        try:
+            tipo_req = extra.get('tipo_actividad')
+            if tipo_req and orden_pago.empresa and orden_pago.empresa.tipo_actividad != tipo_req:
+                continue
+            aplicado += _suma(
+                extra['modelo'].objects.filter(**{extra['campo_op']: orden_pago}),
+                extra['campo_importe'],
+            )
+        except Exception as e:
+            logger.warning("No se pudo consultar aplicación OP de verticalidad '%s': %s", extra.get('nombre'), e)
 
     return Decimal(str(orden_pago.total)) - aplicado
 
@@ -271,14 +277,21 @@ def recalcular_saldo_cliente_proveedor(entidad_id: int) -> Decimal:
     # el caso de cualquier empresa sin verticalidades enchufadas— este bloque no hace nada y el
     # saldo sale de los cuatro términos de siempre.
     extras = CERO
+    empresa_actividad = entidad.empresa.tipo_actividad if entidad.empresa else None
     for termino in _TERMINOS_CTACTE_EXTRA:
-        qs = termino['modelo'].objects.filter(**{
-            termino['campo_entidad']: entidad,
-            termino['campo_empresa']: empresa_id,
-        })
-        if termino['excluir'] is not None:
-            qs = qs.exclude(termino['excluir'])
-        extras += termino['signo'] * _suma(qs, termino['campo_importe'])
+        try:
+            tipo_req = termino.get('tipo_actividad')
+            if tipo_req and empresa_actividad != tipo_req:
+                continue
+            qs = termino['modelo'].objects.filter(**{
+                termino['campo_entidad']: entidad,
+                termino['campo_empresa']: empresa_id,
+            })
+            if termino['excluir'] is not None:
+                qs = qs.exclude(termino['excluir'])
+            extras += termino['signo'] * _suma(qs, termino['campo_importe'])
+        except Exception as e:
+            logger.warning("No se pudo computar término de cuenta corriente de verticalidad '%s': %s", termino.get('nombre'), e)
 
     entidad.saldo = (Decimal(str(entidad.saldo_inicial or 0))
                      + ventas - compras - recibos + ordenes + extras)

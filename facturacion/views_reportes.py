@@ -413,11 +413,18 @@ def exportar_clientes_excel(request):
         clientes = clientes.filter(tipo_entidad=tipo_int)
         tipo_nombre = "Clientes" if tipo_int == 1 else "Proveedores"
 
+    tipo_act = (empresa.tipo_actividad or '').upper() if empresa else ''
     select_fields = ['jurisdiccion']
-    for rel in ['distribuidora', 'armeria']:
+    if tipo_act == 'ARMERIA':
         try:
-            ClienteProveedor._meta.get_field(rel)
-            select_fields.append(rel)
+            ClienteProveedor._meta.get_field('armeria')
+            select_fields.append('armeria')
+        except Exception:
+            pass
+    elif tipo_act == 'DISTRIBUIDORA':
+        try:
+            ClienteProveedor._meta.get_field('distribuidora')
+            select_fields.append('distribuidora')
         except Exception:
             pass
     clientes = clientes.select_related(*select_fields).order_by('razon_social')

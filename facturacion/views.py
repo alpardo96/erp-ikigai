@@ -661,12 +661,23 @@ class ClientesProveedoresIndexView(LoginRequiredMixin, TemplateView):
         if not empresa_id and hasattr(self.request.user, 'perfil') and self.request.user.perfil and self.request.user.perfil.empresa_id:
             empresa_id = self.request.user.perfil.empresa_id
             self.request.session['empresa_id'] = empresa_id
+        empresa = Empresa.objects.filter(id=empresa_id).first() if empresa_id else None
+        tipo_act = (empresa.tipo_actividad or '').upper() if empresa else ''
+
         select_fields = ['jurisdiccion']
-        try:
-            ClienteProveedor._meta.get_field('armeria')
-            select_fields.append('armeria')
-        except:
-            pass
+        if tipo_act == 'ARMERIA':
+            try:
+                ClienteProveedor._meta.get_field('armeria')
+                select_fields.append('armeria')
+            except Exception:
+                pass
+        elif tipo_act == 'DISTRIBUIDORA':
+            try:
+                ClienteProveedor._meta.get_field('distribuidora')
+                select_fields.append('distribuidora')
+            except Exception:
+                pass
+
         context['clientes'] = ClienteProveedor.objects.filter(empresa_id=empresa_id).select_related(*select_fields).order_by('-codigo_id')[:100]
         return context
 

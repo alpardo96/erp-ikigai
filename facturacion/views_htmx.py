@@ -6,6 +6,7 @@ from django.db.models import Q
 import json
 
 from .models import ClienteProveedor, Jurisdiccion, Compra, CompraItem, Venta, VentaItem
+from empresas.models import Empresa
 try:
     from verticalidades.armeria.models import ExtensionArmeria
     from verticalidades.armeria.forms import ExtensionArmeriaForm
@@ -122,12 +123,21 @@ def buscar_clientes(request):
     else:
         clientes = clientes.order_by('-codigo_id')
     
-    # 3. select_related seguro según verticalidad presente
+    # 3. select_related seguro según verticalidad activa de la empresa
+    empresa_obj = Empresa.objects.filter(id=empresa_id).first() if empresa_id else None
+    tipo_act = (empresa_obj.tipo_actividad or '').upper() if empresa_obj else ''
+
     select_fields = ['jurisdiccion']
-    for rel in ['distribuidora', 'armeria']:
+    if tipo_act == 'ARMERIA':
         try:
-            ClienteProveedor._meta.get_field(rel)
-            select_fields.append(rel)
+            ClienteProveedor._meta.get_field('armeria')
+            select_fields.append('armeria')
+        except Exception:
+            pass
+    elif tipo_act == 'DISTRIBUIDORA':
+        try:
+            ClienteProveedor._meta.get_field('distribuidora')
+            select_fields.append('distribuidora')
         except Exception:
             pass
     clientes = clientes.select_related(*select_fields)
