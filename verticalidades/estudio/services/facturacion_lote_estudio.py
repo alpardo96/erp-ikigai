@@ -87,15 +87,17 @@ class FacturacionLoteEstudioService:
                         
                     # 1. Comprobante FISCAL (tarifa_f)
                     if tarifa_f > 0:
-                        codigo_tipo = '011' # C por defecto
-                        if cliente.condicion_iva == 'RESPONSABLE INSCRIPTO':
-                            codigo_tipo = '001' # A
-                        elif cliente.condicion_iva in ['MONOTRIBUTO', 'EXENTO', 'CONSUMIDOR FINAL']:
-                            codigo_tipo = '006' # B
-                            
-                        tipo_fiscal = TipoComprobante.objects.filter(codigo=codigo_tipo).first()
+                        # Resolver tipo fiscal según condición IVA del receptor:
+                        # - RI o Monotributo -> Factura A ('001')
+                        # - Exento o Consumidor Final -> Factura B ('006')
+                        from facturacion.views import resolver_tipo_comprobante_fiscal
+                        tipo_fiscal = resolver_tipo_comprobante_fiscal(cliente.condicion_iva)
                         if not tipo_fiscal:
-                            raise Exception(f"No se encontró Tipo Comprobante para código {codigo_tipo}")
+                            codigo_fallback = '001' if cliente.condicion_iva in ['RESPONSABLE INSCRIPTO', 'MONOTRIBUTO'] else '006'
+                            tipo_fiscal = TipoComprobante.objects.filter(codigo=codigo_fallback).first()
+                            
+                        if not tipo_fiscal:
+                            raise Exception(f"No se encontró Tipo Comprobante fiscal para el cliente {cliente.razon_social} ({cliente.condicion_iva})")
 
                         iva_calculado = tarifa_f * (alic_iva / Decimal('100.0'))
                         total_f = tarifa_f + iva_calculado

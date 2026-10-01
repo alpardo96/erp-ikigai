@@ -79,3 +79,31 @@ class UnidadVentaOpcionalTests(TestCase):
                       'unidades_por_bulto'):
             with self.subTest(campo=campo):
                 self.assertFalse(form.fields[campo].required)
+
+    def test_estudio_alta_y_edicion_sin_campos_de_stock(self):
+        """En verticalidad ESTUDIO los campos minimo, ptopedir, cod_prov y cod_fab no están en pantalla."""
+        empresa_estudio = Empresa.objects.create(nombre="ESTUDIO CONTABLE", cuit="30111111113",
+                                                 tipo_actividad='ESTUDIO')
+        # Datos tal como viajan desde el modal de Estudio (sin minimo ni ptopedir)
+        datos_estudio = {
+            'detalle': 'HONORARIOS MENSUALES',
+            'moneda': 'PES',
+            'alic_iva': '21.00',
+            'margen': '0'
+        }
+        form = ProductoForm(datos_estudio, empresa=empresa_estudio)
+        self.assertTrue(form.is_valid(), form.errors.as_text())
+        prod = form.save(commit=False)
+        prod.empresa = empresa_estudio
+        prod.save()
+
+        self.assertEqual(prod.minimo, Decimal('0.00'))
+        self.assertEqual(prod.ptopedir, Decimal('0.00'))
+        self.assertIsNone(prod.proveedor)
+
+        # Edición también exitosa sin enviar minimo/ptopedir
+        form_edit = ProductoForm(datos_estudio, instance=prod, empresa=empresa_estudio)
+        self.assertTrue(form_edit.is_valid(), form_edit.errors.as_text())
+        prod_editado = form_edit.save()
+        self.assertEqual(prod_editado.detalle, 'HONORARIOS MENSUALES')
+

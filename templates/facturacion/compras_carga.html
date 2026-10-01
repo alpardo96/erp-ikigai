@@ -200,9 +200,9 @@
                             class="w-full h-10 border border-slate-200 rounded-lg text-[13px] font-black text-center outline-none bg-slate-100 px-2 focus:bg-white transition-all shadow-inner">
                     </div>
 
-                    <div class="w-56">
+                    <div class="w-72">
                         <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 text-center">Condición</label>
-                        <div class="flex items-center justify-center gap-5 h-10 bg-slate-50 border border-slate-200 rounded-lg shadow-inner px-3">
+                        <div class="flex items-center justify-center gap-4 h-10 bg-slate-50 border border-slate-200 rounded-lg shadow-inner px-3">
                             <label class="flex items-center gap-1.5 cursor-pointer">
                                 <input type="radio" name="condic" value="1" {% if form.condic.value == 1 or form.condic.value == '1' or not form.condic.value %}checked{% endif %}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300">
@@ -212,6 +212,11 @@
                                 <input type="radio" name="condic" value="2" {% if form.condic.value == 2 or form.condic.value == '2' %}checked{% endif %}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300">
                                 <span class="text-[11px] font-black text-slate-700 uppercase tracking-tighter">Presupuestado</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" name="condic" value="3" {% if form.condic.value == 3 or form.condic.value == '3' %}checked{% endif %}
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                                <span class="text-[11px] font-black text-indigo-700 uppercase tracking-tighter">Ajuste</span>
                             </label>
                         </div>
                     </div>

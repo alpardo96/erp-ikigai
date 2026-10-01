@@ -99,9 +99,11 @@
                     
                     onCondicionIvaChange() {
                         if (this.esFiscal) {
-                            this.tipoDoc = '80';
+                            if (!this.tipoDoc || this.tipoDoc === '99') {
+                                this.tipoDoc = '80';
+                            }
                         } else if (this.condicionIva === 'CONSUMIDOR FINAL') {
-                            if (String(this.tipoEntidad) !== '2') {
+                            if (String(this.tipoEntidad) !== '2' && !this.cuitVal) {
                                 this.tipoDoc = '99';
                             }
                         }
@@ -424,14 +426,11 @@
                             </select>
                         </div>
                         
-                        <!-- 1. TIPO DE DOCUMENTO DERIVADO -->
+                        <!-- 1. TIPO DE DOCUMENTO -->
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-2">1. Tipo de Documento</label>
-                            <input type="hidden" name="tipo_documento" :value="esFiscal ? '80' : tipoDoc">
-                            <select id="id_tipo_documento" x-model="tipoDoc"
-                                :class="esFiscal ? 'bg-gray-100 text-gray-500 pointer-events-none' : 'bg-white text-gray-900'"
-                                :tabindex="esFiscal ? -1 : 0"
-                                class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                            <select id="id_tipo_documento" name="tipo_documento" x-model="tipoDoc"
+                                class="w-full rounded-xl border-gray-200 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white text-gray-900 transition-all">
                                 {% for val, label in form.fields.tipo_documento.choices %}
                                     <option value="{{ val }}">{{ label }}</option>
                                 {% endfor %}

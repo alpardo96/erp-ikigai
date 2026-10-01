@@ -88,3 +88,101 @@ class ComprasPersistenciaHeaderTest(TestCase):
         # Debe contener punto y número
         self.assertIn('VALUE="00001"', content)
         self.assertIn('VALUE="00001234"', content)
+
+    def test_carga_compra_condic_3_ajuste(self):
+        """Verifica que un comprobante condic=3 (AJUSTE) se registre en LibroIvaCompras y Asiento pero NO en la tabla Compra."""
+        from empresas.models import Ejercicio
+        from contable.models import Cuenta, ParametrosContables, Asiento, LibroIvaCompras, LibroIvaAlic
+        from facturacion.models import Compra
+
+        ej = Ejercicio.objects.create(
+            empresa=self.emp,
+            ejercicio="Ejercicio 2026",
+            inicio=date(2026, 1, 1),
+            cierre=date(2026, 12, 31)
+        )
+
+        cta_prov = Cuenta.objects.create(empresa=self.emp, jerarquia="2.1.1.01", cuenta="Proveedores Locales", imputable=1, tipo="P")
+        cta_gasto = Cuenta.objects.create(empresa=self.emp, jerarquia="5.1.1.01", cuenta="Gastos Generales", imputable=1, tipo="R")
+        cta_iva = Cuenta.objects.create(empresa=self.emp, jerarquia="1.1.3.01", cuenta="IVA Credito Fiscal", imputable=1, tipo="A")
+        cta_iibb = Cuenta.objects.create(empresa=self.emp, jerarquia="1.1.3.02", cuenta="Retenciones IIBB", imputable=1, tipo="A")
+        cta_internos = Cuenta.objects.create(empresa=self.emp, jerarquia="5.1.2.01", cuenta="Impuestos Internos", imputable=1, tipo="R")
+
+        self.prov.cta_pat = cta_prov.pk
+        self.prov.save()
+
+        ParametrosContables.objects.create(
+            empresa=self.emp,
+            cta_proveedores_default=cta_prov,
+            cta_compras=cta_gasto,
+            cta_iva_credito=cta_iva,
+            cta_ret_iibb=cta_iibb,
+            cta_impuestos_internos=cta_internos,
+        )
+
+        post_data = {
+            'fecha': '2026-09-29',
+            'periodo': '202609',
+            'proveedor': str(self.prov.pk),
+            'tipo': '001',
+            'punto': '00001',
+            'numero': '00005678',
+            'moneda': 'PES',
+            'cotizacion': '1',
+            'condic': '3',  # AJUSTE
+            'neto': '1000,00',
+            'iva': '210,00',
+            'p_iibb': '0,00',
+            'p_iva': '0,00',
+            'otros': '0,00',
+            'total': '1210,00',
+            'modo': 'gasto',
+        }
+
+        request = self.factory.post('/facturacion/compras/carga/', post_data)
+        request.user = self.user
+        request.session = SessionStore()
+        request.session['empresa_id'] = self.emp.id
+        request.session['sucursal_id'] = self.suc.id
+        request.session['compra_items_temp'] = []
+        request.session.save()
+        setattr(request, '_messages', FallbackStorage(request))
+
+        view = ComprasCargaView.as_view()
+        response = view(request)
+
+        # Si no es 302, mostramos el error del contexto o de mensajes
+        if response.status_code != 302:
+            form_errors = response.context_data.get('form').errors if hasattr(response, 'context_data') and response.context_data and response.context_data.get('form') else 'No context form'
+            msg_list = [m.message for m in getattr(request, '_messages')]
+            self.fail(f"Response status {response.status_code}. Form errors: {form_errors}. Messages: {msg_list}")
+
+        self.assertEqual(response.status_code, 302)
+
+        # 1. NO debe cargarse en la tabla Compra
+        self.assertEqual(Compra.objects.filter(empresa=self.emp, numero=5678).count(), 0)
+
+        # 2. DEBE cargarse en LibroIvaCompras
+        iva_compra = LibroIvaCompras.objects.filter(empresa=self.emp, numero=5678).first()
+        self.assertIsNotNone(iva_compra)
+        self.assertEqual(iva_compra.neto_gravado, Decimal('1000.00'))
+        self.assertEqual(iva_compra.iva_total, Decimal('210.00'))
+        self.assertEqual(iva_compra.total, Decimal('1210.00'))
+        self.assertEqual(iva_compra.periodo, '202609')
+
+        # 3. DEBE generar el Asiento Contable con condic=3
+        asiento = Asiento.objects.filter(empresa=self.emp, asiento_id=iva_compra.asiento_id).first()
+        self.assertIsNotNone(asiento)
+        self.assertEqual(asiento.condic, 3)
+        self.assertEqual(asiento.modulo, 5)
+
+        # 4. DEBE generar el registro de alícuota en LibroIvaAlic
+        alic = LibroIvaAlic.objects.filter(asiento_id=asiento.asiento_id, c_v='C').first()
+        self.assertIsNotNone(alic)
+        self.assertEqual(alic.neto, Decimal('1000.00'))
+        self.assertEqual(alic.iva, Decimal('210.00'))
+
+        # 5. El saldo del proveedor NO debe verse alterado
+        self.prov.refresh_from_db()
+        self.assertEqual(self.prov.saldo, Decimal('0.00'))
+

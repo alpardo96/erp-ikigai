@@ -7,14 +7,45 @@
 <div class="h-[calc(100vh-4rem)] flex flex-col p-4 bg-slate-50 font-sans" x-data="lotesGrid">
     
     <!-- Encabezado Fijo -->
+    <!-- Encabezado Fijo -->
     <div class="bg-white px-4 py-3 shadow-sm rounded-lg border border-gray-200 mb-3 flex items-center justify-between shrink-0">
-        <h1 class="text-xl font-black text-slate-800 tracking-tight flex items-center">
-            Facturación por Lotes
-        </h1>
-        <div class="flex space-x-2">
-            <button @click="generarLote()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded shadow-sm font-bold text-sm transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed" :disabled="isGenerating || !pto_vta || !periodo">
-                <span x-show="!isGenerating">Generar Comprobantes</span>
-                <span x-show="isGenerating">Generando...</span>
+        <div>
+            <h1 class="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <span>Facturación por Lotes</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full font-bold uppercase"
+                      :class="modoPrueba ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'">
+                    <span x-text="modoPrueba ? '🧪 Modo Simulación (Prueba)' : '⚡ Emisión Real ARCA'"></span>
+                </span>
+            </h1>
+            <p class="text-[11px] text-gray-500 font-medium">Verticalidad Estudio Contable - Generación masiva de comprobantes fiscales y presupuestos internos</p>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <!-- Toggle Modo Prueba -->
+            <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                <span class="text-xs font-bold" :class="modoPrueba ? 'text-amber-700 font-black' : 'text-slate-500'">Simulación</span>
+                <button type="button" 
+                        @click="modoPrueba = !modoPrueba" 
+                        class="relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                        :class="modoPrueba ? 'bg-amber-500' : 'bg-emerald-600'"
+                        role="switch" 
+                        :aria-checked="!modoPrueba">
+                    <span class="sr-only">Modo Emisión</span>
+                    <span aria-hidden="true" 
+                          class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                          :class="modoPrueba ? 'translate-x-0' : 'translate-x-5'"></span>
+                </button>
+                <span class="text-xs font-bold" :class="!modoPrueba ? 'text-emerald-700 font-black' : 'text-slate-500'">ARCA Real</span>
+            </div>
+
+            <!-- Botón Generar -->
+            <button @click="generarLote()" 
+                    class="text-white px-5 py-2 rounded-lg shadow-sm font-bold text-sm transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :class="modoPrueba ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                    :disabled="isGenerating || !pto_vta || !periodo">
+                <svg x-show="!isGenerating" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span x-show="!isGenerating" x-text="modoPrueba ? 'Simular Emisión' : 'Emitir Lote a ARCA'"></span>
+                <span x-show="isGenerating">Procesando Lote...</span>
             </button>
         </div>
     </div>
@@ -35,17 +66,22 @@
                 <select x-model="pto_vta" class="h-8 pl-2 pr-7 py-0.5 bg-white border border-indigo-300 rounded-md text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                     <option value="">Seleccione...</option>
                     {% for pv in puntos_venta %}
-                        <option value="{{ pv.id }}">{{ pv.numero|stringformat:"04d" }}</option>
+                        <option value="{{ pv.id }}">{{ pv.numero|stringformat:"04d" }} - {{ pv.descripcion|default:"Fiscal" }}</option>
                     {% endfor %}
                 </select>
             </div>
 
+            <button @click="cargarDatos()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded border border-gray-300 text-xs font-bold flex items-center gap-1 transition" title="Refrescar datos">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span>Actualizar Grilla</span>
+            </button>
+
             <!-- Búsqueda Cliente -->
             <div class="relative w-80 ml-auto">
                 <div class="flex relative items-center">
-                    <input type="text" x-model="busqueda" placeholder="Buscar cliente..." class="pl-3 pr-8 rounded border-gray-300 text-xs py-1.5 focus:ring-blue-500 focus:border-blue-500 w-full shadow-sm font-semibold">
+                    <input type="text" x-model="busqueda" placeholder="Buscar cliente por Razón Social o CUIT..." class="pl-3 pr-8 rounded border-gray-300 text-xs py-1.5 focus:ring-blue-500 focus:border-blue-500 w-full shadow-sm font-semibold">
                     <button x-show="busqueda.length > 0" @click="busqueda = ''" class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-red-500">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
             </div>
@@ -179,6 +215,7 @@
         periodoAnio: '',
         pto_vta: '',
         busqueda: '',
+        modoPrueba: true, // Por defecto en modo simulación para seguridad
         isLoading: false,
         isGenerating: false,
         
@@ -194,6 +231,12 @@
             this.periodoMes = String(now.getMonth() + 1).padStart(2, '0');
             this.periodoAnio = String(now.getFullYear());
             
+            // Auto-seleccionar primer punto de venta si existe
+            const selectPto = document.querySelector('select[x-model="pto_vta"]');
+            if (selectPto && selectPto.options.length > 1) {
+                this.pto_vta = selectPto.options[1].value;
+            }
+
             this.$watch('periodoMes', () => this.cargarDatos());
             this.$watch('periodoAnio', () => this.cargarDatos());
             
@@ -274,7 +317,29 @@
                 alert("Seleccione al menos un registro para facturar.");
                 return;
             }
-            if (!confirm(`¿Está seguro de generar facturación para ${seleccionados.length} registros en el período ${this.periodo}?`)) {
+            if (!this.pto_vta) {
+                alert("Por favor seleccione un Punto de Venta Fiscal.");
+                return;
+            }
+
+            const cantF = seleccionados.filter(i => i.tarifa_f > 0).length;
+            const cantP = seleccionados.filter(i => i.tarifa_p > 0).length;
+            const modoTexto = this.modoPrueba ? "🧪 SIMULACIÓN (Sin impacto en AFIP)" : "⚡ REAL (Conexión ARCA / AFIP)";
+
+            const mensajeConfirm = 
+                `RESUMEN DE GENERACIÓN DE COMPROBANTES\n` +
+                `--------------------------------------------------\n` +
+                `• Modo: ${modoTexto}\n` +
+                `• Período: ${this.periodoMes}/${this.periodoAnio}\n` +
+                `• Clientes a procesar: ${seleccionados.length}\n` +
+                `• Comprobantes Fiscales (Tarifa F): ${cantF}\n` +
+                `• Comprobantes Internos (Tarifa P): ${cantP}\n` +
+                `• Total Fiscal c/IVA: $ ${this.formatAR(this.totales.f_total)}\n` +
+                `• Total Presupuesto: $ ${this.formatAR(this.totales.p)}\n` +
+                `--------------------------------------------------\n` +
+                `¿Desea confirmar la emisión del lote?`;
+
+            if (!confirm(mensajeConfirm)) {
                 return;
             }
 
@@ -284,6 +349,7 @@
                 const payload = {
                     periodo: this.periodo,
                     pto_vta_id: this.pto_vta,
+                    modo_prueba: this.modoPrueba,
                     lote: seleccionados.map(i => ({
                         id_tarifa: i.id,
                         cliente_id: i.cliente_id,
@@ -307,27 +373,37 @@
                 const data = await res.json();
                 
                 if (res.ok) {
+                    let exitos = 0;
+                    let errores = 0;
+
                     // Actualizar UI con resultados
-                    data.resultados.forEach(res => {
-                        const idx = this.items.findIndex(i => i.id === res.id_tarifa);
+                    data.resultados.forEach(resItem => {
+                        const idx = this.items.findIndex(i => i.id === resItem.id_tarifa);
                         if(idx !== -1) {
-                            if(res.status === 'success') {
-                                this.items[idx].resultado_f = res.msg_f || '';
-                                this.items[idx].resultado_p = res.msg_p || '';
+                            if(resItem.status === 'success') {
+                                this.items[idx].resultado_f = resItem.msg_f || '';
+                                this.items[idx].resultado_p = resItem.msg_p || '';
                                 this.items[idx].ya_facturado = true;
                                 this.items[idx].selected = false;
+                                exitos++;
                             } else {
-                                this.items[idx].error = res.msg;
+                                this.items[idx].error = resItem.msg;
+                                errores++;
                             }
                         }
                     });
-                    alert("Proceso de facturación finalizado.");
+
+                    let avisoFinal = `Proceso finalizado.\nComprobantes generados exitosamente: ${exitos}`;
+                    if (errores > 0) {
+                        avisoFinal += `\nRegistros con error: ${errores} (ver detalle en la grilla)`;
+                    }
+                    alert(avisoFinal);
                 } else {
-                    alert("Error: " + data.error);
+                    alert("Error: " + (data.error || "No se pudo procesar"));
                 }
             } catch (err) {
                 console.error(err);
-                alert("Ocurrió un error inesperado al procesar el lote.");
+                alert("Ocurrió un error inesperado al procesar el lote: " + err.message);
             } finally {
                 this.isGenerating = false;
             }

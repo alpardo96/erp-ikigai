@@ -323,8 +323,75 @@ class Plan099EstudioTestCase(TestCase):
         self.assertEqual(res_guardar.status_code, 200)
         self.assertEqual(res_guardar.json().get('status'), 'success')
 
-        # Verificar persistencia en archivo de configuración
         cfg = get_config_mail(self.empresa_estudio.id)
         self.assertEqual(cfg['email_remitente'], 'facturacion@estudiolopez.com')
         self.assertEqual(cfg['firma'], 'Atentamente,\n<b>{first_name} {last_name}</b>\n{empresa}')
         self.assertTrue(cfg['usar_ssl'])
+
+    def test_exportar_e_importar_tarifas_excel(self):
+        """Verifica la exportación a Excel (.xlsx) y la reimportación con actualización de tarifas."""
+        import openpyxl
+        import io
+        from productos.models import Producto
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        prod = Producto.objects.create(
+            empresa=self.empresa_estudio,
+            detalle="Honorarios Mensuales",
+            alic_iva=Decimal('21')
+        )
+        cli = ClienteProveedor.objects.create(
+            empresa=self.empresa_estudio,
+            razon_social="Cliente Test SA",
+            cuit="30333333331",
+            tipo_entidad=1,
+            condicion_iva="RESPONSABLE INSCRIPTO"
+        )
+        tarifa = TarifaEstudio.objects.create(
+            empresa=self.empresa_estudio,
+            cliente=cli,
+            producto=prod,
+            tarifa_f=Decimal('50000.00'),
+            tarifa_p=Decimal('10000.00'),
+            activo=True
+        )
+
+        session = self.client.session
+        session['empresa_id'] = self.empresa_estudio.id
+        session.save()
+
+        # 1. Exportar Excel
+        res_exp = self.client.get('/estudio/tarifas/exportar-excel/')
+        self.assertEqual(res_exp.status_code, 200)
+        self.assertIn('spreadsheetml', res_exp['Content-Type'])
+
+        wb = openpyxl.load_workbook(io.BytesIO(res_exp.content))
+        ws = wb.active
+        self.assertEqual(ws.title, "Tarifas Estudio")
+        self.assertEqual(ws.cell(row=1, column=1).value, "ID")
+        self.assertEqual(ws.cell(row=2, column=1).value, tarifa.id)
+        self.assertEqual(ws.cell(row=2, column=3).value, "CLIENTE TEST SA")
+
+        # 2. Modificar valores en el Excel (Tarifa F Nueva = 75000 en Col 14, Tarifa P Nueva = 15000 en Col 15)
+        ws.cell(row=2, column=14, value=75000.00)
+        ws.cell(row=2, column=15, value=15000.00)
+
+        out_buffer = io.BytesIO()
+        wb.save(out_buffer)
+        out_buffer.seek(0)
+
+        uploaded = SimpleUploadedFile(
+            "tarifas_modificadas.xlsx",
+            out_buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        # 3. Importar Excel
+        res_imp = self.client.post('/estudio/tarifas/importar-excel/', {'archivo': uploaded})
+        self.assertEqual(res_imp.status_code, 200)
+        data = res_imp.json()
+        self.assertTrue(data.get('exito'))
+        self.assertEqual(data.get('actualizados'), 1)
+        self.assertEqual(data['items'][0]['tarifa_f_nueva'], 75000.0)
+        self.assertEqual(data['items'][0]['tarifa_p_nueva'], 15000.0)
+

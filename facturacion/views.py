@@ -16,7 +16,8 @@ from .forms import CompraForm, ClienteProveedorForm, VentaForm, PreventaForm
 from empresas.models import Ejercicio
 from productos.models import Producto, StockSucursal, MovimientoStock, ALICUOTAS_ARCA_MAP
 from empresas.models import Empresa, Sucursal
-from contable.models import Cuenta, AlicuotaIva
+from contable.models import Cuenta, AlicuotaIva, LibroIvaCompras
+from contable.services.contabilizacion import contabilizar_comprobante_ajuste_compra
 from .services.afip_service import AFIPService
 from impuestos.services import obtener_primer_periodo_vigente_compra, es_periodo_cerrado
 
@@ -846,17 +847,217 @@ class ComprasCargaView(LoginRequiredMixin, View):
             'modo': 'gasto' if es_gasto else 'bienes',
         }
 
-        if not items_temp and not es_gasto:
+        es_ajuste = str(data.get('condic', '1')).strip() == '3'
+
+        if not items_temp and not es_gasto and not es_ajuste:
             messages.error(request, "Debe cargar al menos un producto en la grilla.")
             return render(request, 'facturacion/compras_carga.html', ctx_base)
 
         if form.is_valid():
-            # Validación de Duplicados
             empresa_id = request.session.get('empresa_id')
             proveedor_id = data.get('proveedor')
             punto = data.get('punto', '').strip()
             numero = data.get('numero', '').strip()
-            
+
+            def _num(v):
+                if v is None:
+                    return Decimal('0')
+                if isinstance(v, Decimal):
+                    return v
+                s = str(v).strip()
+                if not s:
+                    return Decimal('0')
+                if ',' in s:
+                    s = s.replace('.', '').replace(',', '.')
+                return Decimal(s)
+
+            # =========================================================================
+            # FLUJO CONDIC = 3 (AJUSTE): Se registra en Libro IVA Compras y Asiento únicamente
+            # =========================================================================
+            if es_ajuste:
+                # 1. Validación de duplicados en Libro IVA Compras
+                if punto and numero and LibroIvaCompras.objects.filter(
+                    empresa_id=empresa_id, clienteproveedor_id=proveedor_id,
+                    codiva=tipo_codigo, punto=int(punto or 0), numero=int(numero or 0)
+                ).exists():
+                    messages.error(request, f"¡Atención! El comprobante de ajuste {punto}-{numero} de este proveedor ya se encuentra registrado en el Libro IVA Compras.")
+                    return render(request, 'facturacion/compras_carga.html', ctx_base)
+
+                # 2. Validación y determinación del Período IVA
+                fecha_compra = form.cleaned_data.get('fecha') or timezone.localdate()
+                fecha_yyyymm = fecha_compra.strftime('%Y%m')
+                periodo_manual = data.get('periodo', '').replace('-', '').strip()
+
+                if periodo_manual:
+                    if periodo_manual < fecha_yyyymm:
+                        messages.error(request, f"Error: El período IVA ({periodo_manual}) no puede ser anterior al período de su fecha de emisión ({fecha_yyyymm}).")
+                        return render(request, 'facturacion/compras_carga.html', ctx_base)
+                    if es_periodo_cerrado(empresa_id, periodo_manual):
+                        messages.error(request, f"Error: El período IVA ({periodo_manual}) se encuentra cerrado.")
+                        return render(request, 'facturacion/compras_carga.html', ctx_base)
+                    periodo_final = periodo_manual
+                else:
+                    periodo_final = obtener_primer_periodo_vigente_compra(empresa_id, fecha_compra)
+
+                try:
+                    with transaction.atomic():
+                        from facturacion.models import TipoComprobante, Jurisdiccion
+                        tipo_obj = TipoComprobante.objects.filter(codigo=tipo_codigo).first() if tipo_codigo else form.cleaned_data.get('tipo')
+                        signo = tipo_obj.signo if tipo_obj else 1
+
+                        # Desglose de Alícuotas de IVA
+                        codigos = request.POST.getlist('alic_codigo')
+                        porcentajes = request.POST.getlist('alic_porcentaje')
+                        netos = request.POST.getlist('alic_neto')
+                        ivas = request.POST.getlist('alic_iva')
+
+                        alic_rows = []
+                        total_neto = Decimal('0')
+                        total_iva = Decimal('0')
+                        for i, cod in enumerate(codigos):
+                            neto_i = _num(netos[i] if i < len(netos) else '')
+                            iva_i = _num(ivas[i] if i < len(ivas) else '')
+                            if neto_i == 0 and iva_i == 0:
+                                continue
+                            alic_rows.append({
+                                'codigo': cod,
+                                'porcentaje': _num(porcentajes[i] if i < len(porcentajes) else ''),
+                                'neto': neto_i * signo,
+                                'iva': iva_i * signo,
+                            })
+                            total_neto += neto_i
+                            total_iva += iva_i
+
+                        if not alic_rows and _num(data.get('iva')) != 0:
+                            neto_input = _num(data.get('neto'))
+                            iva_input = _num(data.get('iva'))
+                            alic_inf = (abs(iva_input) / abs(neto_input) * Decimal('100')).quantize(Decimal('0.01')) if neto_input else Decimal('21.00')
+                            alic_rows.append({
+                                'codigo': '0005',
+                                'porcentaje': alic_inf,
+                                'neto': neto_input * signo,
+                                'iva': iva_input * signo,
+                            })
+                            total_neto = abs(neto_input)
+                            total_iva = abs(iva_input)
+                        elif not alic_rows:
+                            total_neto = _num(data.get('neto'))
+                            total_iva = _num(data.get('iva'))
+
+                        neto_final = total_neto * signo
+                        iva_final = total_iva * signo
+                        no_gravado_final = _num(data.get('no_gravado')) * signo
+                        exento_final = _num(data.get('exento')) * signo
+                        descuento_final = _num(data.get('descuento'))
+
+                        # Percepciones y Retenciones Sufridas
+                        retperc_filas = []
+                        es_cm = empresa_ctx.condicion_iibb == 'CM' if empresa_ctx else False
+                        p_iva_val = _num(request.POST.get('p_iva'))
+                        if p_iva_val:
+                            retperc_filas.append({
+                                'impuesto': 'IVA', 'tipo': 'P', 'jurisdiccion': None,
+                                'importe': p_iva_val * signo, 'leyenda': 'PERCEPCION IVA'
+                            })
+
+                        juris_ids = request.POST.getlist('iibb_juris')
+                        juris_imps = request.POST.getlist('iibb_importe')
+                        iibb_total = Decimal('0')
+                        if es_cm and any((j or '').strip() for j in juris_ids):
+                            for i, jid in enumerate(juris_ids):
+                                imp = _num(juris_imps[i] if i < len(juris_imps) else '')
+                                if imp == 0 or not (jid or '').strip():
+                                    continue
+                                jur_obj = Jurisdiccion.objects.filter(pk=int(jid)).first()
+                                retperc_filas.append({
+                                    'impuesto': 'IIBB', 'tipo': 'P', 'jurisdiccion': jur_obj,
+                                    'importe': imp * signo, 'leyenda': f"PERCEPCION IIBB {jur_obj.codigo if jur_obj else ''}"
+                                })
+                                iibb_total += imp
+                        else:
+                            p_iibb_val = _num(request.POST.get('p_iibb'))
+                            if p_iibb_val:
+                                jur = self._juris_automatica(empresa_ctx) if empresa_ctx else None
+                                retperc_filas.append({
+                                    'impuesto': 'IIBB', 'tipo': 'P', 'jurisdiccion': jur,
+                                    'importe': p_iibb_val * signo, 'leyenda': 'PERCEPCION IIBB'
+                                })
+                                iibb_total = p_iibb_val
+
+                        otros_imps = request.POST.getlist('otros_impuesto')
+                        otros_vals = request.POST.getlist('otros_importe')
+                        otros_total = Decimal('0')
+                        otros_detallado = False
+                        for i, cod in enumerate(otros_imps):
+                            val = _num(otros_vals[i] if i < len(otros_vals) else '')
+                            if val == 0 or not (cod or '').strip():
+                                continue
+                            otros_detallado = True
+                            retperc_filas.append({
+                                'impuesto': cod, 'tipo': 'P', 'jurisdiccion': None,
+                                'importe': val * signo, 'leyenda': f"PERCEPCION {cod}"
+                            })
+                            otros_total += val
+                        if not otros_detallado:
+                            otros_total = _num(request.POST.get('otros'))
+
+                        p_iva_final = p_iva_val * signo
+                        p_iibb_final = iibb_total * signo
+                        otros_final = otros_total * signo
+
+                        total_final = (neto_final + iva_final + no_gravado_final + exento_final +
+                                       p_iva_final + p_iibb_final + otros_final - descuento_final)
+
+                        # Cuenta de imputación seleccionada en pantalla (gasto)
+                        cta_imp_id = data.get('cta_imputacion') or None
+                        if cta_imp_id:
+                            try:
+                                cta_imp_id = int(cta_imp_id)
+                            except (ValueError, TypeError):
+                                cta_imp_id = None
+
+                        prov_inst = prov_obj or form.cleaned_data.get('proveedor')
+
+                        # Contabilización y registro en Libro IVA Compras
+                        contabilizar_comprobante_ajuste_compra(
+                            empresa=empresa_ctx,
+                            proveedor=prov_inst,
+                            tipo=tipo_obj,
+                            punto=int(punto or 0),
+                            numero=int(numero or 0),
+                            fecha=fecha_compra,
+                            periodo=periodo_final,
+                            cta_imputacion_id=cta_imp_id,
+                            neto=neto_final,
+                            iva=iva_final,
+                            no_gravado=no_gravado_final,
+                            exento=exento_final,
+                            descuento=descuento_final,
+                            p_iva=p_iva_final,
+                            p_iibb=p_iibb_final,
+                            otros=otros_final,
+                            total=total_final,
+                            alic_rows=alic_rows,
+                            retperc_items=retperc_filas,
+                            usuario=request.user,
+                            cuit=prov_inst.cuit if prov_inst else '',
+                        )
+
+                        # Limpieza de temporales
+                        request.session['compra_items_temp'] = []
+                        request.session['compra_oc_ids'] = []
+                        request.session['compra_recepcion_ids'] = []
+                        messages.success(request, f"¡Comprobante de Ajuste {tipo_obj.codigo if tipo_obj else ''} {punto}-{numero} registrado en Libro IVA y Contabilidad con éxito!")
+                        return redirect('compras_carga')
+
+                except Exception as e:
+                    messages.error(request, f"Error al registrar comprobante de ajuste: {str(e)}")
+                    return render(request, 'facturacion/compras_carga.html', ctx_base)
+
+            # =========================================================================
+            # FLUJO ESTÁNDAR (CONDIC 1 Y 2): Compras comerciales y bienes
+            # =========================================================================
+            # Validación de Duplicados
             if punto and numero and Compra.objects.filter(empresa_id=empresa_id, proveedor_id=proveedor_id, punto=punto, numero=numero).exists():
                 messages.error(request, f"¡Atención! La factura {punto}-{numero} de este proveedor ya se encuentra cargada en el sistema.")
                 return render(request, 'facturacion/compras_carga.html', ctx_base)
@@ -932,8 +1133,7 @@ class ComprasCargaView(LoginRequiredMixin, View):
                         cierre__gte=compra.fecha
                     ).first()
 
-                    # Nota de CrÃ©dito (tipo.signo = -1): los importes se almacenan en negativo.
-                    from decimal import Decimal
+                    # Nota de Crédito (tipo.signo = -1): los importes se almacenan en negativo.
                     signo = compra.tipo.signo if compra.tipo else 1
 
                     # Circuito OC (Plan 028): activo solo si hay OC vinculadas en sesión,

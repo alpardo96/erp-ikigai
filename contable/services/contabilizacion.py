@@ -580,6 +580,264 @@ def contabilizar_compras(compra: Compra) -> Asiento:
     return asiento
 
 
+@transaction.atomic
+def contabilizar_comprobante_ajuste_compra(
+    empresa: Empresa,
+    proveedor: ClienteProveedor,
+    tipo: TipoComprobante,
+    punto: int,
+    numero: int,
+    fecha: date,
+    periodo: str,
+    cta_imputacion_id: int = None,
+    neto: Decimal = Decimal('0.00'),
+    iva: Decimal = Decimal('0.00'),
+    no_gravado: Decimal = Decimal('0.00'),
+    exento: Decimal = Decimal('0.00'),
+    descuento: Decimal = Decimal('0.00'),
+    p_iva: Decimal = Decimal('0.00'),
+    p_iibb: Decimal = Decimal('0.00'),
+    p_gcia: Decimal = Decimal('0.00'),
+    p_mun: Decimal = Decimal('0.00'),
+    otros: Decimal = Decimal('0.00'),
+    total: Decimal = Decimal('0.00'),
+    alic_rows: List[Dict[str, Any]] = None,
+    retperc_items: List[Dict[str, Any]] = None,
+    usuario = None,
+    cuit: str = '',
+) -> Asiento:
+    """
+    Registra un comprobante con condición 3 (AJUSTE) en el Libro IVA Compras y genera su Asiento Contable.
+    
+    NO se guarda en la tabla Compra ni genera ítems de stock, costos de artículos ni movimientos
+    en cuenta corriente de proveedores. Se utiliza exclusivamente con fines fiscales (DDJJ de Impuestos y Balances).
+    
+    HABER: cta_pat del proveedor (o cta_proveedores_default).
+    DEBE: Cuenta de gasto/imputación (cta_imputacion_id o cta_res del proveedor o cta_compras),
+          IVA Crédito Fiscal, Percepciones/Retenciones Sufridas, e Impuestos Internos/Otros.
+    """
+    parametros = ParametrosContables.objects.filter(empresa=empresa).first()
+    if not parametros:
+        raise ValidationError(
+            f"No se encontraron Parámetros Contables configurados para la empresa {empresa.nombre}."
+        )
+
+    signo = tipo.signo if tipo else 1
+
+    # Determinar la cuenta contable de Proveedores (imputable al HABER)
+    cta_proveedor = None
+    if proveedor.cta_pat:
+        cta_proveedor = Cuenta.objects.filter(pk=proveedor.cta_pat, empresa=empresa, imputable=1).first()
+    if not cta_proveedor:
+        cta_proveedor = parametros.cta_proveedores_default
+
+    if not cta_proveedor:
+        raise ValidationError(
+            "No se ha definido una cuenta contable de Proveedores válida (cta_proveedores_default) "
+            f"para la empresa {empresa.nombre}."
+        )
+
+    # Determinar la cuenta de imputación / gasto (imputable al DEBE)
+    cta_debe = None
+    if cta_imputacion_id:
+        cta_debe = Cuenta.objects.filter(pk=cta_imputacion_id, empresa=empresa, imputable=1).first()
+    if not cta_debe and proveedor.cta_res:
+        cta_debe = Cuenta.objects.filter(pk=proveedor.cta_res, empresa=empresa, imputable=1).first()
+    if not cta_debe:
+        cta_debe = parametros.cta_compras
+
+    if not cta_debe:
+        raise ValidationError(
+            "No se definió una cuenta de imputación (gasto) ni la cuenta de Compras general "
+            f"(cta_compras) en los Parámetros Contables de {empresa.nombre}."
+        )
+
+    # Estructurar las líneas del Asiento Contable
+    lineas_asiento = []
+
+    # HABER: Proveedores (Importe total del comprobante con su signo)
+    lineas_asiento.append({
+        'cuenta': cta_proveedor,
+        'debe': Decimal("0.00"),
+        'haber': total,
+        'leyenda': f"COMPRA AJUSTE COMP. {tipo.codigo} {punto:05d}-{numero}",
+        'cli_pro': proveedor
+    })
+
+    # DEBE: Gasto / Compra (Neto Gravado + No Gravado + Exento)
+    monto_gasto_debe = (neto or Decimal("0.00")) + (no_gravado or Decimal("0.00")) + (exento or Decimal("0.00"))
+    if monto_gasto_debe != Decimal("0.00"):
+        lineas_asiento.append({
+            'cuenta': cta_debe,
+            'debe': monto_gasto_debe,
+            'haber': Decimal("0.00"),
+            'leyenda': f"REGISTRO AJUSTE COMP. {numero}"
+        })
+
+    # DEBE: IVA Crédito Fiscal
+    if (iva or Decimal("0.00")) != Decimal("0.00"):
+        if not parametros.cta_iva_credito:
+            raise ValidationError(
+                f"No se ha configurado la cuenta de IVA Crédito Fiscal (cta_iva_credito) en la empresa {empresa.nombre}."
+            )
+        lineas_asiento.append({
+            'cuenta': parametros.cta_iva_credito,
+            'debe': iva,
+            'haber': Decimal("0.00"),
+            'leyenda': f"IVA CREDITO FISCAL COMP. {numero}"
+        })
+
+    # DEBE: Retenciones / Percepciones Sufridas
+    retperc_items_final: List[Dict[str, Any]] = []
+    if retperc_items:
+        for rp in retperc_items:
+            importe = Decimal(str(rp.get('importe') or 0))
+            if importe == Decimal("0.00"):
+                continue
+            cuenta = rp.get('cuenta') or _cuenta_impuesto(rp.get('impuesto', 'OTRO'), parametros)
+            if not cuenta:
+                raise ValidationError(
+                    f"No se configuró la cuenta contable para la percepción {rp.get('impuesto')} "
+                    f"en la empresa {empresa.nombre}."
+                )
+            retperc_items_final.append({
+                'impuesto': rp.get('impuesto', 'OTRO'),
+                'tipo': rp.get('tipo', 'P'),
+                'importe': importe,
+                'cuenta': cuenta,
+                'leyenda': rp.get('leyenda', f"PERCEPCION {rp.get('impuesto')}"),
+                'jurisdiccion': rp.get('jurisdiccion')
+            })
+            lineas_asiento.append({
+                'cuenta': cuenta,
+                'debe': importe,
+                'haber': Decimal("0.00"),
+                'leyenda': f"{rp.get('leyenda', f'PERCEPCION {rp.get('impuesto')}')} COMP. {numero}"
+            })
+    else:
+        # Fallback de campos simples de cabecera si no vinieron ítems detallados
+        if (p_iva or Decimal("0.00")) != Decimal("0.00") and parametros.cta_ret_iva:
+            retperc_items_final.append({'impuesto': 'IVA', 'tipo': 'P', 'importe': p_iva, 'cuenta': parametros.cta_ret_iva, 'leyenda': 'PERCEPCION IVA', 'jurisdiccion': None})
+            lineas_asiento.append({'cuenta': parametros.cta_ret_iva, 'debe': p_iva, 'haber': Decimal("0.00"), 'leyenda': f"PERCEPCION IVA COMP. {numero}"})
+        if (p_iibb or Decimal("0.00")) != Decimal("0.00") and parametros.cta_ret_iibb:
+            retperc_items_final.append({'impuesto': 'IIBB', 'tipo': 'P', 'importe': p_iibb, 'cuenta': parametros.cta_ret_iibb, 'leyenda': 'PERCEPCION IIBB', 'jurisdiccion': None})
+            lineas_asiento.append({'cuenta': parametros.cta_ret_iibb, 'debe': p_iibb, 'haber': Decimal("0.00"), 'leyenda': f"PERCEPCION IIBB COMP. {numero}"})
+        if (p_gcia or Decimal("0.00")) != Decimal("0.00") and parametros.cta_ret_ganancias:
+            retperc_items_final.append({'impuesto': 'GAN', 'tipo': 'P', 'importe': p_gcia, 'cuenta': parametros.cta_ret_ganancias, 'leyenda': 'PERCEPCION GANANCIAS', 'jurisdiccion': None})
+            lineas_asiento.append({'cuenta': parametros.cta_ret_ganancias, 'debe': p_gcia, 'haber': Decimal("0.00"), 'leyenda': f"PERCEPCION GANANCIAS COMP. {numero}"})
+        if (p_mun or Decimal("0.00")) != Decimal("0.00") and parametros.cta_ret_mun:
+            retperc_items_final.append({'impuesto': 'MUN', 'tipo': 'P', 'importe': p_mun, 'cuenta': parametros.cta_ret_mun, 'leyenda': 'PERCEPCION MUNICIPAL', 'jurisdiccion': None})
+            lineas_asiento.append({'cuenta': parametros.cta_ret_mun, 'debe': p_mun, 'haber': Decimal("0.00"), 'leyenda': f"PERCEPCION MUNICIPAL COMP. {numero}"})
+
+    # DEBE: Impuestos Internos / Otros
+    otros_en_retperc = sum(
+        (rp['importe'] for rp in retperc_items_final if rp['impuesto'] in _OTROS_BUCKET),
+        Decimal('0.00'),
+    )
+    resto_internos = Decimal(str(otros or 0)) - otros_en_retperc
+    if resto_internos != Decimal("0.00"):
+        if not parametros.cta_impuestos_internos:
+            raise ValidationError(
+                f"No se ha configurado la cuenta de Impuestos Internos (cta_impuestos_internos) en la empresa {empresa.nombre}."
+            )
+        lineas_asiento.append({
+            'cuenta': parametros.cta_impuestos_internos,
+            'debe': resto_internos,
+            'haber': Decimal("0.00"),
+            'leyenda': f"IMP. INTERNOS COMP. {numero}"
+        })
+
+    # HABER: Descuentos Obtenidos
+    if (descuento or Decimal("0.00")) != Decimal("0.00"):
+        if not parametros.cta_descuentos_obtenidos:
+            raise ValidationError(
+                "Se registró un descuento global pero no se configuró la cuenta de Descuentos "
+                f"Obtenidos (cta_descuentos_obtenidos) en la empresa {empresa.nombre}."
+            )
+        lineas_asiento.append({
+            'cuenta': parametros.cta_descuentos_obtenidos,
+            'debe': Decimal("0.00"),
+            'haber': descuento,
+            'leyenda': f"DESCUENTO OBTENIDO COMP. {numero}"
+        })
+
+    # Normalización débito/crédito según signo (para NC o importes negativos)
+    for l in lineas_asiento:
+        neto_l = l['debe'] - l['haber']
+        if neto_l >= Decimal("0.00"):
+            l['debe'], l['haber'] = neto_l, Decimal("0.00")
+        else:
+            l['debe'], l['haber'] = Decimal("0.00"), -neto_l
+
+    # Crear Asiento Contable (condic = 3)
+    asiento = crear_asiento(
+        empresa=empresa,
+        fecha=fecha,
+        concepto=f"COMPRAS AJUSTE {proveedor.razon_social} COMP. {tipo.codigo} {punto:05d}-{numero}",
+        lineas=lineas_asiento,
+        condic=3,  # AJUSTE
+        modulo=5,  # Compras
+        cli_pro=proveedor,
+        usuario=usuario
+    )
+
+    # Poblar Libro IVA Compras
+    cuit_limpio = ''.join(filter(str.isdigit, (cuit or proveedor.cuit or '')))[:11]
+    otros_retperc = sum((rp['importe'] for rp in retperc_items_final), Decimal('0.00'))
+    periodo_val = (periodo or fecha.strftime('%Y%m'))[:6]
+
+    LibroIvaCompras.objects.create(
+        empresa=empresa,
+        asiento_id=asiento.asiento_id,
+        fecha=fecha,
+        periodo=periodo_val,
+        clienteproveedor=proveedor,
+        codiva=tipo.codigo,
+        punto=punto,
+        numero=numero,
+        cuit=cuit_limpio,
+        neto_gravado=neto,
+        exento=exento,
+        no_gravado=no_gravado,
+        iva_total=iva,
+        otros=otros_retperc if retperc_items_final else otros,
+        total=total,
+    )
+
+    # Poblar Alícuotas de IVA
+    desglose_final = alic_rows or []
+    if not desglose_final and iva != Decimal("0.00") and neto != Decimal("0.00"):
+        alic_inf = (abs(iva) / abs(neto) * Decimal('100')).quantize(Decimal('0.01'))
+        desglose_final = [{'alicuota': alic_inf, 'neto': neto, 'iva': iva, 'codigo': '0005'}]
+
+    for d in desglose_final:
+        LibroIvaAlic.objects.create(
+            asiento_id=asiento.asiento_id,
+            c_v='C',
+            neto=d.get('neto', Decimal('0.00')),
+            alicuota=d.get('porcentaje') or d.get('alicuota', Decimal('0.00')),
+            iva=d.get('iva', Decimal('0.00')),
+            computable=d.get('iva', Decimal('0.00')),
+            codiva=d.get('codigo') or tipo.codigo,
+        )
+
+    # Poblar Retenciones/Percepciones sufridas en el subsistema fiscal
+    for rp in retperc_items_final:
+        RetPercSufrida.objects.create(
+            empresa=empresa,
+            asiento_id=asiento.asiento_id,
+            origen='C',
+            tipo=rp.get('tipo', 'P'),
+            impuesto=rp.get('impuesto', 'OTRO'),
+            jurisdiccion=rp.get('jurisdiccion'),
+            base=Decimal('0.00'),
+            alicuota=Decimal('0.000'),
+            importe=rp.get('importe', Decimal('0.00')),
+        )
+
+    return asiento
+
+
 def _revertir_circuito_oc_de_compra(compra: Compra) -> None:
     """Deshace el circuito OC de una factura (Plan 028) antes de su baja física:
     - Revierte cantidad_facturada de las líneas de OC (borra CompraOCImputacion).

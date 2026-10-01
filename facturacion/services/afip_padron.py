@@ -160,6 +160,18 @@ class AFIPPadronService:
             result['tipo_persona'] = 'F'
             result['nombre'] = nombre or ''
             result['apellido'] = apellido or ''
+
+        # Condición ante el IVA (Inferencia inteligente sobre datos ARCA Padrón A13):
+        # Para Personas Jurídicas (tipoPersona == 'JURIDICA', tipo_persona == 'J', o CUIT 30/33/34),
+        # en la normativa fiscal argentina el encuadre comercial es Responsable Inscripto.
+        # Para Personas Físicas con actividad económica activa registrada, sugerir RESPONSABLE INSCRIPTO.
+        tipo_persona_arca = str(get_val(p, 'tipoPersona', '')).upper()
+        if tipo_persona_arca == 'JURIDICA' or result.get('tipo_persona') == 'J' or cuit_buscar.startswith(('30', '33', '34')):
+            result['condicion_iva'] = 'RESPONSABLE INSCRIPTO'
+        elif get_val(p, 'idActividadPrincipal'):
+            result['condicion_iva'] = 'RESPONSABLE INSCRIPTO'
+        else:
+            result['condicion_iva'] = 'CONSUMIDOR FINAL'
             
         # Mapeo interno de idProvincia AFIP a Códigos IIBB (Convenio Multilateral)
         # Mapeo de idProvincia de AFIP a Códigos de Jurisdicción internos (1 a 24)

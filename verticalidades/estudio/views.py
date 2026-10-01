@@ -158,6 +158,60 @@ def guardar_tarifas(request):
 
 
 @login_required
+@require_GET
+def exportar_tarifas_excel(request):
+    """
+    Exporta todas las tarifas de estudio de la empresa en un archivo Excel (.xlsx) estilizado.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return HttpResponse("No se encontró empresa activa", status=400)
+
+    from verticalidades.estudio.services.excel_tarifas_service import generar_excel_tarifas_estudio
+
+    excel_buffer = generar_excel_tarifas_estudio(empresa)
+    response = HttpResponse(
+        excel_buffer.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="actualizacion_tarifas_estudio.xlsx"'
+    return response
+
+
+@login_required
+@require_POST
+def importar_tarifas_excel(request):
+    """
+    Recibe un archivo Excel (.xlsx o .xls) con tarifas modificadas, las procesa y devuelve
+    la lista actualizada en JSON para volcarla a la grilla interactiva de Alpine.js.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if not empresa:
+        from empresas.models import Empresa
+        empresa_id = request.session.get('empresa_id')
+        if empresa_id:
+            empresa = Empresa.objects.filter(id=empresa_id).first()
+
+    if not empresa:
+        return JsonResponse({'exito': False, 'mensaje': 'No hay empresa activa'}, status=400)
+
+    archivo = request.FILES.get('archivo')
+    if not archivo:
+        return JsonResponse({'exito': False, 'mensaje': 'No se adjuntó ningún archivo de Excel.'}, status=400)
+
+    from verticalidades.estudio.services.excel_tarifas_service import parsear_excel_tarifas_estudio
+
+    resultado = parsear_excel_tarifas_estudio(archivo, empresa)
+    return JsonResponse(resultado)
+
+
+@login_required
 def facturacion_lotes(request):
     empresa = getattr(request, 'empresa_actual', None)
     if not empresa:
@@ -198,7 +252,7 @@ def api_facturacion_lotes(request):
     # Buscar ventas existentes para ese período y empresa
     from facturacion.models import Venta
     ventas_existentes = Venta.objects.filter(
-        items__producto__empresa=empresa,
+        empresa=empresa,
         periodo_facturado=periodo
     ).values(
         'cliente_id', 
@@ -290,7 +344,7 @@ def generar_lote_facturacion(request):
         from verticalidades.estudio.services.facturacion_lote_estudio import FacturacionLoteEstudioService
         servicio = FacturacionLoteEstudioService(empresa_id=empresa_id, usuario=request.user)
 
-        modo_prueba = bool(data.get('modo_prueba', True))
+        modo_prueba = bool(data.get('modo_prueba', False))
         resultados = servicio.procesar_lote(lote, periodo, pto_vta_id,
                                             modo_prueba=modo_prueba)
 

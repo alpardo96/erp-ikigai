@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django import forms
 from .models import Producto, Marca, Rubro, Familia, Subfamilia
 from core.forms import DecimalARField
@@ -93,6 +94,14 @@ class ProductoForm(forms.ModelForm):
     def clean_unidades_por_bulto(self):
         return self.cleaned_data.get('unidades_por_bulto') or 0
 
+    def clean_minimo(self):
+        val = self.cleaned_data.get('minimo')
+        return val if val is not None else Decimal('0.00')
+
+    def clean_ptopedir(self):
+        val = self.cleaned_data.get('ptopedir')
+        return val if val is not None else Decimal('0.00')
+
     def clean_unidad_venta(self):
         """Conserva o procesa el valor de unidad_venta / calibre según la actividad.
 
@@ -168,9 +177,19 @@ class ProductoForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        from decimal import Decimal
         empresa = kwargs.pop('empresa', None)
         super().__init__(*args, **kwargs)
         self._empresa = empresa
+
+        # Campos no obligatorios de forma predeterminada para evitar bloqueos
+        # en actividades de servicios o pantallas donde no se muestran (ESTUDIO, etc.)
+        self.fields['minimo'].required = False
+        self.fields['ptopedir'].required = False
+        self.fields['cod_prov'].required = False
+        self.fields['cod_fab'].required = False
+        self.fields['proveedor'].required = False
+
         if self.instance and self.instance.pk and hasattr(self.instance, 'alic_iva_porc'):
             self.initial['alic_iva'] = self.instance.alic_iva_porc
 
@@ -189,6 +208,9 @@ class ProductoForm(forms.ModelForm):
         elif not empresa or empresa.tipo_actividad != 'DISTRIBUCION':
             # En otras verticales lo hacemos no-obligatorio para que el form no rompa
             self.fields['unidad_venta'].required = False
+
+        from facturacion.models import ClienteProveedor
+        from django.db.models import Q
 
         if empresa:
             self.fields['marca'].queryset = Marca.objects.filter(empresa=empresa).order_by('detalle')
@@ -229,11 +251,9 @@ class ProductoForm(forms.ModelForm):
             else:
                 self.fields['subfamilia'].queryset = Subfamilia.objects.none()
 
-            from facturacion.models import ClienteProveedor
-            from django.db.models import Q
+            # Proveedor / Entidad asociada: permitir cualquier entidad activa de la empresa
             qs_proveedor = ClienteProveedor.objects.filter(
                 Q(empresa=empresa) | Q(empresa__isnull=True), 
-                tipo_entidad=2,
                 activo=True
             )
             if self.instance and self.instance.proveedor_id:
@@ -241,6 +261,7 @@ class ProductoForm(forms.ModelForm):
             self.fields['proveedor'].queryset = qs_proveedor.distinct().order_by('razon_social')
         else:
             self.fields['subfamilia'].queryset = Subfamilia.objects.none()
+            self.fields['proveedor'].queryset = ClienteProveedor.objects.filter(activo=True).order_by('razon_social')
 
 
 class TomaInventarioFiltroForm(forms.Form):
