@@ -14,6 +14,7 @@ from empresas.models import Sucursal
 from tesoreria.models import CajaSesion
 from tesoreria.services.caja_diaria import (
     armar_caja_diaria, cerrar_caja, get_caja_tesoreria, get_o_abrir_caja,
+    get_sesion_activa,
 )
 
 MAX_CAJAS_LISTADO = 60

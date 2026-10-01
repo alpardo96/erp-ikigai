@@ -1,6 +1,19 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
 ## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Corrección de `NameError: name 'get_sesion_activa' is not defined` en la vista de Caja Diaria de Tesorería (`/tesoreria/caja-diaria/`).
+- **Archivos creados o modificados**:
+  - `tesoreria/views_caja_diaria.py` [MODIFY]
+  - `tesoreria/tests/test_caja_diaria.py` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Importación faltante en vista de Caja Diaria:** En `tesoreria/views_caja_diaria.py`, la función auxiliar `_contexto_base()` invoca a `get_sesion_activa(caja)` para resolver la sesión activa de la sucursal. Se añadió `get_sesion_activa` a la lista de importaciones desde `tesoreria.services.caja_diaria`, resolviendo el `NameError` en tiempo de ejecución.
+  2. **Sin impacto en base de datos:** No requirió migraciones ni cambios de esquema.
+  3. **Prueba unitaria de regresión:** Se incorporó el test `test_caja_diaria_index_view_responde_ok` en `tesoreria/tests/test_caja_diaria.py` utilizando `RequestFactory` y sesión con empresa y sucursal, validando la resolución correcta de `_contexto_base` y la respuesta HTTP 200 de la vista `caja_diaria_index`.
+- **Resultado de las pruebas**: Ejecución exitosa de `python manage.py test tesoreria.tests.test_caja_diaria` (15/15 tests OK).
+- **Estado actual y siguientes pasos sugeridos**: Pantalla de Caja Diaria (`/tesoreria/caja-diaria/`) operativa sin errores.
+
+## Cristian - PC CASA
 - **Fecha/Día**: 30 de Septiembre de 2026
 - **Objetivo o Tarea**: Corrección de `AttributeError: 'Producto' object has no attribute 'pr_vta1'` en `Subproducto` y limpieza de partial duplicado `serie_typeahead.html` en facturación.
 - **Archivos creados o modificados**:
