@@ -395,3 +395,46 @@ class Plan099EstudioTestCase(TestCase):
         self.assertEqual(data['items'][0]['tarifa_f_nueva'], 75000.0)
         self.assertEqual(data['items'][0]['tarifa_p_nueva'], 15000.0)
 
+    def test_vinculacion_configuracion_media_existente(self):
+        """
+        Verifica que el servicio de configuración de correos se vincule de forma automática
+        a la configuración existente en media/config_mails/ (empresa_1_mails.json) y que
+        is_config_activa la reconozca sin requerir reconfiguración si ya vive en disco.
+        """
+        from verticalidades.estudio.services.config_mail_service import (
+            guardar_config_mail, get_config_mail, is_config_activa, existe_config_en_media
+        )
+
+        datos = {
+            'activo': True,
+            'email_remitente': 'facturacion@lopez-rios.com',
+            'nombre_remitente': 'Lopez Rios y Asoc SA',
+            'servidor_smtp': 'mail.lopez-rios.com',
+            'puerto_smtp': 465,
+            'usuario_smtp': 'facturacion@lopez-rios.com',
+            'password_smtp': 'clave_super_segura',
+            'usar_ssl': True,
+            'asunto': 'Factura {comprobante}',
+            'mensaje': 'Estimado cliente, adjuntamos comprobante.'
+        }
+        guardar_config_mail(1, datos)
+
+        self.assertTrue(existe_config_en_media())
+        self.assertTrue(existe_config_en_media(999))
+
+        # Lectura con ID None o con otro ID debe vincularse a la existente en media
+        cfg_fallback = get_config_mail(999)
+        self.assertEqual(cfg_fallback['servidor_smtp'], 'mail.lopez-rios.com')
+        self.assertEqual(cfg_fallback['usuario_smtp'], 'facturacion@lopez-rios.com')
+
+        # is_config_activa debe estar activa
+        activa, motivo = is_config_activa(999)
+        self.assertTrue(activa)
+        self.assertEqual(motivo, "")
+
+        # Vista envios-facturas no debe devolver error 400
+        res = self.client.get('/estudio/envios-facturas/')
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.context['config_activa'])
+
+

@@ -14,17 +14,37 @@ from verticalidades.estudio.services.config_mail_service import (
 from verticalidades.estudio.services.smtp_service import SMTPService
 
 
+def _get_empresa_estudio(request):
+    """
+    Obtiene la empresa activa para la verticalidad Estudio de forma segura.
+    Prioridades:
+    1. request.empresa_actual (si middleware o view previa lo inyectó)
+    2. request.session.get('empresa_id')
+    3. Empresa con tipo_actividad == 'ESTUDIO'
+    4. Primera empresa disponible en la base de datos
+    Garantiza que la sesión tenga 'empresa_id' para futuras peticiones AJAX.
+    """
+    empresa = getattr(request, 'empresa_actual', None)
+    if empresa:
+        return empresa
+    from empresas.models import Empresa
+    empresa_id = request.session.get('empresa_id') if hasattr(request, 'session') else None
+    if empresa_id:
+        empresa = Empresa.objects.filter(id=empresa_id).first()
+        if empresa:
+            return empresa
+    empresa = Empresa.objects.filter(tipo_actividad='ESTUDIO').first() or Empresa.objects.first()
+    if empresa and hasattr(request, 'session') and 'empresa_id' not in request.session:
+        request.session['empresa_id'] = empresa.id
+    return empresa
+
+
 @login_required
 def actualizar_tarifas(request):
     """
     Renderiza la vista principal para actualizar tarifas de estudio.
     """
-    empresa = getattr(request, 'empresa_actual', None)
-    if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
+    empresa = _get_empresa_estudio(request)
     from productos.models import Producto
     from contable.models import Cuenta
     from facturacion.models import ClienteProveedor
@@ -378,15 +398,9 @@ def envios_facturas(request):
     """
     Renderiza la vista principal para gestión y envío de facturas por mail.
     """
-    empresa = getattr(request, 'empresa_actual', None)
+    empresa = _get_empresa_estudio(request)
     if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
-
-    if not empresa:
-        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
 
     activa, motivo = is_config_activa(empresa.id)
     config = get_config_mail(empresa.id)
@@ -406,15 +420,9 @@ def api_envios_facturas(request):
     Retorna la lista de comprobantes emitidos en el período y su estado de envío por correo.
     Descubre automáticamente comprobantes generados previamente que aún no tengan registro en EnvioFacturaEstudio.
     """
-    empresa = getattr(request, 'empresa_actual', None)
+    empresa = _get_empresa_estudio(request)
     if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
-
-    if not empresa:
-        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
 
     periodo = request.GET.get('periodo', '').strip()
     if not periodo or len(periodo) != 6:
@@ -507,15 +515,9 @@ def api_enviar_pendientes(request):
     Endpoint de streaming para enviar masivamente todos los comprobantes pendientes o con error.
     Utiliza StreamingHttpResponse con ndjson para actualización en tiempo real y bloqueo del frontend.
     """
-    empresa = getattr(request, 'empresa_actual', None)
+    empresa = _get_empresa_estudio(request)
     if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
-
-    if not empresa:
-        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
 
     try:
         body = json.loads(request.body) if request.body else {}
@@ -551,15 +553,9 @@ def api_reenviar_factura(request, envio_id):
     Reenvía un comprobante individual específico.
     Solo disponible cuando el comprobante no está en estado ENVIADO.
     """
-    empresa = getattr(request, 'empresa_actual', None)
+    empresa = _get_empresa_estudio(request)
     if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
-
-    if not empresa:
-        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
 
     envio = EnvioFacturaEstudio.objects.filter(
         id=envio_id,
@@ -592,15 +588,9 @@ def config_mails_modal(request):
     """
     Renderiza el modal para configurar los datos SMTP y plantillas de correo de la empresa.
     """
-    empresa = getattr(request, 'empresa_actual', None)
+    empresa = _get_empresa_estudio(request)
     if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
-
-    if not empresa:
-        return HttpResponse('<div class="p-6 text-red-500 font-bold">No hay empresa activa.</div>')
+        return HttpResponse('<div class="p-6 text-red-500 font-bold">No hay empresa activa en el sistema.</div>')
 
     config = get_config_mail(empresa.id)
     return render(request, 'estudio/modals/config_mails_modal.html', {
@@ -617,15 +607,9 @@ def config_mails_guardar(request):
     """
     Guarda la configuración SMTP y plantillas en el archivo JSON dentro de media/config_mails/.
     """
-    empresa = getattr(request, 'empresa_actual', None)
+    empresa = _get_empresa_estudio(request)
     if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
-
-    if not empresa:
-        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
 
     try:
         data = {
@@ -671,15 +655,9 @@ def config_mails_probar(request):
     """
     Verifica las credenciales y conectividad SMTP sin realizar envíos a destinatarios.
     """
-    empresa = getattr(request, 'empresa_actual', None)
+    empresa = _get_empresa_estudio(request)
     if not empresa:
-        from empresas.models import Empresa
-        empresa_id = request.session.get('empresa_id')
-        if empresa_id:
-            empresa = Empresa.objects.filter(id=empresa_id).first()
-
-    if not empresa:
-        return JsonResponse({'error': 'No hay empresa activa'}, status=400)
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
 
     data = {
         'servidor_smtp': request.POST.get('servidor_smtp', '').strip(),

@@ -214,56 +214,49 @@
     }">
 
     <!-- Cabecera Principal -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-200 gap-4">
-        <div>
-            <div class="flex items-center space-x-3">
-                <span class="p-2.5 bg-indigo-100 text-indigo-700 rounded-2xl shadow-sm">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                    </svg>
-                </span>
-                <div>
-                    <h1 class="text-2xl font-black text-gray-900 tracking-tight">Envío de Facturas por Mail</h1>
-                    <p class="text-xs text-gray-500">Automatización de comprobantes con control anti-spam y trazabilidad SMTP &bull; <strong class="text-indigo-600">{{ empresa_activa.nombre }}</strong></p>
-                </div>
+    <div class="pb-4 border-b border-gray-100">
+        <div class="flex items-center space-x-3">
+            <span class="p-2.5 bg-indigo-100 text-indigo-700 rounded-2xl shadow-sm">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+            </span>
+            <div>
+                <h1 class="text-2xl font-black text-gray-900 tracking-tight">Envío de Facturas por Mail</h1>
+                <p class="text-xs text-gray-500">Automatización de comprobantes con control anti-spam y trazabilidad SMTP &bull; <strong class="text-indigo-600">{{ empresa_activa.nombre }}</strong></p>
             </div>
         </div>
 
-        <!-- Selector de Período y Acciones -->
-        <div class="flex flex-wrap items-center gap-3">
-            <!-- Período: Mes y Año -->
-            <div class="flex items-center bg-white border border-gray-200 rounded-2xl p-1.5 shadow-sm space-x-2">
-                <span class="text-xs font-bold text-gray-500 pl-2">Período:</span>
-                <select x-model="mes" @change="cargarDatos()"
-                    class="rounded-xl border-0 py-1.5 pl-3 pr-8 text-xs font-bold text-gray-800 bg-gray-50 focus:ring-2 focus:ring-indigo-500">
-                    <option value="01">Enero</option>
-                    <option value="02">Febrero</option>
-                    <option value="03">Marzo</option>
-                    <option value="04">Abril</option>
-                    <option value="05">Mayo</option>
-                    <option value="06">Junio</option>
-                    <option value="07">Julio</option>
-                    <option value="08">Agosto</option>
-                    <option value="09">Septiembre</option>
-                    <option value="10">Octubre</option>
-                    <option value="11">Noviembre</option>
-                    <option value="12">Diciembre</option>
-                </select>
-                <input type="number" x-model="anio" @change="cargarDatos()" min="2020" max="2040"
-                    class="w-20 rounded-xl border-0 py-1.5 text-xs font-bold text-gray-800 bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-center font-mono">
+        <!-- Barra de Acción y Período (Debajo del título, arriba de los globos) -->
+        <div class="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-slate-50 border border-slate-200/70 rounded-2xl">
+            <!-- Selector de Período -->
+            <div class="flex items-center space-x-2">
+                <div class="flex items-center bg-white border border-gray-200 rounded-xl px-2 py-1 shadow-sm space-x-2">
+                    <span class="text-xs font-bold text-gray-500 pl-1">Período:</span>
+                    <select x-model="mes" @change="cargarDatos()"
+                        class="rounded-lg border-0 py-1 pl-2 pr-7 text-xs font-bold text-gray-800 bg-gray-50 focus:ring-2 focus:ring-indigo-500">
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                    <input type="number" x-model="anio" @change="cargarDatos()" min="2020" max="2040"
+                        class="w-16 rounded-lg border-0 py-1 px-1 text-xs font-bold text-gray-800 bg-gray-50 focus:ring-2 focus:ring-indigo-500 text-center font-mono">
+                </div>
             </div>
-
-            <!-- Botón Configuración de Correo -->
-            <button hx-get="{% url 'estudio_config_mails_modal' %}" hx-target="#modal-container"
-                class="inline-flex items-center px-4 py-2.5 bg-white border border-gray-200 hover:border-indigo-400 text-gray-700 hover:text-indigo-600 rounded-2xl text-xs font-bold transition-all shadow-sm">
-                <svg class="w-4 h-4 mr-1.5 text-gray-400 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Configurar Mails
-            </button>
 
             <!-- Botón Principal: Enviar Pendientes -->
             <button type="button" @click="iniciarEnvioMasivo()"
                 :disabled="!{{ config_activa|yesno:'true,false' }} || cargando"
-                class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-2xl text-xs font-bold shadow-lg shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                class="inline-flex items-center justify-center px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                 <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
                 Enviar Pendientes
             </button>

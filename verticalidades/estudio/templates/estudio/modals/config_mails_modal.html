@@ -30,8 +30,8 @@
                 periodo: '202609',
                 total: '$ 185.000,00',
                 empresa: '{{ empresa.nombre|escapejs }}',
-                first_name: '{{ usuario.first_name|default:usuario.username|escapejs }}',
-                last_name: '{{ usuario.last_name|default:''|escapejs }}'
+                first_name: '{{ usuario.first_name|default:usuario.username|default:"Usuario"|escapejs }}',
+                last_name: '{{ usuario.last_name|default:""|escapejs }}'
             },
 
             // Funciones de inserción y formato
@@ -93,7 +93,7 @@
 
             renderizarPreview(texto) {
                 if (!texto) return '';
-                let res = texto;
+                let res = String(texto);
                 // Sustituir variables de muestra
                 res = res.replace(/\{cliente\}/g, this.muestra.cliente);
                 res = res.replace(/\{comprobante\}/g, this.muestra.comprobante);
@@ -105,14 +105,44 @@
                 const nombreCompleto = (this.muestra.first_name + ' ' + this.muestra.last_name).trim();
                 res = res.replace(/\{usuario\}/g, nombreCompleto || 'Usuario');
 
-                // Sanitizar HTML y convertir <b>...</b> a tags reales
+                // Soporte Markdown / WhatsApp (**texto**)
+                res = res.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+
+                const B_OPEN = '___B_OPEN___';
+                const B_CLOSE = '___B_CLOSE___';
+                const I_OPEN = '___I_OPEN___';
+                const I_CLOSE = '___I_CLOSE___';
+                const U_OPEN = '___U_OPEN___';
+                const U_CLOSE = '___U_CLOSE___';
+
+                // Normalizar múltiples dobles tags y proteger tags válidos
+                res = res.replace(/(?:<b\b[^>]*>|&lt;b&gt;)+/gi, B_OPEN);
+                res = res.replace(/(?:<\/b\b[^>]*>|&lt;\/b&gt;)+/gi, B_CLOSE);
+                res = res.replace(/(?:<strong\b[^>]*>|&lt;strong&gt;)+/gi, B_OPEN);
+                res = res.replace(/(?:<\/strong\b[^>]*>|&lt;\/strong&gt;)+/gi, B_CLOSE);
+
+                res = res.replace(/(?:<i\b[^>]*>|&lt;i&gt;)+/gi, I_OPEN);
+                res = res.replace(/(?:<\/i\b[^>]*>|&lt;\/i&gt;)+/gi, I_CLOSE);
+                res = res.replace(/(?:<u\b[^>]*>|&lt;u&gt;)+/gi, U_OPEN);
+                res = res.replace(/(?:<\/u\b[^>]*>|&lt;\/u&gt;)+/gi, U_CLOSE);
+
+                // Limpiar posibles /b erróneos o huérfanos que el usuario haya escrito
+                res = res.replace(/\/b/gi, '');
+
+                // Sanitizar texto restante a entidades seguras
                 const div = document.createElement('div');
-                div.innerText = res;
+                div.textContent = res;
                 let safe = div.innerHTML;
 
-                safe = safe.replace(/&lt;b&gt;/gi, '<strong class=\'font-bold text-gray-900\'>');
-                safe = safe.replace(/&lt;\/b&gt;/gi, '</strong>');
-                safe = safe.replace(/\n/g, '<br>');
+                // Restaurar tokens a etiquetas HTML estilizadas
+                safe = safe.split(B_OPEN).join('<strong class=\'font-bold text-gray-900\'>');
+                safe = safe.split(B_CLOSE).join('</strong>');
+                safe = safe.split(I_OPEN).join('<em>');
+                safe = safe.split(I_CLOSE).join('</em>');
+                safe = safe.split(U_OPEN).join('<u>');
+                safe = safe.split(U_CLOSE).join('</u>');
+
+                safe = safe.replace(/\r\n|\n|\r/g, '<br>');
 
                 return safe;
             },
@@ -157,6 +187,7 @@
                 
                 const form = document.getElementById('form-config-mails');
                 const formData = new FormData(form);
+                formData.set('activo', this.activo ? 'on' : 'off');
                 
                 fetch('{% url 'estudio_config_mails_probar' %}', {
                     method: 'POST',
@@ -185,7 +216,8 @@
                 const form = document.getElementById('form-config-mails');
                 const formData = new FormData(form);
 
-                // Asegurar los contenidos actualizados de mensaje, firma y logo
+                // Asegurar los contenidos actualizados de activo, mensaje, firma y logo
+                formData.set('activo', this.activo ? 'on' : 'off');
                 formData.set('asunto', this.asunto);
                 formData.set('mensaje', this.mensaje);
                 formData.set('firma', this.firma);
@@ -211,10 +243,12 @@
                             icon: 'success',
                             title: 'Configuración Guardada',
                             text: data.message,
-                            timer: 2000,
+                            timer: 1500,
                             showConfirmButton: false
                         });
-                        document.getElementById('modal-container').innerHTML = '';
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1200);
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -582,11 +616,13 @@
 
                                 <!-- Vista previa combinada con la firma -->
                                 <div class="pt-4 border-t border-gray-100">
-                                    <template x-if="logoPreview">
-                                        <img :src="logoPreview" class="h-12 w-auto object-contain mb-2 rounded">
-                                    </template>
-                                    <div class="text-xs text-gray-600 leading-normal"
+                                    <div class="text-xs text-gray-700 leading-normal"
                                          x-html="renderizarPreview(firma)"></div>
+                                    <template x-if="logoPreview">
+                                        <div class="mt-3">
+                                            <img :src="logoPreview" class="h-12 w-auto object-contain rounded border border-gray-100 p-0.5 bg-white">
+                                        </div>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -726,13 +762,13 @@
                         <div class="rounded-2xl border border-gray-200 shadow-sm p-6 bg-slate-50/50 flex flex-col justify-center flex-1">
                             <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm max-w-md">
                                 <div class="space-y-4">
+                                    <div class="text-xs text-gray-700 leading-relaxed font-sans"
+                                         x-html="renderizarPreview(firma)"></div>
                                     <template x-if="logoPreview">
-                                        <div class="pb-2 border-b border-gray-100">
+                                        <div class="pt-3 border-t border-gray-100">
                                             <img :src="logoPreview" class="max-h-16 w-auto object-contain">
                                         </div>
                                     </template>
-                                    <div class="text-xs text-gray-700 leading-relaxed font-sans"
-                                         x-html="renderizarPreview(firma)"></div>
                                 </div>
                             </div>
                         </div>

@@ -2,6 +2,62 @@
 
 ## Cristian - PC CASA
 - **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Corrección definitiva del renderizado de negritas en la Vista Previa de la Firma y vinculación directa del archivo de firma física `media/config_mails/firmas/firma_{empresa_id}.jpg` (donde el número es el ID de la empresa).
+- **Archivos creados o modificados**:
+  - `verticalidades/estudio/templates/estudio/modals/config_mails_modal.html` [MODIFY]
+  - `verticalidades/estudio/services/config_mail_service.py` [MODIFY]
+  - `verticalidades/estudio/services/smtp_service.py` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Solución a las Etiquetas `<b>` visibles en la Vista Previa de la Firma:** Se identificó que la función `renderizarPreview` realizaba `safe.replace(/\/b/gi, '')` sobre el HTML escapado que contenía `&lt;/b&gt;`. La expresión `/b` eliminaba la barra y la letra 'b' de `&lt;/b&gt;`, dejando el cierre roto como `&lt;&gt;` y provocando que el navegador mostrara las etiquetas `<b>` como texto plano sin aplicar la negrita. Se rediseñó la función utilizando una estrategia de **tokens seguros**: primero se protegen todas las etiquetas de apertura y cierre (`<b>`, `<strong>`, `<i>`, `<u>`) bajo marcadores no destructivos (`___B_OPEN___`, `___B_CLOSE___`), luego se limpian de manera segura los `/b` erróneos o huérfanos que el usuario haya tipeado, y finalmente se restauran los tags con clases semánticas `<strong class='font-bold text-gray-900'>`. Se colapsan además las etiquetas dobles consecutivas (`<b><b>` -> `<b>`).
+  2. **Simetría en el Motor de Correo Saliente (`smtp_service.py`):** Se actualizó `parse_formato_html` con la misma lógica tokenizada, asegurando que `<b><b>Ikigai </b>` se envíe como un `<b>Ikigai </b>` válido y limpio sin mutilar los cierres `</b>`.
+  3. **Vinculación Directa de la Imagen de Firma (`firma_{empresa_id}.*`):** Se implementó `get_logo_firma_path(empresa_id)` en `config_mail_service.py` para capturar automáticamente el archivo `firma_{empresa_id}.jpg` (o `.png`, `.jpeg`, `.webp`, `.svg`) que vive en `media/config_mails/firmas/`. De este modo, la interfaz del modal y el servicio SMTP detectan de inmediato la imagen del logo según el ID de la empresa sin requerir persistirla en base de datos ni depender de sincronizaciones intermedias en el JSON.
+- **Resultado de las pruebas**: Suite `verticalidades.estudio.tests` ejecutada con éxito: 10/10 tests aprobados (100% OK en 50.5s).
+- **Estado actual y siguientes pasos sugeridos**: Vista Previa de Firma y Cuerpo renderizan las negritas en tiempo real con fidelidad idéntica al correo enviado, y el logo institucional se carga automáticamente desde `media/config_mails/firmas/firma_{id}.jpg`.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Vinculación automática y captura prioritaria de la configuración de correos que ya vive en `media/config_mails/` (`empresa_1_mails.json` y `firmas/`) y resolución defensiva de empresa activa para la verticalidad Estudio.
+- **Archivos creados o modificados**:
+  - `verticalidades/estudio/services/config_mail_service.py` [MODIFY]
+  - `verticalidades/estudio/views.py` [MODIFY]
+  - `verticalidades/estudio/tests.py` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Captura Inteligente y Vinculación a Media:** Se actualizó `get_config_file_path`, `get_config_mail` e `is_config_activa` en `config_mail_service.py` para resolver prioritariamente el archivo de configuración existente en `media/config_mails/` (`empresa_{id}_mails.json`, `empresa_1_mails.json` o cualquier `empresa_*_mails.json` en disco). Si ya vive una configuración en `media/config_mails/`, el sistema se vincula directamente a ella, permitiendo que la interfaz reconozca el servicio como activo y no solicite reconfiguración innecesaria. Además, autovincula firmas encontradas en `media/config_mails/firmas/` si el JSON no tiene la ruta explícita.
+  2. **Resolución Defensiva de Empresa en Vistas (`_get_empresa_estudio`):** Se introdujo una función auxiliar unificada para todas las vistas y endpoints de Estudio (`envios_facturas`, `api_envios_facturas`, `api_enviar_pendientes`, `api_reenviar_factura`, `config_mails_modal`, `config_mails_guardar` y `config_mails_probar`). Resuelve la empresa considerando `request.empresa_actual`, `session['empresa_id']`, o fallback automático a la empresa configurada con verticalidad `ESTUDIO` (o primera empresa del sistema), sincronizando el ID en la sesión para evitar errores `400 No hay empresa activa` en peticiones AJAX/HTMX.
+  3. **Prueba Unitaria de Regresión y Vinculación:** Se incorporó el test `test_vinculacion_configuracion_media_existente` en `verticalidades/estudio/tests.py`, validando que al existir `empresa_1_mails.json` en `media/config_mails/`, cualquier llamada a `get_config_mail`, `is_config_activa` y la vista de envíos cargan la configuración existente con éxito y sin advertencias de inactividad.
+- **Resultado de las pruebas**: `python manage.py test verticalidades.estudio.tests --keepdb` ejecutado con éxito: 10/10 tests aprobados (100% OK en 48.3s).
+- **Estado actual y siguientes pasos sugeridos**: Sistema de correos de Estudio enlazado de forma permanente a la configuración existente en `media/config_mails/`. Proceder a la verificación en pantalla.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Restauración y corrección de inicialización sincrónica de AlpineJS (`modalCuerpo` y `modalFirma`) en `config_mails_modal.html`.
+- **Archivos creados o modificados**:
+  - `verticalidades/estudio/templates/estudio/modals/config_mails_modal.html` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Inicialización Inmediata sin Scripts Asíncronos:** Al cargarse el modal vía HTMX, la separación en etiqueta `<script>` externa al final del payload generaba una condición de carrera donde Alpine inicializaba antes de la evaluación del script, dejando `modalCuerpo` inactivo.
+  2. **Sanitización Estricta de Comillas en `x-data`:** Se reintegró el estado de forma inline en `x-data="{ ... }"` asegurando que todas las cadenas de texto y clases internas (`<strong class=\'font-bold text-gray-900\'>`) utilicen comillas simples escapadas. De esta manera, el analizador HTML de Alpine procesa inmediatamente los estados reactivos, permitiendo la apertura fluida de "Editar Cuerpo" y "Editar Firma".
+- **Resultado de las pruebas**: Suite de pruebas `verticalidades.estudio.tests` ejecutada con éxito (9/9 tests OK).
+- **Estado actual y siguientes pasos sugeridos**: Submodales y vista previa de edición de cuerpo y firma 100% interactivos y operativos.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Corrección de renderizado de negritas (HTML `<b>`/`<strong>` y Markdown `**`), ajuste de posición del logo de firma debajo del texto y aseguramiento del guardado/recarga en la configuración de correos para Estudio Contable.
+- **Archivos creados o modificados**:
+  - `verticalidades/estudio/templates/estudio/modals/config_mails_modal.html` [MODIFY]
+  - `verticalidades/estudio/services/smtp_service.py` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Soporte Dual de Negrita y Sanitización:** Se actualizó `renderizarPreview` en `config_mails_modal.html` y `parse_formato_html` / `texto_plano` en `smtp_service.py` para admitir tanto formato HTML (`<b>...</b>`, `<strong>...</strong>`) como Markdown tipo WhatsApp (`**texto**`). Se agregaron reemplazos seguros para limpiar cualquier `/b` tipeado de forma errónea o huérfana para que nunca aparezca en el correo enviado ni en la vista previa.
+  2. **Ubicación del Logo de la Firma:** Se ajustó la vista previa del cuerpo del correo y del submodal de firma en `config_mails_modal.html` para colocar el bloque del logo/imagen **debajo** del texto de la firma (`renderizarPreview(firma)`), manteniendo coherencia exacta con la estructura de correo generada por `smtp_service.py`.
+  3. **Persistencia y Actualización de Estado:** Se reforzó el envío explícito del flag `activo` en el `FormData` de `guardar()` y se programó una recarga controlada (`window.location.reload()`) tras guardar exitosamente para que el estado de configuración activa se refleje de inmediato en la interfaz principal de envíos de facturas.
+- **Resultado de las pruebas**: Verificación de renderizado en tiempo real y ejecución de suite de pruebas de la verticalidad Estudio.
+- **Estado actual y siguientes pasos sugeridos**: Interfaz de configuración de mails y envío masivo totalmente ajustada y funcional.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
 - **Objetivo o Tarea**: Corrección de `NameError: name 'get_sesion_activa' is not defined` en la vista de Caja Diaria de Tesorería (`/tesoreria/caja-diaria/`).
 - **Archivos creados o modificados**:
   - `tesoreria/views_caja_diaria.py` [MODIFY]
@@ -5869,6 +5925,29 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 4. **Cero Impacto en Base de Datos:** Sin migraciones.
 **Resultado de las pruebas:**
 - Validación sintáctica de vistas y templates completada con éxito.
+### Optimización de UI en Envíos de Facturas y Prueba de Correo SMTP con Adjunto Real
+**Fecha:** 01 de Octubre de 2026
+**Objetivo:** 
+1. Reubicar el selector de período y el botón "Enviar Pendientes" debajo del título y arriba de los globos (KPIs) en `envios_facturas.html`.
+2. Remover el botón redundante "Configurar Mails" de la cabecera operativa.
+3. Ajustar el ancho del input de año a una dimensión armónica para 4 dígitos (`w-16`).
+4. Realizar prueba de envío de correo SMTP con la configuración y plantilla de `media/config_mails/empresa_1_mails.json` a `cristianortizrats96@gmail.com` incluyendo PDF real adjunto y firma con logo.
+**Archivos creados o modificados:**
+- `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Reorganización Visual de Cabecera:**
+   - Se eliminó el botón "Configurar Mails" de la barra principal.
+   - El bloque de período (mes y año) y el botón principal "Enviar Pendientes" se movieron a una barra unificada en `bg-slate-50` inmediatamente debajo del título y por encima de las tarjetas de métricas.
+   - Se dimensionó el campo del año a `w-16` (64px) con `font-mono` centrado y padding ajustado para 4 dígitos, evitando el ensanchamiento desproporcionado previo.
+2. **Prueba de Envío SMTP con Plantilla y Logo Real:**
+   - Se probó la autenticación SSL contra `mail.lopezriossa.com:465` usando la configuración cargada desde `media/config_mails/empresa_1_mails.json`.
+   - Se generó el comprobante PDF real con `generar_pdf_venta(venta.ventas_id)` de 56 KB.
+   - Se envió satisfactoriamente a `cristianortizrats96@gmail.com` con el asunto dinámico, cuerpo reemplazando variables (`{cliente}`, `{comprobante}`, `{periodo}`), firma formateada con negritas `<b>` y logo embebido inline (`firma_1.jpg`).
+3. **Cero Impacto en Base de Datos:** No se realizaron migraciones ni cambios en el esquema relacional.
+**Resultado de las pruebas:**
+- Envío SMTP exitoso (`250 OK`) a `cristianortizrats96@gmail.com` verificado por consola.
+- Integridad de templates y sintaxis HTML confirmada.
 **Estado actual y siguientes pasos sugeridos:**
-- Alerta no invasiva de 3 segundos lista y grilla de preventa protegida contra roturas.
+- El usuario revisa en su bandeja de entrada de Gmail el correo recibido para verificar diseño, firma y archivo PDF.
 

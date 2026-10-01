@@ -207,19 +207,43 @@ class SMTPService:
                 logo_path = p
 
         # 4. Versión Texto Plano (limpia tags <b> y <br>)
+        # 4. Versión Texto Plano (limpia tags <b>, <strong> y Markdown)
         texto_plano_completo = cuerpo_txt
         if firma_txt:
             texto_plano_completo += f"\n\n---\n{firma_txt}"
         texto_plano = re.sub(r'</?(?:b|strong)>', '*', texto_plano_completo)
         texto_plano = re.sub(r'<[^>]+>', '', texto_plano)
+        texto_plano = re.sub(r'(?i)\s*/b\s*', ' ', texto_plano)
 
-        # 5. Versión HTML Enriquecida con soporte para negrita <b>
+        # 5. Versión HTML Enriquecida con soporte para negrita <b> y Markdown **
         def parse_formato_html(texto: str) -> str:
-            t = html.escape(texto)
-            t = t.replace('&lt;b&gt;', '<b>').replace('&lt;/b&gt;', '</b>')
-            t = t.replace('&lt;strong&gt;', '<strong>').replace('&lt;/strong&gt;', '</strong>')
-            t = t.replace('&lt;i&gt;', '<i>').replace('&lt;/i&gt;', '</i>')
-            t = t.replace('&lt;u&gt;', '<u>').replace('&lt;/u&gt;', '</u>')
+            if not texto:
+                return ""
+            t = str(texto)
+            # Soporte Markdown / WhatsApp (**texto**)
+            t = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', t)
+
+            # Proteger tags válidos con tokens seguros antes de limpiar /b
+            t = re.sub(r'(?i)(?:<b\b[^>]*>|&lt;b&gt;)+', '___OPEN_B___', t)
+            t = re.sub(r'(?i)(?:</b\b[^>]*>|&lt;/b&gt;)+', '___CLOSE_B___', t)
+            t = re.sub(r'(?i)(?:<strong\b[^>]*>|&lt;strong&gt;)+', '___OPEN_STRONG___', t)
+            t = re.sub(r'(?i)(?:</strong\b[^>]*>|&lt;/strong&gt;)+', '___CLOSE_STRONG___', t)
+            t = re.sub(r'(?i)(?:<i\b[^>]*>|&lt;i&gt;)+', '___OPEN_I___', t)
+            t = re.sub(r'(?i)(?:</i\b[^>]*>|&lt;/i&gt;)+', '___CLOSE_I___', t)
+            t = re.sub(r'(?i)(?:<u\b[^>]*>|&lt;u&gt;)+', '___OPEN_U___', t)
+            t = re.sub(r'(?i)(?:</u\b[^>]*>|&lt;/u&gt;)+', '___CLOSE_U___', t)
+
+            # Limpiar cualquier /b erróneo o huérfano tipeado por el usuario
+            t = re.sub(r'(?i)/b', '', t)
+
+            # Escapar todo el contenido no seguro
+            t = html.escape(t)
+
+            # Restaurar tags válidos
+            t = t.replace('___OPEN_B___', '<b>').replace('___CLOSE_B___', '</b>')
+            t = t.replace('___OPEN_STRONG___', '<strong>').replace('___CLOSE_STRONG___', '</strong>')
+            t = t.replace('___OPEN_I___', '<i>').replace('___CLOSE_I___', '</i>')
+            t = t.replace('___OPEN_U___', '<u>').replace('___CLOSE_U___', '</u>')
             t = t.replace('\n', '<br>')
             return t
 
