@@ -42,11 +42,19 @@ class EnvioFacturaEstudio(AuditModel):
         ('ERROR', 'Error'),
     ]
 
+    MODOS_ADJUNTO = [
+        ('SISTEMA', 'Usar Factura del Sistema'),
+        ('REEMPLAZAR', 'Intercambiar por Factura Cargada'),
+        ('AMBOS', 'Enviar Agregadas (Sistema + Cargada)'),
+    ]
+
     empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='envios_facturas_estudio')
     venta = models.OneToOneField('facturacion.Venta', on_delete=models.CASCADE, related_name='envio_estudio', verbose_name="Factura/Comprobante")
     cliente = models.ForeignKey(ClienteProveedor, on_delete=models.CASCADE, related_name='envios_facturas_estudio', verbose_name="Cliente")
     periodo = models.CharField(max_length=6, db_index=True, verbose_name="Período Facturado (YYYYMM)")
     destinatarios = models.CharField(max_length=500, blank=True, default='', verbose_name="Destinatarios (Mails)")
+    archivo_adjunto = models.FileField(upload_to='estudio/facturas_adjuntas/', null=True, blank=True, verbose_name="Comprobante Adjunto Externo")
+    modo_adjunto = models.CharField(max_length=20, choices=MODOS_ADJUNTO, default='SISTEMA', verbose_name="Modo de Adjuntos")
     estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE', db_index=True, verbose_name="Estado de Envío")
     respuesta_smtp = models.TextField(null=True, blank=True, verbose_name="Respuesta SMTP / Registro")
     fecha_envio = models.DateTimeField(null=True, blank=True, verbose_name="Fecha y Hora de Envío")

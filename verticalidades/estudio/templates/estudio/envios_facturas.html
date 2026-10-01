@@ -51,6 +51,29 @@
 
         init() {
             this.cargarDatos();
+            window.addEventListener('envio-modificado', (event) => {
+                const data = event.detail;
+                const it = this.items.find(i => i.id === data.envio_id);
+                if (it) {
+                    it.modo_adjunto = data.modo_adjunto;
+                    it.destinatarios = data.destinatarios;
+                    it.archivo_adjunto_url = data.archivo_adjunto_url;
+                    it.archivo_adjunto_nombre = data.archivo_adjunto_nombre;
+                }
+            });
+        },
+
+        abrirModalEdicion(envioId) {
+            const url = `{% url 'estudio_envio_editar_modal' 0 %}`.replace('0', envioId);
+            fetch(url)
+                .then(res => res.text())
+                .then(html => {
+                    const container = document.getElementById('modal-container');
+                    container.innerHTML = html;
+                })
+                .catch(err => {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar el modal de edición.' });
+                });
         },
 
         cargarDatos() {
@@ -460,10 +483,31 @@
                                     </template>
                                     <a :href="`{% url 'imprimir_factura' 0 %}`.replace('0', item.venta_id)" target="_blank"
                                         class="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold underline flex items-center">
-                                        PDF
+                                        PDF Sistema
                                         <svg class="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                     </a>
                                 </div>
+                                <!-- Badges de Modo de Adjunto -->
+                                <template x-if="item.modo_adjunto === 'REEMPLAZAR'">
+                                    <div class="mt-1 flex items-center gap-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                            Intercambiada
+                                        </span>
+                                        <template x-if="item.archivo_adjunto_url">
+                                            <a :href="item.archivo_adjunto_url" target="_blank" class="text-[10px] text-amber-700 underline font-mono truncate max-w-[120px]" :title="item.archivo_adjunto_nombre" x-text="item.archivo_adjunto_nombre"></a>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="item.modo_adjunto === 'AMBOS'">
+                                    <div class="mt-1 flex items-center gap-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                            Agregada (+Adjunto)
+                                        </span>
+                                        <template x-if="item.archivo_adjunto_url">
+                                            <a :href="item.archivo_adjunto_url" target="_blank" class="text-[10px] text-emerald-700 underline font-mono truncate max-w-[120px]" :title="item.archivo_adjunto_nombre" x-text="item.archivo_adjunto_nombre"></a>
+                                        </template>
+                                    </div>
+                                </template>
                             </td>
 
                             <!-- Cliente -->
@@ -514,22 +558,32 @@
                             <!-- Diagnóstico SMTP -->
                             <td class="px-3 py-3.5 max-w-xs text-gray-500 text-[11px] truncate" :title="item.respuesta_smtp" x-text="item.respuesta_smtp || '-'"></td>
 
-                            <!-- Acción: Botón Reenviar (Visible sólo si NO está enviado) -->
+                            <!-- Acción: Botón Editar y Reenviar -->
                             <td class="py-3.5 pl-3 pr-6 text-right whitespace-nowrap">
-                                <template x-if="item.estado !== 'ENVIADO'">
-                                    <button type="button" @click="reenviarIndividual(item)" :disabled="item._reenviando"
-                                        class="inline-flex items-center px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors shadow-sm disabled:opacity-50">
-                                        <svg x-show="!item._reenviando" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                                        <svg x-show="item._reenviando" x-cloak class="w-3.5 h-3.5 mr-1 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                                        <span x-text="item.estado === 'ERROR' ? 'Reintentar' : 'Enviar'"></span>
+                                <div class="inline-flex items-center space-x-1.5">
+                                    <!-- Botón Editar Factura a Enviar -->
+                                    <button type="button" @click="abrirModalEdicion(item.id)" title="Elegir Factura / Cargar Monotributo o Presupuesto"
+                                        class="p-1.5 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 rounded-xl transition-colors shadow-sm"
+                                        :class="item.modo_adjunto !== 'SISTEMA' ? 'border border-indigo-400 bg-indigo-50 text-indigo-700' : ''">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                     </button>
-                                </template>
-                                <template x-if="item.estado === 'ENVIADO'">
-                                    <span class="inline-flex items-center text-emerald-600 text-xs font-bold">
-                                        <svg class="w-4 h-4 mr-1 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        OK
-                                    </span>
-                                </template>
+
+                                    <!-- Botón Reenviar (Visible sólo si NO está enviado) -->
+                                    <template x-if="item.estado !== 'ENVIADO'">
+                                        <button type="button" @click="reenviarIndividual(item)" :disabled="item._reenviando"
+                                            class="inline-flex items-center px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs transition-colors shadow-sm disabled:opacity-50">
+                                            <svg x-show="!item._reenviando" class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            <svg x-show="item._reenviando" x-cloak class="w-3.5 h-3.5 mr-1 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                            <span x-text="item.estado === 'ERROR' ? 'Reintentar' : 'Enviar'"></span>
+                                        </button>
+                                    </template>
+                                    <template x-if="item.estado === 'ENVIADO'">
+                                        <span class="inline-flex items-center text-emerald-600 text-xs font-bold pl-1">
+                                            <svg class="w-4 h-4 mr-1 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            OK
+                                        </span>
+                                    </template>
+                                </div>
                             </td>
                         </tr>
                     </template>

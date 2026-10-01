@@ -490,6 +490,9 @@ def api_envios_facturas(request):
             'cliente_razon': cliente_nombre,
             'cliente_cuit': v.cliente_cuit or (v.cliente.cuit if v.cliente else ''),
             'destinatarios': e.destinatarios or (v.cliente.correo if v.cliente else ''),
+            'modo_adjunto': e.modo_adjunto,
+            'archivo_adjunto_url': e.archivo_adjunto.url if e.archivo_adjunto else '',
+            'archivo_adjunto_nombre': e.archivo_adjunto.name.split('/')[-1] if e.archivo_adjunto else '',
             'estado': e.estado,
             'respuesta_smtp': e.respuesta_smtp or '',
             'fecha_envio': e.fecha_envio.strftime('%d/%m/%Y %H:%M') if e.fecha_envio else '',
@@ -687,4 +690,86 @@ def config_mails_probar(request):
         return JsonResponse({'status': 'success', 'message': mensaje})
     else:
         return JsonResponse({'status': 'error', 'message': mensaje}, status=400)
+
+
+@login_required
+def estudio_envio_editar_modal(request, envio_id):
+    """
+    Renderiza el modal para configurar si se envía la factura del sistema,
+    si se intercambia por un comprobante cargado (monotributo/presupuesto)
+    o si se envían agregados (sistema + cargado).
+    """
+    empresa = _get_empresa_estudio(request)
+    if not empresa:
+        return HttpResponse('<div class="p-6 text-red-500 font-bold">No hay empresa activa en el sistema.</div>')
+
+    envio = EnvioFacturaEstudio.objects.filter(
+        id=envio_id,
+        empresa=empresa
+    ).select_related('venta', 'venta__tipo', 'cliente').first()
+
+    if not envio:
+        return HttpResponse('<div class="p-6 text-red-500 font-bold">Comprobante de envío no encontrado.</div>')
+
+    return render(request, 'estudio/modals/editar_envio_modal.html', {
+        'envio': envio,
+        'venta': envio.venta,
+        'cliente': envio.cliente,
+    })
+
+
+@login_required
+@require_POST
+def estudio_envio_guardar_edicion(request, envio_id):
+    """
+    Guarda los cambios de modo de comprobante, archivo adjunto y destinatarios.
+    """
+    empresa = _get_empresa_estudio(request)
+    if not empresa:
+        return JsonResponse({'status': 'error', 'error': 'No hay empresa activa en el sistema.'}, status=400)
+
+    envio = EnvioFacturaEstudio.objects.filter(
+        id=envio_id,
+        empresa=empresa
+    ).select_related('venta', 'cliente').first()
+
+    if not envio:
+        return JsonResponse({'status': 'error', 'error': 'Registro de envío no encontrado.'}, status=404)
+
+    modo_adjunto = request.POST.get('modo_adjunto', 'SISTEMA').strip()
+    destinatarios = request.POST.get('destinatarios', '').strip()
+    eliminar_adjunto = request.POST.get('eliminar_adjunto') == '1'
+
+    if modo_adjunto not in ['SISTEMA', 'REEMPLAZAR', 'AMBOS']:
+        modo_adjunto = 'SISTEMA'
+
+    envio.modo_adjunto = modo_adjunto
+    if destinatarios:
+        envio.destinatarios = destinatarios
+
+    if eliminar_adjunto:
+        if envio.archivo_adjunto:
+            try:
+                envio.archivo_adjunto.delete(save=False)
+            except Exception:
+                pass
+        envio.archivo_adjunto = None
+
+    if 'archivo_adjunto' in request.FILES:
+        archivo = request.FILES['archivo_adjunto']
+        envio.archivo_adjunto = archivo
+
+    envio.modificado_por = request.user
+    envio.save()
+
+    return JsonResponse({
+        'status': 'success',
+        'mensaje': 'Configuración de envío actualizada exitosamente.',
+        'envio_id': envio.id,
+        'modo_adjunto': envio.modo_adjunto,
+        'destinatarios': envio.destinatarios,
+        'archivo_adjunto_url': envio.archivo_adjunto.url if envio.archivo_adjunto else '',
+        'archivo_adjunto_nombre': envio.archivo_adjunto.name.split('/')[-1] if envio.archivo_adjunto else ''
+    })
+
 

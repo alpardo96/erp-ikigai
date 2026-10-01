@@ -300,11 +300,32 @@ class SMTPService:
 
         msg.attach(alt_part)
 
-        # 6. Adjuntar PDF
-        nombre_pdf = f"Factura_{venta.tipo.codigo if venta.tipo else 'DOC'}_{venta.punto:04d}-{venta.numero:08d}.pdf"
-        adjunto = MIMEApplication(pdf_bytes, _subtype="pdf")
-        adjunto.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', nombre_pdf))
-        msg.attach(adjunto)
+        # 6. Adjuntar Comprobantes según el modo configurado (SISTEMA, REEMPLAZAR o AMBOS)
+        modo = getattr(envio, 'modo_adjunto', 'SISTEMA')
+        archivo_adjunto = getattr(envio, 'archivo_adjunto', None)
+
+        # 6.A. Adjuntar PDF generado por el sistema si el modo es SISTEMA o AMBOS (o si REEMPLAZAR no tiene archivo)
+        debe_adjuntar_sistema = (modo in ['SISTEMA', 'AMBOS']) or (modo == 'REEMPLAZAR' and not archivo_adjunto)
+        if debe_adjuntar_sistema and pdf_bytes:
+            nombre_pdf = f"Factura_{venta.tipo.codigo if venta.tipo else 'DOC'}_{venta.punto:04d}-{venta.numero:08d}.pdf"
+            adjunto = MIMEApplication(pdf_bytes, _subtype="pdf")
+            adjunto.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', nombre_pdf))
+            msg.attach(adjunto)
+
+        # 6.B. Adjuntar comprobante externo cargado si el modo es REEMPLAZAR o AMBOS
+        if modo in ['REEMPLAZAR', 'AMBOS'] and archivo_adjunto:
+            try:
+                adj_path = Path(archivo_adjunto.path) if hasattr(archivo_adjunto, 'path') else None
+                if adj_path and adj_path.exists():
+                    with open(adj_path, 'rb') as f:
+                        adj_bytes = f.read()
+                    nombre_archivo_externo = adj_path.name
+                    adj_ext = MIMEApplication(adj_bytes, _subtype="pdf")
+                    adj_ext.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', nombre_archivo_externo))
+                    msg.attach(adj_ext)
+            except Exception as e:
+                # Si falla leer el archivo externo, no romper el envío completo
+                pass
 
         return msg
 

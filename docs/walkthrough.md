@@ -5987,4 +5987,51 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 **Estado actual y siguientes pasos sugeridos:**
 - Funcionalidad de selección por checkboxes operativa en la interfaz de Envíos de Facturas. El usuario puede seleccionar facturas específicas y emitir el lote selectivo.
 
+### Modal de Edición de Comprobantes a Enviar (Intercambio y Facturas Agregadas)
+**Fecha:** 01 de Octubre de 2026
+**Objetivo:** 
+1. Incorporar en la columna "Acción" de Envíos de Facturas un botón de edición que despliegue un modal interactivo para configurar el comprobante a adjuntar.
+2. Permitir 3 modalidades operativas por comprobante:
+   - **Factura Actual del Sistema:** Envía el comprobante generado por el ERP en PDF.
+   - **Intercambiar Factura:** Reemplaza la factura del sistema por un comprobante cargado externamente (ej: monotributo o presupuesto).
+   - **Enviar Agregadas:** Envía la factura del sistema (ej: Factura B) junto con el comprobante cargado (ej: monotributo) en el mismo correo.
+3. Soportar carga, persistencia y eliminación de comprobantes PDF externos en el modelo `EnvioFacturaEstudio`.
+4. Adaptar el servicio SMTP (`SMTPService`) para adjuntar los archivos correspondientes según el modo configurado.
+
+**Archivos creados o modificados:**
+- `verticalidades/estudio/models.py` [MODIFIED]
+- `verticalidades/estudio/migrations/0003_enviofacturaestudio_archivo_adjunto_and_more.py` [NEW]
+- `verticalidades/estudio/services/smtp_service.py` [MODIFIED]
+- `verticalidades/estudio/views.py` [MODIFIED]
+- `verticalidades/estudio/urls.py` [MODIFIED]
+- `verticalidades/estudio/templates/estudio/modals/editar_envio_modal.html` [NEW]
+- `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Modelo `EnvioFacturaEstudio` y Migración:**
+   - Se agregaron los campos `archivo_adjunto = models.FileField(upload_to='estudio/facturas_adjuntas/', null=True, blank=True)` y `modo_adjunto = models.CharField(max_length=20, choices=MODOS_ADJUNTO, default='SISTEMA')`.
+   - Se generó y aplicó exitosamente la migración `0003_enviofacturaestudio_archivo_adjunto_and_more.py`.
+2. **Motor de Envíos SMTP (`SMTPService`):**
+   - En `_construir_mensaje`, se discrimina `modo_adjunto`:
+     - Si es `SISTEMA` o `AMBOS`: adjunta el PDF del sistema.
+     - Si es `REEMPLAZAR` o `AMBOS` y posee `archivo_adjunto`: abre y adjunta el binario del PDF externo manteniendo su nombre original.
+3. **Modal de Edición (`editar_envio_modal.html`):**
+   - Tarjetas radio para seleccionar entre Factura Sistema, Intercambio (Monotributo/Presupuesto) y Agregadas.
+   - Selector de archivo PDF con previsualización del archivo actual y opción de eliminación.
+   - Input editable de destinatarios (mails) para ajustes individuales.
+   - Guardado asíncrono con feedback instantáneo SweetAlert2 y actualización reactiva de la fila en la tabla mediante el evento `envio-modificado`.
+4. **Grilla de Envíos (`envios_facturas.html`):**
+   - Se agregó el botón de edición con icono en cada fila.
+   - Se incorporaron badges visuales identificatorios en la columna comprobante: `[Intercambiada]` (ámbar) y `[Agregada (+Adjunto)]` (verde) con enlace directo al PDF cargado.
+
+**Resultado de las pruebas:**
+- `python manage.py makemigrations estudio`: OK.
+- `python manage.py migrate estudio`: OK (`estudio.0003` aplicada).
+- `python manage.py check`: 0 errores o problemas.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Sistema listo y entregado. Permite la gestión completa de envíos selectivos con reemplazo o adición de comprobantes externos.
+
+
 
