@@ -5951,3 +5951,40 @@ Esto soluciona un problema de UX donde el HTMX fallaba silenciosamente al no cum
 **Estado actual y siguientes pasos sugeridos:**
 - El usuario revisa en su bandeja de entrada de Gmail el correo recibido para verificar diseño, firma y archivo PDF.
 
+### Remoción de Período/Vencimiento en Facturas PDF y Selección Selectiva por Checkboxes en Envíos
+**Fecha:** 01 de Octubre de 2026
+**Objetivo:** 
+1. Remover la línea y franja de "Período Facturado Desde / Hasta" y "Fecha de Vto. para el Pago" en la plantilla de impresión de comprobantes en PDF ([facturacion/services/pdf_service.py](file:///d:/OneDrive/Escritorio/Proyectos%20Django/erp-ikigai/facturacion/services/pdf_service.py)).
+2. Implementar un selector por checkbox maestro (para elegir todos) y checkboxes individuales en la tabla de Envíos de Facturas ([verticalidades/estudio/templates/estudio/envios_facturas.html](file:///d:/OneDrive/Escritorio/Proyectos%20Django/erp-ikigai/verticalidades/estudio/templates/estudio/envios_facturas.html)).
+3. Actualizar la acción de envío masivo para que el botón respete estrictamente las facturas seleccionadas por el usuario, enviando sus IDs específicos al backend ([verticalidades/estudio/views.py](file:///d:/OneDrive/Escritorio/Proyectos%20Django/erp-ikigai/verticalidades/estudio/views.py)).
+
+**Archivos creados o modificados:**
+- `facturacion/services/pdf_service.py` [MODIFIED]
+- `verticalidades/estudio/views.py` [MODIFIED]
+- `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Ajuste en Motor de ReportLab (`pdf_service.py`):**
+   - Se removió la franja horizontal entre `y = 235` y `y = 255` donde se imprimían los textos de `Periodo Facturado Desde:`, `Hasta:` y `Fecha de Vto. para el Pago:`.
+   - Se eliminó la línea divisoria intermedia redundante y se reposicionó el encabezado de ítems de la tabla (*Código, Detalle, Cantidad, Precio Unit., Importe*) en `y = 250`, con su línea inferior en `y = 255`.
+   - Se desplazó el cursor de las filas de productos/servicios a `y_items = 270`, ganando 20 puntos de espacio útil para conceptos extensos.
+2. **Selección Selectiva con Checkboxes en Envíos (`envios_facturas.html`):**
+   - Se añadió un estado reactivo `seleccionados: []` en Alpine.js.
+   - En el `<thead>` de la tabla se agregó un checkbox maestro en la primera columna para seleccionar/deseleccionar todos los comprobantes visibles según el filtro activo.
+   - En cada fila `<tr>` del `<tbody>` se agregó el checkbox individual enlazado a `x-model="seleccionados"` y highlighting dinámico de fila seleccionada (`bg-indigo-50/20`).
+   - Al cargar el período, se preseleccionan automáticamente los comprobantes pendientes o con error para agilizar la operación sin perder la capacidad de desmarcar o cambiar la selección.
+   - El botón de envío ahora refleja dinámicamente cuántos comprobantes se enviarán (`Enviar Seleccionadas (X)`) y se deshabilita si no hay ninguna fila seleccionada.
+3. **Soporte de IDs en Backend (`api_enviar_pendientes`):**
+   - En `verticalidades/estudio/views.py`, el endpoint de streaming ahora lee `ids = body.get('ids', [])`. Si vienen IDs seleccionados, filtra `EnvioFacturaEstudio.objects.filter(empresa=empresa, id__in=ids_seleccionados)`, garantizando que el streaming SMTP procese única y exclusivamente los registros elegidos por el usuario.
+4. **Cero Impacto en Base de Datos:** Sin migraciones de esquemas.
+
+**Resultado de las pruebas:**
+- Verificación de generación de PDF en consola mediante `generar_pdf_venta`: comprobante generado exitosamente en 56 KB con el nuevo layout limpio.
+- `python manage.py check`: 0 errores o problemas detectados.
+- Validación de flujo de streaming y contratos de payload JSON confirmados.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Funcionalidad de selección por checkboxes operativa en la interfaz de Envíos de Facturas. El usuario puede seleccionar facturas específicas y emitir el lote selectivo.
+
+

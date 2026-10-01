@@ -524,15 +524,24 @@ def api_enviar_pendientes(request):
     except Exception:
         body = {}
     periodo = body.get('periodo', request.POST.get('periodo', '')).strip()
+    ids_seleccionados = body.get('ids', [])
 
-    if not periodo:
-        return JsonResponse({'error': 'Período no especificado'}, status=400)
+    if not periodo and not ids_seleccionados:
+        return JsonResponse({'error': 'Período o IDs no especificados'}, status=400)
 
-    envios_pendientes = EnvioFacturaEstudio.objects.filter(
-        empresa=empresa,
-        periodo=periodo,
-        estado__in=['PENDIENTE', 'ERROR']
-    ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social')
+    if ids_seleccionados:
+        # Enviar exactamente los comprobantes seleccionados por el usuario
+        envios_pendientes = EnvioFacturaEstudio.objects.filter(
+            empresa=empresa,
+            id__in=ids_seleccionados
+        ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social')
+    else:
+        # Fallback a todos los pendientes o con error del período
+        envios_pendientes = EnvioFacturaEstudio.objects.filter(
+            empresa=empresa,
+            periodo=periodo,
+            estado__in=['PENDIENTE', 'ERROR']
+        ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social')
 
     service = SMTPService(empresa.id)
 

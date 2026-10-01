@@ -16,9 +16,26 @@
         // Estados y filtros
         cargando: false,
         items: [],
+        seleccionados: [],
         filtroEstado: 'TODOS',
         busqueda: '',
         metricas: { total: 0, enviados: 0, pendientes: 0, errores: 0 },
+
+        get todosSeleccionados() {
+            if (!this.itemsFiltrados || this.itemsFiltrados.length === 0) return false;
+            return this.itemsFiltrados.every(item => this.seleccionados.includes(item.id));
+        },
+
+        toggleSeleccionarTodos(event) {
+            const checked = event.target.checked;
+            const visiblesIds = this.itemsFiltrados.map(i => i.id);
+            if (checked) {
+                const nuevoSet = new Set([...this.seleccionados, ...visiblesIds]);
+                this.seleccionados = Array.from(nuevoSet);
+            } else {
+                this.seleccionados = this.seleccionados.filter(id => !visiblesIds.includes(id));
+            }
+        },
 
         // Modal Bloqueante de Envío Masivo
         modalProgreso: false,
@@ -48,6 +65,8 @@
                     }
                     this.items = data.items || [];
                     this.metricas = data.metricas || { total: 0, enviados: 0, pendientes: 0, errores: 0 };
+                    // Preseleccionar por defecto los comprobantes pendientes o con error
+                    this.seleccionados = this.items.filter(i => i.estado !== 'ENVIADO').map(i => i.id);
                 })
                 .catch(err => {
                     this.cargando = false;
@@ -69,12 +88,11 @@
         },
 
         iniciarEnvioMasivo() {
-            const pendientes = this.metricas.pendientes + this.metricas.errores;
-            if (pendientes === 0) {
+            if (this.seleccionados.length === 0) {
                 Swal.fire({
-                    icon: 'info',
-                    title: 'Sin pendientes',
-                    text: 'No hay facturas pendientes ni con error para enviar en este período.'
+                    icon: 'warning',
+                    title: 'Sin selección',
+                    text: 'Por favor, tildá con el checkbox las facturas que deseas enviar.'
                 });
                 return;
             }
@@ -84,7 +102,7 @@
             this.completado = false;
             this.porcentaje = 0;
             this.procesados = 0;
-            this.totalLote = pendientes;
+            this.totalLote = this.seleccionados.length;
             this.exitososLote = 0;
             this.erroresLote = 0;
             this.logs = [];
@@ -98,7 +116,10 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrf
                 },
-                body: JSON.stringify({ periodo: this.periodo })
+                body: JSON.stringify({ 
+                    periodo: this.periodo,
+                    ids: this.seleccionados 
+                })
             })
             .then(response => {
                 if (!response.body) throw new Error('Streaming no soportado.');
@@ -253,13 +274,22 @@
                 </div>
             </div>
 
-            <!-- Botón Principal: Enviar Pendientes -->
-            <button type="button" @click="iniciarEnvioMasivo()"
-                :disabled="!{{ config_activa|yesno:'true,false' }} || cargando"
-                class="inline-flex items-center justify-center px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                Enviar Pendientes
-            </button>
+            <!-- Indicador y Botón Principal: Enviar Seleccionados -->
+            <div class="flex items-center space-x-3">
+                <template x-if="seleccionados.length > 0">
+                    <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                        <span x-text="`${seleccionados.length} seleccionada(s)`"></span>
+                    </span>
+                </template>
+
+                <button type="button" @click="iniciarEnvioMasivo()"
+                    :disabled="!{{ config_activa|yesno:'true,false' }} || cargando || seleccionados.length === 0"
+                    class="inline-flex items-center justify-center px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                    <span x-text="seleccionados.length > 0 ? `Enviar Seleccionadas (${seleccionados.length})` : 'Enviar Facturas (0)'"></span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -376,7 +406,12 @@
             <table class="min-w-full divide-y divide-gray-100 text-left text-xs">
                 <thead class="bg-slate-50 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                     <tr>
-                        <th class="py-4 pl-6 pr-3">Fecha</th>
+                        <th class="py-4 pl-6 pr-2 text-center w-12">
+                            <input type="checkbox" :checked="todosSeleccionados" @change="toggleSeleccionarTodos($event)"
+                                title="Seleccionar o deseleccionar todos los visibles"
+                                class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer transition">
+                        </th>
+                        <th class="py-4 px-3">Fecha</th>
                         <th class="px-3 py-4">Comprobante</th>
                         <th class="px-3 py-4">Cliente / CUIT</th>
                         <th class="px-3 py-4">Mails Destinatarios</th>
@@ -389,7 +424,7 @@
                 <tbody class="divide-y divide-gray-50 text-gray-700">
                     <template x-if="cargando">
                         <tr>
-                            <td colspan="8" class="text-center py-12 text-gray-400">
+                            <td colspan="9" class="text-center py-12 text-gray-400">
                                 <svg class="w-6 h-6 animate-spin mx-auto text-indigo-600 mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
                                 Cargando comprobantes del período...
                             </td>
@@ -398,7 +433,7 @@
 
                     <template x-if="!cargando && itemsFiltrados.length === 0">
                         <tr>
-                            <td colspan="8" class="text-center py-12 text-gray-400">
+                            <td colspan="9" class="text-center py-12 text-gray-400">
                                 <svg class="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
                                 No se encontraron comprobantes para el filtro seleccionado.
                             </td>
@@ -406,9 +441,15 @@
                     </template>
 
                     <template x-for="item in itemsFiltrados" :key="item.id">
-                        <tr class="hover:bg-slate-50/60 transition-colors">
+                        <tr class="hover:bg-slate-50/60 transition-colors" :class="seleccionados.includes(item.id) ? 'bg-indigo-50/20' : ''">
+                            <!-- Checkbox Selección -->
+                            <td class="py-3.5 pl-6 pr-2 text-center whitespace-nowrap">
+                                <input type="checkbox" :value="item.id" x-model="seleccionados"
+                                    class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer transition">
+                            </td>
+
                             <!-- Fecha -->
-                            <td class="py-3.5 pl-6 pr-3 font-mono text-gray-500 whitespace-nowrap" x-text="item.fecha"></td>
+                            <td class="py-3.5 px-3 font-mono text-gray-500 whitespace-nowrap" x-text="item.fecha"></td>
 
                             <!-- Comprobante -->
                             <td class="px-3 py-3.5 whitespace-nowrap">
