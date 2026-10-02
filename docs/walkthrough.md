@@ -6204,3 +6204,50 @@ Solucionar el fallo en producción (`ModuleNotFoundError: No module named 'verti
 - Pantalla limpia, fluida y con ancho completo. Todas las sugerencias automáticas están integradas orgánicamente dentro del modal de Grupos de Envío.
 - Soporte de reenvío total: tanto en lote (`Enviar Seleccionadas`) como individual (icono de reenvío en fila) se permite despachar comprobantes que ya figuraban en estado `ENVIADO`, permitiendo rearmar la tirada ahora con los grupos consolidados.
 - Ajuste visual en grilla: se retiró el texto literal `OK` en comprobantes ya enviados, dejando exclusivamente el icono del círculo con tilde verde y el botón discreto de reenvío individual.
+
+---
+
+## 2026-10-01 — Consulta Híbrida de Padrón A4/A5 y A13 de AFIP/ARCA (Plan 102)
+
+**Responsable (según docs/soy.md):**
+`Cristian - PC CASA`
+
+**Objetivo:**
+Implementar la consulta a la Constancia de Inscripción / Padrón A4 y A5 (`ws_sr_constancia_inscripcion` / `ws_sr_padron_a4`) para validar si un CUIT está activo en AFIP y obtener su Condición de IVA real (Responsable Inscripto, Monotributo, Exento, Consumidor Final) junto con sus actividades económicas, potenciando el Padrón A13 existente sin romper ni fallar en silencio si alguno de los dos servicios no está activo o no fue delegado en AFIP.
+
+**Archivos creados o modificados:**
+- `docs/planes/102_padron_a4_a5_afip_condicion_iva.md` [NEW]
+- `Modelos/Facturacion AFIP/arca_arg/settings.py` [MODIFIED]
+- `facturacion/services/afip_padron.py` [MODIFIED]
+- `templates/facturacion/modals/cliente_modal.html` [MODIFIED]
+- `facturacion/tests/test_padron_hibrido.py` [NEW]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico:**
+1. **Configuración de Servicios WSDL:**
+   - Se registró el servicio `ws_sr_padron_a4` dentro de `WS_LIST` en `arca_arg/settings.py` y se configuraron las URLs WSDL para homologación y producción (`WSDL_PADRON_A4_HOM` y `WSDL_PADRON_A4_PROD`), complementando a `ws_sr_constancia_inscripcion` (A5) y `ws_sr_padron_a13`.
+2. **Arquitectura Híbrida Resiliente (Tolerante a Servicios No Delegados):**
+   - En `facturacion/services/afip_padron.py` se estructuró la consulta orquestando `_consultar_constancia` (A5 con fallback a A4) y `_consultar_padron_a13` de forma independiente y aislada con `try...except`.
+   - **Garantía anti-rotura y anti-silencio:** Si la empresa no tiene delegado el Padrón A4/A5 en ARCA, el servicio captura la excepción, utiliza todos los datos de identidad y domicilio que brinda A13 y retorna un `aviso` descriptivo: `"Padrón A4/A5 no activo en AFIP (servicio no delegado o sin respuesta). Se autocompletaron los datos desde Padrón A13 (verifique la Condición de IVA)."`. De forma simétrica, si A13 cayera pero A4 responde, se devuelven los datos fiscales de A4 con su correspondiente aviso.
+3. **Detección Certera de Condición de IVA:**
+   - La respuesta de A5/A4 se analiza inspeccionando `datosMonotributo` (Monotributista) y `datosRegimenGeneral.impuesto` (impuesto 30 = Responsable Inscripto, impuesto 32 = Exento).
+   - Se valida el campo `estadoClave`: si es distinto de `ACTIVO`, se marca `es_valido_afip: False` para advertir al usuario.
+4. **Experiencia de Usuario en Frontend (Modal de Clientes):**
+   - En `templates/facturacion/modals/cliente_modal.html`, al consultar el CUIT se autocompleta la Razón Social, Apellido, Nombre, Condición de IVA, Domicilio, Localidad, Código Postal y Jurisdicción.
+   - Si el CUIT figura inactivo o bloqueado en AFIP, se despliega una alerta modal (`Swal.fire`) advirtiendo la situación fiscal sin borrar los datos.
+   - Si alguno de los servicios no está activo (ej. falta A4 pero se usó A13), se notifica al operador mediante un Toast de aviso de 5 segundos, garantizando transparencia operativa total.
+
+**Resultado de las pruebas:**
+```powershell
+python manage.py test facturacion.tests.test_padron_hibrido --keepdb
+```
+- **Salida:** `Ran 3 tests in 0.160s - OK`
+  - `test_consulta_hibrida_completa`: A5 + A13 exitoso, clasifica Monotributo y combina domicilio.
+  - `test_resiliencia_cuando_a5_falla`: A5 no autorizado, responde A13 con aviso explícito sin romper.
+  - `test_resiliencia_cuando_a13_falla`: A13 no responde, responde A5 con aviso explícito sin romper.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Funcionalidad lista y testeada en backend y frontend.
+- **Ajuste de Servicio en WSAA:** Se actualizó el nombre oficial de autorización a `ws_sr_padron_a5` (además de `ws_sr_padron_a4`), validado exitosamente contra los servidores de Homologación de AFIP (`personaServiceA5`), recuperando la Constancia completa con Condición de IVA para CUITs de prueba de AFIP (ej. `20333333334`).
+- **Autocompletado de Fecha de Nacimiento:** Tanto el Padrón A13 como el Padrón A4 exponen el campo `fechaNacimiento` para personas físicas. Se implementó su extracción, normalización a formato ISO `YYYY-MM-DD` y autocompletado automático en el input `fecha_nacimiento` del modal de clientes.
+- Si en producción la empresa ya tiene delegado el servicio de Constancia A5 o Padrón A4 en AFIP, el ERP clasificará la condición de IVA real de forma automática. Si aún no lo delegó, el sistema seguirá operando normalmente con A13 sin interrupciones ni pantallas de error.

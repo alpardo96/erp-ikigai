@@ -240,6 +240,15 @@
                                     if (data.tipo_documento) {
                                         this.tipoDoc = data.tipo_documento;
                                     }
+
+                                    // Fecha de Nacimiento (Personas Físicas)
+                                    if (data.fecha_nacimiento) {
+                                        let fnInput = document.getElementById('id_fecha_nacimiento');
+                                        if (fnInput) {
+                                            fnInput.value = data.fecha_nacimiento;
+                                            fnInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                        }
+                                    }
                                     
                                     // Dirección (Domicilio)
                                     let dirInput = document.getElementById('id_domicilio');
@@ -289,15 +298,34 @@
                                     if (!jurAsignada && data.codigo_postal) {
                                         this.buscarProvinciaPorCP(data.codigo_postal);
                                     }
-                                    Swal.fire({
-                                        icon: 'success',
-                                        title: 'ARCA',
-                                        text: 'Datos autocompletados con éxito.',
-                                        toast: true, 
-                                        position: 'top-end', 
-                                        timer: 5000, 
-                                        showConfirmButton: false
-                                    });
+                                    if (data.es_valido_afip === false) {
+                                        Swal.fire({
+                                            icon: 'warning',
+                                            title: 'CUIT Inactivo / Con Bloqueo',
+                                            text: `Atención: El CUIT figura en estado '${data.estado_afip || 'INACTIVO'}' en AFIP/ARCA. Los datos fueron cargados, pero verifique la situación fiscal.`,
+                                            confirmButtonText: 'Entendido'
+                                        });
+                                    } else if (data.aviso) {
+                                        Swal.fire({
+                                            icon: 'info',
+                                            title: 'ARCA / AFIP',
+                                            text: data.aviso,
+                                            toast: true, 
+                                            position: 'top-end', 
+                                            timer: 4500, 
+                                            showConfirmButton: false
+                                        });
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'ARCA / AFIP',
+                                            text: `Datos y condición (${data.condicion_iva}) autocompletados.`,
+                                            toast: true, 
+                                            position: 'top-end', 
+                                            timer: 3500, 
+                                            showConfirmButton: false
+                                        });
+                                    }
                                 }
                             })
                             .catch(error => {

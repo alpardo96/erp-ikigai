@@ -74,14 +74,23 @@ class AFIPService:
         if not cuit_limpio.isdigit() or len(cuit_limpio) != 11:
             raise ValueError(f"CUIT de empresa inválido: '{self.empresa.cuit}'. Debe contener 11 dígitos numéricos.")
 
-        ta_dir = os.path.join(django_settings.MEDIA_ROOT, 'arca_ta')
+        # Entorno dinámico: override opcional por .env o por configuración de Empresa
+        entorno_env = os.getenv('AFIP_ENTORNO')
+        if entorno_env:
+            es_prod = (str(entorno_env).strip().upper() == 'PROD')
+        else:
+            entorno_empresa = getattr(self.empresa, 'entorno_afip', 'HOMO')
+            es_prod = (str(entorno_empresa).upper() == 'PROD')
+
+        entorno_tag = 'prod' if es_prod else 'homo'
+        ta_dir = os.path.join(django_settings.MEDIA_ROOT, 'arca_ta', f"{cuit_limpio}_{entorno_tag}")
         os.makedirs(ta_dir, exist_ok=True)
 
         arca_settings.CUIT = cuit_limpio
         arca_settings.CERT_PATH = ruta_crt
         arca_settings.PRIVATE_KEY_PATH = ruta_key
         arca_settings.TA_FILES_PATH = os.path.join(ta_dir, '')
-        arca_settings.PROD = (getattr(self.empresa, 'entorno_afip', 'HOM') == 'PROD')
+        arca_settings.PROD = es_prod
 
     def obtener_ultimo_comprobante(self, pto_vta: int, cbte_tipo: int) -> int:
         """

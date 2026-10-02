@@ -8,7 +8,9 @@ PROD = False  # Cambiar a True para producción
 DOCS_URL = 'https://www.afip.gob.ar/ws/documentacion/arquitectura-general.asp'
 
 # Lista de los servicios disponibles en ARCA
-WS_LIST =['ws_sr_constancia_inscripcion'
+WS_LIST =['ws_sr_padron_a5'
+          ,'ws_sr_constancia_inscripcion'
+          ,'ws_sr_padron_a4'
           ,'ws_sr_padron_a10'
           ,'ws_sr_padron_a13'
           ,'wsfecred'
@@ -31,9 +33,15 @@ WS_LIST =['ws_sr_constancia_inscripcion'
 WSDL_WSAA_HOM = "https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl" 
 WSDL_WSAA_PROD = "https://wsaa.afip.gov.ar/ws/services/LoginCms?WSDL"
 
-# WS_SR_CONSTANCIA_INSCRIPCION
-WSDL_CONSTANCIA_HOM ="https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl" 
-WSDL_CONSTANCIA_PROD ="https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl" 
+# WS_SR_PADRON_A5 (Constancia de Inscripción)
+WSDL_PADRON_A5_HOM = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl" 
+WSDL_PADRON_A5_PROD = "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl" 
+WSDL_CONSTANCIA_HOM = WSDL_PADRON_A5_HOM
+WSDL_CONSTANCIA_PROD = WSDL_PADRON_A5_PROD
+
+# WS_SR_PADRON_A4
+WSDL_PADRON_A4_HOM = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl"
+WSDL_PADRON_A4_PROD = "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl" 
 
 # WS_SR_PADRON_A10
 WSDL_PADRON_A10_HOM = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA10?wsdl"
