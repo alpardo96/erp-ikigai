@@ -773,7 +773,7 @@ class SMTPService:
             }
             return
 
-        delay = float(self.config.get('delay_segundos', 1.0))
+        delay = float(self.config.get('delay_segundos', 2.0))
         procesados = 0
 
         # Agrupar los envíos en paquetes consolidados y envíos individuales

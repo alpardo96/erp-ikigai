@@ -6251,3 +6251,50 @@ python manage.py test facturacion.tests.test_padron_hibrido --keepdb
 - **Ajuste de Servicio en WSAA:** Se actualizó el nombre oficial de autorización a `ws_sr_padron_a5` (además de `ws_sr_padron_a4`), validado exitosamente contra los servidores de Homologación de AFIP (`personaServiceA5`), recuperando la Constancia completa con Condición de IVA para CUITs de prueba de AFIP (ej. `20333333334`).
 - **Autocompletado de Fecha de Nacimiento:** Tanto el Padrón A13 como el Padrón A4 exponen el campo `fechaNacimiento` para personas físicas. Se implementó su extracción, normalización a formato ISO `YYYY-MM-DD` y autocompletado automático en el input `fecha_nacimiento` del modal de clientes.
 - Si en producción la empresa ya tiene delegado el servicio de Constancia A5 o Padrón A4 en AFIP, el ERP clasificará la condición de IVA real de forma automática. Si aún no lo delegó, el sistema seguirá operando normalmente con A13 sin interrupciones ni pantallas de error.
+
+---
+
+## 2026-10-02 — Configuración de Cadencia de Envío de Mails (Delay Antispam) para Estudio (Plan 103)
+
+**Responsable (según docs/soy.md):**
+`Cristian - PC CASA`
+
+**Objetivo:**
+Permitir a los usuarios configurar visualmente el intervalo de pausa (cadencia / delay en segundos) entre cada correo saliente en el modal de configuración de correo de Estudio, persistiendo el valor en el archivo JSON en `media/config_mails/empresa_{id}_mails.json`, y adaptando la cadencia por defecto a 2.0 segundos para respetar las políticas de servidores SMTP como DonWeb / Ferozo (100 destinatarios/hora) y evitar bloqueos temporales de cuentas o falsas alarmas de listas negras.
+
+**Archivos creados o modificados:**
+- `docs/planes/103_cadencia_envio_mails_estudio.md` [NEW]
+- `verticalidades/estudio/templates/estudio/modals/config_mails_modal.html` [MODIFIED]
+- `verticalidades/estudio/views.py` [MODIFIED]
+- `verticalidades/estudio/services/config_mail_service.py` [MODIFIED]
+- `verticalidades/estudio/services/smtp_service.py` [MODIFIED]
+- `verticalidades/estudio/tests.py` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico:**
+1. **Interfaz Visual en Modal (`config_mails_modal.html`):**
+   - Se incorporó en la sección de parámetros de servidor SMTP saliente una tarjeta visual dedicada a la **Cadencia de Salida (Pausa entre Envíos)** con borde ámbar suave e icono de cronómetro.
+   - Dispone de un input numérico reactivo Alpine.js (`step="0.5"`, `min="0.5"`, `max="30"`) y 4 botones rápidos de selección con 1 clic:
+     - `⚡ 1.0s (Rápido)`
+     - `🛡️ 2.0s (Recomendado DonWeb)`
+     - `🐢 3.0s (Prudente)`
+     - `🛑 5.0s (Pausado)`
+   - Se añadió la leyenda informativa sobre la protección de cuota horaria en DonWeb.
+   - En la función JavaScript `guardar()`, se sincronizó explícitamente `formData.set('delay_segundos', this.delaySegundos)`.
+2. **Captura y Persistencia en Backend (`views.py` y `config_mail_service.py`):**
+   - En `config_mails_guardar`, se captura `delay_segundos` de `request.POST` con validación y sanitización en rango seguro `[0.5, 60.0]` y fallback a `2.0`.
+   - Se actualizó el valor predeterminado global en `DEFAULT_CONFIG['delay_segundos'] = 2.0` dentro de `config_mail_service.py`.
+   - En `smtp_service.py`, el generador de streaming `procesar_lote_pendientes_streaming` consume `delay = float(self.config.get('delay_segundos', 2.0))` aplicando `time.sleep(delay)` entre comprobantes.
+3. **Pruebas Automatizadas:**
+   - Se añadió en `tests.py` el test unitario `test_config_mails_delay_segundos_persistencia_y_vista` que simula la petición POST de guardado y comprueba la persistencia y lectura íntegra en el archivo JSON de configuración.
+
+**Resultado de las pruebas:**
+```powershell
+python manage.py test verticalidades.estudio
+```
+- **Salida:** `Ran 17 tests in 17.126s - OK`
+
+**Estado actual y siguientes pasos sugeridos:**
+- Módulo completamente operativo. Los usuarios pueden ajustar el intervalo entre envíos desde el modal de ajustes de facturación con guardado automático en `media/config_mails/`.
+- Con el valor recomendado de 2.0 segundos, un lote de 27 comprobantes se despacha de forma fluida y regular en menos de 1 minuto sin riesgo de saturar el servidor ni disparar la regla de 100 correos/hora de DonWeb.
+
