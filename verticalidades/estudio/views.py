@@ -313,7 +313,7 @@ def api_facturacion_lotes(request):
             
     ventas_set = set(facturas_por_tarifa.keys())
 
-    tarifas = TarifaEstudio.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'producto', 'cuenta')
+    tarifas = TarifaEstudio.objects.filter(empresa=empresa, activo=True).select_related('cliente', 'producto', 'cuenta').order_by('cliente__razon_social')
     data = []
     
     for t in tarifas:

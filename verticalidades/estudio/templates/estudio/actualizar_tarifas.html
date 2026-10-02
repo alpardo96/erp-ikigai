@@ -18,37 +18,39 @@
                             <h3 class="text-lg leading-6 font-bold text-slate-800 border-b pb-2" id="modal-title">
                                 Editar Registro de Tarifa
                             </h3>
-                            <div class="mt-4 space-y-4" x-if="tarifaEditando">
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-600 uppercase">Cliente</label>
-                                    <input x-show="!isNew" type="text" readonly class="mt-1 block w-full border-gray-300 rounded shadow-sm bg-gray-50 text-sm py-1.5 font-bold text-gray-700" x-model="tarifaEditando.razon_social">
-                                    <select x-show="isNew" x-model="tarifaEditando.cliente_obj_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
-                                        <option value="">-- Seleccionar Cliente --</option>
-                                        {% for c in clientes %}
-                                        <option value="{{ c.id }}">{{ c.codigo_id }} - {{ c.razon_social }}</option>
-                                        {% endfor %}
-                                    </select>
+                            <template x-if="tarifaEditando !== null">
+                                <div class="mt-4 space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 uppercase">Cliente</label>
+                                        <input x-show="!isNew" type="text" readonly class="mt-1 block w-full border-gray-300 rounded shadow-sm bg-gray-50 text-sm py-1.5 font-bold text-gray-700" x-model="tarifaEditando.razon_social">
+                                        <select x-show="isNew" x-model="tarifaEditando.cliente_obj_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                            <option value="">-- Seleccionar Cliente --</option>
+                                            {% for c in clientes %}
+                                            <option value="{{ c.codigo_id }}">{{ c.codigo_id }} - {{ c.razon_social }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 uppercase">Servicio / Producto</label>
+                                        <select x-model="tarifaEditando.producto_id" @change="onProductoModalChange()" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                            <option value="">-- Seleccionar Servicio / Producto --</option>
+                                            {% for p in productos %}
+                                            <option value="{{ p.id }}">{{ p.detalle }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-600 uppercase">Cuenta Contable Imputación (Opcional)</label>
+                                        <select x-model="tarifaEditando.cuenta_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
+                                            <option value="">-- Por Defecto (Cuenta de Rubro) --</option>
+                                            {% for c in cuentas %}
+                                            <option value="{{ c.id }}">{{ c.jerarquia }} - {{ c.cuenta }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <p class="mt-1 text-[10px] text-gray-500">Si se deja vacío, la facturación se imputará a la cuenta definida en el Rubro del producto.</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-600 uppercase">Servicio / Producto</label>
-                                    <select x-model="tarifaEditando.producto_id" @change="onProductoModalChange()" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
-                                        <option value="">-- Seleccionar Servicio / Producto --</option>
-                                        {% for p in productos %}
-                                        <option value="{{ p.id }}">{{ p.detalle }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-slate-600 uppercase">Cuenta Contable Imputación (Opcional)</label>
-                                    <select x-model="tarifaEditando.cuenta_id" class="mt-1 block w-full border-gray-300 rounded shadow-sm text-sm py-1.5 focus:ring-blue-500 focus:border-blue-500 font-medium">
-                                        <option value="">-- Por Defecto (Cuenta de Rubro) --</option>
-                                        {% for c in cuentas %}
-                                        <option value="{{ c.id }}">{{ c.jerarquia }} - {{ c.cuenta }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <p class="mt-1 text-[10px] text-gray-500">Si se deja vacío, la facturación se imputará a la cuenta definida en el Rubro del producto.</p>
-                                </div>
-                            </div>
+                            </template>
                         </div>
                     </div>
                 </div>
@@ -602,6 +604,18 @@ function tarifasGrid() {
             }
         },
 
+        // Propiedad computada auxiliar para saber si hay cambios sin guardar
+        get hayCambiosSinGuardar() {
+            return this.items.some(i => 
+                (String(i.id).startsWith('new_')) ||
+                this.parseNumber(i.tarifa_f_nueva) != this.parseNumber(i.tarifa_f_ant) || 
+                this.parseNumber(i.tarifa_p_nueva) != this.parseNumber(i.tarifa_p_ant) || 
+                i.activo != i.activo_ant || 
+                i.producto_id != i.producto_id_ant || 
+                i.cuenta_id != i.cuenta_id_ant
+            );
+        },
+
         async saveData() {
             // Recopilar los que han cambiado o son nuevos normalizando los números
             const modificados = this.items.filter(i => 
@@ -747,6 +761,19 @@ function tarifasGrid() {
 document.addEventListener('alpine:init', () => {
             Alpine.data('tarifasGrid', tarifasGrid);
         });
+
+// Evento global para evitar salir sin guardar
+window.addEventListener('beforeunload', function (e) {
+    // Obtenemos la instancia de Alpine del div principal
+    const gridEl = document.querySelector('[x-data="tarifasGrid()"]');
+    if (gridEl && gridEl.__x) {
+        const data = gridEl.__x.$data;
+        if (data && data.hayCambiosSinGuardar) {
+            e.preventDefault();
+            e.returnValue = ''; // Muestra el mensaje estándar del navegador
+        }
+    }
+});
     </script>
 
     <style>

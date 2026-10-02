@@ -199,8 +199,9 @@ def consultar_padron_afip(request, cuit):
         datos = servicio.consultar_cuit(cuit)
         return JsonResponse(datos)
     except Exception as e:
-        print("AFIP PADRON ERROR:", str(e))
-        traceback.print_exc()
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error("AFIP PADRON ERROR: %s", str(e), exc_info=True)
         return JsonResponse({'error': str(e)}, status=400)
 
 def cliente_modal(request, id=None):

@@ -77,14 +77,12 @@
             <button type="submit" class="h-9 px-4 bg-slate-800 text-white font-bold text-[11px] uppercase tracking-wider rounded-lg hover:bg-slate-700 transition-colors">
                 Filtrar
             </button>
-            <button type="submit" formtarget="_blank" formaction="{% url 'exportar_valores_terceros' %}?formato=excel" 
-                    name="formato" value="excel" hx-disable="true"
+            <button type="button" onclick="exportarValores('excel')"
                     class="h-9 px-4 bg-emerald-600 text-white font-bold text-[11px] uppercase tracking-wider rounded-lg hover:bg-emerald-500 transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Excel
             </button>
-            <button type="submit" formtarget="_blank" formaction="{% url 'exportar_valores_terceros' %}?formato=pdf" 
-                    name="formato" value="pdf" hx-disable="true"
+            <button type="button" onclick="exportarValores('pdf')"
                     class="h-9 px-4 bg-red-600 text-white font-bold text-[11px] uppercase tracking-wider rounded-lg hover:bg-red-500 transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 PDF
@@ -107,4 +105,16 @@
 
 <!-- Modal Container for actions -->
 <div id="modal-container"></div>
+
+<script>
+    // Función para evitar la interceptación de HTMX y manejar la exportación
+    // Captura los filtros del formulario y abre el archivo generado en una nueva pestaña.
+    function exportarValores(formato) {
+        const form = document.getElementById('filtros-valores');
+        const params = new URLSearchParams(new FormData(form));
+        params.set('formato', formato);
+        const url = "{% url 'exportar_valores_terceros' %}";
+        window.open(url + '?' + params.toString(), '_blank');
+    }
+</script>
 {% endblock %}
