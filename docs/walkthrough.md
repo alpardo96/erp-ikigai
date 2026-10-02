@@ -2,6 +2,81 @@
 
 ## Cristian - PC CASA
 - **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Corrección y sanitización de comillas dobles en el modal de confirmación Swal de `aplicarSugerencia` y normalización de tags `{% url %}` en `envios_facturas.html`.
+- **Archivos creados o modificados**:
+  - `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Prevención de Escapado de Código JS Crudo en Pantalla:**
+     - En `envios_facturas.html`, el método `aplicarSugerencia` utilizaba template strings con atributos HTML conteniendo comillas dobles (`class="text-left..."`). Al encontrarse dentro del atributo `x-data="{ ... }"` en el tag `<div ...>`, el analizador HTML del navegador interpretaba la primera comilla doble como el cierre abrupto del atributo `x-data`, expulsando el resto de la lógica JavaScript hacia el DOM como texto plano.
+     - Se reemplazó el bloque HTML por concatenación segura con comillas simples escapadas (`<div class=\'text-left...\' >`) y se normalizaron todas las llamadas `{% url %}` de Django a su sintaxis estándar.
+  2. **Sin impacto en Base de Datos.**
+- **Resultado de las pruebas**: Suite `verticalidades.estudio.tests` ejecutada con éxito: 16/16 tests aprobados (100% OK en 16.3s).
+- **Estado actual y siguientes pasos sugeridos**: Interfaz completamente limpia, reactiva y libre de anomalías de renderizado.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Sugerencias automáticas de consolidación por correos repetidos y clientes con múltiples comprobantes, y restricción estricta de selectores a comprobantes facturados en el período (Estudio Contable).
+- **Archivos creados o modificados**:
+  - `verticalidades/estudio/views.py` [MODIFY]
+  - `verticalidades/estudio/urls.py` [MODIFY]
+  - `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFY]
+  - `verticalidades/estudio/tests.py` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Motor de Sugerencias Automáticas (`_calcular_sugerencias_agrupacion`):**
+     - Analiza en memoria los comprobantes emitidos en el período para detectar automáticamente:
+       a) **Mismo Correo Compartido (`MISMO_EMAIL`):** Detecta cuando dos o más comprobantes (especialmente de clientes distintos, grupos económicos o empresas familiares) tienen la misma casilla de correo destinataria y no están consolidados en un grupo común.
+       b) **Facturación Múltiple (`CLIENTE_MULTIPLE`):** Detecta clientes individuales que registran 2 o más facturas en el período pendientes de consolidar.
+     - Calcula el importe consolidado acumulado, listado de comprobantes y nombres sugeridos para el grupo.
+  2. **Acción de Agrupación Rápida en 1 Clic (`api_aplicar_sugerencia_grupo`):**
+     - Endpoint `/estudio/grupos-envio/aplicar-sugerencia/` que crea o reutiliza el grupo de forma atómica (`transaction.atomic`), asigna los clientes y actualiza inmediatamente los envíos del período con la casilla consolidada.
+  3. **Restricción Estricta a Clientes Facturados en el Período:**
+     - En `api_grupos_envio`, `clientes_disponibles` ya no carga toda la base de clientes de la empresa. Ahora restringe el queryset **exclusivamente a los clientes que registran facturas en el período consultado** (más los ya asignados a grupos activos), mostrando además la cantidad de comprobantes que tiene cada uno en ese mes (`cbtes_periodo`).
+  4. **Frontend / UX Dinámica:**
+     - Se añadió un panel superior inteligente de **"Sugerencias de Agrupación Automática Detectadas"** en `envios_facturas.html`, con tarjetas destacadas para cada oportunidad, botón de 1 clic **"⚡ Agrupar en 1 mail"** y botón de personalización rápida.
+     - En el modal de grupos, la grilla de selección indica claramente "Clientes Facturados a Vincular" y badges con el conteo de facturas de cada cliente.
+- **Resultado de las pruebas**: Suite `verticalidades.estudio.tests` ejecutada con éxito: 16/16 tests aprobados (100% OK en 18.4s).
+- **Estado actual y siguientes pasos sugeridos**: Detección inteligente y filtrado por clientes facturados 100% operativo en producción.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
+- **Objetivo o Tarea**: Implementación de Agrupación de Envíos de Facturas por Correo en la verticalidad Estudio Contable (Plan 101). Permite unificar en un solo correo con múltiples PDFs adjuntos todas las facturas de un mismo cliente (múltiples servicios) o de diferentes clientes pertenecientes a un mismo grupo económico.
+- **Archivos creados o modificados**:
+  - `docs/planes/101_agrupacion_envio_facturas_estudio.md` [NEW]
+  - `verticalidades/estudio/models.py` [MODIFY]
+  - `verticalidades/estudio/migrations/0004_grupoenvioestudio_enviofacturaestudio_grupo_and_more.py` [NEW]
+  - `verticalidades/estudio/services/smtp_service.py` [MODIFY]
+  - `verticalidades/estudio/services/facturacion_lote_estudio.py` [MODIFY]
+  - `verticalidades/estudio/views.py` [MODIFY]
+  - `verticalidades/estudio/urls.py` [MODIFY]
+  - `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFY]
+  - `verticalidades/estudio/tests.py` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Modelo de Grupos de Envío (`GrupoEnvioEstudio`):**
+     - Se creó el modelo `GrupoEnvioEstudio` (`db_table = 'estudio_grupo_envio'`) vinculado a la `Empresa`, con relación ManyToMany con `ClienteProveedor` (`facturacion.ClienteProveedor`), lista de correos destinatarios, flag activo y observaciones.
+     - Se vinculó `EnvioFacturaEstudio` al grupo mediante `ForeignKey(GrupoEnvioEstudio, null=True, blank=True, on_delete=SET_NULL)` y se añadió índice compuesto `['empresa', 'grupo']`.
+     - Migración `0004_grupoenvioestudio_enviofacturaestudio_grupo_and_more` generada y aplicada.
+  2. **Motor SMTP Consolidado (`smtp_service.py`):**
+     - Se implementaron los métodos `_construir_mensaje_agrupado()` y `enviar_grupo_facturas()`. Generan en memoria los PDFs de todos los comprobantes del lote agrupado, anexan adjuntos adicionales si corresponde, generan cuerpo HTML con tabla detallada y monto total consolidado, y marcan atómicamente (`transaction.atomic`) todos los comprobantes como `ENVIADO` con su código `250 OK`.
+     - Se adaptó `procesar_lote_pendientes_streaming()` para despachar primero los paquetes agrupados y luego los individuales.
+  3. **Auto-Asignación en Lotes y Descubrimiento:**
+     - En `facturacion_lote_estudio.py`, al emitir facturas masivas, se hereda de inmediato el grupo activo configurado para el cliente.
+     - En `views.py` (`api_envios_facturas`), la sincronización en vivo auto-vincula ventas sin envío al grupo del cliente si este existe, y expone los campos `grupo_id`, `grupo_nombre` y `destinatarios` para la grilla.
+  4. **API y Gestión Interactiva de Grupos:**
+     - Se incorporaron las rutas `/estudio/grupos-envio/api/`, `/estudio/grupos-envio/asignar/` y `/estudio/grupos-envio/eliminar/`.
+     - Permiten crear, editar y consultar grupos con multiselección de clientes, así como asignar o desagrupar comprobantes seleccionados en tiempo real.
+  5. **Interfaz de Usuario (Alpine.js + Tailwind):**
+     - Botón superior **"📦 Grupos de Envío"** para abrir el modal de administración de grupos con listado interactivo y formulario de alta/edición (buscador en vivo de clientes y chips dinámicos).
+     - Barra flotante contextual al seleccionar facturas con botón rápido para asignar a grupo o desagrupar.
+     - Filtro desplegable por Grupo junto al buscador de clientes.
+     - Badge/insignia visual en la columna de cliente que indica pertenencia a grupo con filtro directo al hacer clic.
+- **Resultado de las pruebas**: Suite completa `verticalidades.estudio.tests` ejecutada con éxito: 14/14 tests aprobados (100% OK en 14.5s).
+- **Estado actual y siguientes pasos sugeridos**: Funcionalidad de agrupación de envíos de Estudio 100% terminada, probada y operativa en producción.
+
+## Cristian - PC CASA
+- **Fecha/Día**: 01 de Octubre de 2026
 - **Objetivo o Tarea**: Corrección definitiva del renderizado de negritas en la Vista Previa de la Firma y vinculación directa del archivo de firma física `media/config_mails/firmas/firma_{empresa_id}.jpg` (donde el número es el ID de la empresa).
 - **Archivos creados o modificados**:
   - `verticalidades/estudio/templates/estudio/modals/config_mails_modal.html` [MODIFY]
@@ -6061,3 +6136,118 @@ Solucionar el fallo en producción (`ModuleNotFoundError: No module named 'verti
 - El Core del ERP puede operar plenamente bajo cualquier verticalidad o rubro (como Estudio) sin requerir físicamente el módulo de Armería.
 
 - Corrección adicional: se incorporó la validación preventiva if comma in raw_precio en facturacion/views_htmx.py para no truncar el punto decimal enviado por HTMX al ingresar importes con coma o punto.
+
+---
+
+## 2026-10-01 — Corrección de AttributeError en Sugerencias y Auto-Sincronización de Destinatarios en BD (Estudio)
+
+**Responsable (según docs/soy.md):**
+`Cristian - PC CASA`
+
+**Objetivo:**
+1. Corregir el error `AttributeError: 'NoneType' object has no attribute 'strip'` producido al analizar sugerencias de agrupación en comprobantes donde el cliente no poseía correo electrónico o `destinatarios` era nulo.
+2. Resolver el problema de que los registros de `EnvioFacturaEstudio` existentes en la base de datos figuraban con el campo `destinatarios` vacío a pesar de que el cliente o su grupo activo sí contaban con correo registrado en el ERP.
+
+**Archivos creados o modificados:**
+- `verticalidades/estudio/views.py` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico e Implicaciones de Base de Datos:**
+1. **Protección Defensiva de Extracción de Correos (`_extraer_email_envio`):**
+   - Se blindó la función helper de extracción de correo para comprobar tipos (`isinstance(..., str)`) y garantizar que nunca intente ejecutar `.strip()` sobre `None`.
+   - La jerarquía de resolución busca: (1) `e.destinatarios`, (2) `e.grupo.destinatarios`, (3) `e.cliente.correo`, devolviendo siempre cadena vacía `''` en lugar de `None`.
+2. **Auto-Sincronización y Persistencia Transaccional en Base de Datos:**
+   - En la consulta del período en `api_envios_facturas`, se implementó una rutina de sincronización automática: para todo registro de `EnvioFacturaEstudio` que posea `destinatarios` vacío o sin grupo asignado pero cuyo cliente pertenezca a un grupo o tenga correo en `ClienteProveedor`, se actualiza en memoria y se persiste en base de datos mediante `EnvioFacturaEstudio.objects.bulk_update(envios_a_actualizar, ['grupo', 'destinatarios'])`.
+   - En la base de datos real, 92 comprobantes que se encontraban con `destinatarios` vacío fueron poblados y sincronizados de inmediato, reduciendo los envíos sin datos a únicamente los 15 clientes que no poseen correo registrado en su ficha.
+   - En el período de prueba analizado se detectaron exitosamente **27 sugerencias de agrupación** automáticas listas para ser consolidadas en 1 clic.
+
+**Resultado de las pruebas:**
+- `python manage.py test verticalidades.estudio --noinput --keepdb`: `Ran 16 tests in 19.704s - OK`.
+- Verificación en Django Shell del endpoint `GET /estudio/envios-facturas/api/?periodo=202609`: HTTP 200 OK, 109 comprobantes listados, 27 sugerencias generadas.
+- Verificación en base de datos: Envíos con destinatarios pasaron de 2 a 94.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Módulo de envíos y agrupaciones de Estudio operativo al 100%.
+- El usuario puede ingresar a `/estudio/envios-facturas/` y aprovechar tanto el panel de sugerencias automáticas de 1 clic como la asignación manual de grupos.
+
+---
+
+## 2026-10-01 — Ensanchamiento Fluido de la Vista y Reubicación de Sugerencias en Modal de Grupos
+
+**Responsable (según docs/soy.md):**
+`Cristian - PC CASA`
+
+**Objetivo:**
+1. Estirar el ancho de la pantalla de Envíos de Facturas (`/estudio/envios-facturas/`) eliminando la limitación rígida `max-w-7xl` para aprovechar el 100% de la pantalla (`max-w-full`), evitando que los datos se vean comprimidos o centrados.
+2. Limpiar el espacio visual de la pantalla principal removiendo el panel masivo de sugerencias y reubicándolo de forma ordenada dentro del modal de **Grupos de Envío** mediante una pestaña interactiva dedicada (`💡 Sugerencias Detectadas (N)`).
+
+**Archivos creados o modificados:**
+- `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFIED]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico:**
+1. **Layout y Espacio Visual (Fluid Width):**
+   - El contenedor raíz se actualizó a `max-w-full mx-auto w-full px-4 sm:px-6 lg:px-8 py-5 space-y-4`, logrando una visualización panorámica donde la tabla de comprobantes, los filtros y las acciones de selección múltiple se despliegan en todo el ancho del monitor sin apretar columnas.
+2. **Reubicación de Sugerencias en el Modal de Grupos:**
+   - Se removió el bloque de tarjetas de sugerencias de la pantalla principal, dejando el listado de facturas completamente despejado y directo a la acción.
+   - En la barra superior, el botón **📦 Grupos de Envío** ahora incorpora un badge interactivo `💡 N sugerencias` (con `click.stop` para abrir directamente la pestaña de sugerencias).
+   - En el modal de Grupos de Envío (ampliado a `max-w-5xl` con scroll interno), se implementó un sistema de navegación por pestañas:
+     - `📋 Grupos Configurados (N)`: listado de grupos existentes con banner sutil de acceso rápido si hay sugerencias pendientes.
+     - `💡 Sugerencias Detectadas (N)`: panel completo con las tarjetas de agrupación automática (`MISMO_EMAIL` y `CLIENTE_MULTIPLE`), botón de consolidación directa de 1 clic (`⚡ Agrupar en 1 mail`) y botón de personalización previa (`⚙️`).
+     - `➕ Nuevo Grupo`: acceso al formulario de alta/edición con selector de clientes facturados.
+
+**Resultado de las pruebas:**
+- `python manage.py test verticalidades.estudio --noinput --keepdb`: `Ran 16 tests in 17.637s - OK`.
+- Verificación de compilación de estilos Tailwind CSS en vivo.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Pantalla limpia, fluida y con ancho completo. Todas las sugerencias automáticas están integradas orgánicamente dentro del modal de Grupos de Envío.
+- Soporte de reenvío total: tanto en lote (`Enviar Seleccionadas`) como individual (icono de reenvío en fila) se permite despachar comprobantes que ya figuraban en estado `ENVIADO`, permitiendo rearmar la tirada ahora con los grupos consolidados.
+- Ajuste visual en grilla: se retiró el texto literal `OK` en comprobantes ya enviados, dejando exclusivamente el icono del círculo con tilde verde y el botón discreto de reenvío individual.
+
+---
+
+## 2026-10-01 — Consulta Híbrida de Padrón A4/A5 y A13 de AFIP/ARCA (Plan 102)
+
+**Responsable (según docs/soy.md):**
+`Cristian - PC CASA`
+
+**Objetivo:**
+Implementar la consulta a la Constancia de Inscripción / Padrón A4 y A5 (`ws_sr_constancia_inscripcion` / `ws_sr_padron_a4`) para validar si un CUIT está activo en AFIP y obtener su Condición de IVA real (Responsable Inscripto, Monotributo, Exento, Consumidor Final) junto con sus actividades económicas, potenciando el Padrón A13 existente sin romper ni fallar en silencio si alguno de los dos servicios no está activo o no fue delegado en AFIP.
+
+**Archivos creados o modificados:**
+- `docs/planes/102_padron_a4_a5_afip_condicion_iva.md` [NEW]
+- `Modelos/Facturacion AFIP/arca_arg/settings.py` [MODIFIED]
+- `facturacion/services/afip_padron.py` [MODIFIED]
+- `templates/facturacion/modals/cliente_modal.html` [MODIFIED]
+- `facturacion/tests/test_padron_hibrido.py` [NEW]
+- `docs/walkthrough.md` [MODIFIED]
+
+**Detalle Técnico:**
+1. **Configuración de Servicios WSDL:**
+   - Se registró el servicio `ws_sr_padron_a4` dentro de `WS_LIST` en `arca_arg/settings.py` y se configuraron las URLs WSDL para homologación y producción (`WSDL_PADRON_A4_HOM` y `WSDL_PADRON_A4_PROD`), complementando a `ws_sr_constancia_inscripcion` (A5) y `ws_sr_padron_a13`.
+2. **Arquitectura Híbrida Resiliente (Tolerante a Servicios No Delegados):**
+   - En `facturacion/services/afip_padron.py` se estructuró la consulta orquestando `_consultar_constancia` (A5 con fallback a A4) y `_consultar_padron_a13` de forma independiente y aislada con `try...except`.
+   - **Garantía anti-rotura y anti-silencio:** Si la empresa no tiene delegado el Padrón A4/A5 en ARCA, el servicio captura la excepción, utiliza todos los datos de identidad y domicilio que brinda A13 y retorna un `aviso` descriptivo: `"Padrón A4/A5 no activo en AFIP (servicio no delegado o sin respuesta). Se autocompletaron los datos desde Padrón A13 (verifique la Condición de IVA)."`. De forma simétrica, si A13 cayera pero A4 responde, se devuelven los datos fiscales de A4 con su correspondiente aviso.
+3. **Detección Certera de Condición de IVA:**
+   - La respuesta de A5/A4 se analiza inspeccionando `datosMonotributo` (Monotributista) y `datosRegimenGeneral.impuesto` (impuesto 30 = Responsable Inscripto, impuesto 32 = Exento).
+   - Se valida el campo `estadoClave`: si es distinto de `ACTIVO`, se marca `es_valido_afip: False` para advertir al usuario.
+4. **Experiencia de Usuario en Frontend (Modal de Clientes):**
+   - En `templates/facturacion/modals/cliente_modal.html`, al consultar el CUIT se autocompleta la Razón Social, Apellido, Nombre, Condición de IVA, Domicilio, Localidad, Código Postal y Jurisdicción.
+   - Si el CUIT figura inactivo o bloqueado en AFIP, se despliega una alerta modal (`Swal.fire`) advirtiendo la situación fiscal sin borrar los datos.
+   - Si alguno de los servicios no está activo (ej. falta A4 pero se usó A13), se notifica al operador mediante un Toast de aviso de 5 segundos, garantizando transparencia operativa total.
+
+**Resultado de las pruebas:**
+```powershell
+python manage.py test facturacion.tests.test_padron_hibrido --keepdb
+```
+- **Salida:** `Ran 3 tests in 0.160s - OK`
+  - `test_consulta_hibrida_completa`: A5 + A13 exitoso, clasifica Monotributo y combina domicilio.
+  - `test_resiliencia_cuando_a5_falla`: A5 no autorizado, responde A13 con aviso explícito sin romper.
+  - `test_resiliencia_cuando_a13_falla`: A13 no responde, responde A5 con aviso explícito sin romper.
+
+**Estado actual y siguientes pasos sugeridos:**
+- Funcionalidad lista y testeada en backend y frontend.
+- **Ajuste de Servicio en WSAA:** Se actualizó el nombre oficial de autorización a `ws_sr_padron_a5` (además de `ws_sr_padron_a4`), validado exitosamente contra los servidores de Homologación de AFIP (`personaServiceA5`), recuperando la Constancia completa con Condición de IVA para CUITs de prueba de AFIP (ej. `20333333334`).
+- **Autocompletado de Fecha de Nacimiento:** Tanto el Padrón A13 como el Padrón A4 exponen el campo `fechaNacimiento` para personas físicas. Se implementó su extracción, normalización a formato ISO `YYYY-MM-DD` y autocompletado automático en el input `fecha_nacimiento` del modal de clientes.
+- Si en producción la empresa ya tiene delegado el servicio de Constancia A5 o Padrón A4 en AFIP, el ERP clasificará la condición de IVA real de forma automática. Si aún no lo delegó, el sistema seguirá operando normalmente con A13 sin interrupciones ni pantallas de error.

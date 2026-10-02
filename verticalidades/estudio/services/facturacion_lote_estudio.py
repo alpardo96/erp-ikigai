@@ -217,14 +217,18 @@ class FacturacionLoteEstudioService:
                             # Re-guardar para que se dispare la señal contable
                             venta_f.save()
 
-                            # Registrar en cola de envíos de Estudio
+                            # Registrar en cola de envíos de Estudio (asigna grupo si existe)
+                            grupo_cliente_f = cliente.grupos_envio_estudio.filter(empresa_id=self.empresa_id, activo=True).first()
+                            dest_f = (grupo_cliente_f.destinatarios if grupo_cliente_f and grupo_cliente_f.destinatarios else (cliente.correo or ''))
+
                             EnvioFacturaEstudio.objects.update_or_create(
                                 venta=venta_f,
                                 defaults={
                                     'empresa_id': self.empresa_id,
                                     'cliente': cliente,
+                                    'grupo': grupo_cliente_f,
                                     'periodo': periodo,
-                                    'destinatarios': cliente.correo or '',
+                                    'destinatarios': dest_f,
                                     'estado': 'PENDIENTE',
                                     'creado_por': self.usuario,
                                     'modificado_por': self.usuario,
@@ -286,14 +290,18 @@ class FacturacionLoteEstudioService:
 
                             venta_p.save()
 
-                            # Registrar en cola de envíos de Estudio
+                            # Registrar en cola de envíos de Estudio (asigna grupo si existe)
+                            grupo_cliente_p = cliente.grupos_envio_estudio.filter(empresa_id=self.empresa_id, activo=True).first()
+                            dest_p = (grupo_cliente_p.destinatarios if grupo_cliente_p and grupo_cliente_p.destinatarios else (cliente.correo or ''))
+
                             EnvioFacturaEstudio.objects.update_or_create(
                                 venta=venta_p,
                                 defaults={
                                     'empresa_id': self.empresa_id,
                                     'cliente': cliente,
+                                    'grupo': grupo_cliente_p,
                                     'periodo': periodo,
-                                    'destinatarios': cliente.correo or '',
+                                    'destinatarios': dest_p,
                                     'estado': 'PENDIENTE',
                                     'creado_por': self.usuario,
                                     'modificado_por': self.usuario,

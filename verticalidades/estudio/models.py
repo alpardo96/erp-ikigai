@@ -31,6 +31,30 @@ class TarifaEstudio(AuditModel):
         return f"{self.cliente.razon_social} - {self.producto.detalle}"
 
 
+class GrupoEnvioEstudio(AuditModel):
+    """
+    Grupo de destinatarios para consolidar facturas en un único envío por mail.
+    Permite agrupar múltiples comprobantes de uno o varios clientes de Estudio.
+    """
+    empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='grupos_envio_estudio')
+    nombre = models.CharField(max_length=150, verbose_name="Nombre del Grupo")
+    destinatarios = models.CharField(max_length=500, blank=True, default='', verbose_name="Destinatarios (Mails)")
+    clientes = models.ManyToManyField(ClienteProveedor, blank=True, related_name='grupos_envio_estudio', verbose_name="Clientes Asociados")
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    observaciones = models.TextField(blank=True, null=True, verbose_name="Observaciones")
+
+    class Meta:
+        verbose_name = "Grupo de Envío Estudio"
+        verbose_name_plural = "Grupos de Envío Estudio"
+        db_table = 'estudio_grupo_envio'
+        indexes = [
+            models.Index(fields=['empresa', 'activo']),
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} ({self.empresa.nombre})"
+
+
 class EnvioFacturaEstudio(AuditModel):
     """
     Tabla satélite para el seguimiento y automatización de envíos
@@ -51,6 +75,14 @@ class EnvioFacturaEstudio(AuditModel):
     empresa = models.ForeignKey('empresas.Empresa', on_delete=models.CASCADE, related_name='envios_facturas_estudio')
     venta = models.OneToOneField('facturacion.Venta', on_delete=models.CASCADE, related_name='envio_estudio', verbose_name="Factura/Comprobante")
     cliente = models.ForeignKey(ClienteProveedor, on_delete=models.CASCADE, related_name='envios_facturas_estudio', verbose_name="Cliente")
+    grupo = models.ForeignKey(
+        GrupoEnvioEstudio,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='envios_facturas',
+        verbose_name="Grupo de Envío"
+    )
     periodo = models.CharField(max_length=6, db_index=True, verbose_name="Período Facturado (YYYYMM)")
     destinatarios = models.CharField(max_length=500, blank=True, default='', verbose_name="Destinatarios (Mails)")
     archivo_adjunto = models.FileField(upload_to='estudio/facturas_adjuntas/', null=True, blank=True, verbose_name="Comprobante Adjunto Externo")
@@ -67,8 +99,10 @@ class EnvioFacturaEstudio(AuditModel):
         indexes = [
             models.Index(fields=['empresa', 'estado']),
             models.Index(fields=['empresa', 'periodo']),
+            models.Index(fields=['empresa', 'grupo']),
         ]
 
     def __str__(self):
         return f"Envío Venta {self.venta_id} ({self.cliente.razon_social}) - {self.estado}"
+
 
