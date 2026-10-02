@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Valores de Terceros{% endblock %}
+
+{% block content %}
+<div class="max-w-full mx-auto w-full px-4 py-2 space-y-4">
+
+    <div class="flex justify-between items-center border-b border-gray-200 pb-2">
+        <h1 class="text-xl font-black text-slate-900 tracking-tighter uppercase italic">Valores de Terceros (Cheques)</h1>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'tesoreria_index' %}" class="text-slate-400 hover:text-red-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </a>
+        </div>
+    </div>
+
+    <form id="filtros-valores"
+          hx-get="{% url 'valores_terceros_grilla' %}"
+          hx-target="#grilla-valores"
+          hx-trigger="load, change, submit, reloadValores from:body"
+          class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 flex flex-wrap items-end gap-3 italic">
+          
+        <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Venc. Desde</label>
+            <input type="date" name="vencimiento_desde" value="{{hoy}}" style="font-size: 18px !important;"
+                   class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+        </div>
+        <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Venc. Hasta</label>
+            <input type="date" name="vencimiento_hasta" value="{{hoy}}" style="font-size: 18px !important;"
+                   class="h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-[12px] font-bold text-slate-800 outline-none focus:border-blue-500">
+        </div>
+        
+        <div class="min-w-[120px] flex-1">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Estado</label>
+            <select name="estado" class="w-full py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:border-blue-500">
+                <option value="">Todos</option>
+                {% for code, name in estados %}
+                <option value="{{ code }}">{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="min-w-[200px] flex-1">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Cliente (Origen)</label>
+            <select name="cliente" class="w-full py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:border-blue-500">
+                <option value="">Todos los clientes...</option>
+                {% for cli in clientes %}
+                <option value="{{ cli.id }}">{{ cli.razon_social }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="min-w-[200px] flex-1">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Proveedor (Destino)</label>
+            <select name="proveedor" class="w-full py-1.5 px-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 outline-none focus:border-blue-500">
+                <option value="">Todos los proveedores...</option>
+                {% for prov in proveedores %}
+                <option value="{{ prov.id }}">{{ prov.razon_social }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="min-w-[150px] flex-1">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Número Cheque</label>
+            <input type="text" name="q" placeholder="Buscar por número..."
+                   class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 placeholder:text-slate-400">
+        </div>
+        
+        <div class="w-[100px]">
+            <label class="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-tighter">Asiento ID</label>
+            <input type="text" name="asiento_id" placeholder="ID..."
+                   class="w-full h-9 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:border-blue-500 placeholder:text-slate-400 text-center">
+        </div>
+
+        <button type="submit" class="h-9 px-4 bg-slate-800 text-white font-bold text-[11px] uppercase tracking-wider rounded-lg hover:bg-slate-700 transition-colors">
+            Filtrar
+        </button>
+    </form>
+
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="grilla-valores">
+        <!-- grilla htmx -->
+        <div class="p-8 flex justify-center items-center text-slate-400">
+            <svg class="animate-spin h-6 w-6 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="font-bold tracking-tight text-sm">Cargando valores...</span>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Container for actions -->
+<div id="modal-container"></div>
+{% endblock %}

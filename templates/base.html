@@ -406,11 +406,13 @@
                             Emitir Orden Pago
                         </a>
                         {% endif %}
+                        {% if empresa_actual.tipo_actividad != 'ESTUDIO' and empresa_actual.tipo_actividad != 'AGRICOLA' %}
                         {% if perms.usuarios.menu_tesoreria_caja or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'caja_mostrador_index' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'caja_mostrador_index' %}text-green-600 font-bold{% endif %}">
                             Caja Mostrador
                         </a>
+                        {% endif %}
                         {% endif %}
                         {% if perms.usuarios.menu_tesoreria_caja_diaria or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'caja_diaria_index' %}"
@@ -424,11 +426,13 @@
                             Origen y Aplicacion de Fondos
                         </a>
                         {% endif %}
+                        {% if empresa_actual.tipo_actividad != 'ESTUDIO' and empresa_actual.tipo_actividad != 'AGRICOLA' %}
                         {% if perms.usuarios.menu_tesoreria_rendiciones or user.perfil.es_admin_sistema or user.is_staff %}
                         <a href="{% url 'rendiciones_recepcion' %}"
                             class="block py-1.5 text-sm text-gray-400 hover:text-white transition-colors {% if request.resolver_match.url_name == 'rendiciones_recepcion' %}text-indigo-300 font-bold{% endif %}">
                             Recepcion de Rendiciones
                         </a>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </div>

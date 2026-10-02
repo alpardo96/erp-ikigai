@@ -1,0 +1,134 @@
+{% load formato_tags %}
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 py-6" id="rechazarChequeModal">
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden">
+        
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <div>
+                <h3 class="text-lg font-black text-slate-900 flex items-center gap-2 uppercase tracking-tighter italic">
+                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Rechazar Cheque de Terceros
+                </h3>
+                <p class="text-xs text-slate-500 mt-0.5">El cheque pasará a estado Rechazado y se generarán los comprobantes contables correspondientes.</p>
+            </div>
+            <button type="button" onclick="document.getElementById('rechazarChequeModal').remove()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-200 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 overflow-y-auto space-y-5 flex-1">
+            
+            <!-- Resumen del Cheque -->
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex justify-between items-center">
+                <div>
+                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Cheque a Rechazar</p>
+                    <p class="font-bold text-slate-800">{{ valor.banco.nombre }} N° {{ valor.numero_cheque }}</p>
+                    <p class="text-xs text-slate-500">Vencimiento: {{ valor.fecha_vencimiento|date:"d/m/Y" }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Importe</p>
+                    <p class="text-xl font-black text-slate-900 tabular-nums">$ {{ valor.importe|formato_ar }}</p>
+                </div>
+            </div>
+
+            <form id="formRechazarCheque" 
+                  hx-post="{% url 'valor_terceros_rechazar_procesar' valor.id %}" 
+                  hx-target="#modal-container"
+                  class="space-y-4">
+                {% csrf_token %}
+
+                <div>
+                    <label class="block text-xs font-black text-slate-700 uppercase mb-1">Motivo del Rechazo</label>
+                    <select name="motivo" required
+                            class="w-full h-10 px-3 rounded-lg bg-white border border-slate-300 text-sm font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        <option value="">Seleccione el motivo...</option>
+                        <option value="FALTA DE FONDOS">FALTA DE FONDOS</option>
+                        <option value="DEFECTOS FORMALES">DEFECTOS FORMALES</option>
+                        <option value="OTROS">OTROS</option>
+                    </select>
+                </div>
+
+                <!-- AlpineJS x-data para manejar el toggle de gastos -->
+                <div x-data="{ 
+                        cobrarGasto: false,
+                        precioOriginal: 0,
+                        precioActual: 0,
+                        get mostrarActualizar() { return this.precioOriginal != this.precioActual && this.precioActual > 0; }
+                     }" 
+                     class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                    
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="cobrar_gasto" x-model="cobrarGasto" class="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                        <span class="text-sm font-bold text-slate-800">Cobrar costo de rechazo al cliente</span>
+                    </label>
+
+                    <div x-show="cobrarGasto" x-transition.opacity class="space-y-4 pt-3 border-t border-slate-200">
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Producto / Concepto</label>
+                                <select name="producto_id" id="productoGasto"
+                                        @change="precioOriginal = parseFloat($event.target.options[$event.target.selectedIndex].dataset.precio || 0); precioActual = precioOriginal;"
+                                        class="w-full h-9 px-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-800 outline-none focus:border-blue-500">
+                                    <option value="" data-precio="">Seleccione concepto...</option>
+                                    {% for prod in productos %}
+                                    <option value="{{ prod.id }}" data-precio="{{ prod.precio_neto|default:'0' }}">{{ prod.detalle }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-500 uppercase mb-1">Importe Neto ($)</label>
+                                <input type="number" step="0.01" name="importe_gasto" x-model="precioActual"
+                                       class="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-900 tabular-nums outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- Checkbox para actualizar precio maestro -->
+                        <div x-show="mostrarActualizar" x-transition class="bg-blue-100/50 border border-blue-200 rounded-lg p-3">
+                            <label class="flex items-start gap-2 cursor-pointer">
+                                <input type="checkbox" name="actualizar_precio_producto" class="w-4 h-4 mt-0.5 text-blue-600 rounded border-blue-300 focus:ring-blue-500">
+                                <span class="text-xs font-semibold text-blue-800 leading-snug">
+                                    El importe ingresado difiere del valor habitual. ¿Desea guardar $<span x-text="precioActual"></span> como el nuevo precio predeterminado para este concepto?
+                                </span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2">Tipo de Comprobante a Emitir</label>
+                            <div class="flex gap-6">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="tipo_comprobante" value="1" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-xs font-bold text-slate-700">Real (Nota de Débito Fiscal)</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="tipo_comprobante" value="2" class="w-4 h-4 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-xs font-bold text-slate-700">Presupuestado (NDI Interna)</span>
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1 italic">Determina si la nota de débito será fiscal o un comprobante interno.</p>
+                        </div>
+
+                    </div>
+                </div>
+                
+                <div id="error-container"></div>
+
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+            <button type="button" onclick="document.getElementById('rechazarChequeModal').remove()"
+                    class="px-5 py-2.5 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors uppercase tracking-wider">
+                Cancelar
+            </button>
+            <button type="submit" form="formRechazarCheque"
+                    class="px-5 py-2.5 rounded-lg text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-sm transition-colors uppercase tracking-wider flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                Confirmar Rechazo
+            </button>
+        </div>
+
+    </div>
+</div>

@@ -18,7 +18,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from facturacion.models import ClienteProveedor
-from tesoreria.models import OrdenPago, Recibo
+from tesoreria.models import OrdenPago, Recibo, ValorTerceros
 
 
 
@@ -261,3 +261,111 @@ def _contexto_comprobante_recibo(pk, empresa_id):
         'total_letras': numero_a_letras(recibo.total),
         'fecha_impresion': timezone.localtime(),
     }
+
+# ---------------------------------------------------------------- Valores de Terceros
+
+from django.db.models import Sum
+
+@login_required
+def valores_terceros_listado(request):
+    empresa_id = request.session.get('empresa_id')
+    
+    cliente_id = request.GET.get('cliente', '')
+    cliente_display = ''
+    if cliente_id:
+        try:
+            c_obj = ClienteProveedor.objects.get(pk=cliente_id, empresa_id=empresa_id)
+            cliente_display = c_obj.razon_social
+        except ClienteProveedor.DoesNotExist:
+            cliente_id = ''
+
+    proveedor_id = request.GET.get('proveedor', '')
+    proveedor_display = ''
+    if proveedor_id:
+        try:
+            p_obj = ClienteProveedor.objects.get(pk=proveedor_id, empresa_id=empresa_id)
+            proveedor_display = p_obj.razon_social
+        except ClienteProveedor.DoesNotExist:
+            proveedor_id = ''
+
+    estados = ValorTerceros.ESTADOS
+    hoy = timezone.localdate().isoformat()
+    
+    return render(request, 'tesoreria/valores_terceros_listado.html', {
+        'hoy': hoy,
+        'cliente_id': cliente_id,
+        'cliente_display': cliente_display,
+        'proveedor_id': proveedor_id,
+        'proveedor_display': proveedor_display,
+        'estados': estados,
+        'clientes': ClienteProveedor.objects.filter(empresa_id=empresa_id, tipo_entidad=1).order_by('razon_social'),
+        'proveedores': ClienteProveedor.objects.filter(empresa_id=empresa_id, tipo_entidad=2).order_by('razon_social'),
+    })
+
+
+@login_required
+def valores_terceros_grilla(request):
+    empresa_id = request.session.get('empresa_id')
+    
+    valores = ValorTerceros.objects.filter(
+        empresa_id=empresa_id
+    ).select_related(
+        'banco', 
+        'recibo__cliente', 
+        'orden_pago__proveedor'
+    )
+
+    if request.GET.get('vencimiento_desde'):
+        valores = valores.filter(fecha_vencimiento__gte=request.GET['vencimiento_desde'])
+    if request.GET.get('vencimiento_hasta'):
+        valores = valores.filter(fecha_vencimiento__lte=request.GET['vencimiento_hasta'])
+        
+    if request.GET.get('estado'):
+        valores = valores.filter(estado=request.GET['estado'])
+        
+    if request.GET.get('cliente'):
+        valores = valores.filter(recibo__cliente_id=request.GET['cliente'])
+        
+    if request.GET.get('proveedor'):
+        valores = valores.filter(orden_pago__proveedor_id=request.GET['proveedor'])
+        
+    if request.GET.get('q'):
+        q = request.GET['q']
+        valores = valores.filter(numero_cheque__icontains=q)
+        
+    if request.GET.get('asiento_id'):
+        asiento_id = request.GET['asiento_id']
+        if asiento_id.isdigit():
+            valores = valores.filter(
+                Q(asiento_recepcion_id=asiento_id) | Q(asiento_entrega_id=asiento_id)
+            )
+
+    total_importe = valores.aggregate(total=Sum('importe'))['total'] or Decimal('0')
+    
+    valores = list(valores.order_by('fecha_vencimiento', 'numero_cheque')[:500])
+
+    # --- Bulk load origins and destinations from Asiento ---
+    # Esto usa asiento_recepcion_id y asiento_entrega_id para sacar la razon_social
+    from contable.models import Asiento
+    
+    asientos_ids = set()
+    for v in valores:
+        if v.asiento_recepcion_id: asientos_ids.add(v.asiento_recepcion_id)
+        if v.asiento_entrega_id: asientos_ids.add(v.asiento_entrega_id)
+        
+    nombres_por_asiento = {}
+    if asientos_ids:
+        # Hacemos 1 sola query a Asiento trayendo el cli_pro asociado
+        asientos = Asiento.objects.filter(asiento_id__in=asientos_ids).select_related('cli_pro')
+        for ast in asientos:
+            if ast.cli_pro:
+                nombres_por_asiento[ast.asiento_id] = ast.cli_pro.razon_social
+                
+    for v in valores:
+        v.origen_razon_social = nombres_por_asiento.get(v.asiento_recepcion_id)
+        v.destino_razon_social = nombres_por_asiento.get(v.asiento_entrega_id)
+
+    return render(request, 'tesoreria/partials/valores_terceros_grilla.html', {
+        'valores': valores,
+        'total_importe': total_importe,
+    })
