@@ -12,14 +12,17 @@
      - Se añadió en la barra de acciones superior (junto al botón "📦 Grupos de Envío") el botón interactivo **`⚙️ Configurar Correo`** con indicador visual de estado (verde si el servicio SMTP está activo, ámbar parpadeante si está inactivo), garantizando que el usuario siempre pueda ingresar a editar parámetros, credenciales o plantillas sin depender de que el servicio se encuentre caído.
   2. **Footer Fijo y Guardado Seguro en Modal (`config_mails_modal.html`):**
      - Se reestructuró el modal utilizando `flex flex-col max-h-[90vh]` con el formulario en `flex-1 overflow-y-auto`, transformando el pie en un **Footer Fijo / Sticky** (`bg-white/95 border-t border-gray-100 shadow-md z-20 flex-shrink-0`). El botón **"Guardar Configuración"** y el botón **"Cancelar"** permanecen ahora siempre visibles y al alcance de la vista sin importar la resolución de pantalla ni el desplazamiento del formulario.
+     - **Resolución de SyntaxError en Alpine.js por Localización de `delaySegundos`:**
+       Al estar activada la localización en Django (`USE_L10N` en `es-AR`), el valor numérico float `2.5` se imprimía en el HTML como `delaySegundos: 2,5,` (con coma decimal en vez de punto). En el analizador de JavaScript, esto provocaba un `SyntaxError: Unexpected number` que abortaba por completo la inicialización de Alpine.js en todo el modal. Como consecuencia, las directivas `x-text` no se evaluaban (dejando los botones de "Guardar Configuración" y "Probar Conexión" vacíos como píldoras sin texto) y los listeners de eventos `@click` de los presets (`1.0s`, `2.0s`, etc.) y botones quedaban inactivos.
+       Se resolvió aplicando `{% load l10n %}` junto a `parseFloat('{{ config.delay_segundos|unlocalize|default:'2.0' }}'.replace(',', '.')) || 2.0`, garantizando sintaxis JavaScript pura y sólida. Además, se dotó a los tags `<span>` de los botones de texto inicial por defecto.
      - En `guardar()`, se agregaron validaciones amigables en JavaScript previas al envío para Servidor SMTP, Puerto, Usuario y Asunto con alertas de `Swal.fire`, previniendo bloqueos silenciosos del navegador por campos no visibles y enviando los datos por `fetch` con token CSRF de forma atómica.
   3. **Corrección Integral del Selector de Facturas (`envios_facturas.html`):**
      - **Eliminación de Preselección Fantasma:** En `cargarDatos()`, se eliminó el mapeo automático de facturas pendientes (`this.seleccionados = []`). La vista inicia ahora completamente limpia para que el usuario elija de forma consciente.
      - **Reinicio Automático ante Vistas y Filtros:** Se incorporaron observadores reactivos `$watch` en Alpine.js sobre `filtroEstado`, `filtroGrupo`, `busqueda`, `mes` y `anio`, vaciando inmediatamente la selección (`this.seleccionados = []`) cada vez que se cambia de pestaña, grupo o criterio de búsqueda.
      - **Selección Exclusiva de Visibles:** En `toggleSeleccionarTodos`, al tildar el checkbox general se seleccionan única y estrictamente los comprobantes que se encuentran actualmente visibles en la grilla (`this.itemsFiltrados.map(i => i.id)`). Al destildarlo, se vacía por completo el array.
   4. **Sin impacto en esquema de Base de Datos.**
-- **Resultado de las pruebas**: Suite completa `verticalidades.estudio.tests` ejecutada con éxito: 17/17 tests aprobados (100% OK en 15.7s).
-- **Estado actual y siguientes pasos sugeridos**: Configuración de correo y selector de comprobantes 100% estabilizados, predecibles y listos para uso operativo.
+- **Resultado de las pruebas**: Suite completa `verticalidades.estudio.tests` ejecutada con éxito: 17/17 tests aprobados (100% OK en 17.5s).
+- **Estado actual y siguientes pasos sugeridos**: Configuración de correo y selector de comprobantes 100% estabilizados, reactivos y listos para uso operativo.
 
 ## Cristian - PC CASA
 - **Fecha/Día**: 01 de Octubre de 2026

@@ -1,3 +1,4 @@
+{% load l10n %}
 <!-- Modal de Configuración SMTP y Plantillas de Correo para Estudio (Sin filtros blur para máximo rendimiento) -->
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 transition-opacity px-4 py-6 overflow-y-auto"
     id="modal-backdrop">
@@ -16,15 +17,15 @@
 
             // Contenidos reactivos
             asunto: '{{ config.asunto|escapejs }}',
-            mensaje: `{{ config.mensaje|escapejs }}`,
-            firma: `{{ config.firma|escapejs }}`,
+            mensaje: '{{ config.mensaje|escapejs }}',
+            firma: '{{ config.firma|escapejs }}',
 
             // Manejo de Logo
             logoPreview: '{% if config.logo_firma %}{{ MEDIA_URL }}{{ config.logo_firma }}{% endif %}',
             eliminarLogo: false,
 
-            // Cadencia de envío anti-spam
-            delaySegundos: {{ config.delay_segundos|default:'2.0' }},
+            // Cadencia de envío anti-spam (parseo seguro sin coma de localización)
+            delaySegundos: parseFloat('{{ config.delay_segundos|unlocalize|default:'2.0' }}'.replace(',', '.')) || 2.0,
 
             // Datos de prueba para vista previa en tiempo real
             muestra: {
@@ -445,7 +446,7 @@
                         class="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors shadow-sm disabled:opacity-50">
                         <svg x-show="!probando" class="w-4 h-4 mr-1.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <svg x-show="probando" x-cloak class="w-4 h-4 mr-1.5 animate-spin text-slate-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                        <span x-text="probando ? 'Verificando con servidor...' : 'Probar Conexión SMTP'"></span>
+                        <span x-text="probando ? 'Verificando con servidor...' : 'Probar Conexión SMTP'">Probar Conexión SMTP</span>
                     </button>
                     
                     <template x-if="resultadoPrueba">
@@ -544,7 +545,7 @@
             <button type="button" @click="guardar()" :disabled="guardando"
                 class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center">
                 <svg x-show="guardando" class="w-4 h-4 mr-2 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                <span x-text="guardando ? 'Guardando...' : 'Guardar Configuración'"></span>
+                <span x-text="guardando ? 'Guardando...' : 'Guardar Configuración'">Guardar Configuración</span>
             </button>
         </div>
 
