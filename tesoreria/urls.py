@@ -38,6 +38,12 @@ urlpatterns = [
     path('recibos/grilla/', views_listados.recibos_grilla, name='recibo_grilla'),
     path('recibos/<int:pk>/pdf/', views_listados.recibo_pdf, name='recibo_pdf'),
 
+    path('valores-terceros/', views_listados.valores_terceros_listado, name='valores_terceros_listado'),
+    path('valores-terceros/grilla/', views_listados.valores_terceros_grilla, name='valores_terceros_grilla'),
+    path('valores-terceros/exportar/', views_listados.exportar_valores_terceros, name='exportar_valores_terceros'),
+    path('valores-terceros/<int:pk>/rechazar-modal/', views_htmx.valor_terceros_rechazar_modal, name='valor_terceros_rechazar_modal'),
+    path('valores-terceros/<int:pk>/rechazar-procesar/', views_htmx.valor_terceros_rechazar_procesar, name='valor_terceros_rechazar_procesar'),
+
 
     # Caja Mostrador
     path('caja-mostrador/', views.CajaMostradorIndexView.as_view(), name='caja_mostrador_index'),

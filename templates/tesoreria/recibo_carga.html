@@ -506,6 +506,7 @@ document.addEventListener('alpine:init', () => {
             transf_cuit: '',
             transf_titular: '',
             
+            cheque_banco_id: '',
             cheque_banco: '',
             cheque_importe: '',
             cheque_nro: '',
@@ -552,6 +553,7 @@ document.addEventListener('alpine:init', () => {
                 transf_nro: '',
                 transf_cuit: '',
                 transf_titular: '',
+                cheque_banco_id: '',
                 cheque_banco: '',
                 cheque_importe: '',
                 cheque_nro: '',
@@ -667,17 +669,19 @@ document.addEventListener('alpine:init', () => {
             this.nuevoPago.transf_titular = '';
         },
         addCheque() {
-            if (!this.nuevoPago.cheque_banco || desformatearAR(this.nuevoPago.cheque_importe||0) <= 0) {
+            if (!this.nuevoPago.cheque_banco_id || desformatearAR(this.nuevoPago.cheque_importe||0) <= 0) {
                 alert("Ingrese banco e importe válido.");
                 return;
             }
             this.pagos.cheques.push({
+                banco_id: this.nuevoPago.cheque_banco_id,
                 banco: this.nuevoPago.cheque_banco,
                 importe: desformatearAR(this.nuevoPago.cheque_importe),
                 numero_comprobante: this.nuevoPago.cheque_nro,
                 fecha_vencimiento: this.nuevoPago.cheque_vto,
                 cuit_emisor: this.nuevoPago.cheque_cuit
             });
+            this.nuevoPago.cheque_banco_id = '';
             this.nuevoPago.cheque_banco = '';
             this.nuevoPago.cheque_importe = '';
             this.nuevoPago.cheque_nro = '';
@@ -709,6 +713,7 @@ document.addEventListener('alpine:init', () => {
             if (contenedor) contenedor.innerHTML = '';
         },
         seleccionarBanco(banco) {
+            this.nuevoPago.cheque_banco_id = banco.id;
             this.nuevoPago.cheque_banco = (banco.codigo_bcra ? banco.codigo_bcra + ' - ' : '') + banco.nombre;
             this.bancoResultsOpen = false;
             const contenedor = document.getElementById('banco_suggestions');

@@ -19,6 +19,10 @@
            class="px-5 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-emerald-500 hover:text-emerald-600 shadow-sm transition-all">
             Listado de Órdenes de Pago
         </a>
+        <a href="{% url 'valores_terceros_listado' %}"
+           class="px-5 py-2 bg-white border border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-blue-500 hover:text-blue-600 shadow-sm transition-all">
+            Valores de Terceros
+        </a>
     </div>
 
     <div class="flex flex-wrap justify-center gap-8 italic">
@@ -58,6 +62,7 @@
             </div>
         </a>
 
+        {% if empresa_actual.tipo_actividad != 'ESTUDIO' and empresa_actual.tipo_actividad != 'AGRICOLA' %}
         <!-- Tarjeta Caja Mostrador -->
         <a href="{% url 'caja_mostrador_index' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-amber-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -75,6 +80,7 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
 
         <!-- Tarjeta Caja Diaria -->
         <a href="{% url 'caja_diaria_index' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-blue-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
@@ -112,6 +118,7 @@
             </div>
         </a>
 
+        {% if empresa_actual.tipo_actividad != 'ESTUDIO' and empresa_actual.tipo_actividad != 'AGRICOLA' %}
         <!-- Tarjeta Recepción de Rendiciones -->
         <a href="{% url 'rendiciones_recepcion' %}" class="group relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-2xl hover:border-cyan-500 transition-all duration-300 overflow-hidden w-full max-w-sm">
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -129,6 +136,7 @@
                 <svg class="w-5 h-5 ml-2 transform group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
         </a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

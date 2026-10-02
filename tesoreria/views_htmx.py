@@ -1,3 +1,4 @@
+from django.views.decorators.http import require_POST
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.urls import reverse
@@ -2314,3 +2315,254 @@ def _generar_asiento_diferencia(empresa_id, ejercicio_id, sucursal_id, diferenci
         AsientoLinea.objects.create(asiento=asiento, orden=1, cuenta=cuenta_caja, debe=monto, haber=0)
         AsientoLinea.objects.create(asiento=asiento, orden=2, cuenta=param.cta_diferencia_caja, debe=0, haber=monto)
     return asiento.asiento_id
+
+# ---------------------------------------------------------------- Rechazo de Cheques
+
+from productos.models import Producto
+
+@login_required
+def valor_terceros_rechazar_modal(request, pk):
+    empresa_id = request.session.get('empresa_id')
+    valor = get_object_or_404(ValorTerceros.objects.select_related('banco'), pk=pk, empresa_id=empresa_id)
+    
+    # Check if already rejected
+    if valor.estado == 'R':
+        return HttpResponse('El cheque ya se encuentra rechazado.', status=400)
+        
+    productos = Producto.objects.filter(
+        empresa_id=empresa_id, 
+        activo=True,
+        detalle__icontains='gasto'
+    ).order_by('detalle')
+        
+    return render(request, 'tesoreria/modals/valor_terceros_rechazar.html', {
+        'valor': valor,
+        'productos': productos,
+    })
+
+@login_required
+@require_POST
+@transaction.atomic
+def valor_terceros_rechazar_procesar(request, pk):
+    from django.db.models import Max
+    from tesoreria.models import ValorTerceros
+    from facturacion.models import Venta, Compra, VentaItem, TipoComprobante, VentaAlicuotaIva
+    from productos.models import Producto
+    from facturacion.views import validar_y_obtener_documento_receptor
+    from facturacion.services.afip_service import AFIPService
+    from contable.services.contabilizacion import contabilizar_venta_individual, contabilizar_compras
+    from contable.services.saldos import recalcular_saldo_venta, recalcular_saldo_compra, recalcular_saldo_cliente_proveedor
+    from datetime import date
+    from decimal import Decimal
+    
+    valor = get_object_or_404(ValorTerceros, pk=pk)
+    
+    if valor.estado == 'R':
+        return HttpResponse('El cheque ya se encuentra rechazado.', status=400)
+        
+    motivo = request.POST.get('motivo', 'OTROS')
+    cobrar_gasto = request.POST.get('cobrar_gasto') == 'on'
+    producto_id = request.POST.get('producto_id')
+    importe_gasto = request.POST.get('importe_gasto')
+    tipo_comprobante_fiscal = request.POST.get('tipo_comprobante') # '1' = Real, '2' = NDI
+    
+    empresa_id = request.session.get('empresa_id')
+    empresa_obj = Empresa.objects.get(pk=empresa_id)
+    
+    # 1. Marcar el cheque como rechazado
+    valor.estado = 'R'
+    if motivo:
+        prefix = f'[{motivo}]'
+        obs = valor.observaciones or ''
+        if prefix not in obs:
+            valor.observaciones = f'{prefix} {obs}'.strip()
+    valor.save()
+
+    fecha_hoy = date.today()
+    
+    # 2. Generar CI si vino de una OP (Proveedor)
+    if valor.orden_pago:
+        proveedor = valor.orden_pago.proveedor
+        tipo_ci = TipoComprobante.objects.filter(codigo='CI').first()
+        if tipo_ci:
+            ult_num = Compra.objects.filter(empresa_id=empresa_id, tipo=tipo_ci).aggregate(Max('numero'))['numero__max'] or 0
+            compra_ci = Compra.objects.create(
+                empresa_id=empresa_id,
+                fecha=fecha_hoy,
+                tipo=tipo_ci,
+                punto=1,
+                numero=ult_num + 1,
+                proveedor=proveedor,
+                condic=valor.orden_pago.condic,
+                subtotal=valor.importe,
+                neto=valor.importe,
+                total=valor.importe,
+                descripcion=f'Rechazo cheque {valor.banco.nombre} Nro {valor.numero_cheque}'
+            )
+            contabilizar_compras(compra_ci)
+            recalcular_saldo_compra(compra_ci.compras_id)
+            recalcular_saldo_cliente_proveedor(proveedor.pk)
+            
+    # 3. Generar DI si vino de un Recibo de Cobranza (Cliente)
+    if valor.recibo and valor.recibo.tipo == 'C':
+        cliente = valor.recibo.cliente
+        tipo_di = TipoComprobante.objects.filter(codigo='DI').first()
+        punto_venta = 1
+        app = valor.recibo.aplicaciones.first()
+        if app and app.venta:
+            punto_venta = app.venta.punto
+            
+        if tipo_di:
+            ult_num = Venta.objects.filter(empresa_id=empresa_id, tipo=tipo_di, punto=punto_venta).aggregate(Max('numero'))['numero__max'] or 0
+            venta_di = Venta.objects.create(
+                empresa_id=empresa_id,
+                sucursal_id=valor.sucursal_id or request.session.get('sucursal_id', 1),
+                fecha=fecha_hoy,
+                tipo=tipo_di,
+                punto=punto_venta,
+                numero=ult_num + 1,
+                cliente=cliente,
+                cliente_razon_social=cliente.razon_social,
+                cliente_cuit=cliente.cuit,
+                condic=valor.recibo.condic,
+                neto=valor.importe,
+                total=valor.importe
+            )
+            VentaItem.objects.create(
+                venta=venta_di,
+                descripcion=f'Rechazo cheque {valor.banco.nombre} Nro {valor.numero_cheque}',
+                cantidad=1,
+                precio_neto=valor.importe,
+                precio_total=valor.importe
+            )
+            contabilizar_venta_individual(venta_di)
+            recalcular_saldo_venta(venta_di.ventas_id)
+            recalcular_saldo_cliente_proveedor(cliente.pk)
+            
+        if cobrar_gasto and producto_id and importe_gasto:
+            producto = Producto.objects.get(pk=producto_id)
+            importe_ingresado = Decimal(str(importe_gasto).replace(',', '.')) # Este es el NETO
+            alic_porc = producto.alic_iva_porc
+            
+            # 4.1 Actualizar precio maestro si lo solicitó
+            if request.POST.get('actualizar_precio_producto') == 'on':
+                producto.precio_neto = importe_ingresado
+                producto.precio_total = importe_ingresado + (importe_ingresado * (alic_porc / Decimal('100')))
+                producto.save()
+            
+            condic = 1 if tipo_comprobante_fiscal == '1' else 2
+            
+            # Calcular neto e IVA hacia arriba
+            if condic == 1:
+                neto = importe_ingresado
+                iva = neto * (alic_porc / Decimal('100'))
+                importe_total = neto + iva
+            else:
+                # Condic = 2 (No Fiscal) no lleva IVA desglosado
+                neto = importe_ingresado
+                iva = Decimal('0')
+                importe_total = neto
+            
+            # Determinar tipo comprobante
+            if condic == 1:
+                cond_iva = dict(cliente.CONDICION_IVA_CHOICES).get(cliente.condicion_iva, '')
+                if 'RESPONSABLE INSCRIPTO' in cond_iva.upper() or 'MONOTRIBUTO' in cond_iva.upper():
+                    codigo_tc = '002' # ND A
+                else:
+                    codigo_tc = '007' # ND B
+            else:
+                codigo_tc = 'NDI'
+                
+            tipo_tc = TipoComprobante.objects.filter(codigo=codigo_tc).first()
+            if not tipo_tc:
+                return HttpResponse(f'Error: No existe el comprobante {codigo_tc}', status=400)
+                
+            ult_num_tc = Venta.objects.filter(empresa_id=empresa_id, tipo=tipo_tc, punto=punto_venta).aggregate(Max('numero'))['numero__max'] or 0
+            
+            venta_gasto = Venta.objects.create(
+                empresa_id=empresa_id,
+                sucursal_id=valor.sucursal_id or request.session.get('sucursal_id', 1),
+                fecha=fecha_hoy,
+                tipo=tipo_tc,
+                punto=punto_venta,
+                numero=ult_num_tc + 1,
+                cliente=cliente,
+                cliente_razon_social=cliente.razon_social,
+                cliente_cuit=cliente.cuit,
+                condic=condic,
+                neto=neto,
+                iva=iva,
+                total=importe_total
+            )
+            
+            VentaItem.objects.create(
+                venta=venta_gasto,
+                producto=producto,
+                descripcion=producto.detalle,
+                cantidad=1,
+                precio_neto=neto,
+                precio_total=importe_total,
+                alic_iva=producto.alic_iva
+            )
+            
+            if iva > 0:
+                VentaAlicuotaIva.objects.create(
+                    venta=venta_gasto,
+                    alicuota=producto.alic_iva,
+                    base_imponible=neto,
+                    importe_iva=iva
+                )
+            
+            # Emitir AFIP si es fiscal
+            if condic == 1 and str(tipo_tc.codigo).isdigit():
+                try:
+                    doc_tipo, doc_nro, cond_iva_rec = validar_y_obtener_documento_receptor(cliente)
+                    datos_afip = {
+                        'pto_vta': venta_gasto.punto,
+                        'cbte_tipo': int(tipo_tc.codigo),
+                        'concepto': 1,
+                        'doc_tipo': doc_tipo,
+                        'doc_nro': doc_nro,
+                        'cbte_fch': venta_gasto.fecha.strftime('%Y%m%d'),
+                        'imp_total': float(importe_total),
+                        'imp_tot_conc': 0.0,
+                        'imp_neto': float(neto),
+                        'imp_op_ex': 0.0,
+                        'imp_iva': float(iva),
+                        'condicion_iva_receptor_id': cond_iva_rec,
+                        'mon_id': 'PES',
+                        'mon_cotiz': 1.0,
+                    }
+                    alicuotas_list = [{'alicuota': producto.alic_iva, 'base_imponible': neto, 'importe_iva': iva}] if iva > 0 else []
+                    
+                    afip_service = AFIPService(empresa_obj)
+                    res_afip = afip_service.emitir_comprobante(datos_afip, alicuotas_list)
+                    
+                    if not res_afip['exito']:
+                        raise Exception(f"Rechazo ARCA: {res_afip['error']}")
+                        
+                    venta_gasto.cae = res_afip['cae']
+                    venta_gasto.vto_cae = res_afip['vto_cae']
+                    venta_gasto.numero = res_afip['numero_comprobante']
+                    venta_gasto.cod_qr = res_afip.get('cod_qr', '')
+                    venta_gasto.save()
+                    
+                except Exception as e:
+                    return HttpResponse(f'<div id="error-container" hx-swap-oob="true"><div class="p-3 text-xs text-red-600 font-bold bg-red-50 border border-red-200 rounded-lg flex items-center gap-2"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Error AFIP al emitir gasto: {str(e)}</span></div></div>', status=400)
+                    
+            contabilizar_venta_individual(venta_gasto)
+            recalcular_saldo_venta(venta_gasto.ventas_id)
+            recalcular_saldo_cliente_proveedor(cliente.pk)
+
+    return HttpResponse("""
+        <div hx-swap-oob="innerHTML:#modal-container"></div>
+        <script>
+            document.body.dispatchEvent(new Event("reloadValores"));
+            Swal.fire({
+                title: "Cheque Rechazado",
+                text: "El cheque se marco como rechazado y se generaron los comprobantes correspondientes.",
+                icon: "success",
+                confirmButtonColor: "#3085d6",
+            });
+        </script>
+    """)
