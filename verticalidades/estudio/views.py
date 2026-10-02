@@ -818,6 +818,11 @@ def config_mails_guardar(request):
         return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
 
     try:
+        try:
+            delay_segundos_val = float(request.POST.get('delay_segundos', 2.0))
+        except (ValueError, TypeError):
+            delay_segundos_val = 2.0
+
         data = {
             'activo': request.POST.get('activo') in ['on', 'true', True],
             'email_remitente': request.POST.get('email_remitente', '').strip(),
@@ -828,6 +833,7 @@ def config_mails_guardar(request):
             'password_smtp': request.POST.get('password_smtp', '').strip(),
             'usar_tls': request.POST.get('usar_tls') in ['on', 'true', True],
             'usar_ssl': request.POST.get('usar_ssl') in ['on', 'true', True],
+            'delay_segundos': delay_segundos_val,
             'asunto': request.POST.get('asunto', '').strip(),
             'mensaje': request.POST.get('mensaje', '').strip(),
             'firma': request.POST.get('firma', '').strip(),

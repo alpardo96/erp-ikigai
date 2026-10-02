@@ -29,7 +29,7 @@ DEFAULT_CONFIG = {
         '{empresa}'
     ),
     'logo_firma': '',
-    'delay_segundos': 1.0,
+    'delay_segundos': 2.0,
 }
 
 def get_config_file_path(empresa_id: int = None, for_write: bool = False) -> Path:
@@ -153,9 +153,10 @@ def guardar_config_mail(empresa_id: int = None, data: dict = None) -> bool:
         cfg['puerto_smtp'] = 465
         
     try:
-        cfg['delay_segundos'] = float(cfg.get('delay_segundos', 1.0))
+        val = float(cfg.get('delay_segundos', 2.0))
+        cfg['delay_segundos'] = max(0.5, min(val, 60.0))
     except (ValueError, TypeError):
-        cfg['delay_segundos'] = 1.0
+        cfg['delay_segundos'] = 2.0
 
     with open(file_path, 'w', encoding='utf-8') as f:
         json.dump(cfg, f, indent=4, ensure_ascii=False)

@@ -695,5 +695,28 @@ class Plan101GruposEnvioTestCase(TestCase):
         self.assertEqual(e1.grupo.nombre, 'Grupo Sugerido Automático')
         self.assertEqual(e1.destinatarios, 'admin@grupo-sugerido.com')
 
+    def test_config_mails_delay_segundos_persistencia_y_vista(self):
+        """Verifica que el parámetro delay_segundos se guarde y recupere correctamente desde la vista y el servicio"""
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session.save()
+
+        res = self.client.post('/estudio/config-mails/guardar/', {
+            'activo': 'on',
+            'email_remitente': 'facturacion@lopezriossa.com',
+            'nombre_remitente': 'Estudio López Ríos',
+            'servidor_smtp': 'mail.lopezriossa.com',
+            'puerto_smtp': '465',
+            'usuario_smtp': 'facturacion@lopezriossa.com',
+            'password_smtp': 'clave_test',
+            'usar_ssl': 'on',
+            'delay_segundos': '2.5',
+            'asunto': 'Factura {comprobante}',
+            'mensaje': 'Mensaje test'
+        })
+        self.assertEqual(res.status_code, 200)
+        cfg = get_config_mail(self.empresa.id)
+        self.assertEqual(cfg['delay_segundos'], 2.5)
+
 
 
