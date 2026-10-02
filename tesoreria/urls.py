@@ -40,6 +40,7 @@ urlpatterns = [
 
     path('valores-terceros/', views_listados.valores_terceros_listado, name='valores_terceros_listado'),
     path('valores-terceros/grilla/', views_listados.valores_terceros_grilla, name='valores_terceros_grilla'),
+    path('valores-terceros/exportar/', views_listados.exportar_valores_terceros, name='exportar_valores_terceros'),
     path('valores-terceros/<int:pk>/rechazar-modal/', views_htmx.valor_terceros_rechazar_modal, name='valor_terceros_rechazar_modal'),
     path('valores-terceros/<int:pk>/rechazar-procesar/', views_htmx.valor_terceros_rechazar_procesar, name='valor_terceros_rechazar_procesar'),
 

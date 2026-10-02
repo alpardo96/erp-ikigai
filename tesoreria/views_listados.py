@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 
 from facturacion.models import ClienteProveedor
+from empresas.models import Empresa
 from tesoreria.models import OrdenPago, Recibo, ValorTerceros
 
 
@@ -369,3 +370,75 @@ def valores_terceros_grilla(request):
         'valores': valores,
         'total_importe': total_importe,
     })
+
+@login_required
+def exportar_valores_terceros(request):
+    empresa_id = request.session.get('empresa_id')
+    empresa = Empresa.objects.get(pk=empresa_id)
+    
+    valores = ValorTerceros.objects.filter(
+        empresa_id=empresa_id
+    ).select_related(
+        'banco', 
+        'recibo__cliente', 
+        'orden_pago__proveedor'
+    )
+
+    if request.GET.get('vencimiento_desde'):
+        valores = valores.filter(fecha_vencimiento__gte=request.GET['vencimiento_desde'])
+    if request.GET.get('vencimiento_hasta'):
+        valores = valores.filter(fecha_vencimiento__lte=request.GET['vencimiento_hasta'])
+        
+    if request.GET.get('estado'):
+        valores = valores.filter(estado=request.GET['estado'])
+        
+    if request.GET.get('cliente'):
+        valores = valores.filter(recibo__cliente_id=request.GET['cliente'])
+        
+    if request.GET.get('proveedor'):
+        valores = valores.filter(orden_pago__proveedor_id=request.GET['proveedor'])
+        
+    if request.GET.get('q'):
+        q = request.GET['q']
+        valores = valores.filter(numero_cheque__icontains=q)
+        
+    if request.GET.get('asiento_id'):
+        asiento_id = request.GET['asiento_id']
+        if asiento_id.isdigit():
+            valores = valores.filter(
+                Q(asiento_recepcion_id=asiento_id) | Q(asiento_entrega_id=asiento_id)
+            )
+
+    valores = list(valores.order_by('fecha_vencimiento', 'numero_cheque'))
+
+    from contable.models import Asiento
+    asientos_ids = set()
+    for v in valores:
+        if v.asiento_recepcion_id: asientos_ids.add(v.asiento_recepcion_id)
+        if v.asiento_entrega_id: asientos_ids.add(v.asiento_entrega_id)
+        
+    nombres_por_asiento = {}
+    if asientos_ids:
+        asientos = Asiento.objects.filter(asiento_id__in=asientos_ids).select_related('cli_pro')
+        for ast in asientos:
+            if ast.cli_pro:
+                nombres_por_asiento[ast.asiento_id] = ast.cli_pro.razon_social
+                
+    for v in valores:
+        v.origen_razon_social = nombres_por_asiento.get(v.asiento_recepcion_id)
+        v.destino_razon_social = nombres_por_asiento.get(v.asiento_entrega_id)
+
+    formato = request.GET.get('formato', 'excel')
+    from tesoreria.services.reportes_valores import generar_excel_valores, generar_pdf_valores
+    from django.http import HttpResponse
+    
+    if formato == 'pdf':
+        buffer = generar_pdf_valores(valores, empresa)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="valores_terceros.pdf"'
+        return response
+    else:
+        buffer = generar_excel_valores(valores)
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="valores_terceros.xlsx"'
+        return response
