@@ -5,7 +5,9 @@ from verticalidades.estudio.views import (
     facturacion_lotes, api_facturacion_lotes, generar_lote_facturacion,
     envios_facturas, api_envios_facturas, api_enviar_pendientes, api_reenviar_factura,
     estudio_envio_editar_modal, estudio_envio_guardar_edicion,
-    config_mails_modal, config_mails_guardar, config_mails_probar
+    config_mails_modal, config_mails_guardar, config_mails_probar,
+    api_grupos_envio, api_asignar_grupo_envios, api_eliminar_grupo_envio,
+    api_aplicar_sugerencia_grupo
 )
 
 urlpatterns = [
@@ -25,6 +27,11 @@ urlpatterns = [
     path('estudio/envios-facturas/reenviar/<int:envio_id>/', api_reenviar_factura, name='estudio_api_reenviar_factura'),
     path('estudio/envios-facturas/editar/<int:envio_id>/', estudio_envio_editar_modal, name='estudio_envio_editar_modal'),
     path('estudio/envios-facturas/guardar-edicion/<int:envio_id>/', estudio_envio_guardar_edicion, name='estudio_envio_guardar_edicion'),
+
+    path('estudio/grupos-envio/api/', api_grupos_envio, name='estudio_api_grupos_envio'),
+    path('estudio/grupos-envio/asignar/', api_asignar_grupo_envios, name='estudio_api_asignar_grupo_envios'),
+    path('estudio/grupos-envio/eliminar/<int:grupo_id>/', api_eliminar_grupo_envio, name='estudio_api_eliminar_grupo_envio'),
+    path('estudio/grupos-envio/aplicar-sugerencia/', api_aplicar_sugerencia_grupo, name='estudio_api_aplicar_sugerencia_grupo'),
 
     path('estudio/config-mails/modal/', config_mails_modal, name='estudio_config_mails_modal'),
     path('estudio/config-mails/guardar/', config_mails_guardar, name='estudio_config_mails_guardar'),

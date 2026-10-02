@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET
 from django.db import transaction
 from django.conf import settings
-from verticalidades.estudio.models import TarifaEstudio, EnvioFacturaEstudio
+from verticalidades.estudio.models import TarifaEstudio, EnvioFacturaEstudio, GrupoEnvioEstudio
 from verticalidades.estudio.services.config_mail_service import (
     get_config_mail, guardar_config_mail, is_config_activa,
     guardar_logo_firma, eliminar_logo_firma
@@ -413,6 +413,131 @@ def envios_facturas(request):
     })
 
 
+def _calcular_sugerencias_agrupacion(envios_qs):
+    """
+    Analiza los comprobantes facturados del período para detectar oportunidades de consolidación:
+    1. MISMO_EMAIL: Dos o más comprobantes que comparten el mismo correo electrónico y no están ya agrupados juntos.
+    2. CLIENTE_MULTIPLE: Un cliente con 2 o más facturas en el período que no han sido agrupadas en un grupo.
+    """
+    from collections import defaultdict
+    sugerencias = []
+
+    def _extraer_email_envio(e):
+        if e.destinatarios and isinstance(e.destinatarios, str) and e.destinatarios.strip():
+            return e.destinatarios.strip()
+        if e.grupo and e.grupo.destinatarios and isinstance(e.grupo.destinatarios, str) and e.grupo.destinatarios.strip():
+            return e.grupo.destinatarios.strip()
+        if e.cliente and e.cliente.correo and isinstance(e.cliente.correo, str) and e.cliente.correo.strip():
+            return e.cliente.correo.strip()
+        return ''
+
+    por_email = defaultdict(list)
+    por_cliente = defaultdict(list)
+
+    for e in envios_qs:
+        correo_cand = _extraer_email_envio(e).lower()
+        if correo_cand:
+            casillas = [c.strip() for c in correo_cand.split(',') if c.strip()]
+            for c_ind in casillas:
+                por_email[c_ind].append(e)
+
+        if e.cliente_id:
+            por_cliente[e.cliente_id].append(e)
+
+    sets_sugeridos = set()
+
+    for email_key, lista in por_email.items():
+        lista_unica = []
+        vistos = set()
+        for env in lista:
+            if env.id not in vistos:
+                vistos.add(env.id)
+                lista_unica.append(env)
+
+        if len(lista_unica) < 2:
+            continue
+
+        clientes_dict = {}
+        for env in lista_unica:
+            if env.cliente:
+                clientes_dict[env.cliente.pk] = env.cliente
+
+        grupos_ids = {env.grupo_id for env in lista_unica}
+        ya_agrupados = (len(grupos_ids) == 1 and None not in grupos_ids)
+
+        if not ya_agrupados:
+            ids_tupla = tuple(sorted(env.id for env in lista_unica))
+            if ids_tupla in sets_sugeridos:
+                continue
+            sets_sugeridos.add(ids_tupla)
+
+            es_multicliente = len(clientes_dict) > 1
+            nombres_cli = [c.razon_social for c in clientes_dict.values()]
+            if es_multicliente:
+                titulo = f"Mismo correo ({email_key}) en {len(nombres_cli)} clientes"
+                desc = f"Comparten la casilla '{email_key}': {', '.join(nombres_cli)} ({len(lista_unica)} comprobantes)."
+                nombre_sug = f"Grupo {', '.join(nombres_cli[:2])}" + ("..." if len(nombres_cli) > 2 else "")
+            else:
+                c_nom = nombres_cli[0] if nombres_cli else "Cliente"
+                titulo = f"{c_nom} (Múltiples comprobantes)"
+                desc = f"Tiene {len(lista_unica)} comprobantes dirigidos a '{email_key}'."
+                nombre_sug = f"Grupo {c_nom}"
+
+            total_monto = sum(float(env.venta.total) for env in lista_unica if env.venta)
+
+            sugerencias.append({
+                'id_sug': f"email_{email_key}_{len(lista_unica)}",
+                'tipo': 'MISMO_EMAIL' if es_multicliente else 'CLIENTE_MULTIPLE',
+                'titulo': titulo,
+                'descripcion': desc,
+                'email': email_key,
+                'nombre_grupo_sugerido': nombre_sug,
+                'clientes_ids': list(clientes_dict.keys()),
+                'clientes_nombres': nombres_cli,
+                'comprobantes_count': len(lista_unica),
+                'envio_ids': list(ids_tupla),
+                'total_importe': total_monto,
+                'es_multicliente': es_multicliente,
+                'ya_agrupados': False
+            })
+
+    for c_id, lista in por_cliente.items():
+        if len(lista) < 2:
+            continue
+        grupos_ids = {env.grupo_id for env in lista}
+        ya_agrupados = (len(grupos_ids) == 1 and None not in grupos_ids)
+        if ya_agrupados:
+            continue
+
+        ids_tupla = tuple(sorted(env.id for env in lista))
+        if ids_tupla in sets_sugeridos:
+            continue
+        sets_sugeridos.add(ids_tupla)
+
+        cli = lista[0].cliente
+        c_nom = cli.razon_social if cli else "Cliente"
+        email_cli = _extraer_email_envio(lista[0])
+        total_monto = sum(float(env.venta.total) for env in lista if env.venta)
+
+        sugerencias.append({
+            'id_sug': f"cli_{c_id}_{len(lista)}",
+            'tipo': 'CLIENTE_MULTIPLE',
+            'titulo': f"{c_nom} (Múltiples comprobantes)",
+            'descripcion': f"Registra {len(lista)} comprobantes facturados en este período.",
+            'email': email_cli,
+            'nombre_grupo_sugerido': f"Grupo {c_nom}",
+            'clientes_ids': [c_id],
+            'clientes_nombres': [c_nom],
+            'comprobantes_count': len(lista),
+            'envio_ids': list(ids_tupla),
+            'total_importe': total_monto,
+            'es_multicliente': False,
+            'ya_agrupados': False
+        })
+
+    return sugerencias
+
+
 @login_required
 @require_GET
 def api_envios_facturas(request):
@@ -436,13 +561,27 @@ def api_envios_facturas(request):
         envio_estudio__isnull=True
     ).select_related('cliente', 'tipo')
 
+    # Pre-cargar mapeo de clientes a grupos activos de la empresa
+    grupos_qs = GrupoEnvioEstudio.objects.filter(empresa=empresa, activo=True).prefetch_related('clientes')
+    cliente_a_grupo = {}
+    for g in grupos_qs:
+        for c in g.clientes.all():
+            cliente_a_grupo[c.pk] = g
+
     nuevos_envios = []
     for v in ventas_sin_envio:
-        dest = v.cliente.correo if v.cliente and v.cliente.correo else ''
+        g_auto = cliente_a_grupo.get(v.cliente_id) if v.cliente_id else None
+        dest = ''
+        if g_auto and g_auto.destinatarios:
+            dest = g_auto.destinatarios
+        elif v.cliente and v.cliente.correo:
+            dest = v.cliente.correo
+
         nuevos_envios.append(EnvioFacturaEstudio(
             empresa=empresa,
             venta=v,
             cliente=v.cliente,
+            grupo=g_auto,
             periodo=periodo,
             destinatarios=dest,
             estado='PENDIENTE',
@@ -453,10 +592,36 @@ def api_envios_facturas(request):
         EnvioFacturaEstudio.objects.bulk_create(nuevos_envios)
 
     # Consultar todos los envíos del período
-    envios_qs = EnvioFacturaEstudio.objects.filter(
+    envios_qs = list(EnvioFacturaEstudio.objects.filter(
         empresa=empresa,
         periodo=periodo
-    ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social', 'venta__numero')
+    ).select_related('venta', 'venta__tipo', 'cliente', 'grupo').order_by('cliente__razon_social', 'venta__numero'))
+
+    # Sincronización automática y persistencia en BD para envíos existentes sin destinatarios o sin grupo
+    envios_a_actualizar = []
+    for e in envios_qs:
+        modificado = False
+        if not e.grupo_id and e.cliente_id and e.cliente_id in cliente_a_grupo:
+            e.grupo = cliente_a_grupo[e.cliente_id]
+            e.grupo_id = e.grupo.id
+            modificado = True
+
+        if not e.destinatarios or not e.destinatarios.strip():
+            cand = ''
+            if e.grupo and e.grupo.destinatarios and e.grupo.destinatarios.strip():
+                cand = e.grupo.destinatarios.strip()
+            elif e.cliente and e.cliente.correo and e.cliente.correo.strip():
+                cand = e.cliente.correo.strip()
+            
+            if cand:
+                e.destinatarios = cand
+                modificado = True
+
+        if modificado:
+            envios_a_actualizar.append(e)
+
+    if envios_a_actualizar:
+        EnvioFacturaEstudio.objects.bulk_update(envios_a_actualizar, ['grupo', 'destinatarios'])
 
     items = []
     conteo_total = 0
@@ -478,6 +643,15 @@ def api_envios_facturas(request):
         cbte_str = f"{tipo_cbte} {v.punto:04d}-{v.numero:08d}"
         cliente_nombre = v.cliente_razon_social or (v.cliente.razon_social if v.cliente else 'Sin Identificar')
 
+        dest_final = e.destinatarios
+        if not dest_final or not dest_final.strip():
+            if e.grupo and e.grupo.destinatarios:
+                dest_final = e.grupo.destinatarios
+            elif v.cliente and v.cliente.correo:
+                dest_final = v.cliente.correo
+            else:
+                dest_final = ''
+
         items.append({
             'id': e.id,
             'venta_id': v.ventas_id,
@@ -489,7 +663,10 @@ def api_envios_facturas(request):
             'cliente_id': v.cliente_id or '',
             'cliente_razon': cliente_nombre,
             'cliente_cuit': v.cliente_cuit or (v.cliente.cuit if v.cliente else ''),
-            'destinatarios': e.destinatarios or (v.cliente.correo if v.cliente else ''),
+            'destinatarios': (dest_final or '').strip(),
+            'grupo_id': e.grupo_id,
+            'grupo_nombre': e.grupo.nombre if e.grupo else '',
+            'grupo_destinatarios': e.grupo.destinatarios if e.grupo else '',
             'modo_adjunto': e.modo_adjunto,
             'archivo_adjunto_url': e.archivo_adjunto.url if e.archivo_adjunto else '',
             'archivo_adjunto_nombre': e.archivo_adjunto.name.split('/')[-1] if e.archivo_adjunto else '',
@@ -499,6 +676,21 @@ def api_envios_facturas(request):
             'intentos': e.intentos
         })
 
+    grupos_data = [
+        {
+            'id': g.id,
+            'nombre': g.nombre,
+            'destinatarios': g.destinatarios,
+            'clientes_ids': list(g.clientes.values_list('pk', flat=True)),
+            'clientes_nombres': [c.razon_social for c in g.clientes.all()],
+            'total_cbtes_periodo': sum(1 for e in envios_qs if e.grupo_id == g.id),
+            'observaciones': g.observaciones or ''
+        }
+        for g in grupos_qs
+    ]
+
+    sugerencias = _calcular_sugerencias_agrupacion(envios_qs)
+
     return JsonResponse({
         'periodo': periodo,
         'metricas': {
@@ -507,6 +699,8 @@ def api_envios_facturas(request):
             'pendientes': conteo_pendientes,
             'errores': conteo_errores,
         },
+        'grupos': grupos_data,
+        'sugerencias': sugerencias,
         'items': items
     })
 
@@ -537,14 +731,14 @@ def api_enviar_pendientes(request):
         envios_pendientes = EnvioFacturaEstudio.objects.filter(
             empresa=empresa,
             id__in=ids_seleccionados
-        ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social')
+        ).select_related('venta', 'venta__tipo', 'cliente', 'grupo').order_by('cliente__razon_social')
     else:
         # Fallback a todos los pendientes o con error del período
         envios_pendientes = EnvioFacturaEstudio.objects.filter(
             empresa=empresa,
             periodo=periodo,
             estado__in=['PENDIENTE', 'ERROR']
-        ).select_related('venta', 'venta__tipo', 'cliente').order_by('cliente__razon_social')
+        ).select_related('venta', 'venta__tipo', 'cliente', 'grupo').order_by('cliente__razon_social')
 
     service = SMTPService(empresa.id)
 
@@ -771,5 +965,294 @@ def estudio_envio_guardar_edicion(request, envio_id):
         'archivo_adjunto_url': envio.archivo_adjunto.url if envio.archivo_adjunto else '',
         'archivo_adjunto_nombre': envio.archivo_adjunto.name.split('/')[-1] if envio.archivo_adjunto else ''
     })
+
+
+@login_required
+def api_grupos_envio(request):
+    """
+    GET: Lista todos los grupos de envío de la empresa activa con sus clientes asociados.
+    POST: Crea o edita un GrupoEnvioEstudio permanente.
+    """
+    empresa = _get_empresa_estudio(request)
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
+
+    if request.method == 'GET':
+        periodo = request.GET.get('periodo', '').strip()
+        grupos = GrupoEnvioEstudio.objects.filter(empresa=empresa, activo=True).prefetch_related('clientes')
+        data = []
+        for g in grupos:
+            data.append({
+                'id': g.id,
+                'nombre': g.nombre,
+                'destinatarios': g.destinatarios,
+                'clientes': [
+                    {'id': c.pk, 'razon_social': c.razon_social, 'cuit': c.cuit, 'correo': c.correo or ''}
+                    for c in g.clientes.all()
+                ],
+                'clientes_ids': list(g.clientes.values_list('pk', flat=True)),
+                'observaciones': g.observaciones or '',
+                'activo': g.activo
+            })
+
+        from facturacion.models import ClienteProveedor, Venta
+        from collections import Counter
+
+        # Obtener envíos del período
+        envios_periodo_qs = EnvioFacturaEstudio.objects.filter(empresa=empresa)
+        if periodo:
+            envios_periodo_qs = envios_periodo_qs.filter(periodo=periodo)
+        
+        envios_periodo_list = list(envios_periodo_qs.select_related('cliente', 'venta', 'grupo'))
+        
+        # Conteo de facturas por cliente en este período
+        conteo_por_cli = Counter(e.cliente_id for e in envios_periodo_list if e.cliente_id)
+
+        # Clientes facturados únicamente (más los ya asignados a algún grupo de la empresa)
+        cliente_ids_validos = set(conteo_por_cli.keys())
+        for g in grupos:
+            cliente_ids_validos.update(g.clientes.values_list('pk', flat=True))
+
+        clientes_disponibles = []
+        if cliente_ids_validos:
+            for c in ClienteProveedor.objects.filter(pk__in=cliente_ids_validos, empresa=empresa).order_by('razon_social'):
+                cbtes = conteo_por_cli.get(c.pk, 0)
+                clientes_disponibles.append({
+                    'id': c.pk,
+                    'razon_social': c.razon_social,
+                    'cuit': c.cuit,
+                    'correo': c.correo or '',
+                    'cbtes_periodo': cbtes
+                })
+
+        sugerencias = _calcular_sugerencias_agrupacion(envios_periodo_list)
+
+        return JsonResponse({
+            'status': 'success',
+            'grupos': data,
+            'clientes_disponibles': clientes_disponibles,
+            'sugerencias': sugerencias
+        })
+
+    elif request.method == 'POST':
+        try:
+            body = json.loads(request.body) if request.body else {}
+        except Exception:
+            body = {}
+
+        grupo_id = body.get('id')
+        nombre = body.get('nombre', '').strip()
+        destinatarios = body.get('destinatarios', '').strip()
+        clientes_ids = body.get('clientes_ids', [])
+        observaciones = body.get('observaciones', '').strip()
+
+        if not nombre:
+            return JsonResponse({'error': 'El nombre del grupo es obligatorio.'}, status=400)
+
+        # Normalizar y validar destinatarios
+        lista_emails = [e.strip() for e in destinatarios.split(',') if e.strip()]
+        for em in lista_emails:
+            from django.core.validators import validate_email
+            from django.core.exceptions import ValidationError
+            try:
+                validate_email(em)
+            except ValidationError:
+                return JsonResponse({'error': f"El correo '{em}' no tiene un formato válido."}, status=400)
+        destinatarios_normalizado = ", ".join(lista_emails)
+
+        with transaction.atomic():
+            if grupo_id:
+                grupo = GrupoEnvioEstudio.objects.filter(id=grupo_id, empresa=empresa).first()
+                if not grupo:
+                    return JsonResponse({'error': 'Grupo no encontrado.'}, status=404)
+                grupo.nombre = nombre
+                grupo.destinatarios = destinatarios_normalizado
+                grupo.observaciones = observaciones
+                grupo.modificado_por = request.user
+                grupo.save()
+            else:
+                grupo = GrupoEnvioEstudio.objects.create(
+                    empresa=empresa,
+                    nombre=nombre,
+                    destinatarios=destinatarios_normalizado,
+                    observaciones=observaciones,
+                    activo=True,
+                    creado_por=request.user,
+                    modificado_por=request.user
+                )
+
+            if isinstance(clientes_ids, list):
+                from facturacion.models import ClienteProveedor
+                clientes_validos = ClienteProveedor.objects.filter(pk__in=clientes_ids, empresa=empresa)
+                grupo.clientes.set(clientes_validos)
+
+        return JsonResponse({
+            'status': 'success',
+            'mensaje': 'Grupo guardado exitosamente.',
+            'grupo': {
+                'id': grupo.id,
+                'nombre': grupo.nombre,
+                'destinatarios': grupo.destinatarios,
+                'clientes_ids': list(grupo.clientes.values_list('pk', flat=True)),
+                'clientes_nombres': [c.razon_social for c in grupo.clientes.all()],
+                'observaciones': grupo.observaciones or ''
+            }
+        })
+
+
+@login_required
+@require_POST
+def api_asignar_grupo_envios(request):
+    """
+    Asigna o desasigna comprobantes del período a un grupo de envío.
+    Body JSON:
+    - envio_ids: lista de IDs de EnvioFacturaEstudio
+    - grupo_id: ID de GrupoEnvioEstudio o null (para desasociar / individual)
+    - actualizar_destinatarios: boolean opcional (default True) para reemplazar destinatarios con los del grupo
+    """
+    empresa = _get_empresa_estudio(request)
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except Exception:
+        body = {}
+
+    envio_ids = body.get('envio_ids', [])
+    grupo_id = body.get('grupo_id')
+    actualizar_destinatarios = body.get('actualizar_destinatarios', True)
+
+    if not envio_ids:
+        return JsonResponse({'error': 'No se especificaron comprobantes.'}, status=400)
+
+    qs = EnvioFacturaEstudio.objects.filter(id__in=envio_ids, empresa=empresa)
+
+    if grupo_id:
+        grupo = GrupoEnvioEstudio.objects.filter(id=grupo_id, empresa=empresa).first()
+        if not grupo:
+            return JsonResponse({'error': 'Grupo no encontrado.'}, status=404)
+        
+        with transaction.atomic():
+            for envio in qs:
+                envio.grupo = grupo
+                if actualizar_destinatarios and grupo.destinatarios:
+                    envio.destinatarios = grupo.destinatarios
+                envio.modificado_por = request.user
+                envio.save(update_fields=['grupo', 'destinatarios', 'modificado_por', 'fecha_modificacion'])
+    else:
+        # Desagrupar
+        with transaction.atomic():
+            for envio in qs:
+                envio.grupo = None
+                envio.modificado_por = request.user
+                # Restaurar destinatario por defecto si el cliente tiene
+                if not envio.destinatarios and envio.cliente and envio.cliente.correo:
+                    envio.destinatarios = envio.cliente.correo
+                envio.save(update_fields=['grupo', 'destinatarios', 'modificado_por', 'fecha_modificacion'])
+
+    return JsonResponse({
+        'status': 'success',
+        'mensaje': 'Asignación de grupo actualizada correctamente.',
+        'afectados': qs.count()
+    })
+
+
+@login_required
+@require_POST
+def api_eliminar_grupo_envio(request, grupo_id):
+    """
+    Elimina un grupo de envío. Los comprobantes asociados vuelven a ser individuales (SET_NULL).
+    """
+    empresa = _get_empresa_estudio(request)
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
+
+    grupo = GrupoEnvioEstudio.objects.filter(id=grupo_id, empresa=empresa).first()
+    if not grupo:
+        return JsonResponse({'error': 'Grupo no encontrado.'}, status=404)
+
+    nombre_grupo = grupo.nombre
+    grupo.delete()
+
+    return JsonResponse({
+        'status': 'success',
+        'mensaje': f"Grupo '{nombre_grupo}' eliminado con éxito. Las facturas asociadas ahora son individuales."
+    })
+
+
+@login_required
+@require_POST
+def api_aplicar_sugerencia_grupo(request):
+    """
+    Crea o reutiliza un grupo a partir de una sugerencia automática y asigna de inmediato
+    los comprobantes del lote en una sola operación atómica.
+    """
+    empresa = _get_empresa_estudio(request)
+    if not empresa:
+        return JsonResponse({'error': 'No hay empresa activa en el sistema.'}, status=400)
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except Exception:
+        body = {}
+
+    nombre = body.get('nombre', '').strip()
+    destinatarios = body.get('destinatarios', '').strip()
+    clientes_ids = body.get('clientes_ids', [])
+    envio_ids = body.get('envio_ids', [])
+    observaciones = body.get('observaciones', 'Creado desde sugerencia automática').strip()
+
+    if not nombre or not destinatarios:
+        return JsonResponse({'error': 'Nombre y destinatarios son requeridos.'}, status=400)
+
+    lista_emails = [e.strip() for e in destinatarios.split(',') if e.strip()]
+    for em in lista_emails:
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError
+        try:
+            validate_email(em)
+        except ValidationError:
+            return JsonResponse({'error': f"El correo '{em}' no tiene formato válido."}, status=400)
+    destinatarios_norm = ", ".join(lista_emails)
+
+    with transaction.atomic():
+        grupo = GrupoEnvioEstudio.objects.filter(empresa=empresa, nombre__iexact=nombre).first()
+        if not grupo:
+            grupo = GrupoEnvioEstudio.objects.create(
+                empresa=empresa,
+                nombre=nombre,
+                destinatarios=destinatarios_norm,
+                observaciones=observaciones,
+                activo=True,
+                creado_por=request.user,
+                modificado_por=request.user
+            )
+        else:
+            grupo.destinatarios = destinatarios_norm
+            grupo.activo = True
+            grupo.modificado_por = request.user
+            grupo.save()
+
+        if clientes_ids:
+            from facturacion.models import ClienteProveedor
+            clientes = ClienteProveedor.objects.filter(pk__in=clientes_ids, empresa=empresa)
+            grupo.clientes.add(*clientes)
+
+        if envio_ids:
+            envios = EnvioFacturaEstudio.objects.filter(id__in=envio_ids, empresa=empresa)
+            for env in envios:
+                env.grupo = grupo
+                env.destinatarios = grupo.destinatarios
+                env.modificado_por = request.user
+                env.save(update_fields=['grupo', 'destinatarios', 'modificado_por', 'fecha_modificacion'])
+
+    return JsonResponse({
+        'status': 'success',
+        'mensaje': f"Grupo '{grupo.nombre}' creado y {len(envio_ids)} comprobantes agrupados exitosamente.",
+        'grupo_id': grupo.id,
+        'grupo_nombre': grupo.nombre
+    })
+
 
 

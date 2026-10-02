@@ -8,7 +8,7 @@ from django.utils import timezone
 from empresas.models import Empresa, Sucursal
 from facturacion.models import ClienteProveedor, TipoComprobante, Venta, VentaItem
 from facturacion.forms import ClienteProveedorForm
-from verticalidades.estudio.models import TarifaEstudio, EnvioFacturaEstudio
+from verticalidades.estudio.models import TarifaEstudio, EnvioFacturaEstudio, GrupoEnvioEstudio
 from verticalidades.estudio.services.config_mail_service import (
     get_config_mail, guardar_config_mail, is_config_activa, get_config_file_path
 )
@@ -436,5 +436,264 @@ class Plan099EstudioTestCase(TestCase):
         res = self.client.get('/estudio/envios-facturas/')
         self.assertEqual(res.status_code, 200)
         self.assertTrue(res.context['config_activa'])
+
+
+from unittest.mock import patch, MagicMock
+
+class Plan101GruposEnvioTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testadmin101', password='password123', is_staff=True)
+        self.client = Client()
+        self.client.login(username='testadmin101', password='password123')
+
+        self.empresa = Empresa.objects.create(
+            nombre="Estudio Contable Plan 101",
+            cuit="30333333331",
+            tipo_actividad="ESTUDIO",
+            condicion_iva="RESPONSABLE INSCRIPTO"
+        )
+        self.sucursal = Sucursal.objects.create(
+            nombre="Casa Central 101",
+            empresa=self.empresa
+        )
+        self.tipo_factura = TipoComprobante.objects.create(
+            codigo='011',
+            detalle='Factura C',
+            estado=True
+        )
+
+        self.cli_a = ClienteProveedor.objects.create(
+            empresa=self.empresa,
+            razon_social="Empresa A SRL",
+            cuit="30111111111",
+            correo="cliente_a@empresa.com",
+            tipo_entidad=1
+        )
+        self.cli_b = ClienteProveedor.objects.create(
+            empresa=self.empresa,
+            razon_social="Empresa B SA",
+            cuit="30222222222",
+            correo="cliente_b@empresa.com",
+            tipo_entidad=1
+        )
+
+    def test_creacion_y_gestion_grupo_api(self):
+        """Verifica crear, listar y editar grupos vía API"""
+        res_crear = self.client.post(
+            '/estudio/grupos-envio/api/',
+            data=json.dumps({
+                'nombre': 'Holding Grupo AB',
+                'destinatarios': 'admin@holding.com, finanzas@holding.com',
+                'clientes_ids': [self.cli_a.pk, self.cli_b.pk],
+                'observaciones': 'Grupo permanente de empresas del socio Juan'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(res_crear.status_code, 200)
+        grupo_id = res_crear.json()['grupo']['id']
+
+        # Verificar en base de datos
+        grupo = GrupoEnvioEstudio.objects.get(id=grupo_id)
+        self.assertEqual(grupo.nombre, 'Holding Grupo AB')
+        self.assertEqual(grupo.clientes.count(), 2)
+
+        # GET API
+        res_get = self.client.get('/estudio/grupos-envio/api/')
+        self.assertEqual(res_get.status_code, 200)
+        data_get = res_get.json()
+        self.assertTrue(any(g['id'] == grupo_id for g in data_get['grupos']))
+
+    def test_auto_asignacion_grupo_al_descubrir_comprobantes(self):
+        """Verifica que al descubrir ventas sin envío, se asigne el grupo del cliente"""
+        grupo = GrupoEnvioEstudio.objects.create(
+            empresa=self.empresa,
+            nombre="Grupo Perez",
+            destinatarios="contador@perez.com",
+            activo=True
+        )
+        grupo.clientes.add(self.cli_a)
+
+        # Crear venta para cli_a
+        v_a = Venta.objects.create(
+            empresa=self.empresa,
+            sucursal=self.sucursal,
+            usuario=self.user,
+            cliente=self.cli_a,
+            fecha=timezone.now().date(),
+            tipo=self.tipo_factura,
+            punto=1,
+            numero=101,
+            total=Decimal('25000.00'),
+            periodo_facturado='202610'
+        )
+
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session.save()
+
+        res = self.client.get('/estudio/envios-facturas/api/?periodo=202610')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        item = next(i for i in data['items'] if i['venta_id'] == v_a.ventas_id)
+        self.assertEqual(item['grupo_id'], grupo.id)
+        self.assertEqual(item['grupo_nombre'], "Grupo Perez")
+        self.assertEqual(item['destinatarios'], "contador@perez.com")
+
+    def test_asignar_y_desagrupar_envios_api(self):
+        """Verifica asignación ad-hoc y desagrupación vía API"""
+        grupo = GrupoEnvioEstudio.objects.create(
+            empresa=self.empresa,
+            nombre="Grupo Test",
+            destinatarios="test@grupo.com",
+            activo=True
+        )
+        v = Venta.objects.create(
+            empresa=self.empresa,
+            sucursal=self.sucursal,
+            usuario=self.user,
+            cliente=self.cli_a,
+            fecha=timezone.now().date(),
+            tipo=self.tipo_factura,
+            punto=1,
+            numero=102,
+            total=Decimal('30000.00'),
+            periodo_facturado='202610'
+        )
+        envio = EnvioFacturaEstudio.objects.create(
+            empresa=self.empresa,
+            venta=v,
+            cliente=self.cli_a,
+            periodo='202610',
+            destinatarios='individual@mail.com',
+            estado='PENDIENTE'
+        )
+
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session.save()
+
+        # Asignar a grupo
+        res_asig = self.client.post(
+            '/estudio/grupos-envio/asignar/',
+            data=json.dumps({'envio_ids': [envio.id], 'grupo_id': grupo.id}),
+            content_type='application/json'
+        )
+        self.assertEqual(res_asig.status_code, 200)
+        envio.refresh_from_db()
+        self.assertEqual(envio.grupo_id, grupo.id)
+        self.assertEqual(envio.destinatarios, "test@grupo.com")
+
+        # Desagrupar
+        res_des = self.client.post(
+            '/estudio/grupos-envio/asignar/',
+            data=json.dumps({'envio_ids': [envio.id], 'grupo_id': None}),
+            content_type='application/json'
+        )
+        self.assertEqual(res_des.status_code, 200)
+        envio.refresh_from_db()
+        self.assertIsNone(envio.grupo_id)
+
+    @patch('smtplib.SMTP')
+    def test_envio_consolidado_grupo_smtp(self, mock_smtp_cls):
+        """Verifica que para N facturas del grupo se despache 1 solo mail con todos los comprobantes"""
+        mock_server = MagicMock()
+        mock_smtp_cls.return_value = mock_server
+
+        grupo = GrupoEnvioEstudio.objects.create(
+            empresa=self.empresa,
+            nombre="Familia Gomez",
+            destinatarios="pagos@familia-gomez.com",
+            activo=True
+        )
+        v1 = Venta.objects.create(empresa=self.empresa, sucursal=self.sucursal, usuario=self.user, cliente=self.cli_a, fecha=timezone.now().date(), tipo=self.tipo_factura, punto=1, numero=201, total=Decimal('10000.00'), periodo_facturado='202610')
+        v2 = Venta.objects.create(empresa=self.empresa, sucursal=self.sucursal, usuario=self.user, cliente=self.cli_b, fecha=timezone.now().date(), tipo=self.tipo_factura, punto=1, numero=202, total=Decimal('15000.00'), periodo_facturado='202610')
+
+        e1 = EnvioFacturaEstudio.objects.create(empresa=self.empresa, venta=v1, cliente=self.cli_a, grupo=grupo, periodo='202610', destinatarios=grupo.destinatarios, estado='PENDIENTE')
+        e2 = EnvioFacturaEstudio.objects.create(empresa=self.empresa, venta=v2, cliente=self.cli_b, grupo=grupo, periodo='202610', destinatarios=grupo.destinatarios, estado='PENDIENTE')
+
+        service = SMTPService(self.empresa.id)
+        service._server = mock_server
+
+        ok, resp = service.enviar_grupo_facturas(grupo, [e1, e2], usuario=self.user)
+        self.assertTrue(ok)
+        self.assertIn("250 OK", resp)
+
+        # Ambos deben quedar ENVIADOS
+        e1.refresh_from_db()
+        e2.refresh_from_db()
+        self.assertEqual(e1.estado, 'ENVIADO')
+        self.assertEqual(e2.estado, 'ENVIADO')
+        self.assertIsNotNone(e1.fecha_envio)
+        self.assertIsNotNone(e2.fecha_envio)
+
+        # Se debe haber enviado 1 solo correo
+        self.assertEqual(mock_server.sendmail.call_count, 1)
+
+    def test_deteccion_sugerencias_mismo_email_y_clientes_facturados_unicamente(self):
+        """Verifica que api_grupos_envio retorne solo facturados y detecte correos repetidos"""
+        cli_no_facturado = ClienteProveedor.objects.create(
+            empresa=self.empresa,
+            razon_social="Cliente Inactivo Nunca Facturado",
+            cuit="30999999999",
+            tipo_entidad=1
+        )
+        email_comun = "tesoreria@holding-ab.com"
+        v1 = Venta.objects.create(empresa=self.empresa, sucursal=self.sucursal, usuario=self.user, cliente=self.cli_a, fecha=timezone.now().date(), tipo=self.tipo_factura, punto=1, numero=301, total=Decimal('12000.00'), periodo_facturado='202611')
+        v2 = Venta.objects.create(empresa=self.empresa, sucursal=self.sucursal, usuario=self.user, cliente=self.cli_b, fecha=timezone.now().date(), tipo=self.tipo_factura, punto=1, numero=302, total=Decimal('18000.00'), periodo_facturado='202611')
+
+        EnvioFacturaEstudio.objects.create(empresa=self.empresa, venta=v1, cliente=self.cli_a, periodo='202611', destinatarios=email_comun, estado='PENDIENTE')
+        EnvioFacturaEstudio.objects.create(empresa=self.empresa, venta=v2, cliente=self.cli_b, periodo='202611', destinatarios=email_comun, estado='PENDIENTE')
+
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session.save()
+
+        # Consultar api_grupos_envio para el período 202611
+        res = self.client.get('/estudio/grupos-envio/api/?periodo=202611')
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+
+        # El cliente no facturado NO debe aparecer en clientes_disponibles
+        ids_disponibles = [c['id'] for c in data['clientes_disponibles']]
+        self.assertIn(self.cli_a.pk, ids_disponibles)
+        self.assertIn(self.cli_b.pk, ids_disponibles)
+        self.assertNotIn(cli_no_facturado.pk, ids_disponibles)
+
+        # Debe detectar sugerencia por mismo email
+        self.assertTrue(len(data['sugerencias']) >= 1)
+        sug_email = next((s for s in data['sugerencias'] if s['email'] == email_comun), None)
+        self.assertIsNotNone(sug_email)
+        self.assertEqual(sug_email['tipo'], 'MISMO_EMAIL')
+        self.assertEqual(sug_email['comprobantes_count'], 2)
+
+    def test_aplicar_sugerencia_grupo_1_clic(self):
+        """Verifica que api_aplicar_sugerencia_grupo cree el grupo y asigne envíos de 1 solo clic"""
+        v1 = Venta.objects.create(empresa=self.empresa, sucursal=self.sucursal, usuario=self.user, cliente=self.cli_a, fecha=timezone.now().date(), tipo=self.tipo_factura, punto=1, numero=401, total=Decimal('5000.00'), periodo_facturado='202611')
+        e1 = EnvioFacturaEstudio.objects.create(empresa=self.empresa, venta=v1, cliente=self.cli_a, periodo='202611', destinatarios='admin@grupo-sugerido.com', estado='PENDIENTE')
+
+        session = self.client.session
+        session['empresa_id'] = self.empresa.id
+        session.save()
+
+        res = self.client.post(
+            '/estudio/grupos-envio/aplicar-sugerencia/',
+            data=json.dumps({
+                'nombre': 'Grupo Sugerido Automático',
+                'destinatarios': 'admin@grupo-sugerido.com',
+                'clientes_ids': [self.cli_a.pk],
+                'envio_ids': [e1.id],
+                'observaciones': 'Creado en 1 clic'
+            }),
+            content_type='application/json'
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data['status'], 'success')
+        
+        e1.refresh_from_db()
+        self.assertIsNotNone(e1.grupo)
+        self.assertEqual(e1.grupo.nombre, 'Grupo Sugerido Automático')
+        self.assertEqual(e1.destinatarios, 'admin@grupo-sugerido.com')
+
 
 
