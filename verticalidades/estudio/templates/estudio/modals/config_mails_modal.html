@@ -2,7 +2,7 @@
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 transition-opacity px-4 py-6 overflow-y-auto"
     id="modal-backdrop">
 
-    <div class="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-3xl border border-gray-100 my-auto"
+    <div class="relative transform overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-3xl border border-gray-100 my-auto flex flex-col max-h-[90vh]"
         x-data="{
             activo: {{ config.activo|yesno:'true,false' }},
             probando: false,
@@ -215,8 +215,31 @@
             },
 
             guardar() {
-                this.guardando = true;
                 const form = document.getElementById('form-config-mails');
+                if (!form) return;
+
+                const servidor = form.querySelector('[name=servidor_smtp]')?.value?.trim();
+                const puerto = form.querySelector('[name=puerto_smtp]')?.value?.trim();
+                const usuario = form.querySelector('[name=usuario_smtp]')?.value?.trim();
+
+                if (!servidor) {
+                    Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Por favor, ingresa el Host / Servidor SMTP.' });
+                    return;
+                }
+                if (!puerto) {
+                    Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Por favor, ingresa el Puerto SMTP.' });
+                    return;
+                }
+                if (!usuario) {
+                    Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Por favor, ingresa el Usuario SMTP.' });
+                    return;
+                }
+                if (!this.asunto || !this.asunto.trim()) {
+                    Swal.fire({ icon: 'warning', title: 'Campo Requerido', text: 'Por favor, ingresa el Asunto del Correo.' });
+                    return;
+                }
+
+                this.guardando = true;
                 const formData = new FormData(form);
 
                 // Asegurar los contenidos actualizados de activo, mensaje, firma y logo
@@ -232,7 +255,7 @@
                     formData.set('logo_firma', fileInput.files[0]);
                 }
 
-                fetch('{% url 'estudio_config_mails_guardar' %}', {
+                fetch('{% url "estudio_config_mails_guardar" %}', {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': '{{ csrf_token }}'
@@ -292,7 +315,7 @@
         </div>
 
         <!-- Formulario Principal -->
-        <form id="form-config-mails" @submit.prevent="guardar()" class="p-8 space-y-6 max-h-[78vh] overflow-y-auto custom-scrollbar">
+        <form id="form-config-mails" @submit.prevent="guardar()" class="p-8 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
             {% csrf_token %}
 
             <!-- Toggle de Activación -->
@@ -510,20 +533,20 @@
                 <input type="file" id="input-archivo-logo" class="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml"
                     @change="manejarSubidaLogo($event)">
             </div>
-
-            <!-- Footer Principal -->
-            <div class="pt-4 border-t border-gray-100 flex items-center justify-end space-x-3">
-                <button type="button" onclick="document.getElementById('modal-container').innerHTML = ''"
-                    class="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
-                    Cancelar
-                </button>
-                <button type="submit" :disabled="guardando"
-                    class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center">
-                    <svg x-show="guardando" class="w-4 h-4 mr-2 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                    <span x-text="guardando ? 'Guardando...' : 'Guardar Configuración'"></span>
-                </button>
-            </div>
         </form>
+
+        <!-- Footer Principal Fijo Sticky (Siempre visible al pie del modal) -->
+        <div class="px-8 py-4 bg-white/95 border-t border-gray-100 flex items-center justify-end space-x-3 shadow-md z-20 flex-shrink-0">
+            <button type="button" onclick="document.getElementById('modal-container').innerHTML = ''"
+                class="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancelar
+            </button>
+            <button type="button" @click="guardar()" :disabled="guardando"
+                class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center">
+                <svg x-show="guardando" class="w-4 h-4 mr-2 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                <span x-text="guardando ? 'Guardando...' : 'Guardar Configuración'"></span>
+            </button>
+        </div>
 
         <!-- ================================================================= -->
         <!-- SUBMODAL 1: EDITOR DE CUERPO DEL MENSAJE (ANCHO, 2 COLUMNAS)      -->

@@ -1,6 +1,27 @@
 # Bitácora de Desarrollo - ERP Ikigai
 
 ## Cristian - PC CASA
+- **Fecha/Día**: 02 de Octubre de 2026
+- **Objetivo o Tarea**: Restauración y anclaje fijo del botón de Guardar Configuración de Correo, acceso permanente a parámetros SMTP desde Envíos, y corrección integral del selector reactivo (eliminación de preselección fantasma, reinicio por filtros y selección estricta de comprobantes visibles).
+- **Archivos creados o modificados**:
+  - `verticalidades/estudio/templates/estudio/modals/config_mails_modal.html` [MODIFY]
+  - `verticalidades/estudio/templates/estudio/envios_facturas.html` [MODIFY]
+  - `docs/walkthrough.md` [MODIFY]
+- **Detalle Técnico e implicaciones**:
+  1. **Acceso Permanente a Configuración de Mails (`envios_facturas.html`):**
+     - Se añadió en la barra de acciones superior (junto al botón "📦 Grupos de Envío") el botón interactivo **`⚙️ Configurar Correo`** con indicador visual de estado (verde si el servicio SMTP está activo, ámbar parpadeante si está inactivo), garantizando que el usuario siempre pueda ingresar a editar parámetros, credenciales o plantillas sin depender de que el servicio se encuentre caído.
+  2. **Footer Fijo y Guardado Seguro en Modal (`config_mails_modal.html`):**
+     - Se reestructuró el modal utilizando `flex flex-col max-h-[90vh]` con el formulario en `flex-1 overflow-y-auto`, transformando el pie en un **Footer Fijo / Sticky** (`bg-white/95 border-t border-gray-100 shadow-md z-20 flex-shrink-0`). El botón **"Guardar Configuración"** y el botón **"Cancelar"** permanecen ahora siempre visibles y al alcance de la vista sin importar la resolución de pantalla ni el desplazamiento del formulario.
+     - En `guardar()`, se agregaron validaciones amigables en JavaScript previas al envío para Servidor SMTP, Puerto, Usuario y Asunto con alertas de `Swal.fire`, previniendo bloqueos silenciosos del navegador por campos no visibles y enviando los datos por `fetch` con token CSRF de forma atómica.
+  3. **Corrección Integral del Selector de Facturas (`envios_facturas.html`):**
+     - **Eliminación de Preselección Fantasma:** En `cargarDatos()`, se eliminó el mapeo automático de facturas pendientes (`this.seleccionados = []`). La vista inicia ahora completamente limpia para que el usuario elija de forma consciente.
+     - **Reinicio Automático ante Vistas y Filtros:** Se incorporaron observadores reactivos `$watch` en Alpine.js sobre `filtroEstado`, `filtroGrupo`, `busqueda`, `mes` y `anio`, vaciando inmediatamente la selección (`this.seleccionados = []`) cada vez que se cambia de pestaña, grupo o criterio de búsqueda.
+     - **Selección Exclusiva de Visibles:** En `toggleSeleccionarTodos`, al tildar el checkbox general se seleccionan única y estrictamente los comprobantes que se encuentran actualmente visibles en la grilla (`this.itemsFiltrados.map(i => i.id)`). Al destildarlo, se vacía por completo el array.
+  4. **Sin impacto en esquema de Base de Datos.**
+- **Resultado de las pruebas**: Suite completa `verticalidades.estudio.tests` ejecutada con éxito: 17/17 tests aprobados (100% OK en 15.7s).
+- **Estado actual y siguientes pasos sugeridos**: Configuración de correo y selector de comprobantes 100% estabilizados, predecibles y listos para uso operativo.
+
+## Cristian - PC CASA
 - **Fecha/Día**: 01 de Octubre de 2026
 - **Objetivo o Tarea**: Corrección y sanitización de comillas dobles en el modal de confirmación Swal de `aplicarSugerencia` y normalización de tags `{% url %}` en `envios_facturas.html`.
 - **Archivos creados o modificados**:

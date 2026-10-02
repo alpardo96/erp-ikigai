@@ -42,12 +42,11 @@
 
         toggleSeleccionarTodos(event) {
             const checked = event.target.checked;
-            const visiblesIds = this.itemsFiltrados.map(i => i.id);
             if (checked) {
-                const nuevoSet = new Set([...this.seleccionados, ...visiblesIds]);
-                this.seleccionados = Array.from(nuevoSet);
+                // Selecciona estricta y únicamente los comprobantes visibles en la vista actual
+                this.seleccionados = this.itemsFiltrados.map(i => i.id);
             } else {
-                this.seleccionados = this.seleccionados.filter(id => !visiblesIds.includes(id));
+                this.seleccionados = [];
             }
         },
 
@@ -65,6 +64,14 @@
 
         init() {
             this.cargarDatos();
+
+            // Limpieza inmediata de seleccionados ante cualquier cambio de vista, pestaña, filtro o búsqueda
+            this.$watch('filtroEstado', () => { this.seleccionados = []; });
+            this.$watch('filtroGrupo', () => { this.seleccionados = []; });
+            this.$watch('busqueda', () => { this.seleccionados = []; });
+            this.$watch('mes', () => { this.seleccionados = []; });
+            this.$watch('anio', () => { this.seleccionados = []; });
+
             window.addEventListener('envio-modificado', (event) => {
                 const data = event.detail;
                 const it = this.items.find(i => i.id === data.envio_id);
@@ -104,8 +111,8 @@
                     this.grupos = data.grupos || [];
                     this.sugerencias = data.sugerencias || [];
                     this.metricas = data.metricas || { total: 0, enviados: 0, pendientes: 0, errores: 0 };
-                    // Preseleccionar por defecto los comprobantes pendientes o con error
-                    this.seleccionados = this.items.filter(i => i.estado !== 'ENVIADO').map(i => i.id);
+                    // Sin preselección automática: el usuario elige conscientemente qué facturas tildar
+                    this.seleccionados = [];
                 })
                 .catch(err => {
                     this.cargando = false;
@@ -627,6 +634,19 @@
                             <span x-text="`${sugerencias.length} sugerencias`"></span>
                         </span>
                     </template>
+                </button>
+
+                <!-- Botón Permanente de Configuración de Correo -->
+                <button type="button" hx-get="{% url 'estudio_config_mails_modal' %}" hx-target="#modal-container"
+                    class="inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-[1.02] active:scale-95"
+                    title="Parámetros SMTP, identidad de remitente, cadencia y plantillas de correo">
+                    <span class="mr-1.5 text-sm">⚙️</span>
+                    <span>Configurar Correo</span>
+                    {% if config_activa %}
+                        <span class="ml-1.5 w-2 h-2 rounded-full bg-emerald-500" title="Servicio SMTP Activo"></span>
+                    {% else %}
+                        <span class="ml-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Servicio SMTP Inactivo"></span>
+                    {% endif %}
                 </button>
 
                 <template x-if="seleccionados.length > 0">
