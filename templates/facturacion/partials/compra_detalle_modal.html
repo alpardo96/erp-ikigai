@@ -45,10 +45,10 @@
                         {% for item in items %}
                         <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors text-sm">
                             <td class="p-3 pl-4 font-medium text-slate-800">{{ item.producto.detalle }}</td>
-                            <td class="p-3 text-right font-mono text-slate-600">{{ item.cantidad|floatformat:2 }}</td>
-                            <td class="p-3 text-right font-mono text-slate-600">$ {{ item.precio_unitario|floatformat:2 }}</td>
-                            <td class="p-3 text-right font-mono text-slate-600">{{ item.iva_alicuota|floatformat:2 }}%</td>
-                            <td class="p-3 pr-4 text-right font-mono font-bold text-slate-900">$ {{ item.total|floatformat:2 }}</td>
+                            <td class="p-3 text-right font-mono text-slate-600">{{ item.cantidad|floatformat:"2g" }}</td>
+                            <td class="p-3 text-right font-mono text-slate-600">$ {{ item.precio_unitario|floatformat:"2g" }}</td>
+                            <td class="p-3 text-right font-mono text-slate-600">{{ item.iva_alicuota|floatformat:"2g" }}%</td>
+                            <td class="p-3 pr-4 text-right font-mono font-bold text-slate-900">$ {{ item.total|floatformat:"2g" }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -61,24 +61,24 @@
                 <div class="w-80 bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-2">
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500 font-medium">Neto Gravado:</span>
-                        <span class="font-mono font-bold text-slate-700">$ {{ compra.neto|floatformat:2 }}</span>
+                        <span class="font-mono font-bold text-slate-700">$ {{ compra.neto|floatformat:"2g" }}</span>
                     </div>
                     {% if compra.descuento > 0 %}
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500 font-medium">Descuento Global:</span>
-                        <span class="font-mono font-bold text-red-600">- $ {{ compra.descuento|floatformat:2 }}</span>
+                        <span class="font-mono font-bold text-red-600">- $ {{ compra.descuento|floatformat:"2g" }}</span>
                     </div>
                     {% endif %}
                     {% for imp in impuestos %}
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500 font-medium">{{ imp.nombre }}:</span>
-                        <span class="font-mono font-bold text-slate-700">$ {{ imp.monto|floatformat:2 }}</span>
+                        <span class="font-mono font-bold text-slate-700">$ {{ imp.monto|floatformat:"2g" }}</span>
                     </div>
                     {% endfor %}
                     <div class="border-t border-slate-200 my-1"></div>
                     <div class="flex justify-between items-center">
                         <span class="text-slate-800 font-black uppercase tracking-wider">Total:</span>
-                        <span class="text-xl font-mono font-black text-indigo-700">$ {{ compra.total|floatformat:2 }}</span>
+                        <span class="text-xl font-mono font-black text-indigo-700">$ {{ compra.total|floatformat:"2g" }}</span>
                     </div>
                 </div>
             </div>

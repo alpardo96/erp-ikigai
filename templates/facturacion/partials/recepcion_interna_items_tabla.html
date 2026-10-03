@@ -23,14 +23,14 @@
                     </div>
                     {% endif %}
                 </td>
-                <td class="px-3 py-2 text-center font-bold text-slate-600">{{ item.cantidad_enviada|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center font-bold text-slate-600">{{ item.cantidad_enviada|floatformat:"2g" }}</td>
                 <td class="px-3 py-2 text-center">
-                    <input type="text" name="cantidad_recibida" value="{{ item.cantidad_recibida|floatformat:2 }}" onfocus="this.select()"
+                    <input type="text" name="cantidad_recibida" value="{{ item.cantidad_recibida|floatformat:"2g" }}" onfocus="this.select()"
                            class="w-24 bg-transparent border-b border-dashed border-blue-300 text-center focus:border-blue-500 outline-none fInputAR font-black text-blue-700"
                            hx-post="{% url 'reci_item_edit' item.index %}" hx-trigger="change" hx-include="closest tr"
                            hx-target="#reci-items-container">
                 </td>
-                <td class="px-3 py-2 text-center font-black {% if item.pendiente > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ item.pendiente|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center font-black {% if item.pendiente > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ item.pendiente|floatformat:"2g" }}</td>
                 <td class="px-3 py-2 text-center columna-accion-item">
                     <button hx-post="{% url 'reci_item_remove' item.index %}" hx-target="#reci-items-container"
                             class="text-red-400 hover:text-red-600 transition-colors">

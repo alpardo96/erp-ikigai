@@ -929,6 +929,11 @@ def typeahead_cuentas(request):
 
 
 @login_required
+def buscador_cuentas_modal_contable(request):
+    target = request.GET.get('target', 'desde')
+    return render(request, 'contable/modals/buscador_cuentas.html', {'target': target})
+
+@login_required
 def asiento_editar_modal(request, asiento_id):
     empresa_id = request.session.get('empresa_id')
     asiento = get_object_or_404(Asiento, pk=asiento_id, empresa_id=empresa_id)

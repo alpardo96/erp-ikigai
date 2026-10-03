@@ -36,11 +36,11 @@
                         {% for item in preventa.items.all %}
                         <tr class="{% if item.porcentaje_descuento > item.producto.rubro.descuento_maximo|default:0 %}bg-red-50 hover:bg-red-100{% else %}hover:bg-slate-50{% endif %}">
                             <td class="px-3 py-2 border-r uppercase {% if item.porcentaje_descuento > item.producto.rubro.descuento_maximo|default:0 %}text-red-900 font-bold{% endif %}">{{ item.producto.detalle }}</td>
-                            <td class="px-3 py-2 border-r text-center">{{ item.cantidad|floatformat:1 }}</td>
-                            <td class="px-3 py-2 border-r text-right">$ {{ item.precio_unitario|floatformat:2 }}</td>
-                            <td class="px-3 py-2 border-r text-right font-bold {% if item.porcentaje_descuento > item.producto.rubro.descuento_maximo|default:0 %}text-red-700{% endif %}">{{ item.porcentaje_descuento|floatformat:2 }}%</td>
-                            <td class="px-3 py-2 border-r text-right text-slate-500">{{ item.producto.rubro.descuento_maximo|default:0|floatformat:2 }}%</td>
-                            <td class="px-3 py-2 text-right font-black">$ {{ item.total|floatformat:2 }}</td>
+                            <td class="px-3 py-2 border-r text-center">{{ item.cantidad|floatformat:"1g" }}</td>
+                            <td class="px-3 py-2 border-r text-right">$ {{ item.precio_unitario|floatformat:"2g" }}</td>
+                            <td class="px-3 py-2 border-r text-right font-bold {% if item.porcentaje_descuento > item.producto.rubro.descuento_maximo|default:0 %}text-red-700{% endif %}">{{ item.porcentaje_descuento|floatformat:"2g" }}%</td>
+                            <td class="px-3 py-2 border-r text-right text-slate-500">{{ item.producto.rubro.descuento_maximo|default:0|floatformat:"2g" }}%</td>
+                            <td class="px-3 py-2 text-right font-black">$ {{ item.total|floatformat:"2g" }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -50,7 +50,7 @@
             <div class="mt-4 flex justify-end">
                 <div class="bg-slate-900 text-white rounded px-4 py-2 text-right shadow-md">
                     <p class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">Total Preventa</p>
-                    <p class="text-xl font-black tabular-nums tracking-tighter">$ {{ preventa.total|floatformat:2 }}</p>
+                    <p class="text-xl font-black tabular-nums tracking-tighter">$ {{ preventa.total|floatformat:"2g" }}</p>
                 </div>
             </div>
         </div>

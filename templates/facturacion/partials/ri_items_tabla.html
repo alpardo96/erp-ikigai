@@ -22,7 +22,7 @@
                     {% endif %}
                 </td>
                 <td class="px-3 py-2 text-center">
-                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:2 }}" onfocus="this.select()"
+                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:"2g" }}" onfocus="this.select()"
                            class="w-24 bg-transparent border-b border-dashed border-slate-300 text-center focus:border-blue-500 outline-none fInputAR font-black"
                            hx-post="{% url 'ri_item_edit' item.index %}" hx-trigger="change" hx-include="closest tr"
                            hx-target="#ri-items-container">

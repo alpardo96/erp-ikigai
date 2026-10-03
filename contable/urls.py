@@ -4,7 +4,7 @@ from .views import (
 )
 from .views_htmx import (
     libro_diario_rows, detalle_asiento, anular_asiento, asiento_modal, detalle_asiento_modal, asiento_editar_modal,
-    libro_mayor_rows, mayor_cuenta_modal, balance_sumas_saldos, typeahead_cuentas,
+    libro_mayor_rows, mayor_cuenta_modal, balance_sumas_saldos, typeahead_cuentas, buscador_cuentas_modal_contable,
     saldos_mensuales_datos, exportar_cuentas_excel_completo, modal_capturar_cuentas_excel, capturar_cuentas_excel
 )
 from .views_reportes import (
@@ -49,8 +49,9 @@ urlpatterns = [
     path('balance/exportar-excel/', exportar_balance, name='exportar_balance_excel'),
     path('balance/exportar-pdf/', exportar_balance_pdf_view, name='exportar_balance_pdf'),
 
-    # Typeahead
+    # Typeahead y Lupa
     path('htmx/typeahead/cuentas/', typeahead_cuentas, name='typeahead_cuentas_contable'),
+    path('htmx/lupa/cuentas/', buscador_cuentas_modal_contable, name='buscador_cuentas_modal_contable'),
 
     # Cierre de Ejercicio
     path('ejercicio/cierre/modal/', cerrar_ejercicio_modal, name='cerrar_ejercicio_modal'),

@@ -38,24 +38,24 @@
                     </div>
                     {% endif %}
                 </td>
-                <td class="px-3 py-2 text-center font-bold text-slate-500">{{ item.cantidad_oc|floatformat:2 }}</td>
-                <td class="px-3 py-2 text-center font-bold text-slate-600">{{ item.cantidad_recepcionada|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center font-bold text-slate-500">{{ item.cantidad_oc|floatformat:"2g" }}</td>
+                <td class="px-3 py-2 text-center font-bold text-slate-600">{{ item.cantidad_recepcionada|floatformat:"2g" }}</td>
                 <td class="px-3 py-2 text-center">
-                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:2 }}" onfocus="this.select()"
+                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:"2g" }}" onfocus="this.select()"
                            class="w-20 bg-transparent border-b border-dashed border-blue-300 text-center focus:border-blue-500 outline-none fInputAR font-black text-blue-700"
                            hx-post="{% url 'factura_cotejo_edit' item.index %}" hx-trigger="change"
                            hx-include="closest tr" hx-target="#items-tabla-container">
                 </td>
                 <td class="px-3 py-2 text-right">
-                    <input type="text" name="precio" value="{{ item.precio|floatformat:2 }}" onfocus="this.select()"
+                    <input type="text" name="precio" value="{{ item.precio|floatformat:"2g" }}" onfocus="this.select()"
                            class="w-24 border-b border-dashed text-right outline-none fInputAR font-black {% if item.precio_readonly %}bg-gray-50 text-gray-500 border-transparent cursor-not-allowed{% else %}bg-transparent border-slate-300 focus:border-blue-500{% endif %}"
                            {% if item.precio_readonly %}readonly{% endif %}
                            hx-post="{% url 'factura_cotejo_edit' item.index %}" hx-trigger="change"
                            hx-include="closest tr" hx-target="#items-tabla-container">
                 </td>
-                <td class="px-3 py-2 text-right font-black text-gray-900">$ {{ item.total|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-right font-black text-gray-900">$ {{ item.total|floatformat:"2g" }}</td>
                 <td class="px-3 py-2 text-center font-black {% if item.pendiente_recep > 0 %}text-red-600{% else %}text-green-600{% endif %}">
-                    {{ item.pendiente_recep|floatformat:2 }}
+                    {{ item.pendiente_recep|floatformat:"2g" }}
                 </td>
                 <td class="px-3 py-2 text-center columna-accion-item">
                     <button hx-post="{% url 'factura_cotejo_remove' item.index %}" hx-target="#items-tabla-container"

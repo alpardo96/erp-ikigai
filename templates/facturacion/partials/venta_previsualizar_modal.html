@@ -34,7 +34,7 @@
                 {% endif %}
                 <div class="flex justify-between items-center">
                     <span class="text-xs font-bold text-slate-500 uppercase">Importe Total</span>
-                    <span class="text-base font-black text-slate-900 tabular-nums">$ {{ venta.total|floatformat:2 }}</span>
+                    <span class="text-base font-black text-slate-900 tabular-nums">$ {{ venta.total|floatformat:"2g" }}</span>
                 </div>
             </div>
 

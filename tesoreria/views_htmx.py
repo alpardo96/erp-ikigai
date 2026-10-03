@@ -2346,7 +2346,8 @@ def valor_terceros_rechazar_modal(request, pk):
 def valor_terceros_rechazar_procesar(request, pk):
     from django.db.models import Max
     from tesoreria.models import ValorTerceros
-    from facturacion.models import Venta, Compra, VentaItem, TipoComprobante, VentaAlicuotaIva
+    from facturacion.models import Venta, Compra, CompraItem, VentaItem, TipoComprobante, VentaAlicuotaIva
+    from empresas.models import Empresa
     from productos.models import Producto
     from facturacion.views import validar_y_obtener_documento_receptor
     from facturacion.services.afip_service import AFIPService
@@ -2371,11 +2372,6 @@ def valor_terceros_rechazar_procesar(request, pk):
     
     # 1. Marcar el cheque como rechazado
     valor.estado = 'R'
-    if motivo:
-        prefix = f'[{motivo}]'
-        obs = valor.observaciones or ''
-        if prefix not in obs:
-            valor.observaciones = f'{prefix} {obs}'.strip()
     valor.save()
 
     fecha_hoy = date.today()
@@ -2388,6 +2384,8 @@ def valor_terceros_rechazar_procesar(request, pk):
             ult_num = Compra.objects.filter(empresa_id=empresa_id, tipo=tipo_ci).aggregate(Max('numero'))['numero__max'] or 0
             compra_ci = Compra.objects.create(
                 empresa_id=empresa_id,
+                sucursal_id=valor.sucursal_id or request.session.get('sucursal_id', 1),
+                usuario_id=request.user.id,
                 fecha=fecha_hoy,
                 tipo=tipo_ci,
                 punto=1,
@@ -2397,11 +2395,21 @@ def valor_terceros_rechazar_procesar(request, pk):
                 subtotal=valor.importe,
                 neto=valor.importe,
                 total=valor.importe,
-                descripcion=f'Rechazo cheque {valor.banco.nombre} Nro {valor.numero_cheque}'
+                descripcion=f'Rechazo cheque {valor.banco.nombre} Nro {valor.numero_cheque} - {motivo}'
             )
-            contabilizar_compras(compra_ci)
+            
+            producto_rechazo = Producto.objects.filter(empresa_id=empresa_id, detalle__icontains='CHEQUE RECHAZADO').first()
+            
+            CompraItem.objects.create(
+                compra=compra_ci,
+                producto=producto_rechazo,
+                cantidad=1,
+                precio_unitario=valor.importe,
+                total=valor.importe,
+                iva_alicuota=0
+            )
+            
             recalcular_saldo_compra(compra_ci.compras_id)
-            recalcular_saldo_cliente_proveedor(proveedor.pk)
             
     # 3. Generar DI si vino de un Recibo de Cobranza (Cliente)
     if valor.recibo and valor.recibo.tipo == 'C':
@@ -2417,6 +2425,7 @@ def valor_terceros_rechazar_procesar(request, pk):
             venta_di = Venta.objects.create(
                 empresa_id=empresa_id,
                 sucursal_id=valor.sucursal_id or request.session.get('sucursal_id', 1),
+                usuario_id=request.user.id,
                 fecha=fecha_hoy,
                 tipo=tipo_di,
                 punto=punto_venta,
@@ -2428,16 +2437,18 @@ def valor_terceros_rechazar_procesar(request, pk):
                 neto=valor.importe,
                 total=valor.importe
             )
+            producto_rechazo = Producto.objects.filter(empresa_id=empresa_id, detalle__icontains='CHEQUE RECHAZADO').first()
+            
             VentaItem.objects.create(
                 venta=venta_di,
-                descripcion=f'Rechazo cheque {valor.banco.nombre} Nro {valor.numero_cheque}',
+                producto=producto_rechazo, # Asociamos el producto
+                concepto=f'Rechazo cheque {valor.banco.nombre} Nro {valor.numero_cheque} - {motivo}',
                 cantidad=1,
-                precio_neto=valor.importe,
-                precio_total=valor.importe
+                precio_unitario=valor.importe,
+                total=valor.importe,
+                iva_alicuota=0
             )
-            contabilizar_venta_individual(venta_di)
             recalcular_saldo_venta(venta_di.ventas_id)
-            recalcular_saldo_cliente_proveedor(cliente.pk)
             
         if cobrar_gasto and producto_id and importe_gasto:
             producto = Producto.objects.get(pk=producto_id)
@@ -2482,6 +2493,7 @@ def valor_terceros_rechazar_procesar(request, pk):
             venta_gasto = Venta.objects.create(
                 empresa_id=empresa_id,
                 sucursal_id=valor.sucursal_id or request.session.get('sucursal_id', 1),
+                usuario_id=request.user.id,
                 fecha=fecha_hoy,
                 tipo=tipo_tc,
                 punto=punto_venta,
@@ -2498,11 +2510,11 @@ def valor_terceros_rechazar_procesar(request, pk):
             VentaItem.objects.create(
                 venta=venta_gasto,
                 producto=producto,
-                descripcion=producto.detalle,
+                concepto=producto.detalle,
                 cantidad=1,
-                precio_neto=neto,
-                precio_total=importe_total,
-                alic_iva=producto.alic_iva
+                precio_unitario=neto,
+                total=importe_total,
+                iva_alicuota=producto.alic_iva
             )
             
             if iva > 0:
@@ -2550,9 +2562,7 @@ def valor_terceros_rechazar_procesar(request, pk):
                 except Exception as e:
                     return HttpResponse(f'<div id="error-container" hx-swap-oob="true"><div class="p-3 text-xs text-red-600 font-bold bg-red-50 border border-red-200 rounded-lg flex items-center gap-2"><svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg><span>Error AFIP al emitir gasto: {str(e)}</span></div></div>', status=400)
                     
-            contabilizar_venta_individual(venta_gasto)
             recalcular_saldo_venta(venta_gasto.ventas_id)
-            recalcular_saldo_cliente_proveedor(cliente.pk)
 
     return HttpResponse("""
         <div hx-swap-oob="innerHTML:#modal-container"></div>

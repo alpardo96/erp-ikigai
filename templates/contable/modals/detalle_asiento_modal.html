@@ -76,10 +76,10 @@
                             <td class="p-3 font-medium text-slate-800">{{ linea.cuenta.jerarquia }} - {{ linea.cuenta.cuenta }}</td>
                             <td class="p-3 text-slate-600">{{ linea.leyenda|default:"-" }}</td>
                             <td class="p-3 text-right font-mono whitespace-nowrap {% if linea.debe > 0 %}font-bold text-slate-900{% else %}text-slate-400{% endif %}">
-                                $ {{ linea.debe|floatformat:2 }}
+                                $ {{ linea.debe|floatformat:"2g" }}
                             </td>
                             <td class="p-3 pr-4 text-right font-mono whitespace-nowrap {% if linea.haber > 0 %}font-bold text-slate-900{% else %}text-slate-400{% endif %}">
-                                $ {{ linea.haber|floatformat:2 }}
+                                $ {{ linea.haber|floatformat:"2g" }}
                             </td>
                         </tr>
                         {% endfor %}
@@ -90,10 +90,10 @@
                                 Total Asiento
                             </td>
                             <td class="p-4 text-right font-mono font-bold text-emerald-700 text-sm whitespace-nowrap">
-                                $ {{ total_debe|floatformat:2 }}
+                                $ {{ total_debe|floatformat:"2g" }}
                             </td>
                             <td class="p-4 pr-4 text-right font-mono font-bold text-emerald-700 text-sm whitespace-nowrap">
-                                $ {{ total_haber|floatformat:2 }}
+                                $ {{ total_haber|floatformat:"2g" }}
                             </td>
                         </tr>
                     </tfoot>

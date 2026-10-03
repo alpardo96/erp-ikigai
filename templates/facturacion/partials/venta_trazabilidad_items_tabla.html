@@ -26,28 +26,28 @@
                 </td>
                 <td class="px-2 py-1.5 text-center text-slate-500 font-bold border-r border-slate-50">{{ item.credencial|default:"-" }}</td>
                 <td class="px-2 py-1.5 text-center font-bold text-slate-800 border-r border-slate-50 relative">
-                    {{ item.cantidad|floatformat:1 }}
+                    {{ item.cantidad|floatformat:"1g" }}
                     {% if item.alerta_stock %}
-                    <span class="absolute top-1 right-1 text-orange-500 hover:text-orange-600 cursor-help" title="Stock Físico Insuficiente. Disponible: {{ item.stock_disponible|default:0|floatformat:1 }}">
+                    <span class="absolute top-1 right-1 text-orange-500 hover:text-orange-600 cursor-help" title="Stock Físico Insuficiente. Disponible: {{ item.stock_disponible|default:0|floatformat:"1g" }}">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     </span>
                     {% endif %}
                 </td>
                 <td class="px-2 py-1.5 text-right font-bold text-slate-600 border-r border-slate-50">
-                    {% if moneda == 'DOL' %}USD{% else %}${% endif %} {{ item.precio|floatformat:2 }}
+                    {% if moneda == 'DOL' %}USD{% else %}${% endif %} {{ item.precio|floatformat:"2g" }}
                     {% if item.moneda_origen == 'DOL' %}
-                    <br><span class="text-[8px] text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-200">USD {{ item.precio_origen|floatformat:2 }}</span>
+                    <br><span class="text-[8px] text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-200">USD {{ item.precio_origen|floatformat:"2g" }}</span>
                     {% endif %}
                 </td>
                 <td class="px-2 py-1.5 text-right font-bold {% if item.requiere_autorizacion %}text-red-600{% else %}text-slate-600{% endif %} border-r border-slate-50">
-                    {{ item.descuento|floatformat:2 }}%
+                    {{ item.descuento|floatformat:"2g" }}%
                     {% if item.requiere_autorizacion %}
-                    <span class="text-xs ml-1 cursor-help" title="Límite: {{ item.descuento_maximo|floatformat:2 }}%">⚠️</span>
+                    <span class="text-xs ml-1 cursor-help" title="Límite: {{ item.descuento_maximo|floatformat:"2g" }}%">⚠️</span>
                     {% endif %}
                 </td>
-                <td class="px-2 py-1.5 text-right text-slate-500 border-r border-slate-50">{{ item.iva|floatformat:1 }}%</td>
+                <td class="px-2 py-1.5 text-right text-slate-500 border-r border-slate-50">{{ item.iva|floatformat:"1g" }}%</td>
                 <td class="px-2 py-1.5 text-right font-black text-slate-900">
-                    <input type="text" name="total_linea" value="{{ item.total|floatformat:2 }}"
+                    <input type="text" name="total_linea" value="{{ item.total|floatformat:"2g" }}"
                            readonly tabindex="-1"
                            class="w-20 bg-transparent text-right outline-none fInputAR font-black {% if item.total == 0 %}text-slate-300{% endif %}">
                 </td>

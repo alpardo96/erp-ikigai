@@ -13,7 +13,7 @@ La barra de porcentaje está para que la concentración se vea sin leer los núm
                     {{ f.entidad|default:"Sin identificar" }}
                 </div>
                 <div class="mt-1 h-1 w-full max-w-[10rem] bg-slate-100 rounded-full overflow-hidden">
-                    <div class="h-full bg-indigo-400 rounded-full" style="width: {{ f.porcentaje|floatformat:0 }}%"></div>
+                    <div class="h-full bg-indigo-400 rounded-full" style="width: {{ f.porcentaje|floatformat:"0g" }}%"></div>
                 </div>
             </td>
             <td class="px-3 py-2 text-[11px] text-slate-400 text-right whitespace-nowrap">

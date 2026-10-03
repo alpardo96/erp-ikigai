@@ -1,3 +1,16 @@
+{% load formato_tags %}
+<table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-gray-50">
+        <tr>
+            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-10"></th>
+            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID Asiento</th>
+            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Concepto</th>
+            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Monto Total</th>
+            <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+        </tr>
+    </thead>
 {% if not ejecutado %}
 <tbody id="diario-rows" class="bg-white">
     <tr>
@@ -29,7 +42,7 @@
             {{ asiento.concepto }}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono font-bold text-gray-900">
-            $ {{ asiento.monto|floatformat:2 }}
+            $ {{ asiento.monto|formato_ar }}
         </td>
         <td class="px-6 py-4 whitespace-nowrap text-center text-sm">
             {% if asiento.anulado %}
@@ -80,3 +93,4 @@
 </tbody>
 {% endfor %}
 {% endif %}
+</table>

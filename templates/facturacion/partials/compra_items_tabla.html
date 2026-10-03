@@ -27,28 +27,28 @@
                                     hx-target="#modal-container"
                                     class="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded font-black hover:bg-amber-200 shadow-sm transition-all animate-pulse inline-flex items-center gap-1"
                                     type="button" title="Debe registrar Nro. Serie y CUIM para este artículo trazable">
-                                <span>⚠️ Cargar Series/CUIM ({{ item.series|length }}/{{ item.cantidad|floatformat:0 }})</span>
+                                <span>⚠️ Cargar Series/CUIM ({{ item.series|length }}/{{ item.cantidad|floatformat:"0g" }})</span>
                             </button>
                             {% else %}
                             <button hx-get="{% url 'compras_item_series_modal' item.index %}"
                                     hx-target="#modal-container"
                                     class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded font-bold hover:bg-emerald-200 shadow-sm transition-all inline-flex items-center gap-1"
                                     type="button" title="Series y CUIM completos">
-                                <span>✓ Series/CUIM ({{ item.series|length }}/{{ item.cantidad|floatformat:0 }})</span>
+                                <span>✓ Series/CUIM ({{ item.series|length }}/{{ item.cantidad|floatformat:"0g" }})</span>
                             </button>
                             {% endif %}
                         </div>
                     {% endif %}
                 </td>
-                <td class="px-3 py-2 text-center font-bold">{{ item.cantidad|floatformat:1 }}</td>
-                <td class="px-3 py-2 text-right font-medium text-slate-600">$ {{ item.cto_adq|default:item.precio|floatformat:2 }}</td>
-                <td class="px-3 py-2 text-right font-bold text-amber-700">$ {{ item.cto_rep|default:item.precio|floatformat:2 }}</td>
+                <td class="px-3 py-2 text-center font-bold">{{ item.cantidad|floatformat:"1g" }}</td>
+                <td class="px-3 py-2 text-right font-medium text-slate-600">$ {{ item.cto_adq|default:item.precio|floatformat:"2g" }}</td>
+                <td class="px-3 py-2 text-right font-bold text-amber-700">$ {{ item.cto_rep|default:item.precio|floatformat:"2g" }}</td>
                 <td class="px-3 py-2 text-center {% if item.descuento > 0 %}text-green-600 font-bold{% else %}text-gray-300{% endif %}">
-                    {{ item.descuento|default:0|floatformat:2 }}%
+                    {{ item.descuento|default:0|floatformat:"2g" }}%
                 </td>
-                <td class="px-3 py-2 text-right text-gray-500">{{ item.iva|floatformat:1 }}%</td>
+                <td class="px-3 py-2 text-right text-gray-500">{{ item.iva|floatformat:"1g" }}%</td>
                 <td class="px-3 py-2 text-right font-black text-gray-900">
-                    <input type="text" name="total_linea" value="{{ item.total|floatformat:2 }}"
+                    <input type="text" name="total_linea" value="{{ item.total|floatformat:"2g" }}"
                            readonly tabindex="-1"
                            class="w-28 bg-transparent text-right outline-none fInputAR font-black {% if item.total == 0 %}text-slate-300{% else %}text-gray-900{% endif %}">
                 </td>

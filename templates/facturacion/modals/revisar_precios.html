@@ -41,7 +41,7 @@
                     {% for item in items %}
                     <tr data-pid="{{ item.producto_id }}" data-actual="{{ item.precio_vta_actual|default:0|unlocalize }}">
                         <td class="px-4 py-2 font-bold text-slate-800 uppercase">{{ item.codigo }} · {{ item.detalle }}</td>
-                        <td class="px-4 py-2 text-right text-slate-400 font-medium">$ {{ item.precio_vta_actual|default:0|floatformat:2 }}</td>
+                        <td class="px-4 py-2 text-right text-slate-400 font-medium">$ {{ item.precio_vta_actual|default:0|floatformat:"2g" }}</td>
                         <td class="px-4 py-2 text-right">
                             <input type="number" step="0.01" id="precio_rev_{{ item.producto_id }}"
                                    value="{{ item.precio_vta_nuevo|default:0|unlocalize }}"

@@ -86,7 +86,7 @@
                 <td>
                     <strong>{{ it.producto.detalle|upper }}</strong>
                 </td>
-                <td class="text-center font-bold" style="font-size: 9pt;">{{ it.cantidad_recibida|floatformat:2 }}</td>
+                <td class="text-center font-bold" style="font-size: 9pt;">{{ it.cantidad_recibida|floatformat:"2g" }}</td>
             </tr>
             {% endfor %}
         </tbody>

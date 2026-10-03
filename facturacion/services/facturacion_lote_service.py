@@ -130,6 +130,7 @@ class FacturacionLoteService:
                                 "en la facturación por lote. Falta cablear AfipService "
                                 "(Plan 075 §5.3).")
                         
+                        venta_f._no_contabilizar = True
                         venta_f.save() # La señal debería encargarse de contabilidad y stock
                         
                         # VentaItem
@@ -170,6 +171,7 @@ class FacturacionLoteService:
                         # `contabilizar_venta_individual` corta con
                         # `if not venta.items.exists(): return None`. Sin este
                         # re-guardado la factura quedaba EMITIDA Y SIN ASIENTO.
+                        venta_f._no_contabilizar = False
                         venta_f.save()
 
                         msg_f = f"FISCAL: {tipo_fiscal.detalle} {numero_pto:04d}-{numero_fact:08d} Generada."
@@ -215,6 +217,8 @@ class FacturacionLoteService:
                             usuario=self.usuario,
                             sucursal_id=sucursal_id
                         )
+                        
+                        venta_p._no_contabilizar = True
                         venta_p.save()
                         
                         VentaItem.objects.create(
@@ -246,6 +250,7 @@ class FacturacionLoteService:
                         # del RUBRO del producto facturado con fallback a
                         # `parametros.cta_ventas`; y si falta alguna, se levanta un error
                         # explícito en lugar de emitir el comprobante sin registración.
+                        venta_p._no_contabilizar = False
                         venta_p.save()
 
                         msg_p = f"INTERNO: {tipo_interno.detalle} {punto_interno:04d}-{numero_fact_p:08d} Generada."

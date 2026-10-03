@@ -10,7 +10,7 @@
         </span>
         <span class="shrink-0 text-right">
             <span class="block text-[10px] font-black text-slate-400">#{{ c.pk }}</span>
-            <span class="block text-[10px] font-bold text-indigo-600">$ {{ c.saldo_pendiente|default:c.saldo|floatformat:2 }}</span>
+            <span class="block text-[10px] font-bold text-indigo-600">$ {{ c.saldo_pendiente|default:c.saldo|floatformat:"2g" }}</span>
         </span>
     </button>
     {% empty %}

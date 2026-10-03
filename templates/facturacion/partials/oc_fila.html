@@ -3,7 +3,7 @@
     <td class="px-4 py-2 font-bold text-slate-600">{{ oc.fecha|date:"d/m/Y" }}</td>
     <td class="px-4 py-2 font-black text-slate-800">{{ oc.punto|stringformat:"04d" }}-{{ oc.numero|stringformat:"08d" }}</td>
     <td class="px-4 py-2 uppercase text-slate-700">{{ oc.proveedor.razon_social }}</td>
-    <td class="px-4 py-2 text-right font-black tabular-nums">$ {{ oc.total|floatformat:2 }}</td>
+    <td class="px-4 py-2 text-right font-black tabular-nums">$ {{ oc.total|floatformat:"2g" }}</td>
     <td class="px-4 py-2 text-center">
         {% if oc.estado == 0 %}<span class="text-[9px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full uppercase">Borrador</span>
         {% elif oc.estado == 1 %}<span class="text-[9px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">Confirmada</span>

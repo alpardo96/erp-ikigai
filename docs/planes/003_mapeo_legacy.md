@@ -60,7 +60,7 @@ Antes de correr los scripts, estas 4 entidades deben existir en Django para ancl
 | `recibos.dbf` | 1,696 | `Recibo` | Cabecera de los recibos de cobranza a clientes. |
 | `ord_pago.dbf` | 2,302 | `OrdenPago` | Cabecera de los pagos a proveedores. |
 | `ord_pago_facturas.dbf`| 2,226 | `OrdenPagoAplicacion` | Define qué facturas canceló cada orden de pago. **Fundamental para los saldos corrientes**. |
-| `valores_terceros.dbf` | 1,049 | `ValorTerceros` | Cheques de clientes en cartera. |
+| `valores_terceros.dbf` | 1,049 | `ValorTerceros` | Cheques de clientes. Mapea `recibo_id` -> `ID_REC` y `orden_pago_id` -> `ID_OP`. |
 | `cheques.dbf` | 366 | `TransaccionBancaria` | Cheques propios emitidos. Se inyectan con tipo `'CP'` (Cheque Propio). |
 | `tarjetas.dbf` | 5 | `Tarjeta` | Maestro de tarjetas. |
 | `tarjetas_mov.dbf`| 209 | `CobroTarjeta` | Cupones cobrados con tarjeta. |

@@ -21,7 +21,7 @@
                 </td>
                 <td class="px-3 py-2 font-medium text-gray-900 uppercase">{{ item.detalle }}</td>
                 <td class="px-3 py-2 text-center">
-                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:2 }}"
+                    <input type="text" name="cantidad" value="{{ item.cantidad|floatformat:"2g" }}"
                            onfocus="this.select()"
                            class="w-20 bg-transparent border-b border-dashed border-slate-300 text-center focus:border-blue-500 outline-none fInputAR font-bold"
                            hx-post="{% url 'oc_item_edit' item.index %}"
@@ -29,16 +29,16 @@
                            hx-target="#oc-items-container">
                 </td>
                 <td class="px-3 py-2 text-right col-costo">
-                    <input type="text" name="neto" value="{{ item.total|floatformat:2 }}"
+                    <input type="text" name="neto" value="{{ item.total|floatformat:"2g" }}"
                            onfocus="this.select()"
                            class="w-28 bg-transparent border-b border-dashed border-slate-300 text-right focus:border-blue-500 outline-none fInputAR font-black"
                            hx-post="{% url 'oc_item_edit' item.index %}"
                            hx-trigger="change" hx-include="closest tr"
                            hx-target="#oc-items-container">
                 </td>
-                <td class="px-3 py-2 text-right text-gray-500">{{ item.iva|floatformat:1 }}%</td>
+                <td class="px-3 py-2 text-right text-gray-500">{{ item.iva|floatformat:"1g" }}%</td>
                 <td class="px-3 py-2 text-right font-black text-gray-900 col-costo fMoneyAR" data-monto="{{ item.total|unlocalize }}" data-total="{{ item.total|unlocalize }}">
-                    $ {{ item.total|floatformat:2 }}
+                    $ {{ item.total|floatformat:"2g" }}
                 </td>
                 <td class="px-3 py-2 text-center columna-accion-item">
                     <button hx-post="{% url 'oc_item_remove' item.index %}"

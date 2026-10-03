@@ -43,12 +43,12 @@
                 {% for li in items %}
                 <tr class="hover:bg-blue-50">
                     <td class="px-3 py-2 uppercase text-slate-700">{{ li.producto.detalle }}</td>
-                    <td class="px-3 py-2 text-center font-bold">{{ li.cantidad|floatformat:2 }}</td>
-                    <td class="px-3 py-2 text-center text-slate-400">{{ li.cantidad_original|floatformat:2 }}</td>
-                    <td class="px-3 py-2 text-center">{{ li.cantidad_recibida|floatformat:2 }}</td>
-                    <td class="px-3 py-2 text-center">{{ li.cantidad_facturada|floatformat:2 }}</td>
-                    <td class="px-3 py-2 text-center font-black {% if li.pendiente_recepcion > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ li.pendiente_recepcion|floatformat:2 }}</td>
-                    <td class="px-3 py-2 text-center font-black {% if li.pendiente_facturacion > 0 %}text-amber-600{% else %}text-green-600{% endif %}">{{ li.pendiente_facturacion|floatformat:2 }}</td>
+                    <td class="px-3 py-2 text-center font-bold">{{ li.cantidad|floatformat:"2g" }}</td>
+                    <td class="px-3 py-2 text-center text-slate-400">{{ li.cantidad_original|floatformat:"2g" }}</td>
+                    <td class="px-3 py-2 text-center">{{ li.cantidad_recibida|floatformat:"2g" }}</td>
+                    <td class="px-3 py-2 text-center">{{ li.cantidad_facturada|floatformat:"2g" }}</td>
+                    <td class="px-3 py-2 text-center font-black {% if li.pendiente_recepcion > 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ li.pendiente_recepcion|floatformat:"2g" }}</td>
+                    <td class="px-3 py-2 text-center font-black {% if li.pendiente_facturacion > 0 %}text-amber-600{% else %}text-green-600{% endif %}">{{ li.pendiente_facturacion|floatformat:"2g" }}</td>
                     <td class="px-3 py-2 text-center">{% if li.marcado_diferencia %}<span class="text-[9px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase">Sí</span>{% else %}—{% endif %}</td>
                 </tr>
                 {% endfor %}
@@ -86,7 +86,7 @@
                     {% for f in facturas %}
                     <tr>
                         <td class="px-3 py-2 font-black">{{ f.compra.tipo.codigo }} {{ f.compra.punto|stringformat:"04d" }}-{{ f.compra.numero|stringformat:"08d" }}</td>
-                        <td class="px-3 py-2 text-center">{{ f.imputado|floatformat:2 }}</td>
+                        <td class="px-3 py-2 text-center">{{ f.imputado|floatformat:"2g" }}</td>
                         <td class="px-3 py-2 text-center">
                             <form method="post" action="{% url 'factura_desafectar_oc' oc.oc_id f.compra.compras_id %}"
                                   onsubmit="return confirm('¿Desafectar la factura de esta OC? Reabre el pendiente de facturación. La factura NO se borra.');">

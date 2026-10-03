@@ -56,9 +56,9 @@
             <tr>
                 <td>{{ it.producto.cod_prov|default:it.producto_id }}</td>
                 <td>{{ it.producto.detalle }}</td>
-                <td class="text-center">{{ it.cantidad_recibida|floatformat:2 }}</td>
+                <td class="text-center">{{ it.cantidad_recibida|floatformat:"2g" }}</td>
                 <td>
-                    {% for imp in it.imputaciones.all %}{{ imp.orden_item.orden.punto|stringformat:"04d" }}-{{ imp.orden_item.orden.numero|stringformat:"08d" }} ({{ imp.cantidad|floatformat:2 }}){% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
+                    {% for imp in it.imputaciones.all %}{{ imp.orden_item.orden.punto|stringformat:"04d" }}-{{ imp.orden_item.orden.numero|stringformat:"08d" }} ({{ imp.cantidad|floatformat:"2g" }}){% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}
                 </td>
             </tr>
             {% endfor %}

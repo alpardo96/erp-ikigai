@@ -31,7 +31,7 @@
                     <td class="px-4 py-2 text-slate-700">{{ f.remito.sucursal_origen.nombre }}</td>
                     <td class="px-4 py-2 text-slate-700">{{ f.remito.sucursal_destino.nombre }}</td>
                     <td class="px-4 py-2 uppercase text-slate-700">{{ f.producto.detalle }}</td>
-                    <td class="px-4 py-2 text-center font-black text-amber-700 tabular-nums">{{ f.pendiente|floatformat:2 }}</td>
+                    <td class="px-4 py-2 text-center font-black text-amber-700 tabular-nums">{{ f.pendiente|floatformat:"2g" }}</td>
                 </tr>
                 {% empty %}
                 <tr><td colspan="6" class="px-6 py-12 text-center text-gray-400 italic font-medium">No hay mercadería en tránsito.</td></tr>

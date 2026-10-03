@@ -1,8 +1,4 @@
 <div class="flex flex-col gap-4 mb-6">
-    <div>
-        <h2 class="text-xl font-bold text-gray-900">Balance de Sumas y Saldos</h2>
-        <p class="text-sm text-gray-500 mt-1">Estado patrimonial y de resultados consolidado.</p>
-    </div>
     
     <div class="flex flex-wrap gap-4 items-end bg-gray-50 p-4 rounded-xl border border-gray-200">
         <!-- Filtros -->
@@ -105,16 +101,16 @@ function exportarPdfBalance() {
                     {% endif %}
                 </td>
                 <td class="px-6 py-3 whitespace-nowrap text-sm text-right font-mono {% if fila.cuenta.imputable == 0 %}text-blue-600 font-bold{% elif fila.apertura != 0 %}text-gray-900{% else %}text-gray-400{% endif %}">
-                    {{ fila.apertura|floatformat:2 }}
+                    {{ fila.apertura|floatformat:"2g" }}
                 </td>
                 <td class="px-6 py-3 whitespace-nowrap text-sm text-right font-mono {% if fila.cuenta.imputable == 0 %}text-blue-600 font-bold{% elif fila.periodo_debe != 0 %}text-gray-900{% else %}text-gray-400{% endif %}">
-                    {{ fila.periodo_debe|floatformat:2 }}
+                    {{ fila.periodo_debe|floatformat:"2g" }}
                 </td>
                 <td class="px-6 py-3 whitespace-nowrap text-sm text-right font-mono {% if fila.cuenta.imputable == 0 %}text-blue-600 font-bold{% elif fila.periodo_haber != 0 %}text-gray-900{% else %}text-gray-400{% endif %} border-r border-gray-100">
-                    {{ fila.periodo_haber|floatformat:2 }}
+                    {{ fila.periodo_haber|floatformat:"2g" }}
                 </td>
                 <td class="px-6 py-3 whitespace-nowrap text-sm text-right font-mono font-bold {% if fila.cuenta.imputable == 0 %}text-blue-600{% elif fila.saldo > 0 %}text-indigo-600{% elif fila.saldo < 0 %}text-red-600{% else %}text-gray-400{% endif %}">
-                    {{ fila.saldo|floatformat:2 }}
+                    {{ fila.saldo|floatformat:"2g" }}
                 </td>
             </tr>
             {% empty %}
@@ -128,10 +124,10 @@ function exportarPdfBalance() {
             {% if balance %}
             <tr class="bg-gray-100 border-t-2 border-gray-300 font-bold">
                 <td class="px-6 py-4 text-right text-sm text-gray-800 uppercase tracking-wider border-r border-gray-300">Totales Generales</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">{{ total_apertura|floatformat:2 }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">{{ total_debe|floatformat:2 }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900 border-r border-gray-300">{{ total_haber|floatformat:2 }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono {% if total_saldo > 0 %}text-indigo-700{% elif total_saldo < 0 %}text-red-700{% else %}text-gray-900{% endif %}">{{ total_saldo|floatformat:2 }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">{{ total_apertura|floatformat:"2g" }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900">{{ total_debe|floatformat:"2g" }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono text-gray-900 border-r border-gray-300">{{ total_haber|floatformat:"2g" }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-mono {% if total_saldo > 0 %}text-indigo-700{% elif total_saldo < 0 %}text-red-700{% else %}text-gray-900{% endif %}">{{ total_saldo|floatformat:"2g" }}</td>
             </tr>
             {% endif %}
         </tbody>

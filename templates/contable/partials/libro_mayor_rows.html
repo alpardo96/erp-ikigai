@@ -1,3 +1,4 @@
+{% load formato_tags %}
 {% if not cuentas_data %}
 <tr>
     <td colspan="{{ columnas_info|length|default:10 }}" class="px-6 py-8 text-center text-gray-500">
@@ -17,7 +18,7 @@
 {% if cta_data.saldo_anterior != 0 %}
 <tr class="bg-slate-50 text-xs">
     <td colspan="{{ columnas_info|length|add:'-1'|default:9 }}" class="px-4 py-1.5 text-right font-semibold text-slate-600">Saldo Anterior:</td>
-    <td class="px-4 py-1.5 whitespace-nowrap text-right font-bold font-mono text-slate-900">$ {{ cta_data.saldo_anterior|floatformat:2 }}</td>
+    <td class="px-4 py-1.5 whitespace-nowrap text-right font-bold font-mono text-slate-900">$ {{ cta_data.saldo_anterior|formato_ar }}</td>
 </tr>
 {% endif %}
 
@@ -33,7 +34,7 @@
                 </button>
             {% elif item.clave == 'debe' or item.clave == 'haber' or item.clave == 'saldo' or item.clave == 'monto_asiento' or item.clave == 'debe_divisa' or item.clave == 'haber_divisa' %}
                 {% if item.valor != '' and item.valor != 0 %}
-                    $ {{ item.valor|floatformat:2 }}
+                    $ {{ item.valor|formato_ar }}
                 {% else %}
                     <span class="text-slate-300">-</span>
                 {% endif %}
@@ -62,9 +63,9 @@
 
 <tr class="bg-slate-100 border-t-2 border-slate-300 text-xs">
     <td colspan="{{ columnas_info|length|add:'-3'|default:7 }}" class="px-4 py-2.5 text-right font-bold text-slate-700 uppercase tracking-wider">Total Cuenta {{ cta_data.cuenta.jerarquia }}</td>
-    <td class="px-3 py-2.5 whitespace-nowrap text-right font-mono font-bold text-slate-900">$ {{ cta_data.suma_debe|floatformat:2 }}</td>
-    <td class="px-3 py-2.5 whitespace-nowrap text-right font-mono font-bold text-slate-900">$ {{ cta_data.suma_haber|floatformat:2 }}</td>
-    <td class="px-3 py-2.5 whitespace-nowrap text-right font-mono font-bold text-indigo-800">$ {{ cta_data.saldo_final|floatformat:2 }}</td>
+    <td class="px-3 py-2.5 whitespace-nowrap text-right font-mono font-bold text-slate-900">$ {{ cta_data.suma_debe|formato_ar }}</td>
+    <td class="px-3 py-2.5 whitespace-nowrap text-right font-mono font-bold text-slate-900">$ {{ cta_data.suma_haber|formato_ar }}</td>
+    <td class="px-3 py-2.5 whitespace-nowrap text-right font-mono font-bold text-indigo-800">$ {{ cta_data.saldo_final|formato_ar }}</td>
 </tr>
 
 {% endfor %}

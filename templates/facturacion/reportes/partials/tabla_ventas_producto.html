@@ -121,7 +121,7 @@
                         $ {% if item.neto_calculado %}{{ item.neto_calculado|formato_ar }}{% else %}{{ item.total|formato_ar }}{% endif %}
                     </td>
                     <td class="col-iva px-3 py-3 text-right text-indigo-600">
-                        <span class="text-xs text-gray-400 mr-1">({{ item.iva_alicuota|floatformat:0 }}%)</span>
+                        <span class="text-xs text-gray-400 mr-1">({{ item.iva_alicuota|floatformat:"0g" }}%)</span>
                         $ {{ item.iva_calculado|formato_ar }}
                     </td>
                     <td class="col-total px-3 py-3 text-right font-bold text-emerald-600">$ {{ item.total|formato_ar }}</td>

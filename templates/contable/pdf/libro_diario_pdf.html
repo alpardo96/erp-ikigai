@@ -1,4 +1,5 @@
 {% extends 'contable/pdf/base_pdf.html' %}
+{% load formato_tags %}
 
 {% block title %}Libro Diario PDF{% endblock %}
 {% block report_name %}LIBRO DIARIO{% endblock %}
@@ -44,10 +45,10 @@
                 {% if linea.leyenda %}<span style="color: #6b7280; font-size: 8pt;"> - {{ linea.leyenda }}</span>{% endif %}
             </td>
             <td width="15%" align="right" style="font-family: monospace; font-size: 8.5pt;">
-                {% if linea.debe > 0 %}$ {{ linea.debe|floatformat:2 }}{% else %}-{% endif %}
+                {% if linea.debe > 0 %}$ {{ linea.debe|formato_ar }}{% else %}-{% endif %}
             </td>
             <td width="15%" align="right" style="font-family: monospace; font-size: 8.5pt;">
-                {% if linea.haber > 0 %}$ {{ linea.haber|floatformat:2 }}{% else %}-{% endif %}
+                {% if linea.haber > 0 %}$ {{ linea.haber|formato_ar }}{% else %}-{% endif %}
             </td>
         </tr>
         {% endfor %}
@@ -60,10 +61,10 @@
                 TOTAL ASIENTO #{{ asiento.asiento_id }}:
             </td>
             <td width="15%" align="right" style="font-family: monospace; color: #0f172a;">
-                $ {{ asiento.monto|floatformat:2 }}
+                $ {{ asiento.monto|formato_ar }}
             </td>
             <td width="15%" align="right" style="font-family: monospace; color: #0f172a;">
-                $ {{ asiento.monto|floatformat:2 }}
+                $ {{ asiento.monto|formato_ar }}
             </td>
         </tr>
         <tr><td colspan="5" style="height: 10px; border: none;"></td></tr>

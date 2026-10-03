@@ -63,18 +63,18 @@
             <tr>
                 <td>{{ it.cod_prov|default:"—" }}</td>
                 <td>{{ it.producto.detalle }}</td>
-                <td class="text-center">{{ it.cantidad|floatformat:2 }}</td>
+                <td class="text-center">{{ it.cantidad|floatformat:"2g" }}</td>
                 {% if oc.carga_costos %}
-                <td class="text-right">$ {{ it.precio_unitario|floatformat:2 }}</td>
-                <td class="text-center">{{ it.iva_alicuota|floatformat:1 }}%</td>
-                <td class="text-right">$ {{ it.precio_unitario|floatformat:2 }}</td>
+                <td class="text-right">$ {{ it.precio_unitario|floatformat:"2g" }}</td>
+                <td class="text-center">{{ it.iva_alicuota|floatformat:"1g" }}%</td>
+                <td class="text-right">$ {{ it.precio_unitario|floatformat:"2g" }}</td>
                 {% endif %}
             </tr>
             {% endfor %}
             {% if oc.carga_costos %}
             <tr class="total-row">
                 <td colspan="5" class="text-right">TOTAL ESTIMADO</td>
-                <td class="text-right">$ {{ oc.total|floatformat:2 }}</td>
+                <td class="text-right">$ {{ oc.total|floatformat:"2g" }}</td>
             </tr>
             {% endif %}
         </tbody>

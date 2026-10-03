@@ -6,15 +6,15 @@
         {{ p.moneda }}
     </td>
     <td class="px-2 py-1 text-right font-black text-blue-600">
-        {% if moneda_venta == 'DOL' %}USD{% else %}${% endif %} {{ p.precio_mostrar|floatformat:2 }}
+        {% if moneda_venta == 'DOL' %}USD{% else %}${% endif %} {{ p.precio_mostrar|floatformat:"2g" }}
     </td>
     <td class="px-2 py-1 text-center whitespace-nowrap">
         <span class="px-1.5 py-0.5 rounded font-black {% if p.stock_local > 0 %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
-            {{ p.stock_local|floatformat:0 }}
+            {{ p.stock_local|floatformat:"0g" }}
         </span>
         {% if p.stock_otros > 0 %}
         <span class="ml-1 px-1 py-0.5 rounded text-[8px] bg-amber-100 text-amber-700 font-bold" title="Stock en otras sucursales">
-            +{{ p.stock_otros|floatformat:0 }}
+            +{{ p.stock_otros|floatformat:"0g" }}
         </span>
         {% endif %}
     </td>

@@ -1,4 +1,5 @@
 {% extends 'contable/pdf/base_pdf.html' %}
+{% load formato_tags %}
 
 {% block title %}Libro Mayor PDF{% endblock %}
 {% block report_name %}LIBRO MAYOR CONTABLE{% endblock %}
@@ -14,8 +15,9 @@
 
 {% for cta_data in cuentas_data %}
 <h3 style="margin-top: 20px; margin-bottom: 10px; background-color: #f3f4f6; padding: 5px;">Cuenta: [{{ cta_data.cuenta.jerarquia }}] - {{ cta_data.cuenta.cuenta }}</h3>
-<table>
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 5px;">
     <thead>
+        <tr>
             <th style="width: 9%">Fecha</th>
             <th style="width: 10%">Asiento Nº</th>
             <th style="width: 33%">Concepto / Leyenda</th>
@@ -28,23 +30,25 @@
     <tbody>
         <!-- Saldo Anterior -->
         {% if cta_data.saldo_anterior != 0 %}
+        <tr>
             <td>&nbsp;</td>
             <td>&nbsp;</td>
             <td class="text-right font-bold italic">SALDO ANTERIOR:</td>
             <td>&nbsp;</td>
             <td>&nbsp;</td>
-            <td class="text-right font-bold">{{ cta_data.saldo_anterior|floatformat:"2g" }}</td>
+            <td class="text-right font-bold">{{ cta_data.saldo_anterior|formato_ar }}</td>
             <td>&nbsp;</td>
         </tr>
         {% endif %}
         
         {% for mov in cta_data.movimientos %}
+        <tr>
             <td>{{ mov.asiento.fecha|date:"d/m/Y" }}</td>
             <td>{{ mov.asiento.asiento_id }}</td>
             <td>{% if cta_data.cuenta.imputable == 0 %}<strong>[{{ mov.cuenta.cuenta }}]</strong><br>{% endif %}{{ mov.asiento.concepto }}{% if mov.leyenda %}. {{ mov.leyenda }}{% endif %}</td>
-            <td class="text-right">{% if mov.debe %}{{ mov.debe|floatformat:"2g" }}{% else %}0,00{% endif %}</td>
-            <td class="text-right">{% if mov.haber %}{{ mov.haber|floatformat:"2g" }}{% else %}0,00{% endif %}</td>
-            <td class="text-right font-bold">{{ mov.saldo_acumulado|floatformat:"2g" }}</td>
+            <td class="text-right">{% if mov.debe %}{{ mov.debe|formato_ar }}{% else %}0,00{% endif %}</td>
+            <td class="text-right">{% if mov.haber %}{{ mov.haber|formato_ar }}{% else %}0,00{% endif %}</td>
+            <td class="text-right font-bold">{{ mov.saldo_acumulado|formato_ar }}</td>
             <td class="text-center">{% if mov.asiento.sucursal_id %}{{ mov.asiento.sucursal_id }}{% endif %}</td>
         </tr>
         {% empty %}
@@ -58,9 +62,9 @@
             <td>&nbsp;</td>
             <td>&nbsp;</td>
             <td class="text-right italic font-bold">TOTAL / SALDO FINAL:</td>
-            <td class="text-right font-bold">{{ cta_data.suma_debe|floatformat:"2g" }}</td>
-            <td class="text-right font-bold">{{ cta_data.suma_haber|floatformat:"2g" }}</td>
-            <td class="text-right font-bold">{{ cta_data.saldo_final|floatformat:"2g" }}</td>
+            <td class="text-right font-bold">{{ cta_data.suma_debe|formato_ar }}</td>
+            <td class="text-right font-bold">{{ cta_data.suma_haber|formato_ar }}</td>
+            <td class="text-right font-bold">{{ cta_data.saldo_final|formato_ar }}</td>
             <td>&nbsp;</td>
         </tr>
     </tbody>

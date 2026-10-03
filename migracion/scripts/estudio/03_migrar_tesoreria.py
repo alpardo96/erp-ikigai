@@ -369,8 +369,10 @@ def run():
                 nombre_firmante=str(row.get('LIBRADOR', ''))[:100],
                 fecha_recepcion=fec_emision,
                 asiento_recepcion_id=asiento_rec if asiento_rec and asiento_rec > 0 else None,
+                recibo_id=row.get('ID_REC') if row.get('ID_REC', 0) > 0 else None,
                 fecha_entrega=row.get('FEC_OP_D'),
                 asiento_entrega_id=row.get('ID_ASTO_D') if row.get('ID_ASTO_D', 0) > 0 else None,
+                orden_pago_id=row.get('ID_OP') if row.get('ID_OP', 0) > 0 else None,
                 estado=estado
             ))
             

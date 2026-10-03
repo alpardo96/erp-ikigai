@@ -26,7 +26,7 @@
         <span class="text-[10px] font-bold text-slate-500">{{ c.cuit|default:"-" }}</span>
     </td>
     <td class="px-3 py-2 border-b border-slate-100 text-right">
-        <span class="text-[10px] font-bold text-indigo-600">$ {{ c.saldo_pendiente|default:c.saldo|floatformat:2 }}</span>
+        <span class="text-[10px] font-bold text-indigo-600">$ {{ c.saldo_pendiente|default:c.saldo|floatformat:"2g" }}</span>
     </td>
     <td class="px-3 py-2 border-b border-slate-100 text-right">
         <button type="button" 

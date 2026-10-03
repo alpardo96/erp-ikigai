@@ -17,10 +17,10 @@
                 <td class="px-3 py-2 font-bold text-blue-700">{{ item.codigo }}</td>
                 <td class="px-3 py-2 font-medium text-gray-900 uppercase">{{ item.detalle }}</td>
                 <td class="px-3 py-2 text-center font-bold text-slate-600">
-                    {% if item.fuentes %}{{ item.cantidad_pedida|floatformat:2 }}{% else %}<span class="text-slate-300">s/OC</span>{% endif %}
+                    {% if item.fuentes %}{{ item.cantidad_pedida|floatformat:"2g" }}{% else %}<span class="text-slate-300">s/OC</span>{% endif %}
                 </td>
                 <td class="px-3 py-2 text-center">
-                    <input type="text" name="cantidad_recibida" value="{{ item.cantidad_recibida|floatformat:2 }}"
+                    <input type="text" name="cantidad_recibida" value="{{ item.cantidad_recibida|floatformat:"2g" }}"
                            onfocus="this.select()"
                            class="w-24 bg-transparent border-b border-dashed border-blue-300 text-center focus:border-blue-500 outline-none fInputAR font-black text-blue-700"
                            hx-post="{% url 'rec_item_edit' item.index %}"
@@ -28,7 +28,7 @@
                            hx-target="#rec-items-container">
                 </td>
                 <td class="px-3 py-2 text-center font-black {% if item.fuentes %}{% if item.pendiente > 0 %}text-red-600{% else %}text-green-600{% endif %}{% else %}text-slate-300{% endif %}">
-                    {% if item.fuentes %}{{ item.pendiente|floatformat:2 }}{% else %}—{% endif %}
+                    {% if item.fuentes %}{{ item.pendiente|floatformat:"2g" }}{% else %}—{% endif %}
                 </td>
                 <td class="px-3 py-2 text-center columna-accion-item">
                     <button hx-post="{% url 'rec_item_remove' item.index %}"
